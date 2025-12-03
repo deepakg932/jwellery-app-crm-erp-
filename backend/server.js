@@ -12,23 +12,24 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import subCategoreisRoutes from "./routes/subCategoreisRoutes.js";
 import PurityRoutes from "./routes/purityRoutes.js";
 import branchRoutes from "./routes/branchRoutes.js";
+import brandRoutes from "./routes/brandRoutes.js"
 
 
-dotenv.config(); // load .env file
+dotenv.config(); 
 
-// Connect Database
+
 connectDB();
 
 const app = express();
 
-app.use(express.json()); // To parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // To parse form data
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true })); 
 app.use(cors())
 app.use('/uploads', express.static('uploads'));
 
 
 
-// Routes
+
 app.use("/api/auth", AuthRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api", protectedRoutes)
@@ -38,6 +39,7 @@ app.use('/api/categories', categoryRoutes);
 app.use("/api/subcategories",subCategoreisRoutes)
 app.use("/api/purity", PurityRoutes);
 app.use("/api/branches", branchRoutes);
+app.use("/api/brands",brandRoutes)
 
 
 
