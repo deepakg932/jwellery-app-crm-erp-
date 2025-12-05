@@ -1,9 +1,11 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import User from "../Models/models/UserModel.js";
+
 import Tenant from "../Models/models/TenantModel.js";
+import User from "../Models/models/UserModel.js";
 
 import dotenv from "dotenv";
+
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -20,28 +22,31 @@ function generateRefreshToken(payload) {
 
 export const register = async (req, res) => {
   try {
-    let { tenant_id, company_name, full_name, username, email, phone, password, confirm_password, role } = req.body;
+    let {company_name, full_name, username, email, phone, password, confirm_password } = req.body;
+    console.log(req.body,"req.body in register")
 
     
-    if (!company_name || !full_name || !username || !email || !password || !confirm_password || !role) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-    if (password !== confirm_password) return res.status(400).json({ message: "Passwords do not match" });
+    if (!company_name || !full_name || !username || !email || !password || !confirm_password) {
+  return res.status(400).json({ message: "Missing required fields" });
+}
 
-    const allowedRoles = ["admin", "branch", "customer"];
-    if (!allowedRoles.includes(role)) return res.status(400).json({ message: "Invalid role" });
+    if (password !== confirm_password) 
+      return res.status(400).json({ message: "Passwords do not match" });
+
+    // const allowedRoles = ["admin", "branch", "customer"];
+    // if (!allowedRoles.includes(role)) return res.status(400).json({ message: "Invalid role" });
 
     
-    if (role === "admin" && !tenant_id) {
-      const tenant = new Tenant({ company_name });
-      await tenant.save();
-      tenant_id = tenant._id;
-    }
+    // if (role === "admin" && !tenant_id) {
+    //   const tenant = new Tenant({ company_name });
+    //   await tenant.save();
+    //   tenant_id = tenant._id;
+    // }
 
  
-    if (role !== "admin" && !tenant_id) {
-      return res.status(400).json({ message: "tenant_id is required for non-admin roles" });
-    }
+    // if (role !== "admin" && !tenant_id) {
+    //   return res.status(400).json({ message: "tenant_id is required for non-admin roles" });
+    // }
 
     const existingUser = await User.findOne({ email});
     if (existingUser) return res.status(400).json({ message: "User already exists with this email in this tenant" });
@@ -49,14 +54,15 @@ export const register = async (req, res) => {
     const hashed = await bcrypt.hash(password, 10);
 
     const newUser = new User({
-      tenant_id,
+      // tenant_id,
       company_name,
       full_name,
       username,
       email,
       phone,
+      confirm_password,
       password: hashed,
-      role,
+      // role,
     });
 
    const  check = await newUser.save();
@@ -65,7 +71,7 @@ export const register = async (req, res) => {
     
     return res.status(200).json({message: "User registered successfully",user: {  id: newUser._id,  tenant_id: newUser.tenant_id,  company_name: newUser.company_name,full_name: newUser.full_name, username: newUser.username, email: newUser.email,
    phone: newUser.phone,
-        role: newUser.role,
+        // role: newUser.role,
       },
     });
   } catch (err) {
@@ -81,13 +87,14 @@ export const login = async (req, res) => {
   try {
     const { email, password, tenant_id } = req.body;
 
-    if (!email || !password || !tenant_id) {
-      return res.status(400).json({ message: "email, password and tenant_id are required" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "email, password are required" });
     }
 
-    const user = await User.findOne({ email, tenant_id });
+    const user = await User.findOne({ email });
     console.log(user,"user")
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    if (!user) 
+      return res.status(400).json({ message: "Invalid credentials" });
 
     const match = await bcrypt.compare(password, user.password);
     console.log(match,"match")
@@ -96,8 +103,8 @@ export const login = async (req, res) => {
 
     const payload = {
       sub: user._id,
-      tenant_id: user.tenant_id,
-      role: user.role,
+      // tenant_id: user.tenant_id,
+      // role: user.role,
       email: user.email
     };
 console.log(payload,"payload")
