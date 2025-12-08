@@ -85,7 +85,7 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password, tenant_id } = req.body;
+    const { email, password ,tenant_id} = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: "email, password are required" });

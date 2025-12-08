@@ -1,13 +1,14 @@
-import AppLogo from '@/components/AppLogo'
-import { appName } from '@/helpers'
-import { Link } from 'react-router'
-import { useState } from 'react'
-import axios from 'axios'
-import { Card, Col, Form, FormControl, FormLabel, Row, Button } from 'react-bootstrap'
-import { LuCircleUser, LuMail, LuBuilding2 } from 'react-icons/lu'
+// SignUp.jsx
+import AppLogo from '@/components/AppLogo';
+import { appName } from '@/helpers';
+import { Link } from 'react-router';
+import { Card, Col, FormControl, FormLabel, Row, Button } from 'react-bootstrap';
+import { LuCircleUser, LuMail, LuBuilding2, LuKeyRound, LuUser, LuPhone } from 'react-icons/lu';
+import { useAuthForm } from '@/hooks/useAuthForm';
+import { registerApi } from '@/api/authApi';
 
-const Index = () => {
-  const [formData, setFormData] = useState({
+const SignUp = () => {
+  const initialValues = {
     company_name: '',
     full_name: '',
     username: '',
@@ -15,72 +16,16 @@ const Index = () => {
     email: '',
     password: '',
     confirm_password: '',
-  })
+  };
 
-  const [errors, setErrors] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [apiError, setApiError] = useState('')
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
-
-  const validate = () => {
-    let err = {}
-
-    if (!formData.company_name.trim()) err.company_name = 'Company name is required'
-    if (!formData.full_name.trim()) err.full_name = 'Full name is required'
-    if (!formData.email.trim()) err.email = 'Email is required'
-    if (!formData.password.trim()) err.password = 'Password is required'
-    if (!formData.confirm_password.trim()) err.confirm_password = 'Confirm password is required'
-
-    if (formData.password !== formData.confirm_password) {
-      err.confirm_password = 'Passwords do not match'
-    }
-
-    return err
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setApiError('')
-    const v = validate()
-    setErrors(v)
-
-    if (Object.keys(v).length !== 0) return
-
-    try {
-      setLoading(true)
-
-      const response = await axios.post('http://10.85.81.77:5000/api/auth/register', formData)
-
-      console.log('API Response:', response.data)
-      alert('Account created successfully!')
-
-      setFormData({
-        company_name: '',
-        full_name: '',
-        username: '',
-        phone: '',
-        email: '',
-        password: '',
-        confirm_password: '',
-      })
-
-    } catch (err) {
-      console.error('API Error:', err)
-      if (err.response?.data?.message) {
-        setApiError(err.response.data.message)
-      } else {
-        setApiError('Something went wrong. Please try again.')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
+  const {
+    values,
+    errors,
+    loading,
+    apiError,
+    handleChange,
+    handleSubmit
+  } = useAuthForm(initialValues, registerApi, 'register');
 
   return (
     <div className="auth-box p-0 w-100">
@@ -95,8 +40,7 @@ const Index = () => {
 
             {apiError && <div className="alert alert-danger">{apiError}</div>}
 
-            <Form onSubmit={handleSubmit}>
-
+            <form onSubmit={handleSubmit}>
               {/* COMPANY NAME */}
               <FormLabel>Company Name</FormLabel>
               <div className="position-relative mb-3">
@@ -104,12 +48,12 @@ const Index = () => {
                 <FormControl
                   type="text"
                   name="company_name"
-                  className="ps-5"
+                  className={`ps-5 ${errors.company_name ? 'is-invalid' : ''}`}
                   placeholder="Enter company name"
-                  value={formData.company_name}
+                  value={values.company_name}
                   onChange={handleChange}
                 />
-                {errors.company_name && <small className="text-danger">{errors.company_name}</small>}
+                {errors.company_name && <div className="invalid-feedback d-block">{errors.company_name}</div>}
               </div>
 
               {/* FULL NAME */}
@@ -119,34 +63,38 @@ const Index = () => {
                 <FormControl
                   type="text"
                   name="full_name"
-                  className="ps-5"
+                  className={`ps-5 ${errors.full_name ? 'is-invalid' : ''}`}
                   placeholder="Enter your full name"
-                  value={formData.full_name}
+                  value={values.full_name}
                   onChange={handleChange}
                 />
-                {errors.full_name && <small className="text-danger">{errors.full_name}</small>}
+                {errors.full_name && <div className="invalid-feedback d-block">{errors.full_name}</div>}
               </div>
 
               {/* USERNAME */}
               <FormLabel>Username</FormLabel>
-              <div className="mb-3">
+              <div className="position-relative mb-3">
+                <LuUser size={20} className="position-absolute top-50 translate-middle-y ms-2 text-muted" />
                 <FormControl
                   type="text"
                   name="username"
+                  className="ps-5"
                   placeholder="Enter username"
-                  value={formData.username}
+                  value={values.username}
                   onChange={handleChange}
                 />
               </div>
 
               {/* PHONE */}
               <FormLabel>Phone</FormLabel>
-              <div className="mb-3">
+              <div className="position-relative mb-3">
+                <LuPhone size={20} className="position-absolute top-50 translate-middle-y ms-2 text-muted" />
                 <FormControl
                   type="text"
                   name="phone"
+                  className="ps-5"
                   placeholder="Enter phone number"
-                  value={formData.phone}
+                  value={values.phone}
                   onChange={handleChange}
                 />
               </div>
@@ -158,44 +106,48 @@ const Index = () => {
                 <FormControl
                   type="email"
                   name="email"
-                  className="ps-5"
+                  className={`ps-5 ${errors.email ? 'is-invalid' : ''}`}
                   placeholder="Enter email"
-                  value={formData.email}
+                  value={values.email}
                   onChange={handleChange}
                 />
-                {errors.email && <small className="text-danger">{errors.email}</small>}
+                {errors.email && <div className="invalid-feedback d-block">{errors.email}</div>}
               </div>
 
               {/* PASSWORD */}
               <FormLabel>Password</FormLabel>
-              <div className="mb-3">
+              <div className="position-relative mb-3">
+                <LuKeyRound size={20} className="position-absolute top-50 translate-middle-y ms-2 text-muted" />
                 <FormControl
                   type="password"
                   name="password"
+                  className={`ps-5 ${errors.password ? 'is-invalid' : ''}`}
                   placeholder="Enter password"
-                  value={formData.password}
+                  value={values.password}
                   onChange={handleChange}
                 />
-                {errors.password && <small className="text-danger">{errors.password}</small>}
+                {errors.password && <div className="invalid-feedback d-block">{errors.password}</div>}
               </div>
 
               {/* CONFIRM PASSWORD */}
               <FormLabel>Confirm Password</FormLabel>
-              <div className="mb-3">
+              <div className="position-relative mb-3">
+                <LuKeyRound size={20} className="position-absolute top-50 translate-middle-y ms-2 text-muted" />
                 <FormControl
                   type="password"
                   name="confirm_password"
+                  className={`ps-5 ${errors.confirm_password ? 'is-invalid' : ''}`}
                   placeholder="Confirm password"
-                  value={formData.confirm_password}
+                  value={values.confirm_password}
                   onChange={handleChange}
                 />
-                {errors.confirm_password && <small className="text-danger">{errors.confirm_password}</small>}
+                {errors.confirm_password && <div className="invalid-feedback d-block">{errors.confirm_password}</div>}
               </div>
 
               <Button type="submit" disabled={loading} className="w-100 btn-primary">
                 {loading ? 'Creating account...' : 'Create Account'}
               </Button>
-            </Form>
+            </form>
 
             <div className="text-center mt-3">
               <span className="text-muted">
@@ -204,14 +156,15 @@ const Index = () => {
             </div>
           </Card>
         </Col>
-         <Col>
+        <Col>
           <div className="h-100 position-relative card-side-img rounded-0 overflow-hidden">
             <div className="p-4 card-img-overlay auth-overlay d-flex align-items-end justify-content-center"></div>
           </div>
         </Col>
       </Row>
+      
     </div>
-  )
-}
+  );
+};
 
-export default Index
+export default SignUp;

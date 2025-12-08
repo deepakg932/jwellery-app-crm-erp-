@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
 
 export default function AddMetalTypeModal({ onClose, onSave, loading = false }) {
-  const [categoryName, setCategoryName] = useState("");
+  const [metalName, setCategoryName] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -10,9 +10,9 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!categoryName.trim()) return;
+    if (!metalName.trim()) return;
 
-    onSave(categoryName, image);
+    onSave(metalName, image);
     setCategoryName("");
     setImage(null);
     setImagePreview(null);
@@ -98,7 +98,7 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
                   type="text"
                   className="form-control form-control-lg"
                   placeholder="e.g., Gold, Silver, Platinum"
-                  value={categoryName}
+                  value={metalName}
                   onChange={(e) => setCategoryName(e.target.value)}
                   required
                   disabled={loading}
@@ -179,7 +179,7 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!categoryName.trim() || loading}
+                disabled={!metalName.trim() || loading}
               >
                 {loading ? (
                   <>

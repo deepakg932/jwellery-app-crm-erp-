@@ -12,15 +12,35 @@ export const getSubcategoriesByCategory = async (req, res) => {
    return res.status(500).json({ success: false, message: err.message });
   }
 };
+// export const createSubcategory = async (req, res) => {
+//     try {
+//         const newSubcategory = new Subcategory(req.body);
+//         console.log(newSubcategory, "new subcategory");
+//         const savedSubcategory = await newSubcategory.save();
+//         return res.json({ success: true, subcategory: savedSubcategory });
+//     } catch (err) {
+//        return res.status(500).json({ success: false, message: err.message });
+//     }
+// };
+
+
 export const createSubcategory = async (req, res) => {
-    try {
-        const newSubcategory = new Subcategory(req.body);
-        console.log(newSubcategory, "new subcategory");
-        const savedSubcategory = await newSubcategory.save();
-        return res.json({ success: true, subcategory: savedSubcategory });
-    } catch (err) {
-       return res.status(500).json({ success: false, message: err.message });
+  try {
+    const { name, category_id } = req.body;
+
+    if (!name || !category_id) {
+      return res.status(400).json({ success: false, message: "Name and Parent Category are required"});
     }
+
+    const newSubcategory = new Subcategory({name,category_id,image: req.file ? "/uploads/subcategory/" + req.file.filename : null,});
+
+    const savedSubcategory = await newSubcategory.save();
+    console.log(savedSubcategory,"savedSubcategories")
+
+    return res.json({ success: true, subcategory: savedSubcategory });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
 };
 export const updateSubcategory = async (req, res) => {
     try {

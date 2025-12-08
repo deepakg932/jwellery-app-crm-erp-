@@ -4,6 +4,9 @@ import MainLayout from '@/layouts/MainLayout';
 import SocialFeed from "@/views/apps/social-feed";
 import PurityPage from '../views/product-section/purity/components/PurityTable';
 
+// ProtectedRoute
+import ProtectedRoute from "@/routes/ProtectedRoute";
+
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
 const Dashboard = lazy(() => import('@/views/dashboards/dashboard2'));
@@ -805,7 +808,11 @@ const mapRoutes = [{
   element: <LeafletMap />
 }];
 const allRoutes = [{
-  element: <MainLayout />,
+   element: (
+    // <ProtectedRoute>
+      <MainLayout />
+    // </ProtectedRoute>
+  ),
   children: [{
     path: '/',
     element: <Navigate to="/dashboard" replace />

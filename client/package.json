@@ -84,6 +84,7 @@
     "react-router-dom": "^7.9.6",
     "react-select": "^5.10.1",
     "react-sortablejs": "^6.1.4",
+    "react-toastify": "^11.0.5",
     "react-use-wizard": "^2.3.0",
     "simplebar-react": "3.3.0",
     "sortablejs": "^1.15.6",

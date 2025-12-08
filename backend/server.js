@@ -12,7 +12,10 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import subCategoreisRoutes from "./routes/subCategoreisRoutes.js";
 import PurityRoutes from "./routes/purityRoutes.js";
 import branchRoutes from "./routes/branchRoutes.js";
-import brandRoutes from "./routes/brandRoutes.js"
+import brandRoutes from "./routes/brandRoutes.js";
+import metalRoutes from "./routes/metalRoutes.js"
+import PurityRoutes from "./routes/purityRoutes.js"
+import hallMarkRoutes from "./routes/hallMarkRoutes.js";
 
 
 dotenv.config(); 
@@ -39,7 +42,10 @@ app.use('/api/categories', categoryRoutes);
 app.use("/api/subcategories",subCategoreisRoutes)
 app.use("/api/purity", PurityRoutes);
 app.use("/api/branches", branchRoutes);
-app.use("/api/brands",brandRoutes)
+app.use("/api/brands",brandRoutes);
+app.use("/api/metals",metalRoutes)
+app.use("/api/purity",PurityRoutes)
+app.use("api/hallmark",hallMarkRoutes)
 
 
 

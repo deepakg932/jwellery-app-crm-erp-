@@ -66,7 +66,7 @@ export default function Header() {
                             <Button variant="link" className="btn-link btn-icon fw-semibold nav-link me-2" type="button" onClick={toggleTheme} id="theme-toggle">
                                 <TbContrast className="fs-22" />
                             </Button>
-                            <Link to="/auth-1/sign-up" className="btn btn-sm btn-light">
+                            <Link to="/auth-2/sign-up" className="btn btn-sm btn-light">
                                 Try for Free
                             </Link>
                         </div>

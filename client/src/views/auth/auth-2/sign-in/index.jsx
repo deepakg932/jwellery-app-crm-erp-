@@ -1,89 +1,41 @@
+// SignIn.jsx
 import AppLogo from '@/components/AppLogo';
 import { appName, author, currentYear } from '@/helpers';
 import { Link } from "react-router";
-import { useState } from "react";
-import axios from "axios";
 import { Card, CardBody, Col, FormControl, Row, Button, FormLabel } from 'react-bootstrap';
 import { LuCircleUser, LuKeyRound } from 'react-icons/lu';
+import { useAuthForm } from '@/hooks/useAuthForm';
+import { loginApi } from '@/api/authApi';
 
-const Index = () => {
-
-  const [formData, setFormData] = useState({
+const SignIn = () => {
+  const initialValues = {
     email: "",
     password: "",
-  });
-
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
-
-  // Input change handler
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
   };
 
-  // Validation
-  const validate = () => {
-    let err = {};
-
-    if (!formData.email.trim()) err.email = "Email is required";
-    if (!formData.password.trim()) err.password = "Password is required";
-
-    return err;
-  };
-
-  // Submit handler with Axios API
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setApiError("");
-
-    const v = validate();
-    setErrors(v);
-    if (Object.keys(v).length !== 0) return;
-
-    try {
-      setLoading(true);
-
-      const response = await axios.post(
-        "http://10.85.81.77:5000/api/auth/login",
-        formData
-      );
-        
-      console.log("Login Success:", response.data);
-      alert("Login successful!");
-
-    } catch (err) {
-      console.error("Login Error:", err);
-
-      if (err.response?.data?.message) {
-        setApiError(err.response.data.message);
-      } else {
-        setApiError("Something went wrong.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    values,
+    errors,
+    loading,
+    apiError,
+    handleChange,
+    handleSubmit
+  } = useAuthForm(initialValues, loginApi, 'login');
 
   return (
     <div className="auth-box p-0 w-100">
       <Row className="w-100 g-0">
-        <Col md={'auto'}>
+        <Col md={'auto'} >
           <Card className="auth-box-form border-0 mb-0 p-4">
-
             <div className="text-center mb-4">
               <AppLogo height={80} />
-              <h3 className="mt-3 fw-bold"> Login</h3>
+              <h3 className="mt-3 fw-bold">Login</h3>
               <p className="text-muted">Access your account</p>
             </div>
 
             {apiError && <div className="alert alert-danger">{apiError}</div>}
 
             <form onSubmit={handleSubmit}>
-              
               {/* Email */}
               <FormLabel>Email Address</FormLabel>
               <div className="position-relative mb-3">
@@ -91,13 +43,13 @@ const Index = () => {
                 <FormControl
                   type="email"
                   name="email"
-                  className="ps-5"
+                  className={`ps-5 ${errors.email ? 'is-invalid' : ''}`}
                   placeholder="Enter email"
-                  value={formData.email}
+                  value={values.email}
                   onChange={handleChange}
                 />
                 {errors.email && (
-                  <small className="text-danger">{errors.email}</small>
+                  <div className="invalid-feedback d-block">{errors.email}</div>
                 )}
               </div>
 
@@ -108,13 +60,13 @@ const Index = () => {
                 <FormControl
                   type="password"
                   name="password"
-                  className="ps-5"
+                  className={`ps-5 ${errors.password ? 'is-invalid' : ''}`}
                   placeholder="Enter password"
-                  value={formData.password}
+                  value={values.password}
                   onChange={handleChange}
                 />
                 {errors.password && (
-                  <small className="text-danger">{errors.password}</small>
+                  <div className="invalid-feedback d-block">{errors.password}</div>
                 )}
               </div>
 
@@ -123,9 +75,14 @@ const Index = () => {
                 className="btn-primary w-100"
                 disabled={loading}
               >
-                {loading ? "Please wait..." : "Login"}
+                {loading ? "Logging in..." : "Login"}
               </Button>
 
+              <div className="text-center mt-3">
+                <span className="text-muted">
+                  Don't have an account? <Link to="/auth-2/sign-up">Sign up</Link>
+                </span>
+              </div>
             </form>
 
             <div className="text-center mt-3">
@@ -133,10 +90,9 @@ const Index = () => {
                 © {currentYear} {author}. All Rights Reserved.
               </small>
             </div>
-
           </Card>
         </Col>
-         <Col>
+        <Col>
           <div className="h-100 position-relative card-side-img rounded-0 overflow-hidden">
             <div className="p-4 card-img-overlay auth-overlay d-flex align-items-end justify-content-center"></div>
           </div>
@@ -146,4 +102,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default SignIn;

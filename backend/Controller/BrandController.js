@@ -12,7 +12,7 @@ export const createBrand = async (req, res) => {
       return res.status(400).json({ status: false, message: "Brand already exists" });
     }
 
-    const brand = await Brand.create({name,image: req.file ? "/uploads/brands/" + req.file.filename : null,
+    const brand = await Brand.create({name,logo: req.file ? "/uploads/brands/" + req.file.filename : null,
     });
     console.log(brand,"brand")
 
@@ -32,7 +32,7 @@ export const updateBrand = async (req, res) => {
     const updateData = { ...req.body };
 
     if (req.file) {
-      updateData.image = "/uploads/brands/" + req.file.filename;
+      updateData.logo = "/uploads/brands/" + req.file.filename;
     }
 
     const brand = await Brand.findByIdAndUpdate(id, updateData, { new: true });
@@ -77,3 +77,32 @@ export const deleteBrand = async (req, res) => {
   }
 };
 
+
+
+
+export const getBrandDashboardStats = async (req, res) => {
+  try {
+    // Total brands
+    const totalBrands = await Brand.countDocuments();
+
+    // Active brands (status = true)
+    const activeBrands = await Brand.countDocuments({ status: true });
+
+    // Brands that have a logo
+    const brandsWithLogos = await Brand.countDocuments({
+      logo: { $ne: null, $ne: "" }
+    });
+
+    return res.json({
+      success: true,
+      stats: {
+        totalBrands,
+        activeBrands,
+        brandsWithLogos
+      }
+    });
+
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};

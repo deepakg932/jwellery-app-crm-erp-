@@ -9,7 +9,7 @@ const BrandSchema = new mongoose.Schema(
       trim: true,
     },
 
-    image: {
+    logo: {
       type: String, // Upload path — example: /uploads/brands/abc.png
       default: null,
     },
