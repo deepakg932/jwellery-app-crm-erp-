@@ -1,142 +1,102 @@
 import React, { useState } from "react";
-import { FiEdit2, FiSearch, FiPlus, FiImage, FiGrid } from "react-icons/fi";
+import { FiEdit2, FiSearch, FiPlus, FiImage } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
+import useBrands from "@/hooks/useBrands";
 import AddBrandModal from "./AddBrandModal";
 import EditBrandModal from "./EditBrandModal";
 
-// Mock brands data
-const initialBrands = [
-  { 
-    id: 1, 
-    name: "Tiffany & Co.", 
-    image: null,
-    status: "Active"
-  },
-  { 
-    id: 2, 
-    name: "Cartier", 
-    image: null,
-    status: "Active"
-  },
-  { 
-    id: 3, 
-    name: "Rolex", 
-    image: null,
-    status: "Active"
-  },
-  { 
-    id: 4, 
-    name: "Bvlgari", 
-    image: null,
-    status: "Active"
-  },
-  { 
-    id: 5, 
-    name: "Van Cleef & Arpels", 
-    image: null,
-    status: "Active"
-  },
-  { 
-    id: 6, 
-    name: "Chopard", 
-    image: null,
-    status: "Active"
-  },
-  { 
-    id: 7, 
-    name: "Graff", 
-    image: null,
-    status: "Active"
-  },
-  { 
-    id: 8, 
-    name: "Harry Winston", 
-    image: null,
-    status: "Active"
-  },
-];
+export default function BrandPage() {
+  const {
+    brands,
+    loading,
+    addBrand,
+    updateBrand,
+    deleteBrand,
+  } = useBrands();
 
-const BrandPage = () => {
-  const [brands, setBrands] = useState(initialBrands);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedBrand, setSelectedBrand] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [actionLoading, setActionLoading] = useState({ type: null, id: null });
 
-  // Filter brands based on search
-  const filtered = brands.filter((brand) =>
-    brand.name.toLowerCase().includes(search.toLowerCase())
+  // Filter brands by search
+  const filteredBrands = (brands || []).filter((brand) =>
+    (brand?.name || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  // Add new brand
-  const handleSave = async (brandData) => {
-    setLoading(true);
+  // Handle update
+  const handleUpdate = async (name, logoFile) => {
+    if (!selectedItem) return;
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    const newBrand = {
-      id: Date.now(),
-      name: brandData.name,
-      image: brandData.imageFile ? URL.createObjectURL(brandData.imageFile) : null,
-      status: "Active"
-    };
-
-    setBrands([...brands, newBrand]);
-    setShowAddModal(false);
-    setLoading(false);
+    setActionLoading({ type: "update", id: selectedItem._id });
+    try {
+      await updateBrand(selectedItem._id, {
+        name,
+        logoFile,
+      });
+      setShowEditModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Update failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
-  // Edit brand
-  const handleEditBrand = (updatedBrand) => {
-    const updated = brands.map((brand) => 
-      brand.id === selectedBrand.id ? updatedBrand : brand
-    );
-    setBrands(updated);
-    setShowEditModal(false);
-    setSelectedBrand(null);
+  // Handle add
+  const handleAdd = async (name, logoFile) => {
+    console.log("Adding new brand:", { name, hasLogoFile: !!logoFile });
+
+    setActionLoading({ type: "add", id: null });
+    try {
+      await addBrand(name, logoFile);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Add failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
-  // Delete brand
-  const handleDeleteBrand = async () => {
-    if (!selectedBrand) return;
-    
-    setLoading(true);
+  // Handle delete
+  const handleDelete = async () => {
+    if (!selectedItem) return;
 
-    const brand = brands.find((b) => b.id === selectedBrand.id);
-    if (brand?.image) URL.revokeObjectURL(brand.image);
-
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    setBrands(brands.filter((b) => b.id !== selectedBrand.id));
-    setShowDeleteModal(false);
-    setSelectedBrand(null);
-    setLoading(false);
+    setActionLoading({ type: "delete", id: selectedItem._id });
+    try {
+      await deleteBrand(selectedItem._id);
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Delete failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
   // Open edit modal
-  const handleOpenEdit = (brand) => {
-    setSelectedBrand(brand);
+  const handleOpenEdit = (item) => {
+    if (!item) return;
+    setSelectedItem(item);
     setShowEditModal(true);
   };
 
   // Open delete modal
-  const handleOpenDelete = (brand) => {
-    setSelectedBrand(brand);
+  const handleOpenDelete = (item) => {
+    if (!item) return;
+    setSelectedItem(item);
     setShowDeleteModal(true);
   };
 
-  // Toggle status
-  const toggleStatus = (id) => {
-    setBrands(brands.map(b => 
-      b.id === id ? { ...b, status: b.status === "Active" ? "Inactive" : "Active" } : b
-    ));
-  };
-
-  // Delete Confirmation Modal Component
+  // Delete Confirmation Modal
   const DeleteConfirmationModal = () => (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
           <div className="modal-header border-bottom pb-3">
@@ -146,40 +106,48 @@ const BrandPage = () => {
               className="btn-close"
               onClick={() => {
                 setShowDeleteModal(false);
-                setSelectedBrand(null);
+                setSelectedItem(null);
               }}
+              disabled={actionLoading.type === "delete"}
             ></button>
           </div>
-          
+
           <div className="modal-body">
-            <p>Are you sure you want to delete <strong>{selectedBrand?.name}</strong>?</p>
-            <p className="text-danger">This action cannot be undone.</p>
+            <p>
+              Are you sure you want to delete{" "}
+              <strong>{selectedItem?.name}</strong>?
+            </p>
           </div>
-          
+
           <div className="modal-footer border-top pt-3">
             <button
               type="button"
               className="btn btn-outline-secondary"
               onClick={() => {
                 setShowDeleteModal(false);
-                setSelectedBrand(null);
+                setSelectedItem(null);
               }}
+              disabled={actionLoading.type === "delete"}
             >
               Cancel
             </button>
             <button
               type="button"
               className="btn btn-danger"
-              onClick={handleDeleteBrand}
-              disabled={loading}
+              onClick={handleDelete}
+              disabled={actionLoading.type === "delete"}
             >
-              {loading ? (
+              {actionLoading.type === "delete" ? (
                 <>
-                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
                   Deleting...
                 </>
               ) : (
-                'Delete'
+                "Delete"
               )}
             </button>
           </div>
@@ -187,6 +155,31 @@ const BrandPage = () => {
       </div>
     </div>
   );
+
+  // Safe image component
+  const SafeImage = ({ src, alt, ...props }) => {
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError || !src) {
+      return (
+        <div
+          className="bg-light border rounded d-flex justify-content-center align-items-center"
+          style={{ width: 45, height: 45 }}
+        >
+          <FiImage className="text-muted" />
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={src}
+        alt={alt || "Brand logo"}
+        {...props}
+        onError={() => setHasError(true)}
+      />
+    );
+  };
 
   return (
     <div className="container-fluid py-4">
@@ -197,7 +190,7 @@ const BrandPage = () => {
             <div className="col-md-6">
               <h1 className="h3 fw-bold mb-2">Brand Management</h1>
               <p className="text-muted mb-0">
-                Manage jewelry brands with logos and names
+                Manage your jewelry brands
               </p>
             </div>
 
@@ -205,6 +198,7 @@ const BrandPage = () => {
               <button
                 className="btn btn-primary d-flex align-items-center gap-2"
                 onClick={() => setShowAddModal(true)}
+                disabled={loading || actionLoading.type === "add"}
               >
                 <FiPlus size={18} />
                 Add Brand
@@ -225,6 +219,7 @@ const BrandPage = () => {
                   placeholder="Search brands..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -232,80 +227,7 @@ const BrandPage = () => {
         </div>
       </div>
 
-      {/* BRANDS GRID VIEW */}
-      <div className="row">
-        {filtered.length === 0 ? (
-          <div className="col-12">
-            <div className="text-center py-5">
-              <FiImage className="text-muted mb-3" size={48} />
-              <h4 className="text-muted">No brands found</h4>
-              <p className="text-muted">Try adding a new brand or adjust your search</p>
-            </div>
-          </div>
-        ) : (
-          filtered.map((brand) => (
-            <div key={brand.id} className="col-md-3 col-sm-6 mb-4">
-              <div className="card border-0 shadow-sm h-100">
-                <div className="card-body text-center">
-                  {/* Brand Logo */}
-                  <div className="mb-3">
-                    {brand.image ? (
-                      <img
-                        src={brand.image}
-                        alt={brand.name}
-                        className="img-fluid rounded"
-                        style={{ width: '120px', height: '120px', objectFit: 'contain' }}
-                      />
-                    ) : (
-                      <div
-                        className="mx-auto d-flex align-items-center justify-content-center rounded border"
-                        style={{ width: '120px', height: '120px' }}
-                      >
-                        <FiImage className="text-muted" size={32} />
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Brand Name */}
-                  <h5 className="fw-bold mb-2">{brand.name}</h5>
-                  
-                  {/* Status */}
-                  <div className="mb-3">
-                    <button
-                      className={`btn btn-sm ${brand.status === "Active" ? 'btn-success' : 'btn-secondary'}`}
-                      onClick={() => toggleStatus(brand.id)}
-                    >
-                      {brand.status}
-                    </button>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="d-flex justify-content-center gap-2">
-                    <button
-                      className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                      onClick={() => handleOpenEdit(brand)}
-                    >
-                      <FiEdit2 size={14} />
-                      Edit
-                    </button>
-
-                    <button
-                      className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                      onClick={() => handleOpenDelete(brand)}
-                    >
-                      <RiDeleteBin6Line size={14} />
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* ALTERNATIVE TABLE VIEW (Uncomment if you prefer table) */}
-      {/*
+      {/* TABLE */}
       <div className="card border-0 shadow-sm">
         <div className="card-body table-responsive">
           <table className="table align-middle">
@@ -314,121 +236,110 @@ const BrandPage = () => {
                 <th>#</th>
                 <th>Logo</th>
                 <th>Brand Name</th>
-                <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
 
             <tbody>
-              {filtered.map((brand, index) => (
-                <tr key={brand.id}>
-                  <td>{index + 1}</td>
-                  <td>
-                    {brand.image ? (
-                      <img
-                        src={brand.image}
-                        alt={brand.name}
-                        width="60"
-                        height="60"
-                        className="rounded border"
-                        style={{ objectFit: "contain" }}
-                      />
-                    ) : (
+              {loading && brands.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center py-4">
+                    <div className="d-flex justify-content-center">
                       <div
-                        className="bg-light border rounded d-flex justify-content-center align-items-center"
-                        style={{ width: 60, height: 60 }}
+                        className="spinner-border text-primary"
+                        role="status"
                       >
-                        <FiImage className="text-muted" />
+                        <span className="visually-hidden">Loading...</span>
                       </div>
-                    )}
-                  </td>
-                  <td className="fw-semibold">{brand.name}</td>
-                  <td>
-                    <button
-                      className={`btn btn-sm ${brand.status === "Active" ? 'btn-success' : 'btn-secondary'}`}
-                      onClick={() => toggleStatus(brand.id)}
-                    >
-                      {brand.status}
-                    </button>
-                  </td>
-                  <td>
-                    <div className="d-flex justify-content-end gap-2">
-                      <button
-                        className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                        onClick={() => handleOpenEdit(brand)}
-                      >
-                        <FiEdit2 size={16} />
-                        Edit
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                        onClick={() => handleOpenDelete(brand)}
-                      >
-                        <RiDeleteBin6Line size={16} />
-                        Delete
-                      </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : filteredBrands.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center py-4 text-muted">
+                    {search
+                      ? "No brands found for your search"
+                      : "No brands available"}
+                  </td>
+                </tr>
+              ) : (
+                filteredBrands.map((item, index) => (
+                  <tr key={item._id || index}>
+                    <td>{index + 1}</td>
+
+                    {/* LOGO PREVIEW */}
+                    <td>
+                      <SafeImage
+                        src={`YOUR_BASE_URL${item.logo}`} // Update with your base URL
+                        alt={item.name}
+                        width="45"
+                        height="45"
+                        className="rounded border"
+                        style={{ objectFit: "contain", borderRadius: "6px" }}
+                      />
+                    </td>
+
+                    <td className="fw-semibold">{item.name || "Unnamed"}</td>
+
+                    {/* ACTION BUTTONS */}
+                    <td>
+                      <div className="d-flex justify-content-end gap-2">
+                        <button
+                          className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                          onClick={() => handleOpenEdit(item)}
+                          disabled={
+                            actionLoading.type && actionLoading.id === item._id
+                          }
+                        >
+                          {actionLoading.type === "update" &&
+                          actionLoading.id === item._id ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Editing...
+                            </>
+                          ) : (
+                            <>
+                              <FiEdit2 size={16} />
+                              Edit
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                          onClick={() => handleOpenDelete(item)}
+                          disabled={
+                            actionLoading.type && actionLoading.id === item._id
+                          }
+                        >
+                          {actionLoading.type === "delete" &&
+                          actionLoading.id === item._id ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <RiDeleteBin6Line size={16} />
+                              Delete
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-        </div>
-      </div>
-      */}
-
-      {/* STATISTICS CARDS */}
-      <div className="row mt-4">
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Total Brands</h6>
-                  <h3 className="mb-0">{brands.length}</h3>
-                </div>
-                <div className="bg-primary bg-opacity-10 p-3 rounded-circle">
-                  <FiGrid className="text-primary" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Active Brands</h6>
-                  <h3 className="mb-0">
-                    {brands.filter(b => b.status === "Active").length}
-                  </h3>
-                </div>
-                <div className="bg-success bg-opacity-10 p-3 rounded-circle">
-                  <FiGrid className="text-success" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-4">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">With Logos</h6>
-                  <h3 className="mb-0">
-                    {brands.filter(b => b.image !== null).length}
-                  </h3>
-                </div>
-                <div className="bg-info bg-opacity-10 p-3 rounded-circle">
-                  <FiImage className="text-info" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -436,30 +347,30 @@ const BrandPage = () => {
       {showAddModal && (
         <AddBrandModal
           onClose={() => setShowAddModal(false)}
-          onSave={handleSave}
-          loading={loading}
+          onSave={handleAdd}
+          loading={actionLoading.type === "add"}
         />
       )}
 
       {/* EDIT MODAL */}
-      {showEditModal && selectedBrand && (
+      {showEditModal && selectedItem && (
         <EditBrandModal
           show={showEditModal}
           onHide={() => {
             setShowEditModal(false);
-            setSelectedBrand(null);
+            setSelectedItem(null);
           }}
-          onSubmit={handleEditBrand}
-          brand={selectedBrand}
+          onSubmit={handleUpdate}
+          brand={selectedItem}
+          loading={
+            actionLoading.type === "update" &&
+            actionLoading.id === selectedItem._id
+          }
         />
       )}
 
       {/* DELETE MODAL */}
-      {showDeleteModal && selectedBrand && (
-        <DeleteConfirmationModal />
-      )}
+      {showDeleteModal && selectedItem && <DeleteConfirmationModal />}
     </div>
   );
-};
-
-export default BrandPage;
+}

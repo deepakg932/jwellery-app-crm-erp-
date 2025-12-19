@@ -1,59 +1,81 @@
-import { useRef, useState } from "react";
-import { FiEdit2, FiSearch, FiPlus, FiImage, FiX, FiUpload } from "react-icons/fi";
-export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
-  const [categoryName, setCategoryName] = useState("");
-  const [metalType, setMetalType] = useState("");
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { FiUpload, FiX, FiImage } from "react-icons/fi";
+
+const AddCategoryModal = ({
+  onClose,
+  onSave,
+  loading = false,
+  metalOptions = [], // Array of objects: [{id: "", name: ""}]
+}) => {
+  const [name, setName] = useState("");
+  const [selectedMetal, setSelectedMetal] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
-
-  const metalOptions = [
-    "Gold",
-    "Silver",
-    "Platinum",
-    "Diamond",
-    "Rose Gold",
-    "White Gold",
-    "Sterling Silver",
-    "Titanium",
-    "Palladium",
-    "Other"
-  ];
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!categoryName.trim() || !metalType.trim()) return;
+    if (!name.trim() || !selectedMetal.trim()) {
+      setError("Please fill all required fields");
+      return;
+    }
 
     onSave({
-      categoryName,
-      metalType,
-      imageFile: image
+      name: name.trim(),
+      metal_type: selectedMetal, // Send metal ID, not name
+      imageFile: image,
     });
-    
+
     // Reset form
-    setCategoryName("");
-    setMetalType("");
+    setName("");
+    setSelectedMetal("");
     setImage(null);
     setImagePreview(null);
+    setError("");
   };
 
-  const handleImageChange = (file) => {
-    if (file) {
-      setImage(file);
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-    }
-  };
+  const handleImageChange = useCallback(
+    (file) => {
+      if (file) {
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          setError("File size should be less than 5MB");
+          return;
+        }
 
-  const handleFileInput = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleImageChange(file);
-    }
-  };
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          setError("Please upload an image file");
+          return;
+        }
 
-  const handleDrag = (e) => {
+        // Clean up previous blob URL if exists
+        if (image && imagePreview && imagePreview.startsWith("blob:")) {
+          URL.revokeObjectURL(imagePreview);
+        }
+
+        setImage(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        setError("");
+      }
+    },
+    [image, imagePreview]
+  );
+
+  const handleFileInput = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageChange(file);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -61,42 +83,61 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleImageChange(files[0]);
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+
+      const files = e.dataTransfer.files;
+      if (files && files[0]) {
+        handleImageChange(files[0]);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const removeImage = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
     }
-  };
-
-  const removeImage = () => {
     setImage(null);
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
+    setError("");
+  }, [imagePreview]);
 
-  const handleClose = () => {
-    if (imagePreview) {
+  const handleClose = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     onClose();
-  };
+  }, [imagePreview, onClose]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Add Item Category</h5>
+            <h5 className="modal-title fw-bold fs-5">Add Category</h5>
             <button
               type="button"
               className="btn-close"
@@ -105,12 +146,18 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
             ></button>
           </div>
 
+          {/* Error Alert */}
+          {error && (
+            <div className="alert alert-danger m-3 py-2" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              
               {/* Category Name */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">
                   Category Name <span className="text-danger">*</span>
                 </label>
@@ -118,42 +165,55 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
                   type="text"
                   className="form-control form-control-l"
                   placeholder="e.g., Rings, Necklaces, Bracelets"
-                  value={categoryName}
-                  onChange={(e) => setCategoryName(e.target.value)}
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 />
               </div>
 
               {/* Metal Type Dropdown */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">
                   Metal Type <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-l"
-                  value={metalType}
-                  onChange={(e) => setMetalType(e.target.value)}
+                  value={selectedMetal}
+                  onChange={(e) => {
+                    setSelectedMetal(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>
-                  {metalOptions.map((metal, index) => (
-                    <option key={index} value={metal}>
-                      {metal}
+                  {metalOptions.map((metal) => (
+                    <option key={metal.id} value={metal.id}>
+                      {metal.name}
                     </option>
                   ))}
                 </select>
+                {metalOptions.length === 0 && !loading && (
+                  <div className="form-text text-warning">
+                    No metal types available. Please add metal types first.
+                  </div>
+                )}
               </div>
 
               {/* Image Upload */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">Image</label>
-                
+
                 {/* Drag & Drop Area */}
                 <div
-                  className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
-                    dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                  className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
+                    dragActive
+                      ? "border-primary bg-primary bg-opacity-10"
+                      : "border-secondary-subtle"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -169,14 +229,19 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
                     className="d-none"
                     disabled={loading}
                   />
-                  
+
                   {imagePreview ? (
                     <div className="position-relative d-inline-block">
                       <img
                         src={imagePreview}
                         alt="Preview"
                         className="img-thumbnail rounded"
-                        style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
+                        key={imagePreview}
                       />
                       <button
                         type="button"
@@ -185,7 +250,7 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
                           removeImage();
                         }}
                         className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                        style={{ transform: 'translate(-50%, -50%)' }}
+                        style={{ transform: "translate(-50%, -50%)" }}
                         disabled={loading}
                       >
                         <FiX size={12} />
@@ -193,7 +258,7 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
                     </div>
                   ) : (
                     <>
-                      <FiImage className="text-secondary mb-2" size={40} />
+                      <FiImage className="text-secondary" size={40} />
                       <p className="mb-1">
                         Drop your image here or{" "}
                         <span className="text-primary">browse</span>
@@ -220,11 +285,15 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!categoryName.trim() || !metalType.trim() || loading}
+                disabled={!name.trim() || !selectedMetal.trim() || loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Saving...
                   </>
                 ) : (
@@ -241,3 +310,5 @@ export const  AddCategoryModal = ({ onClose, onSave, loading = false }) => {
     </div>
   );
 };
+
+export default AddCategoryModal;

@@ -1,94 +1,112 @@
 import React, { useState } from "react";
-import { FiEdit2, FiSearch, FiPlus, FiGrid } from "react-icons/fi";
+import { FiEdit2, FiSearch, FiPlus, FiImage } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
+import useMetalTypes from "@/hooks/useMetalTypes";
 import AddMetalTypeModal from "./AddMetalTypeForm";
 import EditMetalTypeModal from "./EditMetalTypeForm";
-// import DeleteMetalTypeModal from "./components/DeleteMetalTypeModal";
 
 export default function MetalTypesPage() {
+  const {
+    metalTypes,
+    loading,
+    addMetalType,
+    updateMetalType,
+    deleteMetalType,
+  } = useMetalTypes();
+
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [actionLoading, setActionLoading] = useState({ type: null, id: null });
 
-  const [categories, setCategories] = useState([
-    { id: 1, name: "Gold", image: null },
-    { id: 2, name: "Silver", image: null },
-    { id: 3, name: "Platinum", image: null },
-    { id: 4, name: "Copper", image: null },
-    { id: 5, name: "Bronze", image: null },
-    { id: 6, name: "Brass", image: null },
-    { id: 7, name: "Steel", image: null },
-    { id: 8, name: "Aluminum", image: null },
-    { id: 9, name: "Titanium", image: null }
-  ]);
-
-  const filtered = categories.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+  // Filter metals by search
+  const filteredMetals = (metalTypes || []).filter((metal) =>
+    (metal?.name || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSave = async (name, imageFile) => {
-    setLoading(true);
+  // Handle update with loading state
+  const handleUpdate = async (name, imageFile) => {
+    if (!selectedItem) return;
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    setActionLoading({ type: "update", id: selectedItem._id });
+    try {
+      const result = await updateMetalType(selectedItem._id, {
+        name,
+        imageFile,
+      });
+      console.log("Update successful:", result);
 
-    const newCategory = {
-      id: Date.now(),
-      name,
-      color: "bg-body-secondary text-body-emphasis",
-      image: imageFile ? URL.createObjectURL(imageFile) : null
-    };
-
-    setCategories([...categories, newCategory]);
-    setShowAddModal(false);
-    setLoading(false);
+      // Close modal after successful update
+      setShowEditModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Update failed:", error);
+      // Don't close modal on error - let user try again
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this metal type?")) return;
+  // Handle add with loading state
+  const handleAdd = async (name, imageFile) => {
+    console.log("Adding new metal:", { name, hasImageFile: !!imageFile });
 
-    setLoading(true);
+    setActionLoading({ type: "add", id: null });
+    try {
+      const result = await addMetalType(name, imageFile);
+      console.log("Add successful, result:", result);
 
-    const cat = categories.find((c) => c.id === id);
-    if (cat?.image) URL.revokeObjectURL(cat.image);
+      setShowAddModal(false);
 
-    await new Promise((resolve) => setTimeout(resolve, 400));
+      // Optional: Show success message
+      // alert("Metal type added successfully!");
+    } catch (error) {
+      console.error("Add failed:", error);
+      // Don't close modal on error - let user try again
+      // You could show an error message in the modal
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
+  };
+  // Handle delete with confirmation modal
+  const handleDelete = async () => {
+    if (!selectedItem) return;
 
-    setCategories(categories.filter((c) => c.id !== id));
-    setLoading(false);
+    setActionLoading({ type: "delete", id: selectedItem._id });
+    try {
+      await deleteMetalType(selectedItem._id);
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Delete failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
-  const handleEditCategory = (updatedCategory) => {
-    const updated = categories.map((cat) => 
-      cat.id === selectedCategory.id ? updatedCategory : cat
-    );
-    setCategories(updated);
-    setShowEditModal(false);
-    setSelectedCategory(null);
-  };
-
-  const handleDeleteCategory = () => {
-    const updated = categories.filter((cat) => cat.id !== selectedCategory.id);
-    setCategories(updated);
-    setShowDeleteModal(false);
-    setSelectedCategory(null);
-  };
-
-  const handleOpenEdit = (category) => {
-    setSelectedCategory(category);
+  // Open edit modal
+  const handleOpenEdit = (item) => {
+    if (!item) return;
+    setSelectedItem(item);
     setShowEditModal(true);
   };
 
-  const handleOpenDelete = (category) => {
-    setSelectedCategory(category);
+  // Open delete modal
+  const handleOpenDelete = (item) => {
+    if (!item) return;
+    setSelectedItem(item);
     setShowDeleteModal(true);
   };
 
-  // Simple Delete Modal (you can create a separate component for this)
+  // Delete Confirmation Modal Component
   const DeleteConfirmationModal = () => (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
           <div className="modal-header border-bottom pb-3">
@@ -98,39 +116,80 @@ export default function MetalTypesPage() {
               className="btn-close"
               onClick={() => {
                 setShowDeleteModal(false);
-                setSelectedCategory(null);
+                setSelectedItem(null);
               }}
+              disabled={actionLoading.type === "delete"}
             ></button>
           </div>
-          
+
           <div className="modal-body">
-            <p>Are you sure you want to delete <strong>{selectedCategory?.name}</strong>?</p>
-            <p className="text-danger">This action cannot be undone.</p>
+            <p>
+              Are you sure you want to delete{" "}
+              <strong>{selectedItem?.name}</strong>?
+            </p>
           </div>
-          
+
           <div className="modal-footer border-top pt-3">
             <button
               type="button"
               className="btn btn-outline-secondary"
               onClick={() => {
                 setShowDeleteModal(false);
-                setSelectedCategory(null);
+                setSelectedItem(null);
               }}
+              disabled={actionLoading.type === "delete"}
             >
               Cancel
             </button>
             <button
               type="button"
               className="btn btn-danger"
-              onClick={() => handleDeleteCategory()}
+              onClick={handleDelete}
+              disabled={actionLoading.type === "delete"}
             >
-              Delete
+              {actionLoading.type === "delete" ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </button>
           </div>
         </div>
       </div>
     </div>
   );
+
+  // Safe image component to prevent errors
+  const SafeImage = ({ src, alt, ...props }) => {
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError || !src) {
+      return (
+        <div
+          className="bg-light border rounded d-flex justify-content-center align-items-center"
+          style={{ width: 45, height: 45 }}
+        >
+          <FiImage className="text-muted" />
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={src}
+        alt={alt || "Metal type"}
+        {...props}
+        onError={() => setHasError(true)}
+      />
+    );
+  };
 
   return (
     <div className="container-fluid py-4">
@@ -149,6 +208,7 @@ export default function MetalTypesPage() {
               <button
                 className="btn btn-primary d-flex align-items-center gap-2"
                 onClick={() => setShowAddModal(true)}
+                disabled={loading || actionLoading.type === "add"}
               >
                 <FiPlus size={18} />
                 Add Metal Type
@@ -169,6 +229,7 @@ export default function MetalTypesPage() {
                   placeholder="Search metal types..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -184,63 +245,103 @@ export default function MetalTypesPage() {
               <tr>
                 <th>#</th>
                 <th>Image</th>
-                <th>Metal Name</th>
+                <th>Metal Type Name</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
 
             <tbody>
-              {filtered.length === 0 ? (
+              {loading && metalTypes.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center py-4">
+                    <div className="d-flex justify-content-center">
+                      <div
+                        className="spinner-border text-primary"
+                        role="status"
+                      >
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredMetals.length === 0 ? (
                 <tr>
                   <td colSpan="4" className="text-center py-4 text-muted">
-                    No metal types found
+                    {search
+                      ? "No metal types found for your search"
+                      : "No metal types available"}
                   </td>
                 </tr>
               ) : (
-                filtered.map((category, index) => (
-                  <tr key={category.id}>
+                filteredMetals.map((item, index) => (
+                  <tr key={item._id || index}>
                     <td>{index + 1}</td>
 
                     {/* IMAGE PREVIEW */}
                     <td>
-                      {category.image ? (
-                        <img
-                          src={category.image}
-                          alt={category.name}
-                          width="45"
-                          height="45"
-                          className="rounded border"
-                          style={{ objectFit: "cover" }}
-                        />
-                      ) : (
-                        <div
-                          className="bg-light border rounded d-flex justify-content-center align-items-center"
-                          style={{ width: 45, height: 45 }}
-                        >
-                          <span className="text-muted small">No Image</span>
-                        </div>
-                      )}
+                      <SafeImage
+                        src={`https://cvhjrjvd-5000.inc1.devtunnels.ms${item.image}`}
+                        alt={item.name}
+                        width="45"
+                        height="45"
+                        className="rounded border"
+                        tyle={{ objectFit: "cover", borderRadius: "6px" }}
+                      />
                     </td>
 
-                    <td className="fw-semibold">{category.name}</td>
+                    <td className="fw-semibold">{item.name || "Unnamed"}</td>
 
                     {/* ACTION BUTTONS */}
                     <td>
                       <div className="d-flex justify-content-end gap-2">
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                          onClick={() => handleOpenEdit(category)}  // FIXED: Call the function
+                          onClick={() => handleOpenEdit(item)}
+                          disabled={
+                            actionLoading.type && actionLoading.id === item._id
+                          }
                         >
-                          <FiEdit2 size={16} />
-                          Edit
+                          {actionLoading.type === "update" &&
+                          actionLoading.id === item._id ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Editing...
+                            </>
+                          ) : (
+                            <>
+                              <FiEdit2 size={16} />
+                              Edit
+                            </>
+                          )}
                         </button>
 
                         <button
                           className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                          onClick={() => handleOpenDelete(category)}  // FIXED: Call the function
+                          onClick={() => handleOpenDelete(item)}
+                          disabled={
+                            actionLoading.type && actionLoading.id === item._id
+                          }
                         >
-                          <RiDeleteBin6Line size={16} />
-                          Delete
+                          {actionLoading.type === "delete" &&
+                          actionLoading.id === item._id ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <RiDeleteBin6Line size={16} />
+                              Delete
+                            </>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -256,29 +357,30 @@ export default function MetalTypesPage() {
       {showAddModal && (
         <AddMetalTypeModal
           onClose={() => setShowAddModal(false)}
-          onSave={handleSave}
-          loading={loading}
+          onSave={handleAdd}
+          loading={actionLoading.type === "add"}
         />
       )}
 
       {/* EDIT MODAL */}
-      {showEditModal && selectedCategory && (
+      {showEditModal && selectedItem && (
         <EditMetalTypeModal
           show={showEditModal}
           onHide={() => {
             setShowEditModal(false);
-            setSelectedCategory(null);
+            setSelectedItem(null);
           }}
-          onSubmit={handleEditCategory}
-          metalType={selectedCategory}
+          onSubmit={handleUpdate}
+          metalType={selectedItem}
+          loading={
+            actionLoading.type === "update" &&
+            actionLoading.id === selectedItem._id
+          }
         />
       )}
 
       {/* DELETE MODAL */}
-      {showDeleteModal && selectedCategory && (
-        <DeleteConfirmationModal />
-      )}
-
+      {showDeleteModal && selectedItem && <DeleteConfirmationModal />}
     </div>
   );
 }

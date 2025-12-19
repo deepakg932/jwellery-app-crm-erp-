@@ -1,62 +1,79 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
 
-const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = [] }) => {
-  const [subCategoryName, setSubCategoryName] = useState("");
+const AddSubCategoryModal = ({
+  onClose,
+  onSave,
+  loading = false,
+  categories = [],
+}) => {
+  const [name, setname] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!subCategoryName.trim() || !selectedCategory.trim()) return;
+    if (!name.trim() || !selectedCategory.trim()) return;
 
-    const selectedCat = categories.find(cat => cat.id === parseInt(selectedCategory));
-    
+    const selectedCat = categories.find((cat) => cat.id === selectedCategory);
+
     onSave({
-      name: subCategoryName,
-      categoryId: selectedCategory,
-      categoryName: selectedCat ? selectedCat.name : '',
-      imageFile: image
+      name: name,
+      category_id: selectedCategory, // Changed from categoryId to category_id
+      imageFile: image,
     });
-    
+
     // Reset form
-    setSubCategoryName("");
+    setname("");
     setSelectedCategory("");
     setImage(null);
     setImagePreview(null);
   };
 
-  const handleImageChange = (file) => {
-    if (file) {
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
-        return;
-      }
-      
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert("Please upload an image file");
-        return;
-      }
-      
-      setImage(file);
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-    }
-  };
+  const handleImageChange = useCallback(
+    (file) => {
+      if (file) {
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          setError("File size should be less than 5MB");
+          return;
+        }
 
-  const handleFileInput = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleImageChange(file);
-    }
-  };
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          setError("Please upload an image file");
+          return;
+        }
 
-  const handleDrag = (e) => {
+        // Clean up previous blob URL if exists
+        if (image && imagePreview && imagePreview.startsWith("blob:")) {
+          URL.revokeObjectURL(imagePreview);
+        }
+
+        setImage(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        setError("");
+      }
+    },
+    [image, imagePreview]
+  );
+
+  const handleFileInput = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageChange(file);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -64,21 +81,24 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleImageChange(files[0]);
-    }
-  };
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
 
-  const removeImage = () => {
-    if (imagePreview) {
+      const files = e.dataTransfer.files;
+      if (files && files[0]) {
+        handleImageChange(files[0]);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const removeImage = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImage(null);
@@ -86,20 +106,32 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
+  }, [imagePreview]);
 
-  const handleClose = () => {
-    if (imagePreview) {
+  const handleClose = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     onClose();
-  };
+  }, [imagePreview, onClose]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Add Sub-Category</h5>
@@ -111,10 +143,16 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
             ></button>
           </div>
 
+          {/* Error Alert */}
+          {error && (
+            <div className="alert alert-danger m-3 py-2" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              
               {/* Sub-Category Name */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
@@ -124,8 +162,11 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
                   type="text"
                   className="form-control form-control-l"
                   placeholder="e.g., Diamond Rings, Gold Chains, Silver Bangles"
-                  value={subCategoryName}
-                  onChange={(e) => setSubCategoryName(e.target.value)}
+                  value={name}
+                  onChange={(e) => {
+                    setname(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 />
@@ -139,7 +180,10 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
                 <select
                   className="form-select form-select-l"
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 >
@@ -155,11 +199,13 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
               {/* Image Upload */}
               <div className="mb-2">
                 <label className="form-label fw-medium">Image</label>
-                
+
                 {/* Drag & Drop Area */}
                 <div
                   className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
-                    dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                    dragActive
+                      ? "border-primary bg-primary bg-opacity-10"
+                      : "border-secondary-subtle"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -175,14 +221,19 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
                     className="d-none"
                     disabled={loading}
                   />
-                  
+
                   {imagePreview ? (
                     <div className="position-relative d-inline-block">
                       <img
                         src={imagePreview}
                         alt="Preview"
                         className="img-thumbnail rounded"
-                        style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
+                        key={imagePreview}
                       />
                       <button
                         type="button"
@@ -191,7 +242,7 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
                           removeImage();
                         }}
                         className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                        style={{ transform: 'translate(-50%, -50%)' }}
+                        style={{ transform: "translate(-50%, -50%)" }}
                         disabled={loading}
                       >
                         <FiX size={12} />
@@ -199,7 +250,7 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
                     </div>
                   ) : (
                     <>
-                      <FiImage className="text-secondary " size={40} />
+                      <FiImage className="text-secondary" size={40} />
                       <p className="mb-1">
                         Drop your image here or{" "}
                         <span className="text-primary">browse</span>
@@ -226,11 +277,15 @@ const AddSubCategoryModal = ({ onClose, onSave, loading = false, categories = []
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!subCategoryName.trim() || !selectedCategory.trim() || loading}
+                disabled={!name.trim() || !selectedCategory.trim() || loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Saving...
                   </>
                 ) : (

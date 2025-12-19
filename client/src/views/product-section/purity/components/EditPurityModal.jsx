@@ -1,10 +1,16 @@
-import React, { useState, useEffect, useRef } from "react";
-import { FiUpload, FiImage } from "react-icons/fi";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { FiUpload, FiImage, FiX } from "react-icons/fi";
 
-const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
-  const [purityName, setPurityName] = useState("");
-  const [stoneName, setStoneName] = useState(""); // Changed from dropdown to input
-  const [metalType, setMetalType] = useState(""); // New metal type dropdown
+const EditPurityModal = ({ 
+  show, 
+  onHide, 
+  onSubmit, 
+  purity, 
+  loading = false,
+  metalOptions = [] 
+}) => {
+  const [purity_name, setPurityName] = useState("");
+  const [metal_type, setMetalType] = useState("");
   const [percentage, setPercentage] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -12,43 +18,37 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
-  // Hardcoded metal types as per your requirement
-  const metalTypes = [
-    "Gold",
-    "Silver", 
-    "Platinum",
-    "Rose Gold",
-    "White Gold",
-    "Titanium",
-    "Stainless Steel",
-    "Brass",
-    "Copper"
-  ];
-
   useEffect(() => {
     if (purity) {
-      setPurityName(purity.name);
-      setStoneName(purity.stoneName || "");
-      setMetalType(purity.metalType || "");
+      setPurityName(purity.purity_name || "");
+      setMetalType(purity.metal_type || "");
       setPercentage(purity.percentage ? purity.percentage.toString() : "");
-      setImagePreview(purity.image);
+      const imageUrl = purity.imageUrl || "";
+      setImagePreview(imageUrl ? imageUrl : null);
+      setImageFile(null);
+      setError("");
     }
   }, [purity]);
 
-  const handleSubmit = (e) => {
+  // Handle cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any blob URLs
+      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imageFile, imagePreview]);
+
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
-    if (!purityName.trim()) {
+    if (!purity_name.trim()) {
       setError("Please enter a purity name");
       return;
     }
 
-    if (!stoneName.trim()) {
-      setError("Please enter stone name");
-      return;
-    }
-
-    if (!metalType.trim()) {
+    if (!metal_type.trim()) {
       setError("Please select metal type");
       return;
     }
@@ -63,20 +63,29 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
       setError("Percentage must be between 0 and 100");
       return;
     }
-    
-    const updatedPurity = {
-      ...purity,
-      name: purityName,
-      stoneName: stoneName,
-      metalType: metalType,
-      percentage: perc,
-      image: imageFile ? URL.createObjectURL(imageFile) : imagePreview,
-    };
-    
-    onSubmit(updatedPurity);
-  };
 
-  const handleImageChange = (file) => {
+    console.log("Submitting purity update:", {
+      purity_name: purity_name,
+      metal_type: metal_type,
+      percentage: perc,
+      hasImageFile: !!imageFile,
+      purityId: purity?._id,
+    });
+
+    try {
+      await onSubmit({
+        purity_name: purity_name,
+        metal_type: metal_type,
+        percentage: perc,
+        imageFile: imageFile,
+      });
+    } catch (err) {
+      console.error("Form submission error:", err);
+      setError("Failed to update. Please try again.");
+    }
+  }, [purity_name, metal_type, percentage, imageFile, purity, onSubmit]);
+
+  const handleImageChange = useCallback((file) => {
     if (file) {
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
@@ -90,20 +99,26 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
         return;
       }
       
+      // Clean up previous blob URL if exists
+      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+      
       setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
       setError("");
     }
-  };
+  }, [imageFile, imagePreview]);
 
-  const handleFileInput = (e) => {
+  const handleFileInput = useCallback((e) => {
     const file = e.target.files[0];
     if (file) {
       handleImageChange(file);
     }
-  };
+  }, [handleImageChange]);
 
-  const handleDrag = (e) => {
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -111,9 +126,9 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e) => {
+  const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -122,23 +137,38 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
     if (files && files[0]) {
       handleImageChange(files[0]);
     }
-  };
+  }, [handleImageChange]);
 
-  const handleClose = () => {
+  const removeImage = useCallback(() => {
+    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImageFile(null);
+    // Reset to original image URL if it exists
+    setImagePreview(purity?.imageUrl || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [imageFile, imagePreview, purity]);
+
+  const handleClose = useCallback(() => {
     // Clean up object URL if we created one
-    if (imageFile && imagePreview) {
+    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
     setError("");
     onHide();
-  };
+  }, [imageFile, imagePreview, onHide]);
 
   const validatePercentage = (value) => {
     if (value === "") return true;
     const num = parseFloat(value);
     return !isNaN(num) && num >= 0 && num <= 100;
   };
+
+  // Don't render if not shown
+  if (!show) return null;
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
@@ -152,7 +182,9 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
               type="button"
               className="btn-close"
               onClick={handleClose}
-            ></button>
+              disabled={loading}
+              aria-label="Close"
+            />
           </div>
 
           {/* Error Alert */}
@@ -174,54 +206,35 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
                 <input
                   type="text"
                   className="form-control form-control-l"
-                  value={purityName}
+                  value={purity_name}
                   onChange={(e) => {
                     setPurityName(e.target.value);
                     setError("");
                   }}
                   required
+                  disabled={loading}
                 />
               </div>
 
-              {/* Stone Name - Changed from dropdown to input */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Stone Name <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control form-control-l"
-                  placeholder="e.g., Diamond, Ruby, Sapphire, etc."
-                  value={stoneName}
-                  onChange={(e) => {
-                    setStoneName(e.target.value);
-                    setError("");
-                  }}
-                  required
-                />
-                <small className="text-muted">
-                  Enter the stone name (e.g., Diamond, Ruby, Sapphire, etc.)
-                </small>
-              </div>
-
-              {/* Metal Type Dropdown - New field */}
+              {/* Metal Type Dropdown */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
                   Metal Type <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-l"
-                  value={metalType}
+                  value={metal_type}
                   onChange={(e) => {
                     setMetalType(e.target.value);
                     setError("");
                   }}
                   required
+                  disabled={loading}
                 >
                   <option value="">Select metal type</option>
-                  {metalTypes.map((metal, index) => (
-                    <option key={index} value={metal}>
-                      {metal}
+                  {metalOptions.map((metal) => (
+                    <option key={metal.id} value={metal.name}>
+                      {metal.name}
                     </option>
                   ))}
                 </select>
@@ -246,6 +259,7 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
                   max="100"
                   step="0.1"
                   required
+                  disabled={loading}
                 />
                 {percentage && !validatePercentage(percentage) && (
                   <div className="invalid-feedback">
@@ -259,18 +273,44 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
 
               {/* Image Upload */}
               <div className="mb-2">
-                <label className="form-label fw-medium">Purity Image</label>
+                <label className="form-label fw-medium">Image</label>
                 
                 {/* Current Image Preview */}
                 {imagePreview ? (
-                  <div className="mb-3">
+                  <div className="mb-3 position-relative d-inline-block">
                     <img
                       src={imagePreview}
-                      alt="Current"
+                      alt="Preview"
                       className="img-thumbnail rounded border"
-                      style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                      style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                      onError={(e) => {
+                        // If image fails to load, show placeholder
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'd-flex align-items-center justify-content-center rounded border';
+                        placeholder.style.width = '120px';
+                        placeholder.style.height = '120px';
+                        placeholder.innerHTML = '<FiImage class="text-muted" size={24} />';
+                        parent.appendChild(placeholder);
+                      }}
+                      key={`preview-${imagePreview}`}
                     />
-                    <p className="small text-muted mt-1 mb-0">Current image</p>
+                    {imageFile && ( // Only show remove button for newly selected image
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
+                        style={{ transform: 'translate(-50%, -50%)' }}
+                        disabled={loading}
+                        aria-label="Remove image"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+                    <p className="small text-muted mt-1 mb-0">
+                      {imageFile ? "New image selected" : "Current image"}
+                    </p>
                   </div>
                 ) : (
                   <div className="mb-3 d-flex align-items-center gap-2">
@@ -286,7 +326,7 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
                 
                 {/* Change Image Section */}
                 <label className="form-label fw-medium d-block mb-2">
-                  Change Image
+                  {imagePreview ? "Change Image" : "Upload Image"}
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
@@ -299,6 +339,7 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
+                  style={{ padding: '20px' }}
                 >
                   <input
                     type="file"
@@ -306,6 +347,7 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
                     onChange={handleFileInput}
                     accept="image/*"
                     className="d-none"
+                    disabled={loading}
                   />
                   
                   <FiImage className="mb-2 text-muted" size={24} />
@@ -325,16 +367,26 @@ const EditPurityModal = ({ show, onHide, onSubmit, purity }) => {
                 type="button"
                 className="btn btn-outline-secondary"
                 onClick={handleClose}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!validatePercentage(percentage)}
+                disabled={loading || !validatePercentage(percentage)}
               >
-                <FiUpload className="me-2" size={16} />
-                Update Purity
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <FiUpload size={16} />
+                    Update Purity
+                  </>
+                )}
               </button>
             </div>
           </form>

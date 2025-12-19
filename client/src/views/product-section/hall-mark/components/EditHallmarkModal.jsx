@@ -1,91 +1,157 @@
-import React, { useState, useEffect } from "react";
-import { FiUpload } from "react-icons/fi";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { FiUpload, FiImage, FiX } from "react-icons/fi";
 
-const EditHallmarkModal = ({ show, onHide, onSubmit, hallmark, purities = [], marks = [], metalTypes = [] }) => {
-  const [hallmarkName, setHallmarkName] = useState("");
-  const [selectedPurity, setSelectedPurity] = useState("");
-  const [selectedMark, setSelectedMark] = useState("");
-  const [selectedPercentage, setSelectedPercentage] = useState("");
-  const [selectedMetalType, setSelectedMetalType] = useState("");
+const EditHallmarkModal = ({ 
+  show, 
+  onHide, 
+  onSubmit, 
+  hallmark, 
+  loading = false,
+  metalTypes = [] 
+}) => {
+  const [name, setName] = useState("");
+  const [metal_type, setMetalType] = useState("");
   const [description, setDescription] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState("");
-
-  // Predefined percentage options
-  const percentageOptions = [
-    "99.9", "99.5", "99.0", 
-    "95.0", "92.5", "90.0", 
-    "85.0", "80.0", "75.0", 
-    "70.0", "65.0", "60.0", 
-    "58.5", "55.0", "50.0", 
-    "45.0", "40.0", "37.5", 
-    "33.3", "30.0", "25.0", 
-    "20.0", "18.0", "16.0", 
-    "14.0", "12.0", "10.0"
-  ];
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (hallmark) {
-      setHallmarkName(hallmark.name);
-      setSelectedPurity(hallmark.purityId ? hallmark.purityId.toString() : "");
-      setSelectedMark(hallmark.markId ? hallmark.markId.toString() : "");
-      setSelectedPercentage(hallmark.percentage ? hallmark.percentage.toString() : "");
-      setSelectedMetalType(hallmark.metalTypeId ? hallmark.metalTypeId.toString() : "");
+      setName(hallmark.name || "");
+      setMetalType(hallmark.metal_type || "");
       setDescription(hallmark.description || "");
+      const imageUrl = hallmark.imageUrl || "";
+      setImagePreview(imageUrl ? imageUrl : null);
+      setImageFile(null);
+      setError("");
     }
   }, [hallmark]);
 
-  const handleSubmit = (e) => {
+  // Handle cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any blob URLs
+      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imageFile, imagePreview]);
+
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
-    if (!hallmarkName.trim()) {
+    if (!name.trim()) {
       setError("Please enter a hallmark name");
       return;
     }
 
-    if (!selectedPurity.trim()) {
-      setError("Please select a purity");
-      return;
-    }
-
-    if (!selectedMark.trim()) {
-      setError("Please select a mark");
-      return;
-    }
-
-    if (!selectedPercentage.trim()) {
-      setError("Please select percentage");
-      return;
-    }
-
-    if (!selectedMetalType.trim()) {
+    if (!metal_type.trim()) {
       setError("Please select metal type");
       return;
     }
 
-    const selectedPurityObj = purities.find(p => p.id === parseInt(selectedPurity));
-    const selectedMarkObj = marks.find(m => m.id === parseInt(selectedMark));
-    const selectedMetalObj = metalTypes.find(mt => mt.id === parseInt(selectedMetalType));
-    
-    const updatedHallmark = {
-      ...hallmark,
-      name: hallmarkName,
-      purityId: selectedPurity,
-      purityName: selectedPurityObj ? selectedPurityObj.name : hallmark.purityName,
-      markId: selectedMark,
-      markName: selectedMarkObj ? selectedMarkObj.name : hallmark.markName,
-      percentage: parseFloat(selectedPercentage),
-      metalTypeId: selectedMetalType,
-      metalTypeName: selectedMetalObj ? selectedMetalObj.name : hallmark.metalTypeName,
-      description: description
-    };
-    
-    onSubmit(updatedHallmark);
-  };
+    console.log("Submitting hallmark update:", {
+      name: name,
+      metal_type: metal_type,
+      description: description,
+      hasImageFile: !!imageFile,
+      hallmarkId: hallmark?._id,
+    });
 
-  const handleClose = () => {
+    try {
+      await onSubmit({
+        name: name,
+        metal_type: metal_type,
+        description: description,
+        imageFile: imageFile,
+      });
+    } catch (err) {
+      console.error("Form submission error:", err);
+      setError("Failed to update. Please try again.");
+    }
+  }, [name, metal_type, description, imageFile, hallmark, onSubmit]);
+
+  const handleImageChange = useCallback((file) => {
+    if (file) {
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setError("File size should be less than 5MB");
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError("Please upload an image file");
+        return;
+      }
+      
+      // Clean up previous blob URL if exists
+      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+      
+      setImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+      setError("");
+    }
+  }, [imageFile, imagePreview]);
+
+  const handleFileInput = useCallback((e) => {
+    const file = e.target.files[0];
+    if (file) {
+      handleImageChange(file);
+    }
+  }, [handleImageChange]);
+
+  const handleDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      handleImageChange(files[0]);
+    }
+  }, [handleImageChange]);
+
+  const removeImage = useCallback(() => {
+    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImageFile(null);
+    // Reset to original image URL if it exists
+    setImagePreview(hallmark?.imageUrl || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [imageFile, imagePreview, hallmark]);
+
+  const handleClose = useCallback(() => {
+    // Clean up object URL if we created one
+    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImageFile(null);
     setError("");
     onHide();
-  };
+  }, [imageFile, imagePreview, onHide]);
+
+  // Don't render if not shown
+  if (!show) return null;
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
@@ -99,7 +165,9 @@ const EditHallmarkModal = ({ show, onHide, onSubmit, hallmark, purities = [], ma
               type="button"
               className="btn-close"
               onClick={handleClose}
-            ></button>
+              disabled={loading}
+              aria-label="Close"
+            />
           </div>
 
           {/* Error Alert */}
@@ -116,87 +184,19 @@ const EditHallmarkModal = ({ show, onHide, onSubmit, hallmark, purities = [], ma
               {/* Hallmark Name */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
-                  Hallmark Name/Code <span className="text-danger">*</span>
+                  Hallmark Name <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
                   className="form-control form-control-l"
-                  value={hallmarkName}
+                  value={name}
                   onChange={(e) => {
-                    setHallmarkName(e.target.value);
+                    setName(e.target.value);
                     setError("");
                   }}
                   required
+                  disabled={loading}
                 />
-              </div>
-
-              {/* Purity Dropdown */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Purity <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="form-select form-select-l"
-                  value={selectedPurity}
-                  onChange={(e) => {
-                    setSelectedPurity(e.target.value);
-                    setError("");
-                  }}
-                  required
-                >
-                  <option value="">Select purity</option>
-                  {purities.map((purity) => (
-                    <option key={purity.id} value={purity.id}>
-                      {purity.name} ({purity.percentage}%)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Mark Dropdown */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Mark <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="form-select form-select-l"
-                  value={selectedMark}
-                  onChange={(e) => {
-                    setSelectedMark(e.target.value);
-                    setError("");
-                  }}
-                  required
-                >
-                  <option value="">Select mark</option>
-                  {marks.map((mark) => (
-                    <option key={mark.id} value={mark.id}>
-                      {mark.name} ({mark.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Percentage Dropdown */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Percentage (%) <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="form-select form-select-l"
-                  value={selectedPercentage}
-                  onChange={(e) => {
-                    setSelectedPercentage(e.target.value);
-                    setError("");
-                  }}
-                  required
-                >
-                  <option value="">Select percentage</option>
-                  {percentageOptions.map((percent, index) => (
-                    <option key={index} value={percent}>
-                      {percent}%
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Metal Type Dropdown */}
@@ -206,17 +206,18 @@ const EditHallmarkModal = ({ show, onHide, onSubmit, hallmark, purities = [], ma
                 </label>
                 <select
                   className="form-select form-select-l"
-                  value={selectedMetalType}
+                  value={metal_type}
                   onChange={(e) => {
-                    setSelectedMetalType(e.target.value);
+                    setMetalType(e.target.value);
                     setError("");
                   }}
                   required
+                  disabled={loading}
                 >
                   <option value="">Select metal type</option>
-                  {metalTypes.map((metalType) => (
-                    <option key={metalType.id} value={metalType.id}>
-                      {metalType.name}
+                  {metalTypes.map((metal) => (
+                    <option key={metal.id} value={metal.id}>
+                      {metal.name}
                     </option>
                   ))}
                 </select>
@@ -233,7 +234,97 @@ const EditHallmarkModal = ({ show, onHide, onSubmit, hallmark, purities = [], ma
                   placeholder="Enter hallmark description or notes..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  disabled={loading}
                 />
+              </div>
+
+              {/* Image Upload */}
+              <div className="mb-2">
+                <label className="form-label fw-medium">Hallmark Image</label>
+                
+                {/* Current Image Preview */}
+                {imagePreview ? (
+                  <div className="mb-3 position-relative d-inline-block">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="img-thumbnail rounded border"
+                      style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                      onError={(e) => {
+                        // If image fails to load, show placeholder
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'd-flex align-items-center justify-content-center rounded border';
+                        placeholder.style.width = '120px';
+                        placeholder.style.height = '120px';
+                        placeholder.innerHTML = '<FiImage class="text-muted" size={24} />';
+                        parent.appendChild(placeholder);
+                      }}
+                      key={`preview-${imagePreview}`}
+                    />
+                    {imageFile && ( // Only show remove button for newly selected image
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
+                        style={{ transform: 'translate(-50%, -50%)' }}
+                        disabled={loading}
+                        aria-label="Remove image"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+                    <p className="small text-muted mt-1 mb-0">
+                      {imageFile ? "New image selected" : "Current image"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mb-3 d-flex align-items-center gap-2">
+                    <div
+                      className="d-flex align-items-center justify-content-center rounded border"
+                      style={{ width: '80px', height: '80px' }}
+                    >
+                      <FiImage className="text-muted" size={24} />
+                    </div>
+                    <p className="small text-muted mb-0">No image set</p>
+                  </div>
+                )}
+                
+                {/* Change Image Section */}
+                <label className="form-label fw-medium d-block mb-2">
+                  {imagePreview ? "Change Image" : "Upload Image"}
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
+                    dragActive 
+                      ? "border-primary bg-primary bg-opacity-10" 
+                      : "border-muted hover:border-primary hover:bg-light"
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{ padding: '20px' }}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileInput}
+                    accept="image/*"
+                    className="d-none"
+                    disabled={loading}
+                  />
+                  
+                  <FiImage className="mb-2 text-muted" size={24} />
+                  <p className="text-muted small mb-0">
+                    Drop new image here or browse
+                  </p>
+                  <p className="text-muted small">
+                    Supports JPG, PNG, WEBP • Max 5MB
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -243,15 +334,26 @@ const EditHallmarkModal = ({ show, onHide, onSubmit, hallmark, purities = [], ma
                 type="button"
                 className="btn btn-outline-secondary"
                 onClick={handleClose}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
+                disabled={loading}
               >
-                <FiUpload className="me-2" size={16} />
-                Update Hallmark
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <FiUpload size={16} />
+                    Update Hallmark
+                  </>
+                )}
               </button>
             </div>
           </form>

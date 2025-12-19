@@ -1,25 +1,48 @@
 import React, { useState, useRef } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
-
-export default function AddMetalTypeModal({ onClose, onSave, loading = false }) {
-  const [metalName, setCategoryName] = useState("");
+const AddMetalTypeModal = ({ onClose, onSave, loading = false }) => {
+  const [metalTypeName, setMetalTypeName] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!metalName.trim()) return;
+  // In AddMetalTypeModal component, update the handleSubmit function:
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!metalTypeName.trim()) return;
 
-    onSave(metalName, image);
-    setCategoryName("");
+  try {
+    await onSave(metalTypeName, image);
+    
+    // Reset form after successful save
+    setMetalTypeName("");
     setImage(null);
     setImagePreview(null);
-  };
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    
+  } catch (error) {
+    console.error("Save failed:", error);
+    // Don't reset form on error - keep user's input
+  }
+};
 
   const handleImageChange = (file) => {
     if (file) {
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size should be less than 5MB");
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert("Please upload an image file");
+        return;
+      }
+      
       setImage(file);
       const previewUrl = URL.createObjectURL(file);
       setImagePreview(previewUrl);
@@ -55,6 +78,9 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
   };
 
   const removeImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
     setImage(null);
     setImagePreview(null);
     if (fileInputRef.current) {
@@ -89,24 +115,24 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
               
-              {/* Category Name */}
-              <div className="mb-4">
+              {/* Metal Type Name */}
+              <div className="mb-2">
                 <label className="form-label fw-medium">
                   Metal Type Name <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
-                  className="form-control form-control-lg"
-                  placeholder="e.g., Gold, Silver, Platinum"
-                  value={metalName}
-                  onChange={(e) => setCategoryName(e.target.value)}
+                  className="form-control form-control-l"
+                  placeholder="e.g., Gold, Silver, Platinum, Diamond"
+                  value={metalTypeName}
+                  onChange={(e) => setMetalTypeName(e.target.value)}
                   required
                   disabled={loading}
                 />
               </div>
 
               {/* Image Upload */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <label className="form-label fw-medium">Image</label>
                 
                 {/* Drag & Drop Area */}
@@ -152,7 +178,7 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
                     </div>
                   ) : (
                     <>
-                      <FiImage className="text-secondary mb-2" size={40} />
+                      <FiImage className="text-secondary" size={40} />
                       <p className="mb-1">
                         Drop your image here or{" "}
                         <span className="text-primary">browse</span>
@@ -179,7 +205,7 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!metalName.trim() || loading}
+                disabled={!metalTypeName.trim() || loading}
               >
                 {loading ? (
                   <>
@@ -199,4 +225,6 @@ export default function AddMetalTypeModal({ onClose, onSave, loading = false }) 
       </div>
     </div>
   );
-}
+};
+
+export default AddMetalTypeModal;

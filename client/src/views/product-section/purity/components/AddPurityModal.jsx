@@ -1,92 +1,96 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
 
-const AddPurityModal = ({ onClose, onSave, loading = false }) => {
-  const [purityName, setPurityName] = useState("");
-  const [stoneName, setStoneName] = useState(""); // Changed from dropdown to input
-  const [metalType, setMetalType] = useState(""); // New metal type dropdown
+const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] }) => {
+  const [purity_name, setPurityName] = useState("");
+  const [metal_type, setMetalType] = useState("");
   const [percentage, setPercentage] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
-
-  // Hardcoded metal types as per your requirement
-  const metalTypes = [
-    "Gold",
-    "Silver", 
-    "Platinum",
-    "Rose Gold",
-    "White Gold",
-    "Titanium",
-    "Stainless Steel",
-    "Brass",
-    "Copper"
-  ];
-
-  // Hardcoded stone examples for reference (optional)
-  const stoneExamples = [
-    "Diamond",
-    "Ruby",
-    "Sapphire", 
-    "Emerald",
-    "American Diamond (CZ)",
-    "Polki",
-    "Pearl",
-    "Onyx",
-    "Topaz",
-    "Garnet"
-  ];
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!purityName.trim() || !stoneName.trim() || !metalType.trim() || !percentage.trim()) return;
+    
+    if (!purity_name.trim()) {
+      setError("Please enter purity name");
+      return;
+    }
+
+    if (!metal_type.trim()) {
+      setError("Please select metal type");
+      return;
+    }
+
+    if (!percentage.trim()) {
+      setError("Please enter percentage");
+      return;
+    }
+
+    const perc = parseFloat(percentage);
+    if (isNaN(perc) || perc < 0 || perc > 100) {
+      setError("Percentage must be between 0 and 100");
+      return;
+    }
     
     onSave({
-      name: purityName,
-      stoneName: stoneName, // Direct stone name from input
-      metalType: metalType, // Selected metal type from dropdown
-      percentage: parseFloat(percentage),
-      imageFile: image
+      purity_name: purity_name.trim(),
+      metal_type: metal_type,
+      percentage: perc,
+      imageFile: image,
     });
     
     // Reset form
     setPurityName("");
-    setStoneName("");
     setMetalType("");
     setPercentage("");
     setImage(null);
     setImagePreview(null);
+    setError("");
   };
 
-  const handleImageChange = (file) => {
-    if (file) {
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
-        return;
+  const handleImageChange = useCallback(
+    (file) => {
+      if (file) {
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          setError("File size should be less than 5MB");
+          return;
+        }
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          setError("Please upload an image file");
+          return;
+        }
+        
+        // Clean up previous blob URL if exists
+        if (image && imagePreview && imagePreview.startsWith('blob:')) {
+          URL.revokeObjectURL(imagePreview);
+        }
+        
+        setImage(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        setError("");
       }
-      
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert("Please upload an image file");
-        return;
+    },
+    [image, imagePreview]
+  );
+
+  const handleFileInput = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageChange(file);
       }
-      
-      setImage(file);
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-    }
-  };
+    },
+    [handleImageChange]
+  );
 
-  const handleFileInput = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleImageChange(file);
-    }
-  };
-
-  const handleDrag = (e) => {
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -94,21 +98,24 @@ const AddPurityModal = ({ onClose, onSave, loading = false }) => {
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleImageChange(files[0]);
-    }
-  };
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      
+      const files = e.dataTransfer.files;
+      if (files && files[0]) {
+        handleImageChange(files[0]);
+      }
+    },
+    [handleImageChange]
+  );
 
-  const removeImage = () => {
-    if (imagePreview) {
+  const removeImage = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith('blob:')) {
       URL.revokeObjectURL(imagePreview);
     }
     setImage(null);
@@ -116,14 +123,24 @@ const AddPurityModal = ({ onClose, onSave, loading = false }) => {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-  };
+    setError("");
+  }, [imagePreview]);
 
-  const handleClose = () => {
-    if (imagePreview) {
+  const handleClose = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith('blob:')) {
       URL.revokeObjectURL(imagePreview);
     }
     onClose();
-  };
+  }, [imagePreview, onClose]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   const validatePercentage = (value) => {
     if (value === "") return true;
@@ -147,89 +164,84 @@ const AddPurityModal = ({ onClose, onSave, loading = false }) => {
             ></button>
           </div>
 
+          {/* Error Alert */}
+          {error && (
+            <div className="alert alert-danger m-3 py-2" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
               
               {/* Purity Name */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">
                   Purity Name <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
-                  className="form-control form-control-l"
-                  placeholder="e.g., 24K Gold, 925 Silver, VVS Diamond"
-                  value={purityName}
-                  onChange={(e) => setPurityName(e.target.value)}
+                  className="form-control form-control-lg"
+                  placeholder="e.g., 24K, 925, 18K, 22K"
+                  value={purity_name}
+                  onChange={(e) => {
+                    setPurityName(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 />
-              </div>
-
-              {/* Stone Name - Changed from dropdown to input */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Stone Name <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  className="form-control form-control-l"
-                  placeholder="e.g., Diamond, Ruby, Sapphire, etc."
-                  value={stoneName}
-                  onChange={(e) => setStoneName(e.target.value)}
-                  required
-                  disabled={loading}
-                  list="stone-examples"
-                />
-                {/* Optional: Show examples as datalist */}
-                <datalist id="stone-examples">
-                  {stoneExamples.map((stone, index) => (
-                    <option key={index} value={stone} />
-                  ))}
-                </datalist>
                 <small className="text-muted">
-                  Examples: Diamond, Ruby, Sapphire, Emerald, Pearl, etc.
+                  Enter the purity name (e.g., 24K for gold, 925 for silver)
                 </small>
               </div>
 
-              {/* Metal Type Dropdown - New field */}
-              <div className="mb-2">
+              {/* Metal Type Dropdown */}
+              <div className="mb-3">
                 <label className="form-label fw-medium">
                   Metal Type <span className="text-danger">*</span>
                 </label>
                 <select
-                  className="form-select form-select-l"
-                  value={metalType}
-                  onChange={(e) => setMetalType(e.target.value)}
+                  className="form-select form-select-lg"
+                  value={metal_type}
+                  onChange={(e) => {
+                    setMetalType(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>
-                  {metalTypes.map((metal, index) => (
-                    <option key={index} value={metal}>
-                      {metal}
+                  {metalOptions.map((metal) => (
+                    <option key={metal.id} value={metal.name}>
+                      {metal.name}
                     </option>
                   ))}
                 </select>
-                <small className="text-muted">
-                  Select the metal type for this purity
-                </small>
+                {metalOptions.length === 0 && !loading && (
+                  <div className="form-text text-warning">
+                    No metal types available. Please add metal types first.
+                  </div>
+                )}
               </div>
 
               {/* Percentage */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">
                   Percentage (%) <span className="text-danger">*</span>
                 </label>
                 <input
                   type="number"
-                  className={`form-control form-control-l ${
+                  className={`form-control form-control-lg ${
                     percentage && !validatePercentage(percentage) ? 'is-invalid' : ''
                   }`}
                   placeholder="e.g., 99.9, 92.5, 75.0"
                   value={percentage}
-                  onChange={(e) => setPercentage(e.target.value)}
+                  onChange={(e) => {
+                    setPercentage(e.target.value);
+                    setError("");
+                  }}
                   min="0"
                   max="100"
                   step="0.1"
@@ -247,12 +259,12 @@ const AddPurityModal = ({ onClose, onSave, loading = false }) => {
               </div>
 
               {/* Image Upload */}
-              <div className="mb-4">
+              <div className="mb-3">
                 <label className="form-label fw-medium">Purity Image</label>
                 
                 {/* Drag & Drop Area */}
                 <div
-                  className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
+                  className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
                     dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
                   }`}
                   onDragEnter={handleDrag}
@@ -277,6 +289,7 @@ const AddPurityModal = ({ onClose, onSave, loading = false }) => {
                         alt="Preview"
                         className="img-thumbnail rounded"
                         style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        key={imagePreview}
                       />
                       <button
                         type="button"
@@ -293,7 +306,7 @@ const AddPurityModal = ({ onClose, onSave, loading = false }) => {
                     </div>
                   ) : (
                     <>
-                      <FiImage className="text-secondary mb-2" size={40} />
+                      <FiImage className="text-secondary" size={40} />
                       <p className="mb-1">
                         Drop your image here or{" "}
                         <span className="text-primary">browse</span>
@@ -320,7 +333,7 @@ const AddPurityModal = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!purityName.trim() || !stoneName.trim() || !metalType.trim() || !percentage.trim() || !validatePercentage(percentage) || loading}
+                disabled={!purity_name.trim() || !metal_type.trim() || !percentage.trim() || !validatePercentage(percentage) || loading}
               >
                 {loading ? (
                   <>

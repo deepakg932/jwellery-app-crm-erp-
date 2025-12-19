@@ -1,59 +1,140 @@
-import React, { useState } from "react";
-import { FiUpload } from "react-icons/fi";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { FiUpload, FiX, FiImage } from "react-icons/fi";
 
-const AddHallmarkModal = ({ onClose, onSave, loading = false, purities = [], marks = [], metalTypes = [] }) => {
-  const [hallmarkName, setHallmarkName] = useState("");
-  const [selectedPurity, setSelectedPurity] = useState("");
-  const [selectedMark, setSelectedMark] = useState("");
-  const [selectedPercentage, setSelectedPercentage] = useState("");
-  const [selectedMetalType, setSelectedMetalType] = useState("");
-
-  // Predefined percentage options
-  const percentageOptions = [
-    "99.9", "99.5", "99.0", 
-    "95.0", "92.5", "90.0", 
-    "85.0", "80.0", "75.0", 
-    "70.0", "65.0", "60.0", 
-    "58.5", "55.0", "50.0", 
-    "45.0", "40.0", "37.5", 
-    "33.3", "30.0", "25.0", 
-    "20.0", "18.0", "16.0", 
-    "14.0", "12.0", "10.0"
-  ];
+const AddHallmarkModal = ({ 
+  onClose, 
+  onSave, 
+  loading = false, 
+  metalTypes = [] 
+}) => {
+  const [name, setName] = useState("");
+  const [metal_type, setMetalType] = useState("");
+  const [description, setDescription] = useState("");
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!hallmarkName.trim() || !selectedPurity.trim() || !selectedMark.trim() || !selectedPercentage.trim() || !selectedMetalType.trim()) {
-      alert("Please fill all required fields");
+    
+    if (!name.trim()) {
+      setError("Please enter hallmark name");
       return;
     }
 
-    const selectedPurityObj = purities.find(p => p.id === parseInt(selectedPurity));
-    const selectedMarkObj = marks.find(m => m.id === parseInt(selectedMark));
-    const selectedMetalObj = metalTypes.find(mt => mt.id === parseInt(selectedMetalType));
+    if (!metal_type.trim()) {
+      setError("Please select metal type");
+      return;
+    }
     
     onSave({
-      name: hallmarkName,
-      purityId: selectedPurity,
-      purityName: selectedPurityObj ? selectedPurityObj.name : '',
-      markId: selectedMark,
-      markName: selectedMarkObj ? selectedMarkObj.name : '',
-      percentage: parseFloat(selectedPercentage),
-      metalTypeId: selectedMetalType,
-      metalTypeName: selectedMetalObj ? selectedMetalObj.name : ''
+      name: name.trim(),
+      metal_type: metal_type,
+      description: description.trim(),
+      imageFile: image,
     });
     
     // Reset form
-    setHallmarkName("");
-    setSelectedPurity("");
-    setSelectedMark("");
-    setSelectedPercentage("");
-    setSelectedMetalType("");
+    setName("");
+    setMetalType("");
+    setDescription("");
+    setImage(null);
+    setImagePreview(null);
+    setError("");
   };
 
-  const handleClose = () => {
+  const handleImageChange = useCallback(
+    (file) => {
+      if (file) {
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          setError("File size should be less than 5MB");
+          return;
+        }
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          setError("Please upload an image file");
+          return;
+        }
+        
+        // Clean up previous blob URL if exists
+        if (image && imagePreview && imagePreview.startsWith('blob:')) {
+          URL.revokeObjectURL(imagePreview);
+        }
+        
+        setImage(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        setError("");
+      }
+    },
+    [image, imagePreview]
+  );
+
+  const handleFileInput = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageChange(file);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const handleDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      
+      const files = e.dataTransfer.files;
+      if (files && files[0]) {
+        handleImageChange(files[0]);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const removeImage = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setError("");
+  }, [imagePreview]);
+
+  const handleClose = useCallback(() => {
+    if (imagePreview && imagePreview.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreview);
+    }
     onClose();
-  };
+  }, [imagePreview, onClose]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
@@ -71,112 +152,67 @@ const AddHallmarkModal = ({ onClose, onSave, loading = false, purities = [], mar
             ></button>
           </div>
 
+          {/* Error Alert */}
+          {error && (
+            <div className="alert alert-danger m-3 py-2" role="alert">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
               
               {/* Hallmark Name */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">
-                  Hallmark Name/Code <span className="text-danger">*</span>
+                  Hallmark Name <span className="text-danger">*</span>
                 </label>
                 <input
                   type="text"
-                  className="form-control form-control-l"
+                  className="form-control form-control-lg"
                   placeholder="e.g., BIS 916, 925 Stamp, 750 Mark"
-                  value={hallmarkName}
-                  onChange={(e) => setHallmarkName(e.target.value)}
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 />
               </div>
 
-              {/* Purity Dropdown */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Purity <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="form-select form-select-l"
-                  value={selectedPurity}
-                  onChange={(e) => setSelectedPurity(e.target.value)}
-                  required
-                  disabled={loading}
-                >
-                  <option value="">Select purity</option>
-                  {purities.map((purity) => (
-                    <option key={purity.id} value={purity.id}>
-                      {purity.name} ({purity.percentage}%)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Mark Dropdown */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Mark <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="form-select form-select-l"
-                  value={selectedMark}
-                  onChange={(e) => setSelectedMark(e.target.value)}
-                  required
-                  disabled={loading}
-                >
-                  <option value="">Select mark</option>
-                  {marks.map((mark) => (
-                    <option key={mark.id} value={mark.id}>
-                      {mark.name} ({mark.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Percentage Dropdown */}
-              <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Percentage (%) <span className="text-danger">*</span>
-                </label>
-                <select
-                  className="form-select form-select-l"
-                  value={selectedPercentage}
-                  onChange={(e) => setSelectedPercentage(e.target.value)}
-                  required
-                  disabled={loading}
-                >
-                  <option value="">Select percentage</option>
-                  {percentageOptions.map((percent, index) => (
-                    <option key={index} value={percent}>
-                      {percent}%
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Metal Type Dropdown */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">
                   Metal Type <span className="text-danger">*</span>
                 </label>
                 <select
-                  className="form-select form-select-l"
-                  value={selectedMetalType}
-                  onChange={(e) => setSelectedMetalType(e.target.value)}
+                  className="form-select form-select-lg"
+                  value={metal_type}
+                  onChange={(e) => {
+                    setMetalType(e.target.value);
+                    setError("");
+                  }}
                   required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>
-                  {metalTypes.map((metalType) => (
-                    <option key={metalType.id} value={metalType.id}>
-                      {metalType.name}
+                  {metalTypes.map((metal) => (
+                    <option key={metal.id} value={metal.id}>
+                      {metal.name}
                     </option>
                   ))}
                 </select>
+                {metalTypes.length === 0 && !loading && (
+                  <div className="form-text text-warning">
+                    No metal types available. Please add metal types first.
+                  </div>
+                )}
               </div>
 
               {/* Description */}
-              <div className="mb-2">
+              <div className="mb-3">
                 <label className="form-label fw-medium">
                   Description (Optional)
                 </label>
@@ -184,8 +220,71 @@ const AddHallmarkModal = ({ onClose, onSave, loading = false, purities = [], mar
                   className="form-control"
                   rows="3"
                   placeholder="Enter hallmark description or notes..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
                 />
+              </div>
+
+              {/* Image Upload */}
+              <div className="mb-3">
+                <label className="form-label fw-medium">Hallmark Image (Optional)</label>
+                
+                {/* Drag & Drop Area */}
+                <div
+                  className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
+                    dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileInput}
+                    accept="image/*"
+                    className="d-none"
+                    disabled={loading}
+                  />
+                  
+                  {imagePreview ? (
+                    <div className="position-relative d-inline-block">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="img-thumbnail rounded"
+                        style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        key={imagePreview}
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeImage();
+                        }}
+                        className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
+                        style={{ transform: 'translate(-50%, -50%)' }}
+                        disabled={loading}
+                      >
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <FiImage className="text-secondary" size={40} />
+                      <p className="mb-1">
+                        Drop your image here or{" "}
+                        <span className="text-primary">browse</span>
+                      </p>
+                      <p className="text-secondary small mb-0">
+                        Supports JPG, PNG, WEBP • Max 5MB
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -198,30 +297,30 @@ const AddHallmarkModal = ({ onClose, onSave, loading = false, purities = [], mar
                 disabled={loading}
               >
                 Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!hallmarkName.trim() || !selectedPurity.trim() || !selectedMark.trim() || !selectedPercentage.trim() || !selectedMetalType.trim() || loading}
-              >
-                {loading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <FiUpload size={16} />
-                    Save Hallmark
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary d-flex align-items-center gap-2"
+              disabled={!name.trim() || !metal_type.trim() || loading}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FiUpload size={16} />
+                  Save Hallmark
+                </>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default AddHallmarkModal;
