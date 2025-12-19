@@ -7,9 +7,9 @@ const router = express.Router();
 import { brandUpload } from "../middleware/brandUpload.js"
 
 
-router.post("/create", brandUpload.single("image"), createBrand);
-router.put("/update/:id", brandUpload.single("image"), updateBrand);
-router.delete("/delete/:id", deleteBrand);
+router.post("/create-brand", brandUpload.single("logo"), createBrand);
+router.put("/updatebrand/:id", brandUpload.single("logo"), updateBrand);
+router.delete("/deletebrand/:id", deleteBrand);
 router.get("/brand/stats", getBrandDashboardStats);
 
 router.get("/list", getBrands);

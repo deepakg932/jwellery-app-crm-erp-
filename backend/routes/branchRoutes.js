@@ -4,7 +4,7 @@ import { createBranch, getBranches, getBranchById, updateBranch, deleteBranch } 
 const router = express.Router();
 
 router.post("/createBranch", createBranch);
-router.get("/", getBranches);
+router.get("get-branche/", getBranches);
 router.get("/:id", getBranchById);
 router.put("/:id", updateBranch);
 router.delete("/:id", deleteBranch);

@@ -14,18 +14,20 @@
 
 
 import mongoose from "mongoose";
-import { MetalType } from "./_shared.js";
+import { MetalType } from "./shared.js";
 
 const PuritySchema = new mongoose.Schema(
   {
-    purity_name: { type: String, required: true, trim: true },
-    stone_name: { type: String, required: true, trim: true },
+    stone_purity: { type: String,  trim: true },
 
     metal_type: { 
       type: String, 
-      enum: MetalType,
-      required: true 
     },
+    stone_type: {
+      type: String,
+    },
+
+    purity_name: { type: String,  trim: true ,ref:'Purity'},
 
     percentage: { 
       type: Number, 

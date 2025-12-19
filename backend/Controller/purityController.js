@@ -1,82 +1,75 @@
-import Purity from "../Models/models/Purity";
+import Purity from "../Models/models/Purity.js"
 
 
-// export const createPurity = async (req, res) => {
-//   try {
-//     const purity = await Purity.create(req.body);
-//     console.log("Created Purity:", purity);
-//     return res.status(200).json({ success: true, purity });
-//   } catch (err) {
-//     return res.status(500).json({ success: false, error: err.message });
-//   }
-// };
 
 
 
 export const createPurity = async (req, res) => {
   try {
-    const { purity_name, stone_name, metal_type, percentage } = req.body;
+    const { purity_name,  metal_type, percentage } = req.body;
+    console.log(req.body, "Purity Data");
 
-    if (!purity_name || !stone_name || !metal_type || !percentage) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
+    if (!purity_name || !metal_type || !percentage) {
+      return res.status(400).json({ success: false, message: "All fields are required"});
     }
+
+   
+    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    console.log(baseUrl, "Base URL");
 
     const purity = new Purity({
       purity_name,
-      stone_name,
+      // stone_name,
       metal_type,
       percentage,
-      image: req.file ? "/uploads/purity/" + req.file.filename : null,
+      image: req.file ? `/uploads/purity/${req.file.filename}` : null,
     });
-
+console.log(purity, "New Purity");
     const saved = await purity.save();
 
-    return res.json({ success: true, purity: saved });
+
+
+
+    const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
+    console.log(fullImageUrl, "Full Image URL");
+
+    return res.json({success: true,purity: {  ...saved._doc,  fullImageUrl}
+    });
+
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({success: false,error: err.message});
   }
 };
 
-// export const getAllPurities = async (req, res) => {
-//   try {
-//     const purities = await Purity.find();
-//     console.log("Fetched Purities:", purities);
-//     return res.json({ success: true, purities });
-//   } catch (err) {
-//     return res.status(500).json({ success: false, error: err.message });
-//   }
-// };
 
 
 
-export const getAllPurities = async (req, res) => {
+
+export const getAllPurities= async (req, res) => {
   try {
     const purities = await Purity.find().sort({ createdAt: -1 });
-    return res.json({ success: true, purities });
+
+    const baseUrl = `${req.protocol}://${req.headers.host}`;
+
+    const purityList = purities.map(p => ({
+      ...p._doc,
+      fullImageUrl: p.image ? `${baseUrl}${p.image}` : null
+    }));
+
+    return res.json({success: true,purity: purityList});
+
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 
-// export const getPurityById = async (req, res) => {
-//   try {
-//     const purity = await Purity.findById(req.params.id);
-//     console.log("Fetched Purity by ID:", purity);
-//     if (!purity) 
-//       return res.status(404).json({ success: false, message: "Purity not found" });
 
-//     return res.json({ success: true, purity });
-//   } catch (err) {
-//     return res.status(500).json({ success: false, error: err.message });
-//   }
-// };
 
 export const getPurityById = async (req, res) => {
   try {
     const purity = await Purity.findById(req.params.id);
+    console.log("Fetched Purity by ID:", purity);
     if (!purity)
       return res.status(404).json({ success: false, message: "Purity not found" });
 
@@ -88,44 +81,54 @@ export const getPurityById = async (req, res) => {
 
 
 
-// export const updatePurity = async (req, res) => {
-//   try {
-//     const purity = await Purity.findByIdAndUpdate(req.params.id, req.body, { new: true });
-//     console.log("Updated Purity:", purity);
-//     if (!purity) 
-//       return res.status(404).json({ success: false, message: "Purity not found" });
 
-//     return res.json({ success: true, purity });
-//   } catch (err) {
-//     return res.status(500).json({ success: false, error: err.message });
-//   }
-// };
 
 
 export const updatePurity = async (req, res) => {
   try {
+    const { id } = req.params;
     const { purity_name, stone_name, metal_type, percentage } = req.body;
 
-    let purity = await Purity.findById(req.params.id);
-    if (!purity)
-      return res.status(404).json({ success: false, message: "Purity not found" });
+    const baseUrl = `${req.protocol}://${req.headers.host}`;
 
+    let purity = await Purity.findById(id);
+    if (!purity) {
+      return res.status(404).json({
+        success: false,
+        message: "Purity not found"
+      });
+    }
+
+  
     if (purity_name) purity.purity_name = purity_name;
     if (stone_name) purity.stone_name = stone_name;
     if (metal_type) purity.metal_type = metal_type;
     if (percentage) purity.percentage = percentage;
 
+    
     if (req.file) {
-      purity.image = "/uploads/purity/" + req.file.filename;
+      purity.image = `/uploads/purity/${req.file.filename}`;
     }
 
-    const updated = await purity.save();
+    const updatedPurity = await purity.save();
 
-    return res.json({ success: true, purity: updated });
+    const fullImageUrl = updatedPurity.image
+      ? `${baseUrl}${updatedPurity.image}`
+      : null;
+
+    return res.json({
+      success: true,
+      message: "Purity updated successfully",
+      purity: {
+        ...updatedPurity._doc,
+        fullImageUrl
+      }
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 
 
@@ -135,7 +138,7 @@ export const deletePurity = async (req, res) => {
     if (!purity)
       return res.status(404).json({ success: false, message: "Purity not found" });
 
-    return res.json({ success: true, message: "Purity deleted" });
+    return res.json({ success: true, message: "Purity deleted" ,purity});
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

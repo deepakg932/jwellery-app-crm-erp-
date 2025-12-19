@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 const MetalSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, unique: true, trim: true },
-    image: { type: String, default: null }
+    image: { type: String, default: null },
+    imageType: { type: String},
   },
   { timestamps: true }
 );
