@@ -1,86 +1,118 @@
-import { useState, useEffect, useRef } from "react";
-import { FiEdit2, FiSearch, FiPlus, FiImage, FiX, FiUpload } from "react-icons/fi";
-export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
-  const [categoryName, setCategoryName] = useState("");
-  const [metalType, setMetalType] = useState("");
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { FiUpload, FiImage, FiX } from "react-icons/fi";
+
+const EditCategoryModal = ({
+  show,
+  onHide,
+  onSubmit,
+  category,
+  loading = false,
+  metalOptions = [], // Array of objects: [{id: "", name: ""}]
+}) => {
+  const [name, setName] = useState("");
+  const [selectedMetal, setSelectedMetal] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
-  const metalOptions = [
-    "Gold",
-    "Silver",
-    "Platinum",
-    "Diamond",
-    "Rose Gold",
-    "White Gold",
-    "Sterling Silver",
-    "Titanium",
-    "Palladium",
-    "Other"
-  ];
-
   useEffect(() => {
     if (category) {
-      setCategoryName(category.categoryName);
-      setMetalType(category.metalType || "");
-      setImagePreview(category.image);
+      setName(category.name || "");
+      setSelectedMetal(category.metal_type || "");
+      const imageUrl = category.imageUrl || "";
+      setImagePreview(imageUrl ? imageUrl : null);
+      setImageFile(null);
+      setError("");
     }
   }, [category]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (!categoryName.trim()) {
-      setError("Please enter a category name");
-      return;
-    }
-
-    if (!metalType.trim()) {
-      setError("Please select a metal type");
-      return;
-    }
-
-    const updatedCategory = {
-      ...category,
-      categoryName,
-      metalType,
-      image: imageFile ? URL.createObjectURL(imageFile) : imagePreview,
+  // Handle cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any blob URLs
+      if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
     };
-    
-    onSubmit(updatedCategory);
-  };
+  }, [imageFile, imagePreview]);
 
-  const handleImageChange = (file) => {
-    if (file) {
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("File size should be less than 5MB");
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      if (!name.trim()) {
+        setError("Please enter a category name");
         return;
       }
-      
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError("Please upload an image file");
+
+      if (!selectedMetal.trim()) {
+        setError("Please select a metal type");
         return;
       }
-      
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-      setError("");
-    }
-  };
 
-  const handleFileInput = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleImageChange(file);
-    }
-  };
+      console.log("Submitting category update:", {
+        name: name,
+        metal_type: selectedMetal,
+        hasImageFile: !!imageFile,
+        categoryId: category?._id,
+      });
 
-  const handleDrag = (e) => {
+      try {
+        await onSubmit({
+          name: name,
+          metal_type: selectedMetal,
+          imageFile: imageFile,
+        });
+      } catch (err) {
+        console.error("Form submission error:", err);
+        setError("Failed to update. Please try again.");
+      }
+    },
+    [name, selectedMetal, imageFile, category, onSubmit]
+  );
+
+  const handleImageChange = useCallback(
+    (file) => {
+      if (file) {
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          setError("File size should be less than 5MB");
+          return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          setError("Please upload an image file");
+          return;
+        }
+
+        // Clean up previous blob URL if exists
+        if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
+          URL.revokeObjectURL(imagePreview);
+        }
+
+        setImageFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        setError("");
+      }
+    },
+    [imageFile, imagePreview]
+  );
+
+  const handleFileInput = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageChange(file);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -88,42 +120,65 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleImageChange(files[0]);
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+
+      const files = e.dataTransfer.files;
+      if (files && files[0]) {
+        handleImageChange(files[0]);
+      }
+    },
+    [handleImageChange]
+  );
+
+  const removeImage = useCallback(() => {
+    if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(imagePreview);
     }
-  };
+    setImageFile(null);
+    // Reset to original image URL if it exists
+    setImagePreview(category?.imageUrl || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [imageFile, imagePreview, category]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     // Clean up object URL if we created one
-    if (imageFile && imagePreview) {
+    if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
     setError("");
     onHide();
-  };
+  }, [imageFile, imagePreview, onHide]);
+
+  // Don't render if not shown
+  if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Edit Item Category</h5>
+            <h5 className="modal-title fw-bold fs-5">Edit Category</h5>
             <button
               type="button"
               className="btn-close"
               onClick={handleClose}
-            ></button>
+              disabled={loading}
+              aria-label="Close"
+            />
           </div>
 
           {/* Error Alert */}
@@ -136,7 +191,6 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              
               {/* Category Name */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
@@ -145,12 +199,13 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
                 <input
                   type="text"
                   className="form-control form-control-l"
-                  value={categoryName}
+                  value={name}
                   onChange={(e) => {
-                    setCategoryName(e.target.value);
+                    setName(e.target.value);
                     setError("");
                   }}
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -161,17 +216,18 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
                 </label>
                 <select
                   className="form-select form-select-l"
-                  value={metalType}
+                  value={selectedMetal}
                   onChange={(e) => {
-                    setMetalType(e.target.value);
+                    setSelectedMetal(e.target.value);
                     setError("");
                   }}
                   required
+                  disabled={loading}
                 >
                   <option value="">Select metal type</option>
-                  {metalOptions.map((metal, index) => (
-                    <option key={index} value={metal}>
-                      {metal}
+                  {metalOptions.map((metal) => (
+                    <option key={metal.id} value={metal.id}>
+                      {metal.name}
                     </option>
                   ))}
                 </select>
@@ -180,38 +236,70 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
               {/* Image Upload */}
               <div className="mb-2">
                 <label className="form-label fw-medium">Image</label>
-                
+
                 {/* Current Image Preview */}
                 {imagePreview ? (
-                  <div className="mb-2">
+                  <div className="mb-3 position-relative d-inline-block">
                     <img
                       src={imagePreview}
-                      alt="Current"
+                      alt="Preview"
                       className="img-thumbnail rounded border"
-                      style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                      style={{
+                        width: "120px",
+                        height: "120px",
+                        objectFit: "cover",
+                      }}
+                      onError={(e) => {
+                        // If image fails to load, show placeholder
+                        e.target.style.display = "none";
+                        const parent = e.target.parentElement;
+                        const placeholder = document.createElement("div");
+                        placeholder.className =
+                          "d-flex align-items-center justify-content-center rounded border";
+                        placeholder.style.width = "120px";
+                        placeholder.style.height = "120px";
+                        placeholder.innerHTML =
+                          '<FiImage class="text-muted" size={24} />';
+                        parent.appendChild(placeholder);
+                      }}
+                      key={`preview-${imagePreview}`}
                     />
-                    <p className="small text-muted mt-1 mb-0">Current image</p>
+                    {imageFile && ( // Only show remove button for newly selected image
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
+                        style={{ transform: "translate(-50%, -50%)" }}
+                        disabled={loading}
+                        aria-label="Remove image"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+                    <p className="small text-muted mt-1 mb-0">
+                      {imageFile ? "New image selected" : "Current image"}
+                    </p>
                   </div>
                 ) : (
-                  <div className="mb-2 d-flex align-items-center gap-2">
+                  <div className="mb-3 d-flex align-items-center gap-2">
                     <div
                       className="d-flex align-items-center justify-content-center rounded border"
-                      style={{ width: '80px', height: '80px' }}
+                      style={{ width: "80px", height: "80px" }}
                     >
                       <FiImage className="text-muted" size={24} />
                     </div>
                     <p className="small text-muted mb-0">No image set</p>
                   </div>
                 )}
-                
+
                 {/* Change Image Section */}
                 <label className="form-label fw-medium d-block mb-2">
-                  Change Image
+                  {imagePreview ? "Change Image" : "Upload Image"}
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
-                    dragActive 
-                      ? "border-primary bg-primary bg-opacity-10" 
+                    dragActive
+                      ? "border-primary bg-primary bg-opacity-10"
                       : "border-muted hover:border-primary hover:bg-light"
                   }`}
                   onDragEnter={handleDrag}
@@ -219,6 +307,7 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
+                  style={{ padding: "20px" }}
                 >
                   <input
                     type="file"
@@ -226,9 +315,10 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
                     onChange={handleFileInput}
                     accept="image/*"
                     className="d-none"
+                    disabled={loading}
                   />
-                  
-                  <FiImage className="mb-1 text-muted" size={24} />
+
+                  <FiImage className="mb-2 text-muted" size={24} />
                   <p className="text-muted small mb-0">
                     Drop new image here or browse
                   </p>
@@ -245,15 +335,30 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
                 type="button"
                 className="btn btn-outline-secondary"
                 onClick={handleClose}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
+                disabled={loading}
               >
-                <FiUpload className="me-2" size={16} />
-                Update Category
+                {loading ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <FiUpload size={16} />
+                    Update Category
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -262,3 +367,5 @@ export const EditCategoryModal = ({ show, onHide, onSubmit, category }) => {
     </div>
   );
 };
+
+export default EditCategoryModal;

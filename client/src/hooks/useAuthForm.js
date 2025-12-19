@@ -63,7 +63,7 @@ export const useAuthForm = (initialState, authApi, actionType) => {
             const user = response?.user;
 
             if (accessToken) {
-                localStorage.setItem("authToken", accessToken);
+                localStorage.setItem("accessToken", accessToken);
             }
 
             if (user) {
@@ -72,6 +72,7 @@ export const useAuthForm = (initialState, authApi, actionType) => {
 
             toast.success("Login Successful");
             navigate("/dashboard");
+            console.log("navigate")
             return;
         }
 

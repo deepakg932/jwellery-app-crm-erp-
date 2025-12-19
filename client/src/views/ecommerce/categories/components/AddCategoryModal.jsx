@@ -20,7 +20,7 @@ const AddCategoryModal = ({
           <Row className="g-3">
             {/* These inputs are now "uncontrolled". React does not manage their state. */}
             <Col md={6}>
-              <FormGroup controlId="categoryName">
+              <FormGroup controlId="name">
                 <FormLabel>Category Name</FormLabel>
                 <FormControl type="text" placeholder="e.g. Electronics" required />
               </FormGroup>

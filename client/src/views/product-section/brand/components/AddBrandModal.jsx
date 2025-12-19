@@ -3,27 +3,29 @@ import { FiUpload, FiX, FiImage } from "react-icons/fi";
 
 const AddBrandModal = ({ onClose, onSave, loading = false }) => {
   const [brandName, setBrandName] = useState("");
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [logo, setLogo] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!brandName.trim()) {
-      alert("Please enter a brand name");
-      return;
-    }
+    if (!brandName.trim()) return;
 
-    onSave({
-      name: brandName,
-      imageFile: image
-    });
-    
-    // Reset form
-    setBrandName("");
-    setImage(null);
-    setImagePreview(null);
+    try {
+      await onSave(brandName, logo);
+      
+      // Reset form after successful save
+      setBrandName("");
+      setLogo(null);
+      setLogoPreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      
+    } catch (error) {
+      console.error("Save failed:", error);
+    }
   };
 
   const handleImageChange = (file) => {
@@ -40,9 +42,9 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
         return;
       }
       
-      setImage(file);
+      setLogo(file);
       const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
+      setLogoPreview(previewUrl);
     }
   };
 
@@ -75,19 +77,19 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
   };
 
   const removeImage = () => {
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
+    if (logoPreview) {
+      URL.revokeObjectURL(logoPreview);
     }
-    setImage(null);
-    setImagePreview(null);
+    setLogo(null);
+    setLogoPreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const handleClose = () => {
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
+    if (logoPreview) {
+      URL.revokeObjectURL(logoPreview);
     }
     onClose();
   };
@@ -120,7 +122,7 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                 <input
                   type="text"
                   className="form-control form-control-l"
-                  placeholder="e.g., Tiffany & Co., Cartier, Rolex"
+                  placeholder="e.g., Tiffany & Co., Cartier"
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
                   required
@@ -128,15 +130,13 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                 />
               </div>
 
-              {/* Image Upload */}
+              {/* Logo Upload */}
               <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Brand Logo/Image <span className="text-danger">*</span>
-                </label>
+                <label className="form-label fw-medium">Logo</label>
                 
                 {/* Drag & Drop Area */}
                 <div
-                  className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
+                  className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
                     dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
                   }`}
                   onDragEnter={handleDrag}
@@ -154,13 +154,13 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                     disabled={loading}
                   />
                   
-                  {imagePreview ? (
+                  {logoPreview ? (
                     <div className="position-relative d-inline-block">
                       <img
-                        src={imagePreview}
+                        src={logoPreview}
                         alt="Preview"
                         className="img-thumbnail rounded"
-                        style={{ width: '150px', height: '150px', objectFit: 'contain' }}
+                        style={{ width: '120px', height: '120px', objectFit: 'cover' }}
                       />
                       <button
                         type="button"
@@ -177,9 +177,9 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                     </div>
                   ) : (
                     <>
-                      <FiImage className="text-secondary mb-2" size={40} />
+                      <FiImage className="text-secondary" size={40} />
                       <p className="mb-1">
-                        Drop your brand logo here or{" "}
+                        Drop your logo here or{" "}
                         <span className="text-primary">browse</span>
                       </p>
                       <p className="text-secondary small mb-0">
@@ -188,9 +188,6 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                     </>
                   )}
                 </div>
-                <small className="text-muted d-block mt-2">
-                  Upload brand logo or image (Recommended: 300x300px, transparent background)
-                </small>
               </div>
             </div>
 
@@ -207,7 +204,7 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!brandName.trim() || !image || loading}
+                disabled={!brandName.trim() || loading}
               >
                 {loading ? (
                   <>

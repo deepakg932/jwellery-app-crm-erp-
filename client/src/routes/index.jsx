@@ -6,6 +6,8 @@ import PurityPage from '../views/product-section/purity/components/PurityTable';
 
 // ProtectedRoute
 import ProtectedRoute from "@/routes/ProtectedRoute";
+import AddItemModal from '../views/item-master/components/AddItemForm';
+import ViewItemModal from '../views/item-master/components/ViewItemModal';
 
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
@@ -14,15 +16,34 @@ const Dashboard = lazy(() => import('@/views/dashboards/dashboard2'));
 // Landing
 const Landing = lazy(() => import('@/views/landing'));
 
-// Product Section
+// Product Master
 const MetalTypeSection = lazy(() => import('@/views/product-section/metal-type'));
 const ItemCategory = lazy(() => import('@/views/product-section/item-category'));
 const SubCategory = lazy(() => import('@/views/product-section/item-sub-category'));
 const Purity = lazy(() => import('@/views/product-section/purity'));
 const HallmarkPage = lazy(() => import('@/views/product-section/hall-mark'));
 const BrandPage = lazy(() => import('@/views/product-section/brand'));
-const Orders = lazy(() => import('@/views/ecommerce/orders'));
-const OrderDetails = lazy(() => import('@/views/ecommerce/orders/[orderId]'));
+const StoneType = lazy(() => import('@/views/product-section/stone'));
+const StonePurity = lazy(() => import('@/views/product-section/stone purity'));
+const Stone = lazy(() => import('@/views/product-section/stones'));
+const Unit = lazy(() => import('@/views/product-section/unit'));
+const MakingStagePage = lazy(() => import('@/views/product-section/price/making_stage'));
+const MakingSubStagePage = lazy(() => import('@/views/product-section/price/making_sub_stage'));
+const CostMaster = lazy(() => import('@/views/product-section/price/cost_master'));
+const CostType = lazy(() => import('@/views/product-section/price/cost_type'));
+const PriceMaking = lazy(() => import('@/views/product-section/price/price_making'));
+const GSTMaster = lazy(() => import('@/views/product-section/price/gst_master'));
+const WastagePage = lazy(() => import('@/views/product-section/wastage'));
+const MaterialTypePage = lazy(() => import('@/views/product-section/materialType'));
+
+
+
+
+
+
+
+// Items Master
+const ItemsPage = lazy(() => import('@/views/item-master'));
 const Customers = lazy(() => import('@/views/ecommerce/customers'));
 const Sellers = lazy(() => import('@/views/ecommerce/sellers'));
 const SellerDetails = lazy(() => import('@/views/ecommerce/sellers/[sellerId]'));
@@ -342,25 +363,61 @@ const pruducSectionRoutes = [{
   path: '/brand',
   element: <BrandPage />
 }, {
-  path: '/orders',
-  element: <Orders />
+  path: '/stone_type',
+  element: <StoneType />
 }, {
-  path: '/orders/1',
-  element: <OrderDetails />
+  path: '/stone_purity',
+  element: <StonePurity />
 }, {
-  path: '/customers',
-  element: <Customers />
+  path: '/stone',
+  element: <Stone />
+},
+ {
+  path: '/unit',
+  element: <Unit/>
+},
+ {
+  path: '/wastage_type',
+  element: <WastagePage/>
+},
+{
+  path: '/material_type',
+  element: <MaterialTypePage/>
+},
+ {
+  path: '/making_stage',
+  element: <MakingStagePage/>
+},
+ {
+  path: '/making_sub_stage',
+  element: <MakingSubStagePage/>
+},
+ {
+  path: '/cost_master',
+  element: <CostMaster/>
+},
+ {
+  path: '/cost_type',
+  element: <CostType/>
+},
+ {
+  path: '/price_making',
+  element: <PriceMaking/>
+},
+ {
+  path: '/gst_master',
+  element: <GSTMaster/>
+},
+];
+const itemsRoutes = [
+   {
+  path: '/item-list',
+  element: <ItemsPage />
 }, {
-  path: '/sellers',
-  element: <Sellers />
-}, {
-  path: '/sellers/1',
-  element: <SellerDetails />
-}, {
-  path: '/reviews',
-  element: <Reviews />
-}];
-const appsRoutes = [{
+  path: '/add-item',
+  element: <AddItemModal />
+},
+  {
   path: '/inbox',
   element: <Inbox />
 }, {
@@ -809,14 +866,14 @@ const mapRoutes = [{
 }];
 const allRoutes = [{
    element: (
-    // <ProtectedRoute>
+    <ProtectedRoute>
       <MainLayout />
-    // </ProtectedRoute>
+     </ProtectedRoute>
   ),
   children: [{
     path: '/',
     element: <Navigate to="/dashboard" replace />
-  }, ...dashboardRoutes, ...pruducSectionRoutes, ...appsRoutes, ...pagesRoutes, ...miscellaneousRoutes, ...layoutRoutes, ...uiRoutes, ...componentRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
+  }, ...dashboardRoutes, ...pruducSectionRoutes, ...itemsRoutes, ...pagesRoutes, ...miscellaneousRoutes, ...layoutRoutes, ...uiRoutes, ...componentRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
 }];
 const otherRoutes = [...authRoutes, ...errorRoutes, ...landingRoute, ...otherPagesRoutes];
 export const routes = [...allRoutes, ...otherRoutes];

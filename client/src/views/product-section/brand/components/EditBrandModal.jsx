@@ -1,22 +1,36 @@
-import React, { useState, useEffect, useRef } from "react";
-import { FiUpload, FiImage } from "react-icons/fi";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { FiUpload, FiImage, FiX } from "react-icons/fi";
 
-const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
+const EditBrandModal = ({ show, onHide, onSubmit, brand, loading = false }) => {
   const [brandName, setBrandName] = useState("");
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
+  const modalRef = useRef(null);
 
+  // Reset form when brand changes
   useEffect(() => {
     if (brand) {
-      setBrandName(brand.name);
-      setImagePreview(brand.image);
+      setBrandName(brand.name || "");
+      const logoUrl = brand.logo || "";
+      setLogoPreview(logoUrl ? logoUrl : null);
+      setLogoFile(null);
+      setError("");
     }
   }, [brand]);
 
-  const handleSubmit = (e) => {
+  // Handle cleanup
+  useEffect(() => {
+    return () => {
+      if (logoFile && logoPreview && logoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoFile, logoPreview]);
+
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
     if (!brandName.trim()) {
@@ -24,43 +38,45 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
       return;
     }
 
-    const updatedBrand = {
-      ...brand,
-      name: brandName,
-      image: imageFile ? URL.createObjectURL(imageFile) : imagePreview,
-    };
-    
-    onSubmit(updatedBrand);
-  };
+    try {
+      await onSubmit(brandName, logoFile);
+    } catch (err) {
+      console.error("Form submission error:", err);
+      setError("Failed to update. Please try again.");
+    }
+  }, [brandName, logoFile, brand, onSubmit]);
 
-  const handleImageChange = (file) => {
+  const handleImageChange = useCallback((file) => {
     if (file) {
-      // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
         setError("File size should be less than 5MB");
         return;
       }
       
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         setError("Please upload an image file");
         return;
       }
       
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
+      if (logoFile && logoPreview && logoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(logoPreview);
+      }
+      
+      setLogoFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setLogoPreview(previewUrl);
       setError("");
     }
-  };
+  }, [logoFile, logoPreview]);
 
-  const handleFileInput = (e) => {
+  const handleFileInput = useCallback((e) => {
     const file = e.target.files[0];
     if (file) {
       handleImageChange(file);
     }
-  };
+  }, [handleImageChange]);
 
-  const handleDrag = (e) => {
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === "dragenter" || e.type === "dragover") {
@@ -68,9 +84,9 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
-  const handleDrop = (e) => {
+  const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
@@ -79,20 +95,42 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
     if (files && files[0]) {
       handleImageChange(files[0]);
     }
-  };
+  }, [handleImageChange]);
 
-  const handleClose = () => {
-    // Clean up object URL if we created one
-    if (imageFile && imagePreview) {
-      URL.revokeObjectURL(imagePreview);
+  const removeImage = useCallback(() => {
+    if (logoFile && logoPreview && logoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(logoPreview);
     }
-    setImageFile(null);
+    setLogoFile(null);
+    setLogoPreview(brand?.logo || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, [logoFile, logoPreview, brand]);
+
+  const handleClose = useCallback(() => {
+    if (logoFile && logoPreview && logoPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(logoPreview);
+    }
+    setLogoFile(null);
     setError("");
     onHide();
-  };
+  }, [logoFile, logoPreview, onHide]);
+
+  if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div 
+      className="modal fade show d-block" 
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} 
+      tabIndex="-1"
+      ref={modalRef}
+      onClick={(e) => {
+        if (modalRef.current === e.target) {
+          handleClose();
+        }
+      }}
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
           
@@ -103,7 +141,9 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
               type="button"
               className="btn-close"
               onClick={handleClose}
-            ></button>
+              disabled={loading}
+              aria-label="Close"
+            />
           </div>
 
           {/* Error Alert */}
@@ -131,31 +171,55 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
                     setError("");
                   }}
                   required
+                  disabled={loading}
                 />
               </div>
 
-              {/* Image Upload */}
+              {/* Logo Upload */}
               <div className="mb-2">
-                <label className="form-label fw-medium">
-                  Brand Logo/Image <span className="text-danger">*</span>
-                </label>
+                <label className="form-label fw-medium">Logo</label>
                 
-                {/* Current Image Preview */}
-                {imagePreview ? (
-                  <div className="mb-3">
+                {/* Current Logo Preview */}
+                {logoPreview ? (
+                  <div className="mb-3 position-relative d-inline-block">
                     <img
-                      src={imagePreview}
-                      alt="Current"
+                      src={`YOUR_BASE_URL${logoPreview}`} // Update with your base URL
+                      alt="Preview"
                       className="img-thumbnail rounded border"
-                      style={{ width: '150px', height: '150px', objectFit: 'contain' }}
+                      style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'd-flex align-items-center justify-content-center rounded border';
+                        placeholder.style.width = '120px';
+                        placeholder.style.height = '120px';
+                        placeholder.innerHTML = '<FiImage class="text-muted" size={24} />';
+                        parent.appendChild(placeholder);
+                      }}
+                      key={`preview-${logoPreview}`}
                     />
-                    <p className="small text-muted mt-1 mb-0">Current logo</p>
+                    {logoFile && (
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
+                        style={{ transform: 'translate(-50%, -50%)' }}
+                        disabled={loading}
+                        aria-label="Remove logo"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+                    <p className="small text-muted mt-1 mb-0">
+                      {logoFile ? "New logo selected" : "Current logo"}
+                    </p>
                   </div>
                 ) : (
                   <div className="mb-3 d-flex align-items-center gap-2">
                     <div
                       className="d-flex align-items-center justify-content-center rounded border"
-                      style={{ width: '150px', height: '150px' }}
+                      style={{ width: '80px', height: '80px' }}
                     >
                       <FiImage className="text-muted" size={24} />
                     </div>
@@ -163,9 +227,9 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
                   </div>
                 )}
                 
-                {/* Change Image Section */}
+                {/* Change Logo Section */}
                 <label className="form-label fw-medium d-block mb-2">
-                  Change Logo
+                  {logoPreview ? "Change Logo" : "Upload Logo"}
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
@@ -178,6 +242,7 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
+                  style={{ padding: '20px' }}
                 >
                   <input
                     type="file"
@@ -185,6 +250,7 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
                     onChange={handleFileInput}
                     accept="image/*"
                     className="d-none"
+                    disabled={loading}
                   />
                   
                   <FiImage className="mb-2 text-muted" size={24} />
@@ -195,9 +261,6 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
                     Supports JPG, PNG, WEBP • Max 5MB
                   </p>
                 </div>
-                <small className="text-muted d-block mt-2">
-                  Recommended: 300x300px, transparent background
-                </small>
               </div>
             </div>
 
@@ -207,15 +270,26 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand }) => {
                 type="button"
                 className="btn btn-outline-secondary"
                 onClick={handleClose}
+                disabled={loading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
+                disabled={loading}
               >
-                <FiUpload className="me-2" size={16} />
-                Update Brand
+                {loading ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <FiUpload size={16} />
+                    Update Brand
+                  </>
+                )}
               </button>
             </div>
           </form>

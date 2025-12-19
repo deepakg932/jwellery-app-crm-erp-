@@ -123,7 +123,7 @@ export const menuItems = [
   },
   {
     key: 'product-section',
-    label: 'Product Section',
+    label: 'Product Master',
     icon:  LuBoxes,
     children: [
       {
@@ -143,7 +143,7 @@ export const menuItems = [
       },
         {
         key: 'purity',
-        label: 'Purity',
+        label: 'Metal Purity',
         url: '/purity',
       },
         {
@@ -155,6 +155,72 @@ export const menuItems = [
         key: 'brand',
         label: 'Brand',
         url: '/brand',
+      },
+      {
+        key: 'stone_type',
+        label: 'Stone Type ',
+        url: '/stone_type',
+      },
+       {
+        key: 'stone_purity',
+        label: 'Stone Purity',
+        url: '/stone_purity',
+      },
+        {
+        key: 'stone',
+        label: 'Stone',
+        url: '/stone',
+      },
+      {
+        key: 'unit',
+        label: 'Unit',
+        url: '/unit',
+      },
+      {
+        key: 'wastage_type',
+        label: 'Wastage Type',
+        url: '/wastage_type',
+      },
+         {
+        key: 'material_type',
+        label: 'Material Type',
+        url: '/material_type',
+      },
+        {
+        key: 'price',
+        label: 'Price',
+         children:[
+          {
+            key:'making_stage',
+            label:'Making Stage',
+            url:'/making_stage'
+          },
+            {
+            key:'making-sub_stage',
+            label:'Making Sub Stage',
+            url:'/making_sub_stage'
+          },
+            {
+            key:'cost_master',
+            label:'Cost Master',
+            url:'/cost_master'
+          },
+            {
+            key:'cost_type',
+            label:'Cost Type',
+            url:'/cost_type'
+          },
+            {
+            key:'price_making',
+            label:'Price Making',
+            url:'/price_making'
+          },
+            {
+            key:'gst_master',
+            label:'GST Master',
+            url:'/gst_master'
+          },
+         ]
       },
     ],
     // children: [

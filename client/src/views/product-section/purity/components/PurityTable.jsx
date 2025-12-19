@@ -1,148 +1,85 @@
-import React, { useState } from "react";
-import { FiEdit2, FiSearch, FiPlus, FiImage, FiPercent, FiDroplet } from "react-icons/fi";
+import React, { useState, useEffect } from "react";
+import { FiEdit2, FiSearch, FiPlus, FiImage, FiPercent } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import AddPurityModal from "./AddPurityModal";
 import EditPurityModal from "./EditPurityModal";
-
-// Mock purities data - updated with metalType field
-const initialPurities = [
-  { 
-    id: 1, 
-    name: "24K", 
-    stoneName: "Diamond", 
-    metalType: "Gold",
-    percentage: 99.9,
-    image: null,
-    description: "Pure gold with 99.9% purity"
-  },
-  { 
-    id: 2, 
-    name: "925", 
-    stoneName: "Ruby", 
-    metalType: "Silver",
-    percentage: 92.5,
-    image: null,
-    description: "Sterling silver with 92.5% purity"
-  },
-  { 
-    id: 3, 
-    name: "VVS Diamond", 
-    stoneName: "Diamond", 
-    metalType: "Platinum",
-    percentage: 99.5,
-    image: null,
-    description: "Very Very Slightly Included diamond"
-  },
-  { 
-    id: 4, 
-    name: "18K Gold", 
-    stoneName: "Sapphire", 
-    metalType: "Gold",
-    percentage: 75.0,
-    image: null,
-    description: "18 karat gold with 75% purity"
-  },
-  { 
-    id: 5, 
-    name: "950 Platinum", 
-    stoneName: "Emerald", 
-    metalType: "Platinum",
-    percentage: 95.0,
-    image: null,
-    description: "Platinum with 95% purity"
-  },
-  { 
-    id: 6, 
-    name: "Rose Gold Ring", 
-    stoneName: "Pearl", 
-    metalType: "Rose Gold",
-    percentage: 75.0,
-    image: null,
-    description: "Rose gold with pearl"
-  },
-  { 
-    id: 7, 
-    name: "Titanium Bracelet", 
-    stoneName: "Onyx", 
-    metalType: "Titanium",
-    percentage: 99.0,
-    image: null,
-    description: "Titanium bracelet with onyx"
-  },
-  { 
-    id: 8, 
-    name: "Stainless Steel", 
-    stoneName: "Topaz", 
-    metalType: "Stainless Steel",
-    percentage: 85.0,
-    image: null,
-    description: "Stainless steel with topaz"
-  },
-];
+import usePurity from "@/hooks/usePurity"; // Your custom hook
 
 const PurityPage = () => {
-  const [purities, setPurities] = useState(initialPurities);
+  const { 
+    purities, 
+    metalTypes, 
+    loading, 
+    addPurity, 
+    updatePurity, 
+    deletePurity,
+    refreshPurities,
+    refreshMetalTypes
+  } = usePurity();
+  
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPurity, setSelectedPurity] = useState(null);
+  const [actionLoading, setActionLoading] = useState({ type: null, id: null });
+
+  // Create metal options for dropdowns
+  const allMetalOptions = metalTypes.map(metal => ({
+    id: metal.id,
+    name: metal.name
+  }));
 
   // Filter purities based on search
   const filtered = purities.filter((purity) =>
-    purity.name.toLowerCase().includes(search.toLowerCase()) ||
-    purity.stoneName?.toLowerCase().includes(search.toLowerCase()) ||
-    purity.metalType?.toLowerCase().includes(search.toLowerCase()) ||
+    purity.purity_name?.toLowerCase().includes(search.toLowerCase()) ||
+    purity.metal_type?.toLowerCase().includes(search.toLowerCase()) ||
     purity.percentage.toString().includes(search)
   );
 
-  // Add new purity
+  // Add new purity with API
   const handleSave = async (purityData) => {
-    setLoading(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    const newPurity = {
-      id: Date.now(),
-      name: purityData.name,
-      stoneName: purityData.stoneName,
-      metalType: purityData.metalType,
-      percentage: purityData.percentage,
-      image: purityData.imageFile ? URL.createObjectURL(purityData.imageFile) : null,
-      description: `${purityData.name} - ${purityData.stoneName} with ${purityData.metalType}`
-    };
-
-    setPurities([...purities, newPurity]);
-    setShowAddModal(false);
-    setLoading(false);
+    setActionLoading({ type: "add", id: null });
+    try {
+      await addPurity(purityData);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Add failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
-  // Edit purity
-  const handleEditPurity = (updatedPurity) => {
-    const updated = purities.map((purity) => 
-      purity.id === selectedPurity.id ? updatedPurity : purity
-    );
-    setPurities(updated);
-    setShowEditModal(false);
-    setSelectedPurity(null);
+  // Edit purity with API
+  const handleEditPurity = async (updatedPurity) => {
+    if (!selectedPurity) return;
+
+    setActionLoading({ type: "update", id: selectedPurity._id });
+    try {
+      await updatePurity(selectedPurity._id, updatedPurity);
+      setShowEditModal(false);
+      setSelectedPurity(null);
+    } catch (error) {
+      console.error("Update failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
-  // Delete purity
+  // Delete purity with API
   const handleDeletePurity = async () => {
     if (!selectedPurity) return;
-    
-    setLoading(true);
 
-    const purity = purities.find((p) => p.id === selectedPurity.id);
-    if (purity?.image) URL.revokeObjectURL(purity.image);
-
-    await new Promise((resolve) => setTimeout(resolve, 400));
-
-    setPurities(purities.filter((p) => p.id !== selectedPurity.id));
-    setShowDeleteModal(false);
-    setSelectedPurity(null);
-    setLoading(false);
+    setActionLoading({ type: "delete", id: selectedPurity._id });
+    try {
+      await deletePurity(selectedPurity._id);
+      setShowDeleteModal(false);
+      setSelectedPurity(null);
+    } catch (error) {
+      console.error("Delete failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
   };
 
   // Open edit modal
@@ -155,6 +92,31 @@ const PurityPage = () => {
   const handleOpenDelete = (purity) => {
     setSelectedPurity(purity);
     setShowDeleteModal(true);
+  };
+
+  // Safe image component to prevent errors
+  const SafeImage = ({ src, alt, ...props }) => {
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError || !src) {
+      return (
+        <div
+          className="bg-light border rounded d-flex justify-content-center align-items-center"
+          style={{ width: 45, height: 45 }}
+        >
+          <FiImage className="text-muted" />
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={src}
+        alt={alt || "Purity"}
+        {...props}
+        onError={() => setHasError(true)}
+      />
+    );
   };
 
   // Delete Confirmation Modal Component
@@ -171,12 +133,12 @@ const PurityPage = () => {
                 setShowDeleteModal(false);
                 setSelectedPurity(null);
               }}
+              disabled={actionLoading.type === "delete"}
             ></button>
           </div>
           
           <div className="modal-body">
-            <p>Are you sure you want to delete <strong>{selectedPurity?.name}</strong>?</p>
-            <p className="text-danger">This action cannot be undone.</p>
+            <p>Are you sure you want to delete <strong>{selectedPurity?.purity_name}</strong>?</p>
           </div>
           
           <div className="modal-footer border-top pt-3">
@@ -187,6 +149,7 @@ const PurityPage = () => {
                 setShowDeleteModal(false);
                 setSelectedPurity(null);
               }}
+              disabled={actionLoading.type === "delete"}
             >
               Cancel
             </button>
@@ -194,9 +157,9 @@ const PurityPage = () => {
               type="button"
               className="btn btn-danger"
               onClick={handleDeletePurity}
-              disabled={loading}
+              disabled={actionLoading.type === "delete"}
             >
-              {loading ? (
+              {actionLoading.type === "delete" ? (
                 <>
                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                   Deleting...
@@ -220,7 +183,7 @@ const PurityPage = () => {
             <div className="col-md-6">
               <h1 className="h3 fw-bold mb-2">Purities Management</h1>
               <p className="text-muted mb-0">
-                Manage stone purities with percentages and images
+                Manage metal purities with percentages and images
               </p>
             </div>
 
@@ -228,6 +191,7 @@ const PurityPage = () => {
               <button
                 className="btn btn-primary d-flex align-items-center gap-2"
                 onClick={() => setShowAddModal(true)}
+                disabled={loading || actionLoading.type === "add"}
               >
                 <FiPlus size={18} />
                 Add Purity
@@ -245,9 +209,10 @@ const PurityPage = () => {
                 <input
                   type="text"
                   className="form-control border-start-0"
-                  placeholder="Search by name, stone, metal, or percentage..."
+                  placeholder="Search by purity name, metal, or percentage..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -264,7 +229,6 @@ const PurityPage = () => {
                 <th>#</th>
                 <th>Image</th>
                 <th>Purity Name</th>
-                <th>Stone Name</th>
                 <th>Metal Type</th>
                 <th>Percentage</th>
                 <th className="text-end">Actions</th>
@@ -272,51 +236,50 @@ const PurityPage = () => {
             </thead>
 
             <tbody>
-              {filtered.length === 0 ? (
+              {loading && purities.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-4 text-muted">
-                    No purities found
+                  <td colSpan="6" className="text-center py-4">
+                    <div className="d-flex justify-content-center">
+                      <div
+                        className="spinner-border text-primary"
+                        role="status"
+                      >
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-muted">
+                    {search
+                      ? "No purities found for your search"
+                      : "No purities available"}
                   </td>
                 </tr>
               ) : (
                 filtered.map((purity, index) => (
-                  <tr key={purity.id}>
+                  <tr key={purity._id || index}>
                     <td>{index + 1}</td>
 
                     {/* IMAGE PREVIEW */}
                     <td>
-                      {purity.image ? (
-                        <img
-                          src={purity.image}
-                          alt={purity.name}
-                          width="45"
-                          height="45"
-                          className="rounded border"
-                          style={{ objectFit: "cover" }}
-                        />
-                      ) : (
-                        <div
-                          className="bg-light border rounded d-flex justify-content-center align-items-center"
-                          style={{ width: 45, height: 45 }}
-                        >
-                          <FiImage className="text-muted" />
-                        </div>
-                      )}
+                      <SafeImage
+                        src={purity.imageUrl}
+                        alt={purity.purity_name}
+                        width="45"
+                        height="45"
+                        className="rounded border"
+                        style={{ objectFit: "cover" }}
+                      />
                     </td>
 
-                    <td className="fw-semibold">{purity.name}</td>
-                    
-                    {/* Stone Name */}
-                    <td>
-                      <span className="badge bg-info">
-                        {purity.stoneName}
-                      </span>
-                    </td>
+                    <td className="fw-semibold">{purity.purity_name}</td>
 
                     {/* Metal Type */}
                     <td>
                       <span className="badge bg-warning text-dark">
-                        {purity.metalType}
+                        {purity.metal_type}
                       </span>
                     </td>
 
@@ -344,17 +307,53 @@ const PurityPage = () => {
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                           onClick={() => handleOpenEdit(purity)}
+                          disabled={
+                            actionLoading.type &&
+                            actionLoading.id === purity._id
+                          }
                         >
-                          <FiEdit2 size={16} />
-                          Edit
+                          {actionLoading.type === "update" &&
+                          actionLoading.id === purity._id ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Editing...
+                            </>
+                          ) : (
+                            <>
+                              <FiEdit2 size={16} />
+                              Edit
+                            </>
+                          )}
                         </button>
 
                         <button
                           className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
                           onClick={() => handleOpenDelete(purity)}
+                          disabled={
+                            actionLoading.type &&
+                            actionLoading.id === purity._id
+                          }
                         >
-                          <RiDeleteBin6Line size={16} />
-                          Delete
+                          {actionLoading.type === "delete" &&
+                          actionLoading.id === purity._id ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <RiDeleteBin6Line size={16} />
+                              Delete
+                            </>
+                          )}
                         </button>
                       </div>
                     </td>
@@ -366,106 +365,38 @@ const PurityPage = () => {
         </div>
       </div>
 
-      {/* STATISTICS CARDS */}
-      <div className="row mt-4">
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Total Purities</h6>
-                  <h3 className="mb-0">{purities.length}</h3>
-                </div>
-                <div className="bg-primary bg-opacity-10 p-3 rounded-circle">
-                  <FiPercent className="text-primary" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Unique Stones</h6>
-                  <h3 className="mb-0">
-                    {[...new Set(purities.map(p => p.stoneName))].length}
-                  </h3>
-                </div>
-                <div className="bg-info bg-opacity-10 p-3 rounded-circle">
-                  <FiImage className="text-info" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Metal Types</h6>
-                  <h3 className="mb-0">
-                    {[...new Set(purities.map(p => p.metalType))].length}
-                  </h3>
-                </div>
-                <div className="bg-warning bg-opacity-10 p-3 rounded-circle">
-                  <FiDroplet className="text-warning" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm">
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center">
-                <div>
-                  <h6 className="text-muted mb-1">Avg. Purity</h6>
-                  <h3 className="mb-0">
-                    {purities.length > 0 
-                      ? (purities.reduce((acc, p) => acc + p.percentage, 0) / purities.length).toFixed(1)
-                      : 0}%
-                  </h3>
-                </div>
-                <div className="bg-success bg-opacity-10 p-3 rounded-circle">
-                  <FiPercent className="text-success" size={24} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ADD MODAL - Removed stones prop */}
+      {/* ADD MODAL */}
       {showAddModal && (
         <AddPurityModal
           onClose={() => setShowAddModal(false)}
           onSave={handleSave}
-          loading={loading}
+          loading={actionLoading.type === "add"}
+          metalOptions={allMetalOptions}
         />
       )}
 
-      {/* EDIT MODAL - Removed stones prop */}
+      {/* EDIT MODAL */}
       {showEditModal && selectedPurity && (
         <EditPurityModal
+          key={`edit-modal-${selectedPurity._id}`}
           show={showEditModal}
           onHide={() => {
             setShowEditModal(false);
-            setSelectedPurity(null);
+            setTimeout(() => setSelectedPurity(null), 100);
           }}
           onSubmit={handleEditPurity}
           purity={selectedPurity}
+          loading={
+            actionLoading.type === "update" &&
+            actionLoading.id === selectedPurity._id
+          }
+          metalOptions={allMetalOptions}
         />
       )}
 
       {/* DELETE MODAL */}
       {showDeleteModal && selectedPurity && (
-        <DeleteConfirmationModal />
+        <DeleteConfirmationModal key={`delete-modal-${selectedPurity._id}`} />
       )}
     </div>
   );
