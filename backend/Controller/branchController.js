@@ -2,7 +2,13 @@ import Branch from '../Models/models/Branch.js';
 
 export const createBranch = async (req, res) => {
   try {
-    const branch = await Branch.create(req.body);
+    let {location_name,location_type,address,status} = req.body;
+    const branch = await Branch.create({
+      location_name:location_name,
+      location_type:location_type,
+      address:address,
+      status:status
+    });
     console.log(branch, "created branch");
 
 

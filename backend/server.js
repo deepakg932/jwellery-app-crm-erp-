@@ -14,6 +14,7 @@ import PurityRoutes from "./routes/purityRoutes.js";
 import branchRoutes from "./routes/branchRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
 import metalRoutes from "./routes/metalRoutes.js"
+import inventorycategoryRoute from "./routes/inventorycategoryRoute.js";
 
 import hallMarkRoutes from "./routes/hallMarkRoutes.js";
 import stoneType from './routes/stoneTypeRoutes.js'
@@ -27,6 +28,8 @@ import pyurityRoutes from "./routes/pyurityRoutes.js";
 import gstRoutes from "./routes/gstRoutes.js";
 import wastageRoutes from "./routes/wastageRoutes.js";
 import wastageMaterialtypeRoutes from "./routes/wastageMaterialtypeRoutes.js";
+import inventoryItemRoute from "./routes/inventoryItemRoute.js"
+
 
 
 dotenv.config(); 
@@ -72,6 +75,8 @@ app.use("/api/stone-purity-stone",pyurityRoutes)
 app.use("/api/gst",gstRoutes)
 app.use("/api/wastage",wastageRoutes)
 app.use("/api/material-types",wastageMaterialtypeRoutes)
+app.use("/api/inventory-categories", inventorycategoryRoute);
+app.use("/api/inventory-item",inventoryItemRoute)
 
 
 

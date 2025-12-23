@@ -43,13 +43,13 @@ export const createCostType = async (req, res) => {
       return res.status(400).json({ success: false, message: "cost_type required" });
     }
 
-    // check exists
+    
     const exists = await costmaster.findOne({ cost_type });
     if (exists) {
       return res.json({ success: false, message: "Cost Type already exists" });
     }
 
-    // create new cost type
+
     const newType = await costmaster.create({ cost_type, cost_name ,sub_stage_name});
 
     // // Fetch all sub_stages with stage info
@@ -69,7 +69,7 @@ export const createCostType = async (req, res) => {
     return res.json({
       success: true,
       message: "Cost Type created",
-      data: newType,          // newly created
+      data: newType,         
     //   sub_stages: subStages,  // all sub stages
     //   cost_names: costNames   // all costnames
     });
