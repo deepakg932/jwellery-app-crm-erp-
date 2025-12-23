@@ -248,6 +248,38 @@ export const menuItems = [
       },
     ],
   },
+    {
+    key: 'inventory',
+    label: 'Inventory',
+    icon: LuShoppingBag,
+    children: [
+      {
+        key: 'dashboard',
+        label: 'Dashboard',
+        url: '/inventory/dashboard',
+      },
+      {
+        key: 'inventory-items-categories',
+        label: 'Inventory Items Categories',
+        url: '/inventory/items-categories',
+      },
+       {
+        key: 'inventory-items',
+        label: 'Inventory Items',
+        url: '/inventory/items',
+      },
+       {
+        key: 'inventory-stocks',
+        label: 'Inventory Stocks',
+        url: '/inventory/stocks',
+      },
+       {
+        key: 'inventory-movements',
+        label: 'Inventory Movements',
+        url: '/inventory/movements',
+      },
+    ],
+  },
   {
     key: 'master-data-model',
     label: 'Master Data Model',

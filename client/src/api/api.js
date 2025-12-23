@@ -1,5 +1,5 @@
 // constants/api.js
-export const API_BASE_URL = import.meta.env.REACT_APP_API_BASE_URL || "https://cvhjrjvd-5000.inc1.devtunnels.ms";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Path segments for all your APIs
 export const PATHS = {
@@ -49,7 +49,16 @@ export const PATHS = {
   // Products-related (items)
   PRODUCTS: '/api/products',
 
-  MATERIAL: '/api/material-types'
+  MATERIAL: '/api/material-types',
+
+  // inventory items category related
+
+  INVENTORY_CATEGORIES: '/api/inventory-categories',
+
+  // inventory items related
+
+  INVENTORY_ITEMS: '/api/inventory-item'
+
 };
 
 // Route names for all your endpoints
@@ -171,6 +180,21 @@ export const ROUTES = {
   CREATE_MATERIAL_TYPES: 'create-material-type',
   UPDATE_MATERIAL_TYPES: 'update-material-type',
   DELETE_MATERIAL_TYPES: 'delete-material-type',
+
+  // inventory items category routes
+
+  GET_INVENTORY_CATEGORIES: 'get-inventory-categories',
+  CREATE_INVENTORY_CATEGORY: 'create-inventory-category',
+  UPDATE_INVENTORY_CATEGORY: 'update-inventory-category',
+  DELETE_INVENTORY_CATEGORY: 'delete-inventory-category',
+
+  // inventory items routes
+  GET_INVENTORY_ITEMS: 'get-inventory-items',
+  CREATE_INVENTORY_ITEMS: 'create-inventory-item',
+  UPDATE_INVENTORY_ITEMS: 'update-inventory-item',
+  DELETE_INVENTORY_ITEMS: 'delete-inventory-item',
+
+
 };
 
 // Dynamic endpoint generator
@@ -336,10 +360,28 @@ export const API_ENDPOINTS = {
   updateGST: (id) => endpoint(PATHS.GST, ROUTES.UPDATE_GST, id),
   deleteGST: (id) => endpoint(PATHS.GST, ROUTES.DELETE_GST, id),
 
+  // ========== MATERIAL TYPE OPERATIONS ==========
+
   getMaterialTypes: () => endpoint(PATHS.MATERIAL, ROUTES.GET_MATERIAL_TYPES),
   createMaterialTypes: () => endpoint(PATHS.MATERIAL, ROUTES.CREATE_MATERIAL_TYPES),
   updateMaterialTypes: (id) => endpoint(PATHS.MATERIAL, ROUTES.UPDATE_MATERIAL_TYPES, id),
   deleteMaterialTypes: (id) => endpoint(PATHS.MATERIAL, ROUTES.DELETE_MATERIAL_TYPES, id),
+
+  // ========== INVENTORY CATEGORY OPERATIONS ==========
+
+  getInventoryCategories: () => endpoint(PATHS.INVENTORY_CATEGORIES, ROUTES.GET_INVENTORY_CATEGORIES),
+  createInventoryCategory: () => endpoint(PATHS.INVENTORY_CATEGORIES, ROUTES.CREATE_INVENTORY_CATEGORY),
+  updateInventoryCategory: (id) => endpoint(PATHS.INVENTORY_CATEGORIES, ROUTES.UPDATE_INVENTORY_CATEGORY, id),
+  deleteInventoryCategory: (id) => endpoint(PATHS.INVENTORY_CATEGORIES, ROUTES.DELETE_INVENTORY_CATEGORY, id),
+
+  // ========== INVENTORY ITEMS OPERATIONS ==========
+
+  getInventoryItems: () => endpoint(PATHS.INVENTORY_ITEMS, ROUTES.GET_INVENTORY_ITEMS),
+  createInventoryItem: () => endpoint(PATHS.INVENTORY_ITEMS, ROUTES.CREATE_INVENTORY_ITEMS),
+  updateInventoryItem: (id) => endpoint(PATHS.INVENTORY_ITEMS, ROUTES.UPDATE_INVENTORY_ITEMS, id),
+  deleteInventoryItem: (id) => endpoint(PATHS.INVENTORY_ITEMS, ROUTES.DELETE_INVENTORY_ITEMS, id),
+
+
 
 
   // ========== PRODUCT OPERATIONS ==========

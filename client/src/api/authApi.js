@@ -1,7 +1,7 @@
 // api/authApi.js
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.REACT_APP_API_BASE_URL || `https://cvhjrjvd-5000.inc1.devtunnels.ms/api/auth`;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const loginApi = async (credentials) => {
     try {

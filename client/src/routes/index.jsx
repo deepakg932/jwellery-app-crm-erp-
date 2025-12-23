@@ -49,9 +49,9 @@ const Sellers = lazy(() => import('@/views/ecommerce/sellers'));
 const SellerDetails = lazy(() => import('@/views/ecommerce/sellers/[sellerId]'));
 const Reviews = lazy(() => import('@/views/ecommerce/reviews'));
 
-// Apps
-const Inbox = lazy(() => import('@/views/apps/email/inbox'));
-const InboxDetails = lazy(() => import('@/views/apps/email/inbox/[inboxId]'));
+// inventory master
+const InvetoryCategoryPage = lazy(() => import('@/views/inventory-master/inventory-items-category'));
+const InventoryItemsPage = lazy(() => import('@/views/inventory-master/inventory-items'));
 const EmailCompose = lazy(() => import('@/views/apps/email/email-compose'));
 const EmailTemplates = lazy(() => import('@/views/apps/email/email-templates'));
 const FileManager = lazy(() => import('@/views/apps/file-manager'));
@@ -417,13 +417,7 @@ const itemsRoutes = [
   path: '/add-item',
   element: <AddItemModal />
 },
-  {
-  path: '/inbox',
-  element: <Inbox />
-}, {
-  path: '/inbox/1',
-  element: <InboxDetails />
-}, {
+{
   path: '/email-compose',
   element: <EmailCompose />
 }, {
@@ -509,12 +503,12 @@ const itemsRoutes = [
   element: <SocialFeed />
 },
 ];
-const pagesRoutes = [{
-  path: '/pages/faq',
-  element: <Faq />
+const inventoryRoutes = [{
+  path: '/inventory/items-categories',
+  element: <InvetoryCategoryPage/>
 }, {
-  path: '/pages/pricing',
-  element: <Pricing />
+  path: '/inventory/items',
+  element: <InventoryItemsPage />
 }, {
   path: '/pages/empty-page',
   element: <EmptyPage />
@@ -873,7 +867,7 @@ const allRoutes = [{
   children: [{
     path: '/',
     element: <Navigate to="/dashboard" replace />
-  }, ...dashboardRoutes, ...pruducSectionRoutes, ...itemsRoutes, ...pagesRoutes, ...miscellaneousRoutes, ...layoutRoutes, ...uiRoutes, ...componentRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
+  }, ...dashboardRoutes, ...pruducSectionRoutes, ...itemsRoutes, ...inventoryRoutes, ...miscellaneousRoutes, ...layoutRoutes, ...uiRoutes, ...componentRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
 }];
 const otherRoutes = [...authRoutes, ...errorRoutes, ...landingRoute, ...otherPagesRoutes];
 export const routes = [...allRoutes, ...otherRoutes];
