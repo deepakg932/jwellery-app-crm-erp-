@@ -1,17 +1,19 @@
 // src/models/Branch.js
 import mongoose from "mongoose";
-const BranchSchema = new mongoose.Schema(
-  {
-    location_name: { type: String, required: true, trim: true },
-    location_type: {
-      type: String,
-      enum: ["Store", "Vault", "Workshop"],
-    },
-    address: { type: String, trim: true },
-    phone: { type: String, trim: true },
-    status: { type: Boolean, default: true },
-    gstno: { type: String, trim: true },
+
+const BranchSchema = new mongoose.Schema({
+  branch_name: { type: String, trim: true },
+
+  branch_type: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "BranchType", // 🔥 REAL populate
+    required: true
   },
-  { timestamps: true }
-);
+
+  address: String,
+  phone: String,
+  status: { type: Boolean, default: true },
+  gstno: String
+}, { timestamps: true });
+
 export default mongoose.model("Branch", BranchSchema);

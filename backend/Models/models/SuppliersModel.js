@@ -5,7 +5,6 @@ const SupplierSchema = new mongoose.Schema({
   contact_person: String,
   phone: String,
   email: String,
-
   gst_no: String,
   address: String,
 

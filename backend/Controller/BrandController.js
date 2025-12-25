@@ -25,7 +25,7 @@ export const createBrand = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ status: false, message: "Server error", error: err.message});
+   return res.status(500).json({ status: false, message: "Server error", error: err.message});
   }
 };
 
