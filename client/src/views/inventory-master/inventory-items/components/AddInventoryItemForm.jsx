@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiUpload } from "react-icons/fi";
 
 const AddInventoryItemForm = ({
@@ -7,110 +7,374 @@ const AddInventoryItemForm = ({
   loading = false,
   inventoryCategories = [],
   units = [],
-  products = [],
+  metalPurities = [],
+  stonePurities = [],
+  materials = [],
 }) => {
+  // Main Form State
   const [formData, setFormData] = useState({
     item_name: "",
     inventory_category_id: "",
-    product_id: "",
+
+    // Item type: "metal", "stone", or "material"
+    item_type: "",
+
+    // For metals
+    metal_type: "",
+    metal_purity_id: "",
+    metal_purity_name: "",
+
+    // For stones
+    stone_type: "",
+    stone_purity_id: "",
+    stone_purity_name: "",
+
+    // For materials
+    material_type_id: "",
+
+    // Tracking
     track_by: "weight",
     weight: "",
     quantity: "",
     unit_id: "",
     status: true,
   });
-  
+
   const [errors, setErrors] = useState({});
 
   // Helper function to get ID
   const getId = (item) => item._id || item.id;
 
+  // Get unique metal types from metalPurities
+  const getMetalTypes = () => {
+    return [...new Set(metalPurities.map((p) => p.metal_type))]
+      .filter((type) => type)
+      .map((type) => ({
+        value: type,
+        label: type.charAt(0) + type.slice(1),
+      }));
+  };
+
+  // Get unique stone types from stonePurities
+  const getStoneTypes = () => {
+    return [...new Set(stonePurities.map((p) => p.stone_type))]
+      .filter((type) => type)
+      .map((type) => ({
+        value: type,
+        label: type.charAt(0) + type.slice(1),
+      }));
+  };
+
+  // Handle Item Type Change
+  const handleItemTypeChange = (e) => {
+    const value = e.target.value;
+
+    setFormData((prev) => ({
+      ...prev,
+      item_type: value,
+      // Reset all type-specific fields
+      metal_type: "",
+      metal_purity_id: "",
+      metal_purity_name: "",
+      stone_type: "",
+      stone_purity_id: "",
+      stone_purity_name: "",
+      material_type_id: "",
+      // Reset tracking based on item type
+      track_by: value === "stone" ? "quantity" : "weight",
+      weight: "",
+      quantity: "",
+      unit_id: "",
+    }));
+
+    // Clear errors
+    setErrors((prev) => ({
+      ...prev,
+      metal_type: "",
+      purity_id: "",
+      stone_type: "",
+      material_type_id: "",
+    }));
+  };
+
+  // Handle Metal Type Change
+  const handleMetalTypeChange = (e) => {
+    const value = e.target.value;
+
+    setFormData((prev) => ({
+      ...prev,
+      metal_type: value,
+      // Reset purity when metal type changes
+      metal_purity_id: "",
+      metal_purity_name: "",
+    }));
+
+    // Clear error
+    if (errors.metal_purity_id) {
+      setErrors((prev) => ({ ...prev, metal_purity_id: "" }));
+    }
+  };
+
+  // Handle Stone Type Change
+  const handleStoneTypeChange = (e) => {
+    const value = e.target.value;
+
+    setFormData((prev) => ({
+      ...prev,
+      stone_type: value,
+      // Reset purity when stone type changes
+      stone_purity_id: "",
+      stone_purity_name: "",
+    }));
+
+    // Clear error
+    if (errors.stone_purity_id) {
+      setErrors((prev) => ({ ...prev, stone_purity_id: "" }));
+    }
+  };
+
+  // Handle Metal Purity Change
+  const handleMetalPurityChange = (e) => {
+    const purityId = e.target.value;
+    const purity = metalPurities.find((p) => getId(p) === purityId);
+
+    setFormData((prev) => ({
+      ...prev,
+      metal_purity_id: purityId,
+      metal_purity_name: purity?.purity_name || "",
+    }));
+  };
+
+  // Handle Stone Purity Change
+  const handleStonePurityChange = (e) => {
+    const purityId = e.target.value;
+    const purity = stonePurities.find((p) => getId(p) === purityId);
+
+    setFormData((prev) => ({
+      ...prev,
+      stone_purity_id: purityId,
+      stone_purity_name: purity?.stone_purity || "",
+      // Also store the stone_type from the purity data
+      stone_type: purity?.stone_type || "",
+    }));
+  };
+
+  // Handle Material Type Change
+  const handleMaterialTypeChange = (e) => {
+    const value = e.target.value;
+
+    setFormData((prev) => ({
+      ...prev,
+      material_type_id: value,
+    }));
+  };
+
+  // Handle Other Changes
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // Form Validation
   const validateForm = () => {
     const newErrors = {};
-    
+
+    // Basic Info Validation
     if (!formData.item_name.trim()) {
       newErrors.item_name = "Item name is required";
     }
-    
+
     if (!formData.inventory_category_id) {
       newErrors.inventory_category_id = "Inventory category is required";
     }
-    
-    // Unit is always required (based on your API response)
-    if (!formData.unit_id) {
-      newErrors.unit_id = "Unit is required";
+
+    if (!formData.item_type) {
+      newErrors.item_type = "Item type is required";
     }
-    
-    if (formData.track_by === "weight" || formData.track_by === "both") {
-      if (!formData.weight || parseFloat(formData.weight) <= 0) {
-        newErrors.weight = "Weight must be greater than 0";
+
+    // Type-specific validation
+    if (formData.item_type === "metal") {
+      if (!formData.metal_type) {
+        newErrors.metal_type = "Metal type is required";
+      }
+      if (!formData.metal_purity_id) {
+        newErrors.metal_purity_id = "Metal purity is required";
+      }
+    } else if (formData.item_type === "stone") {
+      if (!formData.stone_type) {
+        newErrors.stone_type = "Stone type is required";
+      }
+      if (!formData.stone_purity_id) {
+        newErrors.stone_purity_id = "Stone purity is required";
+      }
+    } else if (formData.item_type === "material") {
+      if (!formData.material_type_id) {
+        newErrors.material_type_id = "Material type is required";
       }
     }
-    
-    if (formData.track_by === "quantity" || formData.track_by === "both") {
+
+    // Tracking Validation - DIFFERENT FOR STONES
+    if (formData.item_type !== "stone") {
+      // For metals and materials, validate weight/unit
+      if (formData.track_by === "weight" && !formData.unit_id) {
+        newErrors.unit_id = "Unit is required";
+      }
+
+      if (formData.track_by === "weight") {
+        if (!formData.weight || parseFloat(formData.weight) <= 0) {
+          newErrors.weight = "Weight must be greater than 0";
+        }
+      }
+    }
+
+    // Quantity validation for all types when track_by is quantity
+    if (formData.track_by === "quantity") {
       if (!formData.quantity || parseInt(formData.quantity) <= 0) {
         newErrors.quantity = "Quantity must be greater than 0";
       }
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  // Form Submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
-    console.log("Form data before submission:", formData);
-    
-    const payload = {
+
+    // Prepare payload based on Postman structure
+    let payload = {
       item_name: formData.item_name.trim(),
       inventory_category_id: formData.inventory_category_id,
-      product_id: formData.product_id || null,
       track_by: formData.track_by,
-      weight: formData.track_by === "quantity" ? null : parseFloat(formData.weight) || null,
-      quantity: formData.track_by === "weight" ? null : parseInt(formData.quantity) || null,
-      unit_id: formData.unit_id,
-      status: formData.status
+      status: formData.status,
     };
-    
+
+    // Add type-specific data
+    if (formData.item_type === "metal") {
+      payload.metal_type = formData.metal_type;
+      payload.metal_type_name =
+        formData.metal_type.charAt(0) + formData.metal_type.slice(1);
+      payload.metal_purity_name = formData.metal_purity_name;
+      // For metals, send both weight and unit if applicable
+      if (formData.track_by === "weight" || formData.track_by === "both") {
+        payload.weight = parseFloat(formData.weight) || null;
+        if (formData.unit_id) {
+          payload.unit_id = formData.unit_id;
+        }
+      }
+      if (formData.track_by === "quantity" || formData.track_by === "both") {
+        payload.quantity = parseInt(formData.quantity) || null;
+      }
+    } else if (formData.item_type === "stone") {
+      // For stones, we need to send stone_type (not stone_type_name)
+      payload.stone_type = formData.stone_type;
+      payload.stone_purity_name = formData.stone_purity_name;
+
+      // Try sending stone_purity_id instead of/in addition to name
+      if (formData.stone_purity_id) {
+        payload.stone_purity_id = formData.stone_purity_id;
+      }
+
+      // For stones, always send quantity
+      payload.quantity = parseInt(formData.quantity) || null;
+
+      // Don't send weight or unit_id for stones
+    } else if (formData.item_type === "material") {
+      payload.material_type_id = formData.material_type_id;
+      // For materials
+      if (formData.track_by === "weight" || formData.track_by === "both") {
+        payload.weight = parseFloat(formData.weight) || null;
+        if (formData.unit_id) {
+          payload.unit_id = formData.unit_id;
+        }
+      }
+      if (formData.track_by === "quantity" || formData.track_by === "both") {
+        payload.quantity = parseInt(formData.quantity) || null;
+      }
+    }
+
     console.log("Submitting inventory item payload:", payload);
     onSave(payload);
-    
-    // Reset form
-    setFormData({
-      item_name: "",
-      inventory_category_id: "",
-      product_id: "",
-      track_by: "weight",
-      weight: "",
-      quantity: "",
-      unit_id: "",
-      status: true,
-    });
-    setErrors({});
   };
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    console.log(`Field ${name} changed to:`, value);
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ""
-      }));
+  const handleClose = () => {
+    if (!loading) onClose();
+  };
+
+  // Get filtered metal purities based on selected metal type
+  const getFilteredMetalPurities = () => {
+    if (formData.metal_type) {
+      return metalPurities.filter(
+        (p) => p.metal_type?.toLowerCase() === formData.metal_type.toLowerCase()
+      );
     }
+    return [];
+  };
+
+  // Get filtered stone purities based on selected stone type
+  const getFilteredStonePurities = () => {
+    if (formData.stone_type) {
+      return stonePurities.filter(
+        (p) => p.stone_type?.toLowerCase() === formData.stone_type.toLowerCase()
+      );
+    }
+    return [];
+  };
+
+  // Get appropriate units based on item type
+  const getFilteredUnits = () => {
+    if (formData.item_type === "stone") {
+      // Return empty array for stones (no units needed)
+      return [];
+    } else if (formData.item_type === "metal") {
+      return units.filter((unit) => unit.name);
+    } else if (formData.item_type === "material") {
+      return units.filter((unit) => unit.name);
+    }
+    return units;
+  };
+
+  // Get available item types
+  const getAvailableItemTypes = () => {
+    const types = [];
+    if (getMetalTypes().length > 0)
+      types.push({ value: "metal", label: "Metal" });
+    if (getStoneTypes().length > 0)
+      types.push({ value: "stone", label: "Stone" });
+    if (materials.length > 0)
+      types.push({ value: "material", label: "Material" });
+    return types;
+  };
+
+  // Check if weight should be shown
+  const showWeight = () => {
+    if (formData.item_type === "stone") return false;
+    return formData.track_by === "weight" || formData.track_by === "both";
+  };
+
+  // Check if unit should be shown
+  const showUnit = () => {
+    if (formData.item_type === "stone") return false;
+    return formData.track_by === "weight" || formData.track_by === "both";
+  };
+
+  // Check if quantity should be shown
+  const showQuantity = () => {
+    return formData.track_by === "quantity" || formData.track_by === "both";
   };
 
   return (
@@ -126,9 +390,7 @@ const AddInventoryItemForm = ({
             <button
               type="button"
               className="btn-close"
-              onClick={() => {
-                if (!loading) onClose();
-              }}
+              onClick={handleClose}
               disabled={loading}
               aria-label="Close"
             ></button>
@@ -144,8 +406,10 @@ const AddInventoryItemForm = ({
                 <input
                   type="text"
                   name="item_name"
-                  className={`form-control form-control-lg ${errors.item_name ? 'is-invalid' : ''}`}
-                  placeholder="Enter item name"
+                  className={`form-control form-control-lg ${
+                    errors.item_name ? "is-invalid" : ""
+                  }`}
+                  placeholder="e.g., Gold 22K Ring, Diamond Earring, Production Item"
                   value={formData.item_name}
                   onChange={handleChange}
                   disabled={loading}
@@ -155,59 +419,211 @@ const AddInventoryItemForm = ({
                 )}
               </div>
 
-              {/* Inventory Category Dropdown */}
+              {/* Inventory Category */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
                   Inventory Category <span className="text-danger">*</span>
                 </label>
                 <select
                   name="inventory_category_id"
-                  className={`form-select form-select-lg ${errors.inventory_category_id ? 'is-invalid' : ''}`}
+                  className={`form-select form-select-lg ${
+                    errors.inventory_category_id ? "is-invalid" : ""
+                  }`}
                   value={formData.inventory_category_id}
                   onChange={handleChange}
                   disabled={loading || inventoryCategories.length === 0}
                 >
                   <option value="">Select Inventory Category</option>
                   {inventoryCategories.map((category) => (
-                    <option 
-                      key={`category-${getId(category)}`} 
-                      value={getId(category)} // Use the actual ID
-                    >
+                    <option key={getId(category)} value={getId(category)}>
                       {category.name}
                     </option>
                   ))}
                 </select>
                 {errors.inventory_category_id && (
-                  <div className="invalid-feedback">{errors.inventory_category_id}</div>
-                )}
-                {inventoryCategories.length === 0 && !loading && (
-                  <div className="form-text text-warning">
-                    No inventory categories available. Please add inventory categories first.
+                  <div className="invalid-feedback">
+                    {errors.inventory_category_id}
                   </div>
                 )}
               </div>
 
-              {/* Product Link (Optional) */}
+              {/* Item Type Selection */}
               <div className="mb-3">
-                <label className="form-label fw-medium">Product (Optional)</label>
+                <label className="form-label fw-medium">
+                  Item Type <span className="text-danger">*</span>
+                </label>
                 <select
-                  name="product_id"
-                  className="form-select form-select-lg"
-                  value={formData.product_id}
-                  onChange={handleChange}
-                  disabled={loading}
+                  name="item_type"
+                  className={`form-select form-select-lg ${
+                    errors.item_type ? "is-invalid" : ""
+                  }`}
+                  value={formData.item_type}
+                  onChange={handleItemTypeChange}
+                  disabled={loading || getAvailableItemTypes().length === 0}
                 >
-                  <option value="">Select Product (Optional)</option>
-                  {products.map((product) => (
-                    <option 
-                      key={`product-${getId(product)}`} 
-                      value={getId(product)} // Use the actual ID
-                    >
-                      {product.name}
+                  <option value="">Select Item Type</option>
+                  {getAvailableItemTypes().map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
                     </option>
                   ))}
                 </select>
+                {errors.item_type && (
+                  <div className="invalid-feedback">{errors.item_type}</div>
+                )}
               </div>
+
+              {/* Metal Type Selection */}
+              {formData.item_type === "metal" && (
+                <div className="mb-3">
+                  <label className="form-label fw-medium">
+                    Metal Type <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="metal_type"
+                    className={`form-select form-select-lg ${
+                      errors.metal_type ? "is-invalid" : ""
+                    }`}
+                    value={formData.metal_type}
+                    onChange={handleMetalTypeChange}
+                    disabled={loading || getMetalTypes().length === 0}
+                  >
+                    <option value="">Select Metal Type</option>
+                    {getMetalTypes().map((metal) => (
+                      <option key={`metal-${metal.value}`} value={metal.value}>
+                        {metal.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.metal_type && (
+                    <div className="invalid-feedback">{errors.metal_type}</div>
+                  )}
+                </div>
+              )}
+
+              {/* Metal Purity Selection */}
+              {formData.item_type === "metal" && formData.metal_type && (
+                <div className="mb-3">
+                  <label className="form-label fw-medium">
+                    Metal Purity <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="metal_purity_id"
+                    className={`form-select form-select-lg ${
+                      errors.metal_purity_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.metal_purity_id}
+                    onChange={handleMetalPurityChange}
+                    disabled={
+                      loading || getFilteredMetalPurities().length === 0
+                    }
+                  >
+                    <option value="">Select Metal Purity</option>
+                    {getFilteredMetalPurities().map((purity) => (
+                      <option key={getId(purity)} value={getId(purity)}>
+                        {purity.purity_name}
+                        {purity.percentage ? ` (${purity.percentage}%)` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.metal_purity_id && (
+                    <div className="invalid-feedback">
+                      {errors.metal_purity_id}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Stone Type Selection */}
+              {formData.item_type === "stone" && (
+                <div className="mb-3">
+                  <label className="form-label fw-medium">
+                    Stone Type <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="stone_type"
+                    className={`form-select form-select-lg ${
+                      errors.stone_type ? "is-invalid" : ""
+                    }`}
+                    value={formData.stone_type}
+                    onChange={handleStoneTypeChange}
+                    disabled={loading || getStoneTypes().length === 0}
+                  >
+                    <option value="">Select Stone Type</option>
+                    {getStoneTypes().map((stone) => (
+                      <option key={`stone-${stone.value}`} value={stone.value}>
+                        {stone.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.stone_type && (
+                    <div className="invalid-feedback">{errors.stone_type}</div>
+                  )}
+                </div>
+              )}
+
+              {/* Stone Purity Selection */}
+              {formData.item_type === "stone" && formData.stone_type && (
+                <div className="mb-3">
+                  <label className="form-label fw-medium">
+                    Stone Purity <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="stone_purity_id"
+                    className={`form-select form-select-lg ${
+                      errors.stone_purity_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.stone_purity_id}
+                    onChange={handleStonePurityChange}
+                    disabled={
+                      loading || getFilteredStonePurities().length === 0
+                    }
+                  >
+                    <option value="">Select Stone Purity</option>
+                    {getFilteredStonePurities().map((purity) => (
+                      <option key={getId(purity)} value={getId(purity)}>
+                        {purity.stone_purity}
+                        {purity.percentage ? ` (${purity.percentage}%)` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.stone_purity_id && (
+                    <div className="invalid-feedback">
+                      {errors.stone_purity_id}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Material Type Selection */}
+              {formData.item_type === "material" && (
+                <div className="mb-3">
+                  <label className="form-label fw-medium">
+                    Material Type <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="material_type_id"
+                    className={`form-select form-select-lg ${
+                      errors.material_type_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.material_type_id}
+                    onChange={handleMaterialTypeChange}
+                    disabled={loading || materials.length === 0}
+                  >
+                    <option value="">Select Material Type</option>
+                    {materials.map((material) => (
+                      <option key={material._id} value={material._id}>
+                        {material.material_type}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.material_type_id && (
+                    <div className="invalid-feedback">
+                      {errors.material_type_id}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Track By */}
               <div className="mb-3">
@@ -224,7 +640,7 @@ const AddInventoryItemForm = ({
                       value="weight"
                       checked={formData.track_by === "weight"}
                       onChange={handleChange}
-                      disabled={loading}
+                      disabled={loading || formData.item_type === "stone"}
                     />
                     <label className="form-check-label" htmlFor="trackWeight">
                       Weight
@@ -254,28 +670,44 @@ const AddInventoryItemForm = ({
                       value="both"
                       checked={formData.track_by === "both"}
                       onChange={handleChange}
-                      disabled={loading}
+                      disabled={loading || formData.item_type === "stone"}
                     />
                     <label className="form-check-label" htmlFor="trackBoth">
                       Both
                     </label>
                   </div>
                 </div>
+                <small className="text-muted">
+                  {formData.item_type === "stone"
+                    ? "Stones are tracked by quantity only"
+                    : "Metals and materials can be tracked by weight or quantity"}
+                </small>
               </div>
 
-              {/* Weight (conditional) */}
-              {(formData.track_by === "weight" || formData.track_by === "both") && (
+              {/* Weight - Don't show for stones */}
+              {showWeight() && (
                 <div className="mb-3">
                   <label className="form-label fw-medium">
-                    Weight {formData.track_by === "both" && <span className="text-danger">*</span>}
+                    Weight{" "}
+                    {formData.track_by === "weight" ? (
+                      <span className="text-danger">*</span>
+                    ) : (
+                      ""
+                    )}
                   </label>
                   <input
                     type="number"
                     name="weight"
                     step="0.01"
                     min="0"
-                    className={`form-control form-control-lg ${errors.weight ? 'is-invalid' : ''}`}
-                    placeholder="Enter weight"
+                    className={`form-control form-control-lg ${
+                      errors.weight ? "is-invalid" : ""
+                    }`}
+                    placeholder={
+                      formData.item_type === "metal"
+                        ? "Enter weight in grams"
+                        : "Enter weight"
+                    }
                     value={formData.weight}
                     onChange={handleChange}
                     disabled={loading}
@@ -286,17 +718,24 @@ const AddInventoryItemForm = ({
                 </div>
               )}
 
-              {/* Quantity (conditional) */}
-              {(formData.track_by === "quantity" || formData.track_by === "both") && (
+              {/* Quantity - Show for all types */}
+              {showQuantity() && (
                 <div className="mb-3">
                   <label className="form-label fw-medium">
-                    Quantity {formData.track_by === "both" && <span className="text-danger">*</span>}
+                    Quantity{" "}
+                    {formData.track_by === "quantity" ? (
+                      <span className="text-danger">*</span>
+                    ) : (
+                      ""
+                    )}
                   </label>
                   <input
                     type="number"
                     name="quantity"
                     min="0"
-                    className={`form-control form-control-lg ${errors.quantity ? 'is-invalid' : ''}`}
+                    className={`form-control form-control-lg ${
+                      errors.quantity ? "is-invalid" : ""
+                    }`}
                     placeholder="Enter quantity"
                     value={formData.quantity}
                     onChange={handleChange}
@@ -308,39 +747,44 @@ const AddInventoryItemForm = ({
                 </div>
               )}
 
-              {/* Unit Dropdown (always shows based on your API) */}
-              {(formData.track_by === "weight" || formData.track_by === "both") && (
-              <div className="mb-3">
-                <label className="form-label fw-medium">
-                  Unit <span className="text-danger">*</span>
-                </label>
-                <select
-                  name="unit_id"
-                  className={`form-select form-select-lg ${errors.unit_id ? 'is-invalid' : ''}`}
-                  value={formData.unit_id}
-                  onChange={handleChange}
-                  disabled={loading || units.length === 0}
-                >
-                  <option value="">Select Unit</option>
-                  {units.map((unit) => (
-                    <option 
-                      key={`unit-${getId(unit)}`} 
-                      value={getId(unit)} // Use the actual ID
-                    >
-                      {unit.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.unit_id && (
-                  <div className="invalid-feedback">{errors.unit_id}</div>
-                )}
-                {units.length === 0 && !loading && (
-                  <div className="form-text text-warning">
-                    No units available. Please add units first.
-                  </div>
-                )}
-              </div>
- )}
+              {/* Unit - Don't show for stones */}
+              {showUnit() && (
+                <div className="mb-3">
+                  <label className="form-label fw-medium">
+                    Unit{" "}
+                    {formData.track_by === "weight" ? (
+                      <span className="text-danger">*</span>
+                    ) : (
+                      ""
+                    )}
+                  </label>
+                  <select
+                    name="unit_id"
+                    className={`form-select form-select-lg ${
+                      errors.unit_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.unit_id}
+                    onChange={handleChange}
+                    disabled={loading || getFilteredUnits().length === 0}
+                  >
+                    <option value="">Select Unit</option>
+                    {getFilteredUnits().map((unit) => (
+                      <option key={getId(unit)} value={getId(unit)}>
+                        {unit.name} {unit.symbol ? `(${unit.symbol})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.unit_id && (
+                    <div className="invalid-feedback">{errors.unit_id}</div>
+                  )}
+                  <small className="text-muted">
+                    {formData.item_type === "metal"
+                      ? "Select grams (g) for metals"
+                      : "Select appropriate unit"}
+                  </small>
+                </div>
+              )}
+
               {/* Status */}
               <div className="mb-3">
                 <div className="form-check form-switch">
@@ -354,7 +798,10 @@ const AddInventoryItemForm = ({
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  <label className="form-check-label fw-medium" htmlFor="itemStatus">
+                  <label
+                    className="form-check-label fw-medium"
+                    htmlFor="itemStatus"
+                  >
                     Status (Active/Inactive)
                   </label>
                 </div>
@@ -365,9 +812,7 @@ const AddInventoryItemForm = ({
               <button
                 type="button"
                 className="btn btn-outline-secondary"
-                onClick={() => {
-                  if (!loading) onClose();
-                }}
+                onClick={handleClose}
                 disabled={loading}
               >
                 Cancel

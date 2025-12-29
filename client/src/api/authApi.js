@@ -5,7 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const loginApi = async (credentials) => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/login`, credentials);
+        const response = await axios.post(`${API_BASE_URL}/api/auth/login`, credentials);
         return response.data;
     } catch (error) {
         throw error;
@@ -15,7 +15,7 @@ export const loginApi = async (credentials) => {
 export const registerApi = async (userData) => {
     try {
         const response = await axios.post(
-            `${API_BASE_URL}/register`,
+            `${API_BASE_URL}/api/auth/register`,
             userData,
             {
                 headers: {
