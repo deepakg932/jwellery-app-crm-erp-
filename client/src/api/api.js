@@ -57,7 +57,22 @@ export const PATHS = {
 
   // inventory items related
 
-  INVENTORY_ITEMS: '/api/inventory-item'
+  INVENTORY_ITEMS: '/api/inventory-item',
+
+  // In branches type
+  BRANCH_TYPES: '/api/branches',
+
+  // In branches
+  BRANCHES: '/api/branches',
+
+  // In suppliers
+  SUPPLIERS: '/api/supplier',
+
+  // Purchase Orders
+  PURCHASE_ORDERS: '/api/purchase-orders',
+
+  // Stock IN - GRNS
+  GRNS: '/api/grns',
 
 };
 
@@ -193,6 +208,38 @@ export const ROUTES = {
   CREATE_INVENTORY_ITEMS: 'create-inventory-item',
   UPDATE_INVENTORY_ITEMS: 'update-inventory-item',
   DELETE_INVENTORY_ITEMS: 'delete-inventory-item',
+
+  // In branch type routes object:
+  GET_BRANCH_TYPES: 'all-branch-types',
+  CREATE_BRANCH_TYPE: 'create-branch-type',
+  UPDATE_BRANCH_TYPE: 'update-branch-type',
+  DELETE_BRANCH_TYPE: 'delete-branch-type',
+
+  // In branch ROUTES object:
+  GET_BRANCHES: 'get-branches',
+  CREATE_BRANCH: 'create-branch',
+  UPDATE_BRANCH: 'update-branch',
+  DELETE_BRANCH: 'delete-branch',
+
+  // In suppliers routes object:
+  GET_SUPPLIERS: 'get-suppliers',
+  CREATE_SUPPLIER: 'create-supplier',
+  UPDATE_SUPPLIER: 'update-supplier',
+  DELETE_SUPPLIER: 'delete-supplier',
+
+  // Purchase Order routes
+  GET_PURCHASE_ORDERS: 'get-purchase-orders',
+  CREATE_PURCHASE_ORDER: 'create-purchase-order',
+  UPDATE_PURCHASE_ORDER: 'update-purchase-order',
+  DELETE_PURCHASE_ORDER: 'delete-purchase-order',
+  GET_PURCHASE_ORDER_BY_ID: 'get-purchase-order',
+
+  // Stock IN - GRNS routes
+  GET_GRNS: 'get-grns',
+  CREATE_GRN: 'create-grn',
+  UPDATE_GRN: 'update-grn',
+  DELETE_GRN: 'delete-grn',
+  GET_GRN_BY_ID: 'get-grn',
 
 
 };
@@ -381,7 +428,38 @@ export const API_ENDPOINTS = {
   updateInventoryItem: (id) => endpoint(PATHS.INVENTORY_ITEMS, ROUTES.UPDATE_INVENTORY_ITEMS, id),
   deleteInventoryItem: (id) => endpoint(PATHS.INVENTORY_ITEMS, ROUTES.DELETE_INVENTORY_ITEMS, id),
 
+  // ==============  FOR BRANCH TYPES ==============
+  getBranchTypes: () => endpoint(PATHS.BRANCH_TYPES, ROUTES.GET_BRANCH_TYPES),
+  createBranchType: () => endpoint(PATHS.BRANCH_TYPES, ROUTES.CREATE_BRANCH_TYPE),
+  updateBranchType: (id) => endpoint(PATHS.BRANCH_TYPES, ROUTES.UPDATE_BRANCH_TYPE, id),
+  deleteBranchType: (id) => endpoint(PATHS.BRANCH_TYPES, ROUTES.DELETE_BRANCH_TYPE, id),
 
+
+  // In API_ENDPOINTS object:
+  getBranches: () => endpoint(PATHS.BRANCHES, ROUTES.GET_BRANCHES),
+  createBranch: () => endpoint(PATHS.BRANCHES, ROUTES.CREATE_BRANCH),
+  updateBranch: (id) => endpoint(PATHS.BRANCHES, ROUTES.UPDATE_BRANCH, id),
+  deleteBranch: (id) => endpoint(PATHS.BRANCHES, ROUTES.DELETE_BRANCH, id),
+
+  // ========== SUPPLIER OPERATIONS ==========
+  getSuppliers: () => endpoint(PATHS.SUPPLIERS, ROUTES.GET_SUPPLIERS),
+  createSupplier: () => endpoint(PATHS.SUPPLIERS, ROUTES.CREATE_SUPPLIER),
+  updateSupplier: (id) => endpoint(PATHS.SUPPLIERS, ROUTES.UPDATE_SUPPLIER, id),
+  deleteSupplier: (id) => endpoint(PATHS.SUPPLIERS, ROUTES.DELETE_SUPPLIER, id),
+
+  // ========== PURCHASE ORDER OPERATIONS ==========
+  getPurchaseOrders: () => endpoint(PATHS.PURCHASE_ORDERS, ROUTES.GET_PURCHASE_ORDERS),
+  getPurchaseOrderById: (id) => endpoint(PATHS.PURCHASE_ORDERS, ROUTES.GET_PURCHASE_ORDER_BY_ID, id),
+  createPurchaseOrder: () => endpoint(PATHS.PURCHASE_ORDERS, ROUTES.CREATE_PURCHASE_ORDER),
+  updatePurchaseOrder: (id) => endpoint(PATHS.PURCHASE_ORDERS, ROUTES.UPDATE_PURCHASE_ORDER, id),
+  deletePurchaseOrder: (id) => endpoint(PATHS.PURCHASE_ORDERS, ROUTES.DELETE_PURCHASE_ORDER, id),
+
+  // ========== STOCK IN - GRN OPERATIONS ==========
+  getGRNs: () => endpoint(PATHS.GRNS, ROUTES.GET_GRNS),
+  getGRNById: (id) => endpoint(PATHS.GRNS, ROUTES.GET_GRN_BY_ID, id),
+  createGRN: () => endpoint(PATHS.GRNS, ROUTES.CREATE_GRN),
+  updateGRN: (id) => endpoint(PATHS.GRNS, ROUTES.UPDATE_GRN, id),
+  deleteGRN: (id) => endpoint(PATHS.GRNS, ROUTES.DELETE_GRN, id),
 
 
   // ========== PRODUCT OPERATIONS ==========

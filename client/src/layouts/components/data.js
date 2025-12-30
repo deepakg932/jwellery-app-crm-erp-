@@ -268,6 +268,32 @@ export const menuItems = [
         label: 'Inventory Items',
         url: '/inventory/items',
       },
+      {
+        key: 'branch-type',
+        label: 'Branch Type',
+        url: '/inventory/branch-type',
+      },
+       {
+        key: 'branch',
+        label: 'Branch',
+        url: '/inventory/branch',
+      },
+      {
+        key: 'suppliers',
+        label: 'Suppliers',
+        url: '/inventory/suppliers',
+      },
+       {
+        key: 'purchase-orders',
+        label: 'Purchase Orders',
+        url: '/inventory/purchase-orders',
+      },
+      {
+        key: 'stock-in',
+        label: 'Stock In',
+        url: '/inventory/stock-in',
+      },
+
        {
         key: 'inventory-stocks',
         label: 'Inventory Stocks',

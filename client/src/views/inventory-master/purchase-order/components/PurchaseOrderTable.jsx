@@ -1,69 +1,54 @@
-import { useState, useEffect } from "react";
-import {
-  FiEdit2,
-  FiSearch,
-  FiPlus,
-  FiChevronLeft,
-  FiChevronRight,
-  FiChevronsLeft,
+import React, { useState, useEffect } from "react";
+import { 
+  FiEdit2, 
+  FiSearch, 
+  FiPlus, 
+  FiChevronLeft, 
+  FiChevronRight, 
+  FiChevronsLeft, 
   FiChevronsRight,
+  FiCalendar,
+  FiEye
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
-import AddInventoryItemModal from "./AddInventoryItemForm";
-import EditInventoryItemModal from "./EditInventoryItemForm";
-import useInventoryItems from "@/hooks/useInventoryItems";
+import AddPurchaseOrderForm from "./AddPurchaseOrderForm";
+import EditPurchaseOrderForm from "./EditPurchaseOrderForm";
+import ViewPurchaseOrderModal from "./ViewPurchaseOrderModal"; // Add this import
+import usePurchaseOrders from "@/hooks/usePurchaseOrders";
 
-const InventoryItemTable = () => {
+const PurchaseOrderTable = () => {
   const {
-    items,
-    inventoryCategories,
-    units,
-    metalPurities,
-    stonePurities,
-    materials,
+    purchaseOrders,
     loading,
-    addInventoryItem,
-    updateInventoryItem,
-    deleteInventoryItem,
-  } = useInventoryItems();
+    error,
+    addPurchaseOrder,
+    updatePurchaseOrder,
+    deletePurchaseOrder,
+    fetchPurchaseOrders,
+  } = usePurchaseOrders();
 
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false); // Add this state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
-
+  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Filter items based on search
-  const filtered = items.filter(
-    (item) =>
-      item.item_name?.toLowerCase().includes(search.toLowerCase()) ||
-      item.inventory_category_name
-        ?.toLowerCase()
-        .includes(search.toLowerCase()) ||
-      // Search in metals
-      (item.metals &&
-        item.metals.some(
-          (metal) =>
-            metal.metal_id?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            metal.purity_name?.toLowerCase().includes(search.toLowerCase())
-        )) ||
-      // Search in stones
-      (item.stones &&
-        item.stones.some(
-          (stone) =>
-            stone.stone_id?.stone_type?.toLowerCase().includes(search.toLowerCase()) ||
-            stone.stone_purity_name?.toLowerCase().includes(search.toLowerCase())
-        )) ||
-      // Search in materials
-      item.material_type_name?.toLowerCase().includes(search.toLowerCase()) ||
-      // Search in tracking values
-      (item.track_by === "weight" && item.total_weight?.toString().includes(search)) ||
-      (item.track_by === "quantity" && item.total_quantity?.toString().includes(search))
+  // Filter purchase orders based on search
+  const filteredPurchaseOrders = purchaseOrders.filter(
+    (po) =>
+      po.order_number?.toLowerCase().includes(search.toLowerCase()) ||
+      po.supplier?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      po.status?.toLowerCase().includes(search.toLowerCase()) ||
+      po.items?.some(item => 
+        item.inventory_item_id?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        item.inventory_item?.name?.toLowerCase().includes(search.toLowerCase())
+      )
   );
 
   // Reset to first page when search changes
@@ -72,19 +57,31 @@ const InventoryItemTable = () => {
   }, [search]);
 
   // Calculate pagination
-  const totalItems = filtered.length;
+  const totalItems = filteredPurchaseOrders.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-
+  
   // Get current items for the page
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  const currentPurchaseOrders = filteredPurchaseOrders.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Add new inventory item
-  const handleAddItem = async (itemData) => {
+  // Calculate totals for each purchase order
+  const calculateTotal = (items) => {
+    if (!items) return 0;
+    return items.reduce((total, item) => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const weight = parseFloat(item.weight) || 0;
+      const rate = parseFloat(item.rate) || 0;
+      const amount = quantity > 0 ? quantity : weight;
+      return total + (amount * rate);
+    }, 0);
+  };
+
+  // Add new purchase order
+  const handleAddPurchaseOrder = async (purchaseOrderData) => {
     setActionLoading({ type: "add", id: null });
     try {
-      await addInventoryItem(itemData);
+      await addPurchaseOrder(purchaseOrderData);
       setShowAddModal(false);
     } catch (error) {
       console.error("Add failed:", error);
@@ -93,13 +90,13 @@ const InventoryItemTable = () => {
     }
   };
 
-  // Edit inventory item
-  const handleEditItem = async (updatedItem) => {
+  // Edit purchase order
+  const handleEditPurchaseOrder = async (updatedPurchaseOrder) => {
     if (!selectedItem) return;
 
     setActionLoading({ type: "update", id: selectedItem._id });
     try {
-      await updateInventoryItem(selectedItem._id, updatedItem);
+      await updatePurchaseOrder(selectedItem._id, updatedPurchaseOrder);
       setShowEditModal(false);
       setSelectedItem(null);
     } catch (error) {
@@ -109,13 +106,13 @@ const InventoryItemTable = () => {
     }
   };
 
-  // Delete inventory item
-  const handleDeleteItem = async () => {
+  // Delete purchase order
+  const handleDeletePurchaseOrder = async () => {
     if (!selectedItem) return;
 
     setActionLoading({ type: "delete", id: selectedItem._id });
     try {
-      await deleteInventoryItem(selectedItem._id);
+      await deletePurchaseOrder(selectedItem._id);
       setShowDeleteModal(false);
       setSelectedItem(null);
     } catch (error) {
@@ -125,16 +122,27 @@ const InventoryItemTable = () => {
     }
   };
 
+  // Open view modal
+  const handleOpenView = (purchaseOrder) => {
+    setSelectedItem(purchaseOrder);
+    setShowViewModal(true);
+  };
+
   // Open edit modal
-  const handleOpenEdit = (item) => {
-    setSelectedItem(item);
+  const handleOpenEdit = (purchaseOrder) => {
+    setSelectedItem(purchaseOrder);
     setShowEditModal(true);
   };
 
   // Open delete modal
-  const handleOpenDelete = (item) => {
-    setSelectedItem(item);
+  const handleOpenDelete = (purchaseOrder) => {
+    setSelectedItem(purchaseOrder);
     setShowDeleteModal(true);
+  };
+
+  // Handle refresh
+  const handleRefresh = () => {
+    fetchPurchaseOrders();
   };
 
   // Pagination handlers
@@ -153,7 +161,7 @@ const InventoryItemTable = () => {
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 5;
-
+    
     if (totalPages <= maxPagesToShow) {
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
@@ -161,105 +169,59 @@ const InventoryItemTable = () => {
     } else {
       let startPage = Math.max(1, currentPage - 2);
       let endPage = Math.min(totalPages, currentPage + 2);
-
+      
       if (currentPage <= 3) {
         endPage = maxPagesToShow;
       } else if (currentPage >= totalPages - 2) {
         startPage = totalPages - maxPagesToShow + 1;
       }
-
+      
       for (let i = startPage; i <= endPage; i++) {
         pageNumbers.push(i);
       }
     }
-
+    
     return pageNumbers;
   };
 
-  // Format track by display
-  const formatTrackBy = (trackBy) => {
-    switch (trackBy) {
-      case "weight":
-        return "Weight";
-      case "quantity":
-        return "Quantity";
-      case "both":
-        return "Both";
-      default:
-        return trackBy;
-    }
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   };
 
-  // Get item type
-  const getItemType = (item) => {
-    if (item.metals && item.metals.length > 0) return "Metal";
-    if (item.stones && item.stones.length > 0) return "Stone";
-    if (item.material_type_name) return "Material";
-    return "Unknown";
+  // Get item count with details
+  const getItemDetails = (items) => {
+    if (!items || items.length === 0) return "0 items";
+    
+    const itemCount = items.length;
+    const quantitySum = items.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0);
+    const weightSum = items.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
+    
+    let details = `${itemCount} item${itemCount > 1 ? 's' : ''}`;
+    if (quantitySum > 0) details += `, ${quantitySum} qty`;
+    if (weightSum > 0) details += `, ${weightSum} wt`;
+    
+    return details;
   };
 
-  // Get item details
-  const getItemDetails = (item) => {
-    if (item.metals && item.metals.length > 0) {
-      const metal = item.metals[0];
-      return {
-        type: "Metal",
-        name: metal.metal_id?.name || metal.metal_id || "Unknown Metal",
-        purity: metal.purity_name || "N/A",
-        weight: metal.metal_weight,
-        quantity: item.total_quantity || item.quantity,
-      };
-    }
+  // Get item names
+  const getItemNames = (items) => {
+    if (!items || items.length === 0) return "No items";
     
-    if (item.stones && item.stones.length > 0) {
-      const stone = item.stones[0];
-      return {
-        type: "Stone",
-        name: stone.stone_id?.stone_type || stone.stone_id || "Unknown Stone",
-        purity: stone.stone_purity_name || stone.stone_purity_id?.stone_purity || "N/A",
-        quantity: stone.stone_quantity || item.total_quantity || item.quantity,
-      };
-    }
+    const names = items.map(item => {
+      return item.inventory_item_id?.name || item.inventory_item?.name || "Unknown Item";
+    });
     
-    if (item.material_type_name) {
-      return {
-        type: "Material",
-        name: item.material_type_name,
-        weight: item.total_weight || item.weight,
-        quantity: item.total_quantity || item.quantity,
-      };
-    }
-    
-    return { type: "Unknown", name: "No details" };
-  };
-
-  // Format values display
-  const formatValues = (item) => {
-    const details = getItemDetails(item);
-    
-    if (item.track_by === "weight") {
-      return `${item.total_weight || item.weight || 0} ${item.unit_name || ""}`;
-    } else if (item.track_by === "quantity") {
-      return `${item.total_quantity || item.quantity || 0} ${details.type === "Stone" ? "pcs" : item.unit_name || ""}`;
-    } else if (item.track_by === "both") {
-      return `${item.total_weight || item.weight || 0} ${item.unit_name || ""} / ${
-        item.total_quantity || item.quantity || 0
-      } pcs`;
-    }
-    return "";
-  };
-
-  // Format item type badge
-  const formatTypeBadge = (type) => {
-    switch (type) {
-      case "Metal":
-        return "bg-warning";
-      case "Stone":
-        return "bg-info";
-      case "Material":
-        return "bg-secondary";
-      default:
-        return "bg-dark";
+    if (names.length <= 2) {
+      return names.join(", ");
+    } else {
+      return `${names[0]}, ${names[1]} +${names.length - 2} more`;
     }
   };
 
@@ -273,7 +235,7 @@ const InventoryItemTable = () => {
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Delete Inventory Item</h5>
+            <h5 className="modal-title fw-bold fs-5">Delete Purchase Order</h5>
             <button
               type="button"
               className="btn-close"
@@ -288,10 +250,12 @@ const InventoryItemTable = () => {
 
           <div className="modal-body">
             <p>
-              Are you sure you want to delete{" "}
-              <strong>{selectedItem?.item_name}</strong>?
+              Are you sure you want to delete Purchase Order{" "}
+              <strong>{selectedItem?.order_number}</strong>?
             </p>
-            <p className="text-muted small">This action cannot be undone.</p>
+            <p className="text-muted small">
+              This action cannot be undone.
+            </p>
           </div>
 
           <div className="modal-footer border-top pt-3">
@@ -309,7 +273,7 @@ const InventoryItemTable = () => {
             <button
               type="button"
               className="btn btn-danger"
-              onClick={handleDeleteItem}
+              onClick={handleDeletePurchaseOrder}
               disabled={actionLoading.type === "delete"}
             >
               {actionLoading.type === "delete" ? (
@@ -333,25 +297,40 @@ const InventoryItemTable = () => {
 
   return (
     <div className="container-fluid py-4">
+      {/* Error Display */}
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+          {error}
+          <button type="button" className="btn-close" onClick={() => {}} />
+        </div>
+      )}
+
       {/* HEADER */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
           <div className="row align-items-center mb-4">
             <div className="col-md-6">
-              <h1 className="h3 fw-bold mb-2">Inventory Items</h1>
+              <h1 className="h3 fw-bold mb-2">Purchase Orders</h1>
               <p className="text-muted mb-0">
-                Manage metals, stones, and materials inventory
+                Manage your purchase orders in a table layout
               </p>
             </div>
 
             <div className="col-md-6 d-flex justify-content-end gap-2">
+              <button
+                className="btn btn-outline-secondary d-flex align-items-center gap-2"
+                onClick={handleRefresh}
+                disabled={loading}
+              >
+                Refresh
+              </button>
               <button
                 className="btn btn-primary d-flex align-items-center gap-2"
                 onClick={() => setShowAddModal(true)}
                 disabled={loading || actionLoading.type === "add"}
               >
                 <FiPlus size={18} />
-                Add Inventory Item
+                New Purchase Order
               </button>
             </div>
           </div>
@@ -366,14 +345,14 @@ const InventoryItemTable = () => {
                 <input
                   type="text"
                   className="form-control border-start-0"
-                  placeholder="Search items, metals, stones, materials..."
+                  placeholder="Search by PO number, supplier, status, or item..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   disabled={loading}
                 />
               </div>
             </div>
-
+            
             {/* Items per page selector */}
             <div className="col-md-3 ms-auto">
               <div className="d-flex align-items-center justify-content-end">
@@ -406,21 +385,20 @@ const InventoryItemTable = () => {
             <thead>
               <tr>
                 <th>#</th>
-                <th>Item Name</th>
-                <th>Inventory Category</th>
-                <th>Type</th>
-                <th>Details</th>
-                <th>Track By</th>
-                <th>Value</th>
+                <th>PO Number</th>
+                <th>Supplier</th>
+                <th>Order Date</th>
+                <th>Items</th>
+                <th>Total Amount</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
 
             <tbody>
-              {loading && items.length === 0 ? (
+              {loading && purchaseOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4">
+                  <td colSpan="8" className="text-center py-4">
                     <div className="d-flex justify-content-center">
                       <div
                         className="spinner-border text-primary"
@@ -431,88 +409,89 @@ const InventoryItemTable = () => {
                     </div>
                   </td>
                 </tr>
-              ) : filtered.length === 0 ? (
+              ) : filteredPurchaseOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4 text-muted">
+                  <td colSpan="8" className="text-center py-4 text-muted">
                     {search
-                      ? "No inventory items found for your search"
-                      : "No inventory items available"}
+                      ? "No purchase orders found for your search"
+                      : "No purchase orders available"}
                   </td>
                 </tr>
               ) : (
-                currentItems.map((item, index) => {
-                  const itemType = getItemType(item);
-                  const itemDetails = getItemDetails(item);
-                  
+                currentPurchaseOrders.map((po, index) => {
+                  const total = po.total_amount || calculateTotal(po.items);
                   return (
-                    <tr key={item._id || index}>
+                    <tr key={po._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
 
-                      <td className="fw-semibold">{item.item_name}</td>
-
+                      <td className="fw-semibold">{po.order_number || "PO-N/A"}</td>
+                      
                       <td>
-                        <span className="badge bg-primary fw-semibold">
-                          {item.inventory_category_name || "No Category"}
+                        <div className="fw-medium">{po.supplier?.name || po.supplier?.supplier_name || "N/A"}</div>
+                        <div className="text-muted small">{po.supplier?.phone || ""}</div>
+                      </td>
+                      
+                      <td>
+                        <span className="badge bg-light text-dark">
+                          <FiCalendar className="me-1" size={12} />
+                          {formatDate(po.order_date)}
                         </span>
                       </td>
-
-                      {/* Type Column */}
-                      <td>
-                        <span className={`badge fw-semibold ${formatTypeBadge(itemType)}`}>
-                          {itemType}
-                        </span>
-                      </td>
-
-                      {/* Details Column */}
+                      
                       <td>
                         <div className="small">
-                          <div><strong>{itemDetails.name}</strong></div>
-                          {itemDetails.purity && (
-                            <div className="text-muted">Purity: {itemDetails.purity}</div>
-                          )}
-                          {itemDetails.type === "Material" && (
-                            <div className="text-muted">Type: {itemDetails.name}</div>
-                          )}
+                          <div className="fw-medium">{getItemNames(po.items)}</div>
+                          <div className="text-muted">
+                            {getItemDetails(po.items)}
+                          </div>
                         </div>
                       </td>
-
-                      {/* Track By Column */}
+                      
                       <td>
-                        <span className="badge bg-light text-dark fw-semibold border">
-                          {formatTrackBy(item.track_by)}
+                        <span className="fw-bold">
+                          ₹{total.toLocaleString('en-IN')}
+                        </span>
+                      </td>
+                      
+                      <td>
+                        <span className={`badge fw-semibold ${
+                          po.status === 'completed' ? 'bg-success' :
+                          po.status === 'draft' ? 'bg-secondary' :
+                          po.status === 'pending' ? 'bg-warning' :
+                          po.status === 'cancelled' ? 'bg-danger' :
+                          po.status === 'approved' ? 'bg-primary' :
+                          po.status === 'shipped' ? 'bg-info' :
+                          'bg-secondary'
+                        }`}>
+                          {po.status ? po.status.charAt(0).toUpperCase() + po.status.slice(1) : "Draft"}
                         </span>
                       </td>
 
-                      {/* Value Column */}
-                      <td>
-                        <span className="fw-medium">
-                          {formatValues(item)}
-                        </span>
-                      </td>
-
-                      {/* Status Column */}
-                      <td>
-                        <span
-                          className={`badge fw-semibold ${
-                            item.status ? "bg-success" : "bg-danger"
-                          }`}
-                        >
-                          {item.status ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-
-                      {/* ACTION BUTTONS */}
+                      {/* ACTION BUTTONS - Updated to include View */}
                       <td>
                         <div className="d-flex justify-content-end gap-2">
+                          {/* View Button */}
+                          <button
+                            className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
+                            onClick={() => handleOpenView(po)}
+                            title="View Details"
+                          >
+                            <FiEye size={14} />
+                            View
+                          </button>
+
+                          {/* Edit Button */}
                           <button
                             className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                            onClick={() => handleOpenEdit(item)}
+                            onClick={() => handleOpenEdit(po)}
                             disabled={
-                              actionLoading.type && actionLoading.id === item._id
+                              actionLoading.type &&
+                              actionLoading.id === po._id
                             }
+                            title="Edit"
                           >
                             {actionLoading.type === "update" &&
-                            actionLoading.id === item._id ? (
+                            actionLoading.id === po._id ? (
                               <>
                                 <span
                                   className="spinner-border spinner-border-sm me-1"
@@ -523,21 +502,24 @@ const InventoryItemTable = () => {
                               </>
                             ) : (
                               <>
-                                <FiEdit2 size={16} />
+                                <FiEdit2 size={14} />
                                 Edit
                               </>
                             )}
                           </button>
 
+                          {/* Delete Button */}
                           <button
                             className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                            onClick={() => handleOpenDelete(item)}
+                            onClick={() => handleOpenDelete(po)}
                             disabled={
-                              actionLoading.type && actionLoading.id === item._id
+                              actionLoading.type &&
+                              actionLoading.id === po._id
                             }
+                            title="Delete"
                           >
                             {actionLoading.type === "delete" &&
-                            actionLoading.id === item._id ? (
+                            actionLoading.id === po._id ? (
                               <>
                                 <span
                                   className="spinner-border spinner-border-sm me-1"
@@ -548,7 +530,7 @@ const InventoryItemTable = () => {
                               </>
                             ) : (
                               <>
-                                <RiDeleteBin6Line size={16} />
+                                <RiDeleteBin6Line size={14} />
                                 Delete
                               </>
                             )}
@@ -561,18 +543,17 @@ const InventoryItemTable = () => {
               )}
             </tbody>
           </table>
-
+          
           {/* PAGINATION */}
-          {filtered.length > 0 && (
+          {filteredPurchaseOrders.length > 0 && (
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center border-top pt-3 mt-3">
               <div className="mb-2 mb-md-0">
                 <p className="text-muted mb-0">
                   Showing {indexOfFirstItem + 1} to{" "}
-                  {Math.min(indexOfLastItem, totalItems)} of {totalItems}{" "}
-                  entries
+                  {Math.min(indexOfLastItem, totalItems)} of {totalItems} entries
                 </p>
               </div>
-
+              
               <div className="d-flex align-items-center gap-1">
                 {/* First Page */}
                 <button
@@ -583,7 +564,7 @@ const InventoryItemTable = () => {
                 >
                   <FiChevronsLeft size={16} />
                 </button>
-
+                
                 {/* Previous Page */}
                 <button
                   className="btn btn-sm btn-outline-secondary"
@@ -593,7 +574,7 @@ const InventoryItemTable = () => {
                 >
                   <FiChevronLeft size={16} />
                 </button>
-
+                
                 {/* Page Numbers */}
                 {getPageNumbers().map((pageNumber) => (
                   <button
@@ -606,14 +587,12 @@ const InventoryItemTable = () => {
                     onClick={() => goToPage(pageNumber)}
                     disabled={loading}
                     aria-label={`Page ${pageNumber}`}
-                    aria-current={
-                      currentPage === pageNumber ? "page" : undefined
-                    }
+                    aria-current={currentPage === pageNumber ? "page" : undefined}
                   >
                     {pageNumber}
                   </button>
                 ))}
-
+                
                 {/* Next Page */}
                 <button
                   className="btn btn-sm btn-outline-secondary"
@@ -623,7 +602,7 @@ const InventoryItemTable = () => {
                 >
                   <FiChevronRight size={16} />
                 </button>
-
+                
                 {/* Last Page */}
                 <button
                   className="btn btn-sm btn-outline-secondary"
@@ -634,7 +613,7 @@ const InventoryItemTable = () => {
                   <FiChevronsRight size={16} />
                 </button>
               </div>
-
+              
               {/* Page info */}
               <div className="mt-2 mt-md-0">
                 <span className="text-muted">
@@ -648,38 +627,40 @@ const InventoryItemTable = () => {
 
       {/* ADD MODAL */}
       {showAddModal && (
-        <AddInventoryItemModal
+        <AddPurchaseOrderForm
           key="add-modal"
           onClose={() => setShowAddModal(false)}
-          onSave={handleAddItem}
+          onSave={handleAddPurchaseOrder}
           loading={actionLoading.type === "add"}
-          inventoryCategories={inventoryCategories}
-          units={units}
-          metalPurities={metalPurities}
-          stonePurities={stonePurities}
-          materials={materials}
+        />
+      )}
+
+      {/* VIEW MODAL */}
+      {showViewModal && selectedItem && (
+        <ViewPurchaseOrderModal
+          key={`view-modal-${selectedItem._id}`}
+          purchaseOrder={selectedItem}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedItem(null);
+          }}
         />
       )}
 
       {/* EDIT MODAL */}
       {showEditModal && selectedItem && (
-        <EditInventoryItemModal
+        <EditPurchaseOrderForm
           key={`edit-modal-${selectedItem._id}`}
           onClose={() => {
             setShowEditModal(false);
-            setTimeout(() => setSelectedItem(null), 100);
+            setSelectedItem(null);
           }}
-          onSave={handleEditItem}
-          item={selectedItem}
+          onSave={handleEditPurchaseOrder}
+          purchaseOrder={selectedItem}
           loading={
             actionLoading.type === "update" &&
             actionLoading.id === selectedItem._id
           }
-          inventoryCategories={inventoryCategories}
-          units={units}
-          metalPurities={metalPurities}
-          stonePurities={stonePurities}
-          materials={materials}
         />
       )}
 
@@ -691,4 +672,4 @@ const InventoryItemTable = () => {
   );
 };
 
-export default InventoryItemTable;
+export default PurchaseOrderTable;

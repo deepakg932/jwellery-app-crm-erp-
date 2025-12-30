@@ -8,6 +8,7 @@ import PurityPage from '../views/product-section/purity/components/PurityTable';
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AddItemModal from '../views/item-master/components/AddItemForm';
 import ViewItemModal from '../views/item-master/components/ViewItemModal';
+import StockINTable from '../views/inventory-master/stock-in/components/StockINTable';
 
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
@@ -44,18 +45,16 @@ const MaterialTypePage = lazy(() => import('@/views/product-section/materialType
 
 // Items Master
 const ItemsPage = lazy(() => import('@/views/item-master'));
-const Customers = lazy(() => import('@/views/ecommerce/customers'));
-const Sellers = lazy(() => import('@/views/ecommerce/sellers'));
-const SellerDetails = lazy(() => import('@/views/ecommerce/sellers/[sellerId]'));
-const Reviews = lazy(() => import('@/views/ecommerce/reviews'));
+
 
 // inventory master
 const InvetoryCategoryPage = lazy(() => import('@/views/inventory-master/inventory-items-category'));
 const InventoryItemsPage = lazy(() => import('@/views/inventory-master/inventory-items'));
-const EmailCompose = lazy(() => import('@/views/apps/email/email-compose'));
-const EmailTemplates = lazy(() => import('@/views/apps/email/email-templates'));
-const FileManager = lazy(() => import('@/views/apps/file-manager'));
-const Chat = lazy(() => import('@/views/apps/chat'));
+const BranchTypePage = lazy(() => import('@/views/inventory-master/branch-master/branch-type'));
+const BranchPage = lazy(() => import('@/views/inventory-master/branch-master/branch'));
+const SuppliersPage = lazy(() => import('@/views/inventory-master/suppliers'));
+const PurchaseOrdersPage = lazy(() => import('@/views/inventory-master/purchase-order'));
+const StockINPage = lazy(() => import('@/views/inventory-master/stock-in'));
 const Calendar = lazy(() => import('@/views/apps/calendar'));
 const InvoiceList = lazy(() => import('@/views/apps/invoice/invoices'));
 const InvoiceDetails = lazy(() => import('@/views/apps/invoice/invoices/[invoiceId]'));
@@ -417,13 +416,7 @@ const itemsRoutes = [
   path: '/add-item',
   element: <AddItemModal />
 },
-{
-  path: '/email-compose',
-  element: <EmailCompose />
-}, {
-  path: '/email-templates',
-  element: <EmailTemplates />
-}, {
+ {
   path: '/users/profile',
   element: <Profile />
 }, {
@@ -468,13 +461,8 @@ const itemsRoutes = [
 }, {
   path: '/crm/activities',
   element: <Activities />
-}, {
-  path: '/file-manager',
-  element: <FileManager />
-}, {
-  path: '/chat',
-  element: <Chat />
-}, {
+}, 
+ {
   path: '/calendar',
   element: <Calendar />
 }, {
@@ -510,20 +498,20 @@ const inventoryRoutes = [{
   path: '/inventory/items',
   element: <InventoryItemsPage />
 }, {
-  path: '/pages/empty-page',
-  element: <EmptyPage />
+  path: '/inventory/branch-type',
+  element: <BranchTypePage/>
 }, {
-  path: '/pages/timeline',
-  element: <Timeline />
+  path: '/inventory/branch',
+  element: <BranchPage />
 }, {
-  path: '/pages/search-results',
-  element: <SearchResults />
+  path: '/inventory/suppliers',
+  element: <SuppliersPage />
 }, {
-  path: '/pages/terms-conditions',
-  element: <TermsConditions />
+  path: '/inventory/purchase-orders',
+  element: <PurchaseOrdersPage/>
 }, {
-  path: '/pages/sitemap',
-  element: <Sitemap />
+  path: '/inventory/stock-in',
+  element: <StockINPage />
 }];
 const miscellaneousRoutes = [{
   path: '/miscellaneous/nestable-list',
