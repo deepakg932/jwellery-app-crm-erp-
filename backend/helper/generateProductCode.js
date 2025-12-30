@@ -1,4 +1,4 @@
-import Product from "../models/models/Product.js";
+import Product from "../Models/models/ProductModel.js"
 import Metal from "../Models/models/MetalTypeModel.js"
 import Purity from "../Models/models/Purity.js"
 import StoneType from "../Models/models/StoneType.js"

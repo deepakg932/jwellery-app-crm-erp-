@@ -1,17 +1,64 @@
-// controllers/salesController.js
-import Invoice from '../models/Invoice.js';
+import Sale from "../Models/models/Sales.js"
+import Item from "../models/Item.js";
+import { addStockLedger } from "../services/stockLedger.service.js"
+import Ledger from "../Models/models/Ledger.js";
 
-export const getInvoices = async (req, res) => {
-  const invoices = await Invoice.find().populate('customer_id user_id branch_id');
-  res.json(invoices);
-};
+export const createSale = async (req, res) => {
+  try {
+    const { customer, branch, items, discount = 0 } = req.body;
 
-export const getInvoiceById = async (req, res) => {
-  const invoice = await Invoice.findById(req.params.id).populate('items.product_id');
-  res.json(invoice);
-};
+    let subtotal = 0;
+    let gstTotal = 0;
 
-export const createInvoice = async (req, res) => {
-  const invoice = await Invoice.create(req.body);
-  res.json(invoice);
+   
+    items.forEach(i => {
+      subtotal += i.totalAmount;
+      gstTotal += i.gstAmount;
+    });
+
+    const grandTotal = subtotal + gstTotal - discount;
+
+    // 🔹 Create Sale
+    const sale = await Sale.create({
+      invoiceNo: "INV-" + Date.now(),
+      customer,
+      branch,
+      items,
+      subtotal,
+      discount,
+      gstTotal,
+      grandTotal,
+      paymentStatus: "UNPAID"
+    });
+
+    // 🔹 Stock OUT + Ledger entry
+    for (const i of items) {
+      await addStockLedger({
+        item: i.item,
+        branch,
+        transactionType: "OUT",
+        reason: "SALE",
+        quantity: 1,
+        grossWeight: i.grossWeight,
+        netWeight: i.netWeight,
+        referenceId: sale._id,
+        createdBy: req.user._id
+      });
+    }
+
+    // 🔹 Customer Ledger (Debit)
+    await Ledger.create({
+      partyType: "CUSTOMER",
+      partyId: customer,
+      debit: grandTotal,
+      credit: 0,
+      balance: grandTotal,
+      referenceId: sale._id
+    });
+
+    res.status(201).json({ success: true, sale });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };

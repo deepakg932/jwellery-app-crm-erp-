@@ -5,13 +5,13 @@ const SupplierSchema = new mongoose.Schema({
   contact_person: String,
   phone: String,
   email: String,
-  gst_no: String,
+  // gst_no: String,
   address: String,
 
-  payment_terms: String,
-  opening_balance: { type: Number, default: 0 },
+  // payment_terms: String,
+  // opening_balance: { type: Number },
 
   status: { type: Boolean, default: true }
 }, { timestamps: true });
 
-export default mongoose.model('Supplier', SupplierSchema);
+export default mongoose.model('Suppliers', SupplierSchema);

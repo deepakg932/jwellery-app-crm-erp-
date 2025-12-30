@@ -1,16 +1,37 @@
+import mongoose from "mongoose";
 
-import mongoose from 'mongoose';
-import { StockMovementType } from './_shared.js';
+const StockLedgerSchema = new mongoose.Schema({
+  item: { type: mongoose.Schema.Types.ObjectId, ref: "InventoryItem", required: true },
+  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch", required: true },
 
-const StockLedgerSchema = new mongoose.Schema(
-  {
-    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', index: true },
-    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true, index: true },
-    type: { type: String, enum: StockMovementType, required: true },
-    qty: { type: Number, default: 1 },
-    weight: { type: Number, default: 0 },
-    reference_id: { type: mongoose.Schema.Types.ObjectId }, // link to invoice/transfer/job etc.
+  transactionType: {
+    type: String,
+    enum: ["IN", "OUT"],
+    required: true
   },
-  { timestamps: { createdAt: 'created_at', updatedAt: false } }
-);
-export default mongoose.model('StockLedger', StockLedgerSchema);
+
+  reason: {
+    type: String,
+    enum: [
+      "PURCHASE",
+      "SALE",
+      "TRANSFER_IN",
+      "TRANSFER_OUT",
+      "ADJUSTMENT",
+      "REPAIR_IN",
+      "REPAIR_OUT",
+      "OLD_GOLD"
+    ],
+    required: true
+  },
+
+  quantity: { type: Number, default: 0 },
+  grossWeight: { type: Number, default: 0 },
+  netWeight: { type: Number, default: 0 },
+  stoneWeight: { type: Number, default: 0 },
+
+  referenceId: mongoose.Schema.Types.ObjectId,
+  createdBy: mongoose.Schema.Types.ObjectId
+}, { timestamps: true });
+
+export default mongoose.model("StockLedger", StockLedgerSchema);

@@ -1,10 +1,16 @@
 // src/models/Ledger.js
 import mongoose from 'mongoose';
-const LedgerSchema = new mongoose.Schema(
-  {
-    account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true, index: true },
-    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', index: true },
+const ledgerSchema = new mongoose.Schema({
+  partyType: {
+    type: String,
+    enum: ["CUSTOMER", "SUPPLIER"]
   },
-  { timestamps: true }
-);
-export default mongoose.model('Ledger', LedgerSchema);
+  partyId: mongoose.Schema.Types.ObjectId,
+  debit: Number,
+  credit: Number,
+  balance: Number,
+  referenceId: mongoose.Schema.Types.ObjectId
+}, { timestamps: true });
+
+export default mongoose.model("Ledger", ledgerSchema);
+

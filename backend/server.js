@@ -29,8 +29,9 @@ import gstRoutes from "./routes/gstRoutes.js";
 import wastageRoutes from "./routes/wastageRoutes.js";
 import wastageMaterialtypeRoutes from "./routes/wastageMaterialtypeRoutes.js";
 import inventoryItemRoute from "./routes/inventoryItemRoute.js"
-import supplierRoute from "./routes/supplierRoutes.js"
-
+import supplierRoute from "./routes/supplierRoutes.js";
+import purchaseRoutes from "./routes/purchaseRoutes.js"
+import grn from "./routes/grn(STOCK-IN)Routes.js";
 
 
 dotenv.config(); 
@@ -79,6 +80,9 @@ app.use("/api/material-types",wastageMaterialtypeRoutes)
 app.use("/api/inventory-categories", inventorycategoryRoute);
 app.use("/api/inventory-item",inventoryItemRoute)
 app.use('/api/supplier',supplierRoute)
+app.use("/api/purchase-orders",purchaseRoutes)
+app.use("/api/stock-grn",grn)
+
 
 
 

@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
     is_active: { type: Boolean, default: true },
     last_login: { type: Date },
     // role: { type: String, enum: ["admin", "branch", "customer"], default: "customer" },
+    
     refresh_tokens: [{ token: String, created_at: Date }],
   },
   { timestamps: true }
