@@ -55,7 +55,7 @@ const BranchPage = lazy(() => import('@/views/inventory-master/branch-master/bra
 const SuppliersPage = lazy(() => import('@/views/inventory-master/suppliers'));
 const PurchaseOrdersPage = lazy(() => import('@/views/inventory-master/purchase-order'));
 const StockINPage = lazy(() => import('@/views/inventory-master/stock-in'));
-const Calendar = lazy(() => import('@/views/apps/calendar'));
+const InventoryMovementsPage = lazy(() => import('@/views/inventory-master/inventory-movements'));
 const InvoiceList = lazy(() => import('@/views/apps/invoice/invoices'));
 const InvoiceDetails = lazy(() => import('@/views/apps/invoice/invoices/[invoiceId]'));
 const AddInvoice = lazy(() => import('@/views/apps/invoice/add-invoice'));
@@ -463,9 +463,6 @@ const itemsRoutes = [
   element: <Activities />
 }, 
  {
-  path: '/calendar',
-  element: <Calendar />
-}, {
   path: '/invoices',
   element: <InvoiceList />
 }, {
@@ -509,10 +506,16 @@ const inventoryRoutes = [{
 }, {
   path: '/inventory/purchase-orders',
   element: <PurchaseOrdersPage/>
-}, {
+},
+ {
+  path: '/inventory/movements',
+  element: <InventoryMovementsPage />
+},
+{
   path: '/inventory/stock-in',
   element: <StockINPage />
-}];
+}
+];
 const miscellaneousRoutes = [{
   path: '/miscellaneous/nestable-list',
   element: <NestableList />

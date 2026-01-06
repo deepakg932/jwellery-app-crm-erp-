@@ -22,20 +22,116 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
 
   const [errors, setErrors] = useState({});
 
+  // Helper function to get selected item details
+  const getSelectedItemDetails = (itemId) => {
+    if (!itemId) return null;
+    return inventoryItems.find((item) => item._id === itemId);
+  };
+
+  // Determine item type based on inventory item data
+  const getItemType = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item) return "material";
+    
+    if (item.metals && item.metals.length > 0) {
+      return "metal";
+    } else if (item.stones && item.stones.length > 0) {
+      return "stone";
+    } else {
+      return "material";
+    }
+  };
+
+  // Get metal details for selected item
+  const getMetalDetails = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item || !item.metals || item.metals.length === 0) return [];
+
+    return item.metals.map((metal) => {
+      let purity = "";
+      let metalName = "";
+      let metalWeight = null;
+
+      // Get metal purity
+      if (metal.purity_name) {
+        purity = metal.purity_name;
+      } else if (metal.purity_id?.purity_name) {
+        purity = metal.purity_id.purity_name;
+      }
+
+      // Get metal name/type
+      if (metal.metal_id?.name) {
+        metalName = metal.metal_id.name;
+      }
+
+      // Get metal weight
+      if (metal.metal_weight) {
+        metalWeight = metal.metal_weight;
+      }
+
+      return {
+        metal_type: metalName || "Metal",
+        purity: purity || "N/A",
+        metal_weight: metalWeight,
+      };
+    });
+  };
+
+  // Get stone details for selected item
+  const getStoneDetails = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item || !item.stones || item.stones.length === 0) return [];
+
+    return item.stones.map((stone) => {
+      let purity = "";
+      let stoneType = "";
+
+      // Get stone purity
+      if (stone.stone_purity_id?.stone_purity) {
+        purity = stone.stone_purity_id.stone_purity;
+      }
+
+      // Get stone type
+      if (stone.stone_id?.stone_type) {
+        stoneType = stone.stone_id.stone_type;
+      }
+
+      return {
+        stone_type: stoneType || "Stone",
+        purity: purity || "N/A",
+        stone_quantity: stone.stone_quantity || null,
+      };
+    });
+  };
+
+  // Get material type for selected item
+  const getMaterialType = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item) return "";
+    
+    return item.material_type_id?.material_type || "Material";
+  };
+
   // Initialize form data when purchaseOrder prop changes
   useEffect(() => {
     if (purchaseOrder) {
       setFormData({
-        supplier_id: purchaseOrder.supplier?._id || purchaseOrder.supplier_id?._id || "",
-        order_date: purchaseOrder.order_date ? purchaseOrder.order_date.split('T')[0] : "",
+        supplier_id: purchaseOrder.supplier?._id || purchaseOrder.supplier_id?._id || purchaseOrder.supplier_id || "",
+        order_date: purchaseOrder.order_date ? purchaseOrder.order_date.split('T')[0] : new Date().toISOString().split('T')[0],
         items: purchaseOrder.items?.map(item => ({
-          inventory_item_id: item.inventory_item_id?._id || item.inventory_item?._id || "",
+          inventory_item_id: item.inventory_item_id?._id || item.inventory_item?._id || item.inventory_item_id || "",
           quantity: item.quantity || "",
           weight: item.weight || "",
           unit_id: item.unit_id?._id || item.unit_id || "",
           rate: item.rate || "",
           total: item.total || 0,
           expected_date: item.expected_date ? item.expected_date.split('T')[0] : "",
+          metal_purity: item.metal_purity || "",
+          stone_purity: item.stone_purity || "",
+          metal_weight: item.metal_weight || "",
+          metal_type: item.metal_type || "",
+          stone_type: item.stone_type || "",
+          material_type: item.material_type || "",
         })) || [],
         notes: purchaseOrder.notes || "",
         total_amount: purchaseOrder.total_amount || 0,
@@ -96,6 +192,53 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...formData.items];
+
+    // If inventory item is changing, auto-populate relevant details
+    if (field === "inventory_item_id") {
+      const itemDetails = getSelectedItemDetails(value);
+      
+      if (itemDetails) {
+        const itemType = getItemType(value);
+
+        // Reset all fields first
+        updatedItems[index].metal_purity = "";
+        updatedItems[index].stone_purity = "";
+        updatedItems[index].metal_weight = "";
+        updatedItems[index].metal_type = "";
+        updatedItems[index].stone_type = "";
+        updatedItems[index].material_type = "";
+
+        // Set only relevant fields based on item type
+        if (itemType === "metal") {
+          const metalDetails = getMetalDetails(value);
+          if (metalDetails.length > 0) {
+            // Use the first metal details
+            updatedItems[index].metal_purity = metalDetails[0].purity;
+            updatedItems[index].metal_weight = metalDetails[0].metal_weight || "";
+            updatedItems[index].metal_type = metalDetails[0].metal_type;
+          }
+        } else if (itemType === "stone") {
+          const stoneDetails = getStoneDetails(value);
+          if (stoneDetails.length > 0) {
+            // Use the first stone details
+            updatedItems[index].stone_purity = stoneDetails[0].purity || "N/A";
+            updatedItems[index].stone_type = stoneDetails[0].stone_type;
+          }
+        } else if (itemType === "material") {
+          // Set material type
+          updatedItems[index].material_type = getMaterialType(value);
+        }
+      } else {
+        // Reset all fields if no item selected
+        updatedItems[index].metal_purity = "";
+        updatedItems[index].stone_purity = "";
+        updatedItems[index].metal_weight = "";
+        updatedItems[index].metal_type = "";
+        updatedItems[index].stone_type = "";
+        updatedItems[index].material_type = "";
+      }
+    }
+
     updatedItems[index] = {
       ...updatedItems[index],
       [field]: value,
@@ -146,6 +289,12 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
           rate: "",
           total: 0,
           expected_date: "",
+          metal_purity: "",
+          stone_purity: "",
+          metal_weight: "",
+          metal_type: "",
+          stone_type: "",
+          material_type: "",
         },
       ],
     }));
@@ -170,15 +319,51 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
     const payload = {
       supplier_id: formData.supplier_id,
       order_date: formData.order_date,
-      items: formData.items.map((item) => ({
-        inventory_item_id: item.inventory_item_id,
-        quantity: parseFloat(item.quantity) || 0,
-        weight: parseFloat(item.weight) || 0,
-        unit_id: item.unit_id,
-        rate: parseFloat(item.rate),
-        total: parseFloat(item.total),
-        expected_date: item.expected_date || null,
-      })),
+      items: formData.items.map((item) => {
+        const itemType = getItemType(item.inventory_item_id);
+        const baseItem = {
+          inventory_item_id: item.inventory_item_id,
+          quantity: parseFloat(item.quantity) || 0,
+          weight: parseFloat(item.weight) || 0,
+          unit_id: item.unit_id,
+          rate: parseFloat(item.rate),
+          total: parseFloat(item.total),
+          expected_date: item.expected_date || null,
+        };
+
+        // Add item type specific fields
+        if (itemType === "metal") {
+          return {
+            ...baseItem,
+            metal_purity: item.metal_purity || null,
+            metal_weight: parseFloat(item.metal_weight) || null,
+            metal_type: item.metal_type || null,
+            stone_purity: null,
+            stone_type: null,
+            material_type: null,
+          };
+        } else if (itemType === "stone") {
+          return {
+            ...baseItem,
+            stone_purity: item.stone_purity || null,
+            stone_type: item.stone_type || null,
+            metal_purity: null,
+            metal_weight: null,
+            metal_type: null,
+            material_type: null,
+          };
+        } else {
+          return {
+            ...baseItem,
+            material_type: item.material_type || null,
+            metal_purity: null,
+            metal_weight: null,
+            metal_type: null,
+            stone_purity: null,
+            stone_type: null,
+          };
+        }
+      }),
       notes: formData.notes || "",
       total_amount: parseFloat(formData.total_amount),
     };
@@ -200,13 +385,37 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
   };
 
   const handleClose = () => {
-    setFormData({
-      supplier_id: "",
-      order_date: "",
-      items: [],
-      notes: "",
-      total_amount: 0,
-    });
+    if (purchaseOrder) {
+      setFormData({
+        supplier_id: purchaseOrder.supplier?._id || purchaseOrder.supplier_id?._id || purchaseOrder.supplier_id || "",
+        order_date: purchaseOrder.order_date ? purchaseOrder.order_date.split('T')[0] : "",
+        items: purchaseOrder.items?.map(item => ({
+          inventory_item_id: item.inventory_item_id?._id || item.inventory_item?._id || item.inventory_item_id || "",
+          quantity: item.quantity || "",
+          weight: item.weight || "",
+          unit_id: item.unit_id?._id || item.unit_id || "",
+          rate: item.rate || "",
+          total: item.total || 0,
+          expected_date: item.expected_date ? item.expected_date.split('T')[0] : "",
+          metal_purity: item.metal_purity || "",
+          stone_purity: item.stone_purity || "",
+          metal_weight: item.metal_weight || "",
+          metal_type: item.metal_type || "",
+          stone_type: item.stone_type || "",
+          material_type: item.material_type || "",
+        })) || [],
+        notes: purchaseOrder.notes || "",
+        total_amount: purchaseOrder.total_amount || 0,
+      });
+    } else {
+      setFormData({
+        supplier_id: "",
+        order_date: "",
+        items: [],
+        notes: "",
+        total_amount: 0,
+      });
+    }
     setErrors({});
     onClose();
   };
@@ -328,19 +537,28 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
                   <table className="table align-middle">
                     <thead>
                       <tr>
-                        <th width="25%">Item Name</th>
-                        <th width="12%">Quantity</th>
-                        <th width="12%">Weight</th>
-                        <th width="12%">Unit</th>
-                        <th width="12%">Rate (₹)</th>
-                        <th width="12%">Expected Date</th>
+                        <th width="20%">Item Name</th>
+                        <th width="10%">Unit</th>
+                        <th width="10%">Weight</th>
+                        <th width="10%">Quantity</th>
+                        <th width="10%">Rate (₹)</th>
+                        <th width="15%">Type & Purity</th>
                         <th width="10%">Total (₹)</th>
-                        <th width="5%">Action</th>
+                        <th width="10%">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {formData.items.map((item, index) => {
-                        // Check if the selected unit is a weight unit
+                        const selectedItem = getSelectedItemDetails(
+                          item.inventory_item_id
+                        );
+                        const itemType = getItemType(item.inventory_item_id);
+                        const metalDetails = getMetalDetails(
+                          item.inventory_item_id
+                        );
+                        const stoneDetails = getStoneDetails(
+                          item.inventory_item_id
+                        );
                         const isWeightItem = isWeightUnit(item.unit_id);
 
                         return (
@@ -366,14 +584,23 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
                                 {inventoryItems &&
                                 Array.isArray(inventoryItems) &&
                                 inventoryItems.length > 0 ? (
-                                  inventoryItems.map((invItem) => (
-                                    <option
-                                      key={invItem._id}
-                                      value={invItem._id}
-                                    >
-                                      {invItem.item_name || invItem.name}
-                                    </option>
-                                  ))
+                                  inventoryItems.map((invItem) => {
+                                    const type =
+                                      invItem.metals?.length > 0
+                                        ? "metal"
+                                        : invItem.stones?.length > 0
+                                        ? "stone"
+                                        : "material";
+
+                                    return (
+                                      <option
+                                        key={invItem._id}
+                                        value={invItem._id}
+                                      >
+                                        {invItem.item_name || invItem.name} ({type})
+                                      </option>
+                                    );
+                                  })
                                 ) : (
                                   <option value="">No items available</option>
                                 )}
@@ -381,63 +608,6 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
                               {errors[`items[${index}].inventory_item_id`] && (
                                 <div className="invalid-feedback d-block">
                                   {errors[`items[${index}].inventory_item_id`]}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Quantity field - enabled only if unit is NOT a weight unit */}
-                            <td>
-                              <input
-                                type="number"
-                                className={`form-control ${
-                                  errors[`items[${index}].quantity_weight`] ||
-                                  errors[`items[${index}].quantity`]
-                                    ? "is-invalid"
-                                    : ""
-                                }`}
-                                placeholder="Qty"
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "quantity",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled || isWeightItem}
-                                min="0"
-                                step="0.001"
-                              />
-                            </td>
-
-                            {/* Weight field - enabled only if unit IS a weight unit */}
-                            <td>
-                              <input
-                                type="number"
-                                className={`form-control ${
-                                  errors[`items[${index}].quantity_weight`] ||
-                                  errors[`items[${index}].weight`]
-                                    ? "is-invalid"
-                                    : ""
-                                }`}
-                                placeholder="Weight"
-                                value={item.weight}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "weight",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled || !isWeightItem}
-                                min="0"
-                                step="0.001"
-                              />
-                              {(errors[`items[${index}].quantity_weight`] ||
-                                errors[`items[${index}].weight`]) && (
-                                <div className="invalid-feedback d-block">
-                                  {errors[`items[${index}].quantity_weight`] ||
-                                    errors[`items[${index}].weight`]}
                                 </div>
                               )}
                             </td>
@@ -479,6 +649,63 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
                               )}
                             </td>
 
+                            {/* Weight field */}
+                            <td>
+                              <input
+                                type="number"
+                                className={`form-control ${
+                                  errors[`items[${index}].quantity_weight`] ||
+                                  errors[`items[${index}].weight`]
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
+                                placeholder="Weight"
+                                value={item.weight}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    index,
+                                    "weight",
+                                    e.target.value
+                                  )
+                                }
+                                disabled={isDisabled || !isWeightItem}
+                                min="0"
+                                step="0.001"
+                              />
+                              {(errors[`items[${index}].quantity_weight`] ||
+                                errors[`items[${index}].weight`]) && (
+                                <div className="invalid-feedback d-block">
+                                  {errors[`items[${index}].quantity_weight`] ||
+                                    errors[`items[${index}].weight`]}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Quantity field */}
+                            <td>
+                              <input
+                                type="number"
+                                className={`form-control ${
+                                  errors[`items[${index}].quantity_weight`] ||
+                                  errors[`items[${index}].quantity`]
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
+                                placeholder="Qty"
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleItemChange(
+                                    index,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
+                                disabled={isDisabled || isWeightItem}
+                                min="0"
+                                step="0.001"
+                              />
+                            </td>
+
                             <td>
                               <input
                                 type="number"
@@ -507,21 +734,119 @@ const EditPurchaseOrderForm = ({ onClose, onSave, purchaseOrder, loading = false
                               )}
                             </td>
 
+                            {/* Type & Purity Field - Shows different fields based on item type */}
                             <td>
-                              <input
-                                type="date"
-                                className="form-control"
-                                value={item.expected_date}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "expected_date",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled}
-                                min={formData.order_date}
-                              />
+                              {itemType === "metal" ? (
+                                <div>
+                                  <div className="mb-2">
+                                    <small className="text-muted d-block">Metal Type</small>
+                                    <input
+                                      type="text"
+                                      className="form-control bg-light"
+                                      value={item.metal_type}
+                                      readOnly
+                                      disabled={isDisabled}
+                                    />
+                                  </div>
+                                  <div>
+                                    <small className="text-muted d-block">Metal Purity</small>
+                                    <select
+                                      className="form-select"
+                                      value={item.metal_purity}
+                                      onChange={(e) =>
+                                        handleItemChange(
+                                          index,
+                                          "metal_purity",
+                                          e.target.value
+                                        )
+                                      }
+                                      disabled={isDisabled}
+                                    >
+                                      <option value="">
+                                        Select Metal Purity
+                                      </option>
+                                      {metalDetails.length > 0 ? (
+                                        metalDetails.map((metal, idx) => (
+                                          <option key={idx} value={metal.purity}>
+                                            {metal.purity}
+                                          </option>
+                                        ))
+                                      ) : (
+                                        <option value="" disabled>
+                                          No purity available
+                                        </option>
+                                      )}
+                                    </select>
+                                  </div>
+                                  {metalDetails[0]?.metal_weight && (
+                                    <small className="text-muted mt-1 d-block">
+                                      Weight: {metalDetails[0].metal_weight}g
+                                    </small>
+                                  )}
+                                </div>
+                              ) : itemType === "stone" ? (
+                                <div>
+                                  <div className="mb-2">
+                                    <small className="text-muted d-block">Stone Type</small>
+                                    <input
+                                      type="text"
+                                      className="form-control bg-light"
+                                      value={item.stone_type}
+                                      readOnly
+                                      disabled={isDisabled}
+                                    />
+                                  </div>
+                                  <div>
+                                    <small className="text-muted d-block">Stone Purity</small>
+                                    <select
+                                      className="form-select"
+                                      value={item.stone_purity}
+                                      onChange={(e) =>
+                                        handleItemChange(
+                                          index,
+                                          "stone_purity",
+                                          e.target.value
+                                        )
+                                      }
+                                      disabled={isDisabled}
+                                    >
+                                      <option value="">
+                                        Select Stone Purity
+                                      </option>
+                                      {stoneDetails.length > 0 ? (
+                                        stoneDetails.map((stone, idx) => (
+                                          <option key={idx} value={stone.purity}>
+                                            {stone.purity}
+                                          </option>
+                                        ))
+                                      ) : (
+                                        <option value="" disabled>
+                                          No purity available
+                                        </option>
+                                      )}
+                                    </select>
+                                  </div>
+                                  {stoneDetails[0]?.stone_quantity && (
+                                    <small className="text-muted mt-1 d-block">
+                                      Quantity: {stoneDetails[0].stone_quantity}
+                                    </small>
+                                  )}
+                                </div>
+                              ) : (
+                                <div>
+                                  <small className="text-muted d-block">Material Type</small>
+                                  <input
+                                    type="text"
+                                    className="form-control bg-light"
+                                    value={item.material_type}
+                                    readOnly
+                                    disabled={isDisabled}
+                                  />
+                                  <small className="text-muted mt-1 d-block">
+                                    No purity required
+                                  </small>
+                                </div>
+                              )}
                             </td>
 
                             <td>

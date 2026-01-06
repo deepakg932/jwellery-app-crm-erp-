@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FiUpload, FiX, FiImage, FiPlus, FiTrash2 } from "react-icons/fi";
+import Select from "react-select";
 
 const EditItemModal = ({
   show,
@@ -9,16 +10,15 @@ const EditItemModal = ({
   loading = false,
   formData,
   getSubcategoriesForCategory,
-  generateProductCode,
   getGSTRateValue,
   dropdownLoading = false,
+  fetchHallmarksByMetal,
 }) => {
   // Destructure formData with default values
   const {
     categories = [],
     metals = [],
     brands = [],
-    costTypes = [],
     purities = [],
     units = [],
     stoneTypes = [],
@@ -26,6 +26,8 @@ const EditItemModal = ({
     gstRates = [],
     wastageTypes = [],
     materialTypes = [],
+    hallmarks = [],
+    priceMakings = [],
     subcategories = {},
   } = formData || {};
 
@@ -34,8 +36,8 @@ const EditItemModal = ({
     hasFormData: !!formData,
     categoriesCount: categories?.length || 0,
     metalsCount: metals?.length || 0,
-    stonePuritiesCount: stonePurities?.length || 0,
-    materialTypesCount: materialTypes?.length || 0,
+    hallmarksCount: hallmarks?.length || 0,
+    priceMakingsCount: priceMakings?.length || 0,
   });
 
   // Metals Table State
@@ -46,6 +48,9 @@ const EditItemModal = ({
 
   // Materials Table State
   const [materialsData, setMaterialsData] = useState([]);
+
+  // Price Makings State
+  const [selectedPriceMakings, setSelectedPriceMakings] = useState([]);
 
   // Form State
   const [formState, setFormState] = useState({
@@ -71,6 +76,10 @@ const EditItemModal = ({
   const [currentSubcategories, setCurrentSubcategories] = useState([]);
   const fileInputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
+  
+  // Hallmark states
+  const [hallmarksByMetal, setHallmarksByMetal] = useState({});
+  const [loadingHallmarks, setLoadingHallmarks] = useState({});
 
   // Helper function to get wastage type display value
   const getWastageTypeDisplay = (type) => {
@@ -79,306 +88,291 @@ const EditItemModal = ({
     return type.wastage_type || type.name || 'Unknown';
   };
 
-  // Helper to get display name
-  const getDisplayName = (id, array) => {
-    if (!id || !array || !Array.isArray(array)) return "";
-    const item = array.find(item => 
-      (item.id && item.id.toString() === id.toString()) ||
-      (item._id && item._id.toString() === id.toString())
+  // Helper to get ID
+  const getId = (item) => item?.id || item?._id || "";
+
+  // Helper to get name
+  const getName = (item) => {
+    if (!item) return "";
+    return (
+      item.purity_name ||
+      item.stone_purity ||
+      item.name ||
+      item.stone_type ||
+      item.category_name ||
+      item.metal_name ||
+      item.brand_name ||
+      item.stone_name ||
+      item.unit_name ||
+      item.cost_type ||
+      item.sub_category_name ||
+      item.wastage_type ||
+      item.material_type ||
+      ""
     );
-    return item?.name || item?.purity_name || item?.stone_purity || item?.material_type || item?.metal_name || id;
   };
 
   // ==================== INITIALIZATION ====================
-// ==================== INITIALIZATION ====================
-useEffect(() => {
-  if (!item) return;
+  useEffect(() => {
+    if (!item) return;
 
-  console.log("Initializing edit form with item:", item);
+    console.log("Initializing edit form with item:", item);
 
-  // Helper to find ID by name in dropdown data
-  const findIdByName = (name, array) => {
-    if (!name || !array) return "";
-    const found = array.find(item => 
-      item.name === name || 
-      item.product_brand === name ||
-      item.metal_type === name ||
-      item.stone_type === name ||
-      item.material_type === name ||
-      item.wastage_type === name
-    );
-    return found ? (found.id || found._id) : name;
-  };
-
-  // Helper to find ID for purity
-  const findPurityId = (purityName) => {
-    if (!purityName) return "";
-    const found = purities.find(p => 
-      p.purity_name === purityName || 
-      p.name === purityName
-    );
-    return found ? (found.id || found._id) : purityName;
-  };
-
-  // Helper to find ID for stone purity
-  const findStonePurityId = (purityName) => {
-    if (!purityName) return "";
-    const found = stonePurities.find(sp => 
-      sp.stone_purity === purityName || 
-      sp.name === purityName
-    );
-    return found ? (found.id || found._id) : purityName;
-  };
-
-  // Set form state from item
-  setFormState({
-    product_name: item.product_name || "",
-    product_code: item.product_code || "",
-    product_brand: item.product_brand_id?._id || item.product_brand || "",
-    product_category: item.product_category_id?._id || item.product_category || "",
-    product_subcategory: item.product_subcategory_id?._id || item.product_subcategory || "",
-    markup_percentage: item.markup_percentage || 15,
-    gst_rate: item.gst_rate || "",
-    gst_total: parseFloat(item.gst_rate?.replace('%', '')) || 0,
-    cgst_rate: parseFloat(item.cgst_rate?.replace('%', '')) || 0,
-    sgst_rate: parseFloat(item.sgst_rate?.replace('%', '')) || 0,
-    igst_rate: parseFloat(item.igst_rate?.replace('%', '')) || 0,
-    utgst_rate: parseFloat(item.utgst_rate?.replace('%', '')) || 0,
-  });
-
-  // Initialize metals data
-  const formattedMetals = (item.metals || []).map((metal, index) => {
-    // Try to get metal_type ID from metals dropdown
-    let metalTypeId = "";
-    if (metal.metal_id) {
-      // If it's already an ID
-      metalTypeId = metal.metal_id;
-    } else if (metal.metal_type) {
-      // If it's a string name, find the ID
-      metalTypeId = findIdByName(metal.metal_type, metals);
-    }
-
-    // Try to get purity ID
-    let purityId = "";
-    if (metal.purity_id) {
-      purityId = metal.purity_id;
-    } else if (metal.purity) {
-      purityId = findPurityId(metal.purity);
-    }
-
-    // Try to get unit ID
-    let unitId = "";
-    if (metal.unit) {
-      const foundUnit = units.find(u => 
-        u.name === metal.unit || 
-        u.unit_name === metal.unit ||
-        u.id === metal.unit ||
-        u._id === metal.unit
+    // Helper to find ID by name in dropdown data
+    const findIdByName = (name, array) => {
+      if (!name || !array) return "";
+      const found = array.find(item => 
+        item.name === name || 
+        item.product_brand === name ||
+        item.metal_type === name ||
+        item.stone_type === name ||
+        item.material_type === name ||
+        item.wastage_type === name
       );
-      unitId = foundUnit ? (foundUnit.id || foundUnit._id) : metal.unit;
-    }
-
-    return {
-      id: Date.now() + index,
-      metal_type: metalTypeId,
-      purity: purityId,
-      weight: metal.weight || 0,
-      unit: unitId,
-      rate_per_gram: metal.rate_per_gram || 0,
+      return found ? getId(found) : name;
     };
-  });
-  console.log("Formatted metals:", formattedMetals);
-  setMetalsData(formattedMetals);
 
-  // Initialize stones data
-  const formattedStones = (item.stones || []).map((stone, index) => {
-    // Try to get stone_type ID
-    let stoneTypeId = "";
-    if (stone.stone_id) {
-      stoneTypeId = stone.stone_id;
-    } else if (stone.stone_type) {
-      stoneTypeId = findIdByName(stone.stone_type, stoneTypes);
-    }
-
-    // Try to get stone_purity ID
-    let stonePurityId = "";
-    if (stone.stone_purity_id) {
-      stonePurityId = stone.stone_purity_id;
-    } else if (stone.stone_purity) {
-      stonePurityId = findStonePurityId(stone.stone_purity);
-    }
-
-    return {
-      id: Date.now() + 1000 + index,
-      stone_type: stoneTypeId,
-      stone_purity: stonePurityId,
-      size: stone.size || 0,
-      quantity: stone.quantity || 0,
-      weight: stone.weight || 0,
-      price_per_carat: stone.price_per_carat || 0,
-    };
-  });
-  console.log("Formatted stones:", formattedStones);
-  setStones(formattedStones);
-
-  // Initialize materials data
-  const formattedMaterials = (item.materials || []).map((material, index) => {
-    // Try to get wastage_type ID
-    let wastageTypeId = "";
-    if (material.wastage_id) {
-      wastageTypeId = material.wastage_id;
-    } else if (material.wastage_type) {
-      wastageTypeId = findIdByName(material.wastage_type, wastageTypes);
-    }
-
-    // Try to get material_type ID
-    let materialTypeId = "";
-    if (material.material_id) {
-      materialTypeId = material.material_id;
-    } else if (material.material_type) {
-      materialTypeId = findIdByName(material.material_type, materialTypes);
-    }
-
-    // Try to get unit
-    let unitId = "";
-    if (material.unit) {
-      const foundUnit = units.find(u => 
-        u.name === material.unit || 
-        u.unit_name === material.unit ||
-        u.id === material.unit ||
-        u._id === material.unit
+    // Helper to find ID for purity
+    const findPurityId = (purityName) => {
+      if (!purityName) return "";
+      const found = purities.find(p => 
+        p.purity_name === purityName || 
+        p.name === purityName
       );
-      unitId = foundUnit ? (foundUnit.id || foundUnit._id) : material.unit;
-    }
-
-    return {
-      id: Date.now() + 2000 + index,
-      wastage_type: wastageTypeId,
-      material_type: materialTypeId,
-      weight: material.weight || 0,
-      unit: unitId,
-      rate_per_unit: material.rate_per_unit || 0,
+      return found ? getId(found) : purityName;
     };
-  });
-  console.log("Formatted materials:", formattedMaterials);
-  setMaterialsData(formattedMaterials);
 
-  // Handle images
-  setExistingImages(item.images || []);
-  setNewImageFiles([]);
-  setNewImagePreviews([]);
-  setImagesToDelete([]);
-  setErrors({});
-}, [item, metals, purities, units, stoneTypes, stonePurities, wastageTypes, materialTypes]);
+    // Helper to find ID for stone purity
+    const findStonePurityId = (purityName) => {
+      if (!purityName) return "";
+      const found = stonePurities.find(sp => 
+        sp.stone_purity === purityName || 
+        sp.name === purityName
+      );
+      return found ? getId(found) : purityName;
+    };
 
-// Fetch subcategories when category changes
-useEffect(() => {
-  if (formState.product_category) {
-    let subcats = [];
-    
-    if (getSubcategoriesForCategory) {
-      subcats = getSubcategoriesForCategory(formState.product_category);
-    } else if (formData?.subcategories) {
-      const categoryIdStr = String(formState.product_category).trim();
-      subcats = formData.subcategories[categoryIdStr] || [];
+    // Helper to find price making by cost type
+    const findPriceMaking = (costType) => {
+      if (!costType) return null;
+      const found = priceMakings.find(pm => 
+        pm.cost_type === costType || 
+        pm.name === costType
+      );
+      return found || null;
+    };
+
+    // Set form state from item
+    setFormState({
+      product_name: item.product_name || "",
+      product_code: item.product_code || "",
+      product_brand: item.product_brand_id?._id || item.product_brand || "",
+      product_category: item.product_category_id?._id || item.product_category || "",
+      product_subcategory: item.product_subcategory_id?._id || item.product_subcategory || "",
+      markup_percentage: item.markup_percentage || 15,
+      gst_rate: item.gst_rate || "",
+      gst_total: parseFloat(item.gst_rate?.replace('%', '')) || 0,
+      cgst_rate: parseFloat(item.cgst_rate?.replace('%', '')) || 0,
+      sgst_rate: parseFloat(item.sgst_rate?.replace('%', '')) || 0,
+      igst_rate: parseFloat(item.igst_rate?.replace('%', '')) || 0,
+      utgst_rate: parseFloat(item.utgst_rate?.replace('%', '')) || 0,
+    });
+
+    // Initialize price makings from item
+    if (item.price_making_costs && priceMakings.length > 0) {
+      const selectedPMs = item.price_making_costs.map(cost => {
+        // Try to find by cost_type first
+        let pm = findPriceMaking(cost.cost_type);
+        if (pm) {
+          return pm;
+        }
+        // If not found by name, try to find by ID
+        pm = priceMakings.find(p => getId(p) === getId(cost.price_making_id));
+        return pm || cost;
+      }).filter(pm => pm); // Remove null/undefined
+      
+      setSelectedPriceMakings(selectedPMs);
     }
-    
-    setCurrentSubcategories(subcats);
-  } else {
-    setCurrentSubcategories([]);
-  }
-}, [formState.product_category, getSubcategoriesForCategory, formData]);
 
-// Set GST rate from item when dropdowns are loaded
-// useEffect(() => {
-//   if (!dropdownLoading && item && gstRates.length > 0 && !formState.gst_rate) {
-//     console.log("Setting GST rate from item:", item.gst_rate);
-    
-//     // Find matching GST rate by value
-//     const itemGSTValue = parseFloat(item.gst_rate?.replace('%', '')) || 0;
-//     console.log("Looking for GST value:", itemGSTValue);
-//     console.log("Available GST rates:", gstRates);
-    
-//     const matchingGST = gstRates.find(gst => {
-//       const gstValue = gst.gst_total || parseFloat(gst.value) || 0;
-//       console.log(`Comparing: ${gstValue} with ${itemGSTValue}`);
-//       return gstValue === itemGSTValue;
-//     });
-    
-//     console.log("Found matching GST:", matchingGST);
-    
-//     if (matchingGST) {
-//       handleGSTRateChange(matchingGST.id || matchingGST._id);
-//     } else {
-//       // If no match found, set the raw value
-//       setFormState(prev => ({
-//         ...prev,
-//         gst_rate: item.gst_rate || "",
-//         gst_total: itemGSTValue,
-//       }));
-//     }
-//   }
-// }, [dropdownLoading, item, gstRates, formState.gst_rate]);
+    // Initialize metals data
+    const formattedMetals = (item.metals || []).map((metal, index) => {
+      // Try to get metal_type ID from metals dropdown
+      let metalTypeId = "";
+      if (metal.metal_id) {
+        metalTypeId = getId(metal.metal_id);
+      } else if (metal.metal_type) {
+        metalTypeId = findIdByName(metal.metal_type, metals);
+      }
 
-// Set brand when brands are loaded
-// useEffect(() => {
-//   if (!dropdownLoading && item && brands.length > 0 && !formState.product_brand) {
-//     console.log("Setting brand from item:", item.product_brand);
-    
-//     // Try to find brand by name first
-//     const foundBrand = brands.find(brand => 
-//       brand.name === item.product_brand ||
-//       brand.product_brand === item.product_brand
-//     );
-    
-//     if (foundBrand) {
-//       setFormState(prev => ({
-//         ...prev,
-//         product_brand: foundBrand.id || foundBrand._id,
-//       }));
-//     } else if (item.product_brand_id?._id) {
-//       // Try by ID
-//       setFormState(prev => ({
-//         ...prev,
-//         product_brand: item.product_brand_id._id,
-//       }));
-//     }
-//   }
-// }, [dropdownLoading, item, brands, formState.product_brand]);
+      // Try to get purity ID
+      let purityId = "";
+      if (metal.purity_id) {
+        purityId = getId(metal.purity_id);
+      } else if (metal.purity) {
+        purityId = findPurityId(metal.purity);
+      }
+
+      // Try to get unit ID
+      let unitId = "";
+      if (metal.unit) {
+        const foundUnit = units.find(u => 
+          u.name === metal.unit || 
+          u.unit_name === metal.unit ||
+          getId(u) === getId(metal.unit)
+        );
+        unitId = foundUnit ? getId(foundUnit) : metal.unit;
+      }
+
+      // Get hallmark ID if exists
+      let hallmarkId = "";
+      if (metal.hallmark_id) {
+        hallmarkId = getId(metal.hallmark_id);
+      } else if (metal.hallmark) {
+        hallmarkId = getId(metal.hallmark);
+      }
+
+      return {
+        id: Date.now() + index,
+        metal_type: metalTypeId,
+        purity: purityId,
+        hallmark: hallmarkId,
+        weight: metal.weight || 0,
+        unit: unitId,
+        rate_per_gram: metal.rate_per_gram || 0,
+      };
+    });
+    console.log("Formatted metals:", formattedMetals);
+    setMetalsData(formattedMetals);
+
+    // Initialize stones data
+    const formattedStones = (item.stones || []).map((stone, index) => {
+      // Try to get stone_type ID
+      let stoneTypeId = "";
+      if (stone.stone_id) {
+        stoneTypeId = getId(stone.stone_id);
+      } else if (stone.stone_type) {
+        stoneTypeId = findIdByName(stone.stone_type, stoneTypes);
+      }
+
+      // Try to get stone_purity ID
+      let stonePurityId = "";
+      if (stone.stone_purity_id) {
+        stonePurityId = getId(stone.stone_purity_id);
+      } else if (stone.stone_purity) {
+        stonePurityId = findStonePurityId(stone.stone_purity);
+      }
+
+      return {
+        id: Date.now() + 1000 + index,
+        stone_type: stoneTypeId,
+        stone_purity: stonePurityId,
+        size: stone.size || 0,
+        quantity: stone.quantity || 0,
+        weight: stone.weight || 0,
+        price_per_carat: stone.price_per_carat || 0,
+      };
+    });
+    console.log("Formatted stones:", formattedStones);
+    setStones(formattedStones);
+
+    // Initialize materials data
+    const formattedMaterials = (item.materials || []).map((material, index) => {
+      // Try to get wastage_type ID
+      let wastageTypeId = "";
+      if (material.wastage_id) {
+        wastageTypeId = getId(material.wastage_id);
+      } else if (material.wastage_type) {
+        wastageTypeId = findIdByName(material.wastage_type, wastageTypes);
+      }
+
+      // Try to get material_type ID
+      let materialTypeId = "";
+      if (material.material_id) {
+        materialTypeId = getId(material.material_id);
+      } else if (material.material_type) {
+        materialTypeId = findIdByName(material.material_type, materialTypes);
+      }
+
+      // Try to get unit
+      let unitId = "";
+      if (material.unit) {
+        const foundUnit = units.find(u => 
+          u.name === material.unit || 
+          u.unit_name === material.unit ||
+          getId(u) === getId(material.unit)
+        );
+        unitId = foundUnit ? getId(foundUnit) : material.unit;
+      }
+
+      return {
+        id: Date.now() + 2000 + index,
+        wastage_type: wastageTypeId,
+        material_type: materialTypeId,
+        weight: material.weight || 0,
+        unit: unitId,
+        rate_per_unit: material.rate_per_unit || 0,
+      };
+    });
+    console.log("Formatted materials:", formattedMaterials);
+    setMaterialsData(formattedMaterials);
+
+    // Handle images
+    setExistingImages(item.images || []);
+    setNewImageFiles([]);
+    setNewImagePreviews([]);
+    setImagesToDelete([]);
+    setErrors({});
+  }, [item, metals, purities, units, stoneTypes, stonePurities, wastageTypes, materialTypes, priceMakings]);
+
+  // Fetch hallmarks for each metal when metals data is initialized
+  useEffect(() => {
+    const fetchHallmarksForMetals = async () => {
+      const promises = metalsData.map(async (metal) => {
+        if (metal.metal_type && fetchHallmarksByMetal) {
+          try {
+            setLoadingHallmarks(prev => ({ ...prev, [metal.id]: true }));
+            const hallmarks = await fetchHallmarksByMetal(metal.metal_type);
+            setHallmarksByMetal(prev => ({
+              ...prev,
+              [metal.id]: hallmarks
+            }));
+          } catch (err) {
+            console.error("Error fetching hallmarks:", err);
+            setHallmarksByMetal(prev => ({
+              ...prev,
+              [metal.id]: []
+            }));
+          } finally {
+            setLoadingHallmarks(prev => ({ ...prev, [metal.id]: false }));
+          }
+        }
+      });
+      
+      Promise.all(promises);
+    };
+
+    if (metalsData.length > 0) {
+      fetchHallmarksForMetals();
+    }
+  }, [metalsData, fetchHallmarksByMetal]);
 
   // Fetch subcategories when category changes
-  // useEffect(() => {
-  //   if (formState.product_category) {
-  //     let subcats = [];
+  useEffect(() => {
+    if (formState.product_category) {
+      let subcats = [];
       
-  //     if (getSubcategoriesForCategory) {
-  //       subcats = getSubcategoriesForCategory(formState.product_category);
-  //     } else if (formData?.subcategories) {
-  //       const categoryIdStr = String(formState.product_category).trim();
-  //       subcats = formData.subcategories[categoryIdStr] || [];
-  //     }
+      if (getSubcategoriesForCategory) {
+        subcats = getSubcategoriesForCategory(formState.product_category);
+      } else if (formData?.subcategories) {
+        const categoryIdStr = String(formState.product_category).trim();
+        subcats = formData.subcategories[categoryIdStr] || [];
+      }
       
-  //     setCurrentSubcategories(subcats);
-  //   } else {
-  //     setCurrentSubcategories([]);
-  //   }
-  // }, [formState.product_category, getSubcategoriesForCategory, formData]);
-
-  // Set GST rate from item
-  // useEffect(() => {
-  //   if (!dropdownLoading && item && gstRates.length > 0 && !formState.gst_rate) {
-  //     // Find matching GST rate
-  //     const itemGSTValue = parseFloat(item.gst_rate?.replace('%', '')) || 0;
-  //     const matchingGST = gstRates.find(gst => 
-  //       gst.gst_total === itemGSTValue || 
-  //       parseFloat(gst.value) === itemGSTValue
-  //     );
-      
-  //     if (matchingGST) {
-  //       handleGSTRateChange(matchingGST.id || matchingGST._id);
-  //     }
-  //   }
-  // }, [dropdownLoading, item, gstRates, formState.gst_rate]);
+      setCurrentSubcategories(subcats);
+    } else {
+      setCurrentSubcategories([]);
+    }
+  }, [formState.product_category, getSubcategoriesForCategory, formData]);
 
   // ==================== GST HANDLERS ====================
   const handleGSTRateChange = (selectedGstId) => {
@@ -386,8 +380,7 @@ useEffect(() => {
 
     const selectedGST = gstRates.find(
       (gst) =>
-        (gst.id && gst.id.toString() === selectedGstId.toString()) ||
-        (gst._id && gst._id.toString() === selectedGstId.toString())
+        getId(gst) === selectedGstId
     );
 
     if (selectedGST) {
@@ -413,9 +406,7 @@ useEffect(() => {
     if (!formState.gst_rate) return "Select GST Rate";
 
     const selected = gstRates.find(
-      (gst) =>
-        (gst.id && gst.id.toString() === formState.gst_rate.toString()) ||
-        (gst._id && gst._id.toString() === formState.gst_rate.toString())
+      (gst) => getId(gst) === formState.gst_rate
     );
 
     if (!selected) return "Invalid GST Rate";
@@ -445,9 +436,7 @@ useEffect(() => {
     if (!formState.gst_rate) return null;
 
     return gstRates.find(
-      (gst) =>
-        (gst.id && gst.id.toString() === formState.gst_rate.toString()) ||
-        (gst._id && gst._id.toString() === formState.gst_rate.toString())
+      (gst) => getId(gst) === formState.gst_rate
     );
   };
 
@@ -459,10 +448,11 @@ useEffect(() => {
       ...metalsData,
       {
         id: newId,
-        metal_type: metals.length > 0 ? (metals[0].id || metals[0]._id) : "",
-        purity: purities.length > 0 ? (purities[0].id || purities[0]._id) : "",
+        metal_type: metals.length > 0 ? getId(metals[0]) : "",
+        purity: purities.length > 0 ? getId(purities[0]) : "",
+        hallmark: "",
         weight: 0,
-        unit: units.length > 0 ? (units[0].id || units[0]._id) : "",
+        unit: units.length > 0 ? getId(units[0]) : "",
         rate_per_gram: 0,
       },
     ]);
@@ -470,6 +460,12 @@ useEffect(() => {
 
   const removeMetal = (id) => {
     setMetalsData(metalsData.filter((metal) => metal.id !== id));
+    // Remove hallmarks for this metal
+    setHallmarksByMetal(prev => {
+      const newHallmarks = { ...prev };
+      delete newHallmarks[id];
+      return newHallmarks;
+    });
   };
 
   const addStoneRow = () => {
@@ -479,8 +475,8 @@ useEffect(() => {
       ...stones,
       {
         id: newId,
-        stone_type: stoneTypes.length > 0 ? (stoneTypes[0].id || stoneTypes[0]._id) : "",
-        stone_purity: stonePurities.length > 0 ? (stonePurities[0].id || stonePurities[0]._id) : "",
+        stone_type: stoneTypes.length > 0 ? getId(stoneTypes[0]) : "",
+        stone_purity: stonePurities.length > 0 ? getId(stonePurities[0]) : "",
         size: 0,
         quantity: 0,
         weight: 0,
@@ -500,10 +496,10 @@ useEffect(() => {
       ...materialsData,
       {
         id: newId,
-        wastage_type: wastageTypes.length > 0 ? (wastageTypes[0].id || wastageTypes[0]._id) : "",
-        material_type: materialTypes.length > 0 ? (materialTypes[0].id || materialTypes[0]._id) : "",
+        wastage_type: wastageTypes.length > 0 ? getId(wastageTypes[0]) : "",
+        material_type: materialTypes.length > 0 ? getId(materialTypes[0]) : "",
         weight: 0,
-        unit: units.length > 0 ? (units[0].id || units[0]._id) : "",
+        unit: units.length > 0 ? getId(units[0]) : "",
         rate_per_unit: 0,
       },
     ]);
@@ -514,11 +510,41 @@ useEffect(() => {
   };
 
   // ==================== UPDATE FUNCTIONS ====================
-  const updateMetal = (id, field, value) => {
+  const updateMetal = async (id, field, value) => {
     setMetalsData(
       metalsData.map((metal) => {
         if (metal.id !== id) return metal;
-        return { ...metal, [field]: value };
+        
+        const updatedMetal = { ...metal, [field]: value };
+        
+        // If metal_type changed, fetch hallmarks
+        if (field === "metal_type" && value && fetchHallmarksByMetal) {
+          // Clear existing hallmark when metal changes
+          updatedMetal.hallmark = "";
+          
+          // Fetch hallmarks for this metal
+          setLoadingHallmarks(prev => ({ ...prev, [id]: true }));
+          
+          fetchHallmarksByMetal(value)
+            .then(hallmarks => {
+              setHallmarksByMetal(prev => ({
+                ...prev,
+                [id]: hallmarks
+              }));
+            })
+            .catch(err => {
+              console.error("Error fetching hallmarks:", err);
+              setHallmarksByMetal(prev => ({
+                ...prev,
+                [id]: []
+              }));
+            })
+            .finally(() => {
+              setLoadingHallmarks(prev => ({ ...prev, [id]: false }));
+            });
+        }
+        
+        return updatedMetal;
       })
     );
   };
@@ -670,6 +696,20 @@ useEffect(() => {
     };
   };
 
+  // Calculate making charge amount
+  const getMakingChargeAmount = () => {
+    if (!selectedPriceMakings || selectedPriceMakings.length === 0) {
+      return 0;
+    }
+
+    const totalAmount = selectedPriceMakings.reduce((sum, pm) => {
+      const costAmount = parseFloat(pm.cost_amount) || 0;
+      return sum + costAmount;
+    }, 0);
+
+    return totalAmount;
+  };
+
   // Totals
   const totalMetalsCost = metalsData.reduce(
     (sum, metal) => sum + calculateMetalSubtotal(metal),
@@ -683,7 +723,11 @@ useEffect(() => {
     (sum, mat) => sum + calculateMaterialCost(mat),
     0
   );
-  const grandTotal = totalMetalsCost + totalStonesCost + totalMaterialsCost;
+  const makingChargeAmount = getMakingChargeAmount();
+  
+  const baseTotal = totalMetalsCost + totalStonesCost + totalMaterialsCost;
+  const grandTotal = baseTotal + makingChargeAmount;
+  
   const sellingPriceBeforeTax =
     grandTotal * (1 + (parseFloat(formState.markup_percentage) || 0) / 100);
   const gstBreakdown = calculateGSTBreakdown(sellingPriceBeforeTax);
@@ -736,13 +780,14 @@ useEffect(() => {
       igst_rate: selectedGST ? `${selectedGST.igst_percentage || 0}%` : '0%',
       utgst_rate: selectedGST ? `${selectedGST.utgst_percentage || 0}%` : '0%',
 
-      // Metals - send IDs with field names that match backend
+      // Metals - INCLUDING HALLMARK
       metals: metalsData.map((metal) => ({
         metal_type: metal.metal_type,
         purity: metal.purity,
         weight: parseFloat(metal.weight) || 0,
         unit: metal.unit,
         rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
+        hallmark: metal.hallmark || "", // Add hallmark
       })),
 
       // Stones - send IDs with field names that match backend
@@ -764,6 +809,18 @@ useEffect(() => {
         rate_per_unit: parseFloat(material.rate_per_unit) || 0,
       })),
 
+      // Price making costs
+      making_charges: selectedPriceMakings.map((pm) => ({
+        price_making_id: getId(pm),
+        cost_type: pm.cost_type || "",
+        stage_name: pm.stage_name || "",
+        sub_stage_name: pm.sub_stage_name || "",
+        cost_amount: parseFloat(pm.cost_amount) || 0,
+        unit_name: pm.unit_name || "",
+      })),
+
+      total_making_charge_amount: makingChargeAmount,
+
       // Images
       newImages: newImageFiles,
       imagesToDelete: imagesToDelete,
@@ -779,8 +836,10 @@ useEffect(() => {
         subcategoryId: finalData.product_subcategory,
       },
       metalsCount: finalData.metals.length,
+      metalsWithHallmark: finalData.metals.filter(m => m.hallmark).length,
       stonesCount: finalData.stones.length,
-      materialsCount: finalData.materials.length
+      materialsCount: finalData.materials.length,
+      priceMakingsCount: finalData.making_charges.length,
     });
 
     if (onSubmit) {
@@ -902,10 +961,10 @@ useEffect(() => {
                       </option>
                       {categories.map((cat) => (
                         <option
-                          key={cat.id || cat._id}
-                          value={cat.id || cat._id}
+                          key={getId(cat)}
+                          value={getId(cat)}
                         >
-                          {cat.name}
+                          {getName(cat)}
                         </option>
                       ))}
                     </select>
@@ -931,10 +990,10 @@ useEffect(() => {
                           <option value="">Select Subcategory</option>
                           {currentSubcategories.map((sub) => (
                             <option
-                              key={sub.id || sub._id}
-                              value={sub.id || sub._id}
+                              key={getId(sub)}
+                              value={getId(sub)}
                             >
-                              {sub.name}
+                              {getName(sub)}
                             </option>
                           ))}
                         </select>
@@ -965,16 +1024,69 @@ useEffect(() => {
                       </option>
                       {brands.map((brand) => (
                         <option
-                          key={brand.id || brand._id}
-                          value={brand.id || brand._id}
+                          key={getId(brand)}
+                          value={getId(brand)}
                         >
-                          {brand.name}
+                          {getName(brand)}
                         </option>
                       ))}
                     </select>
                   </div>
                 </div>
               </div>
+
+              {/* Price Making Costs Section */}
+              {priceMakings.length > 0 && (
+                <div className="card mb-4 border">
+                  <div className="card-header bg-light">
+                    <h6 className="mb-0 fw-bold">Making Charge Types</h6>
+                  </div>
+                  <div className="card-body">
+                    <Select
+                      isMulti
+                      options={priceMakings.map((pm) => ({
+                        value: getId(pm),
+                        label: pm.cost_type || pm.name,
+                        originalData: pm,
+                      }))}
+                      value={selectedPriceMakings.map((pm) => ({
+                        value: getId(pm),
+                        label: pm.cost_type || pm.name,
+                        originalData: pm,
+                      }))}
+                      onChange={(selectedOptions) => {
+                        const selectedPMs = selectedOptions.map(
+                          (option) => option.originalData
+                        );
+                        setSelectedPriceMakings(selectedPMs);
+                      }}
+                      placeholder="Select Making Charge Types"
+                      isDisabled={loading || priceMakings.length === 0}
+                      className="react-select-container"
+                      classNamePrefix="react-select"
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderColor: "#dee2e6",
+                          "&:hover": {
+                            borderColor: "#ced4da",
+                          },
+                          backgroundColor: state.isDisabled
+                            ? "#e9ecef"
+                            : "white",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          zIndex: 9999,
+                        }),
+                      }}
+                    />
+                    <div className="form-text">
+                      You can select multiple making charge types
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* GST Section */}
               <div className="card mb-4 border">
@@ -1004,8 +1116,8 @@ useEffect(() => {
                           const gstTotal = gst.gst_total || gst.value || 0;
                           return (
                             <option
-                              key={gst._id || gst.id}
-                              value={gst._id || gst.id}
+                              key={getId(gst)}
+                              value={getId(gst)}
                             >
                               GST {gstTotal}%
                             </option>
@@ -1093,7 +1205,7 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* Metals Table */}
+              {/* Metals Table - UPDATED WITH HALLMARK */}
               <div className="card mb-4 border">
                 <div className="card-header bg-light d-flex justify-content-between align-items-center">
                   <h6 className="mb-0 fw-bold">Metal Details</h6>
@@ -1120,6 +1232,7 @@ useEffect(() => {
                           <tr>
                             <th>Metal Type</th>
                             <th>Purity</th>
+                            <th>Hallmark</th>
                             <th>Weight</th>
                             <th>Unit</th>
                             <th>Rate/Gram</th>
@@ -1150,10 +1263,10 @@ useEffect(() => {
                                   </option>
                                   {metals.map((metalItem) => (
                                     <option
-                                      key={metalItem.id || metalItem._id}
-                                      value={metalItem.id || metalItem._id}
+                                      key={getId(metalItem)}
+                                      value={getId(metalItem)}
                                     >
-                                      {metalItem.name}
+                                      {getName(metalItem)}
                                     </option>
                                   ))}
                                 </select>
@@ -1178,13 +1291,58 @@ useEffect(() => {
                                   </option>
                                   {purities.map((purity) => (
                                     <option
-                                      key={purity.id || purity._id}
-                                      value={purity.id || purity._id}
+                                      key={getId(purity)}
+                                      value={getId(purity)}
                                     >
-                                      {purity.name}
+                                      {getName(purity)}
                                     </option>
                                   ))}
                                 </select>
+                              </td>
+                              <td>
+                                <select
+                                  className={`form-select form-select-sm ${
+                                    loadingHallmarks[metal.id] ? "opacity-50" : ""
+                                  }`}
+                                  value={metal.hallmark || ""}
+                                  onChange={(e) =>
+                                    updateMetal(
+                                      metal.id,
+                                      "hallmark",
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={
+                                    loading ||
+                                    loadingHallmarks[metal.id] ||
+                                    !metal.metal_type ||
+                                    (hallmarksByMetal[metal.id] || []).length === 0
+                                  }
+                                >
+                                  <option value="">
+                                    {loadingHallmarks[metal.id]
+                                      ? "Loading hallmarks..."
+                                      : !metal.metal_type
+                                      ? "Select metal first"
+                                      : (hallmarksByMetal[metal.id] || []).length === 0
+                                      ? "No hallmarks available"
+                                      : "Select Hallmark"}
+                                  </option>
+                                  {(hallmarksByMetal[metal.id] || []).map((hallmark) => (
+                                    <option key={getId(hallmark)} value={getId(hallmark)}>
+                                      {getName(hallmark)}
+                                    </option>
+                                  ))}
+                                </select>
+                                {metal.hallmark && (
+                                  <small className="text-muted d-block mt-1">
+                                    Selected: {
+                                      (hallmarksByMetal[metal.id] || []).find(
+                                        h => getId(h) === metal.hallmark
+                                      )?.name || "Unknown"
+                                    }
+                                  </small>
+                                )}
                               </td>
                               <td>
                                 <input
@@ -1218,10 +1376,10 @@ useEffect(() => {
                                   </option>
                                   {units.map((unit) => (
                                     <option
-                                      key={unit.id || unit._id}
-                                      value={unit.id || unit._id}
+                                      key={getId(unit)}
+                                      value={getId(unit)}
                                     >
-                                      {unit.name}
+                                      {getName(unit)}
                                     </option>
                                   ))}
                                 </select>
@@ -1327,10 +1485,10 @@ useEffect(() => {
                                   </option>
                                   {stoneTypes.map((stoneItem) => (
                                     <option
-                                      key={stoneItem.id || stoneItem._id}
-                                      value={stoneItem.id || stoneItem._id}
+                                      key={getId(stoneItem)}
+                                      value={getId(stoneItem)}
                                     >
-                                      {stoneItem.name}
+                                      {getName(stoneItem)}
                                     </option>
                                   ))}
                                 </select>
@@ -1355,10 +1513,10 @@ useEffect(() => {
                                   </option>
                                   {stonePurities.map((purityItem) => (
                                     <option
-                                      key={purityItem.id || purityItem._id}
-                                      value={purityItem.id || purityItem._id}
+                                      key={getId(purityItem)}
+                                      value={getId(purityItem)}
                                     >
-                                      {purityItem.stone_purity || purityItem.name}
+                                      {getName(purityItem)}
                                     </option>
                                   ))}
                                 </select>
@@ -1502,10 +1660,10 @@ useEffect(() => {
                                   <option value="">Select Wastage Type</option>
                                   {wastageTypes.map((type) => (
                                     <option
-                                      key={type.id || type._id}
-                                      value={type.id || type._id}
+                                      key={getId(type)}
+                                      value={getId(type)}
                                     >
-                                      {type.name}
+                                      {getName(type)}
                                     </option>
                                   ))}
                                 </select>
@@ -1526,10 +1684,10 @@ useEffect(() => {
                                   <option value="">Select Material Type</option>
                                   {materialTypes.map((mt) => (
                                     <option
-                                      key={mt.id || mt._id}
-                                      value={mt.id || mt._id}
+                                      key={getId(mt)}
+                                      value={getId(mt)}
                                     >
-                                      {mt.material_type || mt.name}
+                                      {getName(mt)}
                                     </option>
                                   ))}
                                 </select>
@@ -1566,10 +1724,10 @@ useEffect(() => {
                                   <option value="">Select Unit</option>
                                   {units.map((unit) => (
                                     <option
-                                      key={unit.id || unit._id}
-                                      value={unit.id || unit._id}
+                                      key={getId(unit)}
+                                      value={getId(unit)}
                                     >
-                                      {unit.name}
+                                      {getName(unit)}
                                     </option>
                                   ))}
                                 </select>
@@ -1618,7 +1776,7 @@ useEffect(() => {
                 </div>
               </div>
 
-              {/* Price Summary */}
+              {/* Price Summary - UPDATED WITH MAKING CHARGES */}
               <div className="card mb-4 border">
                 <div className="card-header bg-light">
                   <h6 className="mb-0 fw-bold">Price Summary with GST</h6>
@@ -1628,38 +1786,79 @@ useEffect(() => {
                     <div className="col-md-6">
                       <table className="table table-borderless">
                         <tbody>
-                          <tr>
-                            <td className="fw-bold">Total Metals Cost:</td>
-                            <td className="text-end">
-                              ₹{totalMetalsCost.toFixed(2)}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="fw-bold">Total Stones Cost:</td>
-                            <td className="text-end">
-                              ₹{totalStonesCost.toFixed(2)}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="fw-bold">
-                              Total Materials & Wastage Cost:
-                            </td>
-                            <td className="text-end">
-                              ₹{totalMaterialsCost.toFixed(2)}
-                            </td>
-                          </tr>
+                          {totalMetalsCost > 0 && (
+                            <tr>
+                              <td className="fw-bold">Total Metals Cost:</td>
+                              <td className="text-end">
+                                ₹{totalMetalsCost.toFixed(2)}
+                              </td>
+                            </tr>
+                          )}
+
+                          {/* MAKING CHARGES SECTION */}
+                          {selectedPriceMakings.length > 0 && (
+                            <>
+                              <tr className="border-top">
+                                <td colSpan="2" className="fw-bold pt-3">
+                                  Making Charges:
+                                </td>
+                              </tr>
+
+                              {selectedPriceMakings.map((pm, index) => (
+                                <tr key={getId(pm) || index}>
+                                  <td className="ps-3">• {pm.cost_type || "Charge"}</td>
+                                  <td className="text-end">
+                                    ₹{parseFloat(pm.cost_amount || 0).toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))}
+
+                              <tr className="border-top">
+                                <td className="fw-bold">Total Making Charges:</td>
+                                <td className="text-end fw-bold">
+                                  ₹{makingChargeAmount.toFixed(2)}
+                                </td>
+                              </tr>
+                            </>
+                          )}
+                          
+                          {totalStonesCost > 0 && (
+                            <tr>
+                              <td className="fw-bold">Total Stones Cost:</td>
+                              <td className="text-end">
+                                ₹{totalStonesCost.toFixed(2)}
+                              </td>
+                            </tr>
+                          )}
+                          
+                          {totalMaterialsCost > 0 && (
+                            <tr>
+                              <td className="fw-bold">Total Materials & Wastage Cost:</td>
+                              <td className="text-end">
+                                ₹{totalMaterialsCost.toFixed(2)}
+                              </td>
+                            </tr>
+                          )}
+
+                          {/* SUBTOTAL BEFORE MAKING CHARGE */}
+                          {totalMetalsCost > 0 && (
+                            <tr className="border-top">
+                              <td className="fw-bold">Subtotal (Before Making Charge):</td>
+                              <td className="text-end">
+                                ₹{baseTotal.toFixed(2)}
+                              </td>
+                            </tr>
+                          )}
+
                           <tr className="border-top">
-                            <td className="fw-bold">
-                              Grand Total (Before Markup):
-                            </td>
+                            <td className="fw-bold">Grand Total (Before Markup):</td>
                             <td className="text-end fw-bold">
                               ₹{grandTotal.toFixed(2)}
                             </td>
                           </tr>
+                          
                           <tr>
-                            <td className="fw-bold">
-                              Markup ({formState.markup_percentage || 0}%):
-                            </td>
+                            <td className="fw-bold">Markup ({formState.markup_percentage || 0}%):</td>
                             <td className="text-end">
                               ₹
                               {(
@@ -1670,10 +1869,9 @@ useEffect(() => {
                               ).toFixed(2)}
                             </td>
                           </tr>
+                          
                           <tr className="border-top">
-                            <td className="fw-bold fs-5">
-                              Selling Price (Before Tax):
-                            </td>
+                            <td className="fw-bold fs-5">Selling Price (Before Tax):</td>
                             <td className="text-end fs-5 fw-bold">
                               ₹{sellingPriceBeforeTax.toFixed(2)}
                             </td>
@@ -1687,39 +1885,34 @@ useEffect(() => {
                         <tbody>
                           {gstBreakdown.cgstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">
-                                CGST ({formState.cgst_rate}%):
-                              </td>
+                              <td className="fw-bold">CGST ({formState.cgst_rate}%):</td>
                               <td className="text-end">
                                 ₹{gstBreakdown.cgstAmount.toFixed(2)}
                               </td>
                             </tr>
                           )}
+                          
                           {gstBreakdown.sgstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">
-                                SGST ({formState.sgst_rate}%):
-                              </td>
+                              <td className="fw-bold">SGST ({formState.sgst_rate}%):</td>
                               <td className="text-end">
                                 ₹{gstBreakdown.sgstAmount.toFixed(2)}
                               </td>
                             </tr>
                           )}
+                          
                           {gstBreakdown.igstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">
-                                IGST ({formState.igst_rate}%):
-                              </td>
+                              <td className="fw-bold">IGST ({formState.igst_rate}%):</td>
                               <td className="text-end">
                                 ₹{gstBreakdown.igstAmount.toFixed(2)}
                               </td>
                             </tr>
                           )}
+                          
                           {gstBreakdown.utgstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">
-                                UTGST ({formState.utgst_rate}%):
-                              </td>
+                              <td className="fw-bold">UTGST ({formState.utgst_rate}%):</td>
                               <td className="text-end">
                                 ₹{gstBreakdown.utgstAmount.toFixed(2)}
                               </td>
@@ -1727,18 +1920,14 @@ useEffect(() => {
                           )}
 
                           <tr className="border-top">
-                            <td className="fw-bold">
-                              Total GST ({getSelectedGSTDisplay()}):
-                            </td>
+                            <td className="fw-bold">Total GST ({getSelectedGSTDisplay()}):</td>
                             <td className="text-end">
                               ₹{gstBreakdown.totalGST.toFixed(2)}
                             </td>
                           </tr>
 
                           <tr className="border-top">
-                            <td className="fw-bold fs-5 text-success">
-                              Final Selling Price (With GST):
-                            </td>
+                            <td className="fw-bold fs-5 text-success">Final Selling Price (With GST):</td>
                             <td className="text-end fs-5 fw-bold text-success">
                               ₹{sellingPriceWithGST.toFixed(2)}
                             </td>
@@ -1747,9 +1936,7 @@ useEffect(() => {
                           <tr>
                             <td colSpan="2" className="pt-3">
                               <div className="mb-3">
-                                <label className="form-label">
-                                  Markup Percentage (%)
-                                </label>
+                                <label className="form-label">Markup Percentage (%)</label>
                                 <input
                                   type="number"
                                   step="0.01"

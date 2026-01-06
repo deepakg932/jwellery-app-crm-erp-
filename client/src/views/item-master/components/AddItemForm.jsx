@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FiUpload, FiX, FiImage, FiPlus, FiTrash2 } from "react-icons/fi";
+import Select from "react-select";
 
 const AddItemModal = ({
   onClose,
@@ -10,6 +11,7 @@ const AddItemModal = ({
   generateProductCode,
   getGSTRateValue,
   dropdownLoading = false,
+  fetchHallmarksByMetal,
 }) => {
   // Destructure formData with default values
   const {
@@ -26,6 +28,7 @@ const AddItemModal = ({
     wastageTypes = [],
     hallmarks = [],
     subcategories = {},
+    priceMakings = [],
     materialTypes = [],
   } = formData || {};
 
@@ -37,7 +40,7 @@ const AddItemModal = ({
     if (!item) return "";
     return (
       item.purity_name ||
-      item.stone_purity || // This is important for stone purity
+      item.stone_purity ||
       item.name ||
       item.stone_type ||
       item.category_name ||
@@ -70,7 +73,7 @@ const AddItemModal = ({
     product_brand: "",
     product_category: "",
     product_subcategory: "",
-    cost_type: "",
+    selected_price_makings: [],
     markup_percentage: 15,
     gst_rate: "",
     gst_total: 0,
@@ -88,6 +91,10 @@ const AddItemModal = ({
   const [dragActive, setDragActive] = useState(false);
   const [currentSubcategories, setCurrentSubcategories] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // NEW: State for hallmarks by metal
+  const [hallmarksByMetal, setHallmarksByMetal] = useState({});
+  const [loadingHallmarks, setLoadingHallmarks] = useState({});
 
   // Helper function to get wastage type display value
   const getWastageTypeDisplay = (type) => {
@@ -146,7 +153,9 @@ const AddItemModal = ({
     generateProductCode,
     isInitialized,
   ]);
+  
   console.log(wastageTypes, "wastageTypes");
+
   // Fetch subcategories when category changes
   useEffect(() => {
     let subcats = [];
@@ -257,8 +266,7 @@ const AddItemModal = ({
         weight: 0,
         unit: "",
         purity: "",
-        making_charge_type: "Fixed",
-        making_charge_value: 0,
+        hallmark: "", // Add hallmark field
         rate_per_gram: 0,
       },
     ]);
@@ -267,6 +275,12 @@ const AddItemModal = ({
   // Remove Metal Row
   const removeMetal = (id) => {
     setMetalsData(metalsData.filter((metal) => metal.id !== id));
+    // Remove hallmarks for this metal
+    setHallmarksByMetal(prev => {
+      const newHallmarks = { ...prev };
+      delete newHallmarks[id];
+      return newHallmarks;
+    });
   };
 
   // Add Stone Row - Creates empty row
@@ -278,8 +292,8 @@ const AddItemModal = ({
       {
         id: newId,
         stone_type: "",
-        stone_purity: "", // This will store the ID
-        stone_purity_display: "", // This will store the display name
+        stone_purity: "",
+        stone_purity_display: "",
         size: 0,
         quantity: 1,
         weight: 0,
@@ -316,11 +330,41 @@ const AddItemModal = ({
   };
 
   // ==================== UPDATE FUNCTIONS ====================
-  const updateMetal = (id, field, value) => {
+  const updateMetal = async (id, field, value) => {
     setMetalsData(
       metalsData.map((metal) => {
         if (metal.id !== id) return metal;
-        return { ...metal, [field]: value };
+        
+        const updatedMetal = { ...metal, [field]: value };
+        
+        // If metal_type changed, fetch hallmarks
+        if (field === "metal_type" && value && fetchHallmarksByMetal) {
+          // Clear existing hallmark when metal changes
+          updatedMetal.hallmark = "";
+          
+          // Fetch hallmarks for this metal
+          setLoadingHallmarks(prev => ({ ...prev, [id]: true }));
+          
+          fetchHallmarksByMetal(value)
+            .then(hallmarks => {
+              setHallmarksByMetal(prev => ({
+                ...prev,
+                [id]: hallmarks
+              }));
+            })
+            .catch(err => {
+              console.error("Error fetching hallmarks:", err);
+              setHallmarksByMetal(prev => ({
+                ...prev,
+                [id]: []
+              }));
+            })
+            .finally(() => {
+              setLoadingHallmarks(prev => ({ ...prev, [id]: false }));
+            });
+        }
+        
+        return updatedMetal;
       })
     );
   };
@@ -431,27 +475,28 @@ const AddItemModal = ({
   };
 
   // ==================== CALCULATIONS ====================
+
+  const getMakingChargeAmount = () => {
+    if (
+      !formState.selected_price_makings ||
+      formState.selected_price_makings.length === 0
+    ) {
+      return 0;
+    }
+
+    // Sum all selected making charges
+    const totalAmount = formState.selected_price_makings.reduce((sum, pm) => {
+      const costAmount = parseFloat(pm.cost_amount) || 0;
+      return sum + costAmount;
+    }, 0);
+
+    return totalAmount;
+  };
+
   const calculateMetalSubtotal = (metal) => {
     const weight = parseFloat(metal.weight) || 0;
     const rate = parseFloat(metal.rate_per_gram) || 0;
-    const base = weight * rate;
-
-    const selectedCostType = costTypes.find(
-      (ct) => getId(ct) === formState.cost_type
-    );
-
-    const costTypeName = getName(selectedCostType) || "";
-    const makingChargeValue = 0;
-
-    if (costTypeName.toLowerCase().includes("percentage")) {
-      return base + (base * makingChargeValue) / 100;
-    } else if (costTypeName.toLowerCase().includes("fixed")) {
-      return base + makingChargeValue;
-    } else if (costTypeName.toLowerCase().includes("per gram")) {
-      return base + makingChargeValue * weight;
-    }
-
-    return base;
+    return weight * rate; // Just return weight * rate
   };
 
   const calculateStoneSubtotal = (stone) => {
@@ -510,10 +555,11 @@ const AddItemModal = ({
   };
 
   // Totals
-  const totalMetalsCost = metalsData.reduce(
-    (sum, metal) => sum + calculateMetalSubtotal(metal),
-    0
-  );
+  const totalMetalsCost = metalsData.reduce((sum, metal) => {
+    const weight = parseFloat(metal.weight) || 0;
+    const rate = parseFloat(metal.rate_per_gram) || 0;
+    return sum + weight * rate;
+  }, 0);
   const totalStonesCost = stones.reduce(
     (sum, stone) => sum + calculateStoneSubtotal(stone),
     0
@@ -522,22 +568,29 @@ const AddItemModal = ({
     (sum, mat) => sum + calculateMaterialCost(mat),
     0
   );
-  const grandTotal = totalMetalsCost + totalStonesCost + totalMaterialsCost;
+
+  // Making charge from selected price making
+  const makingChargeAmount = getMakingChargeAmount();
+
+  const grandTotal =
+    totalMetalsCost + totalStonesCost + totalMaterialsCost + makingChargeAmount;
+
   const sellingPriceBeforeTax =
     grandTotal * (1 + (parseFloat(formState.markup_percentage) || 0) / 100);
   const gstBreakdown = calculateGSTBreakdown(sellingPriceBeforeTax);
   const sellingPriceWithGST = sellingPriceBeforeTax + gstBreakdown.totalGST;
 
   // ==================== FORM SUBMISSION ====================
-  // In AddItemModal component, update the handleSubmit function:
-
-  // In AddItemModal, update handleSubmit function:
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validate form
     const formErrors = validateForm();
+
+    // Add validation for making charges if needed
+    if (formState.selected_price_makings.length === 0) {
+      formErrors.making_charge = "At least one making charge type is required";
+    }
 
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
@@ -547,17 +600,29 @@ const AddItemModal = ({
     // Get selected GST object
     const selectedGST = getSelectedGSTObject();
 
-    // Prepare final data with IDs - MUST match backend field names
+    // Prepare final data
     const finalData = {
       // Basic info
       product_name: formState.product_name,
       product_code: formState.product_code,
 
-      // IDs - these field names MUST match backend
+      // IDs
       product_brand: formState.product_brand,
       product_category: formState.product_category,
       product_subcategory: formState.product_subcategory,
 
+      // Multiple making charges
+      making_charges: formState.selected_price_makings.map((pm) => ({
+        price_making_id: getId(pm),
+        cost_type: pm.cost_type || "",
+        stage_name: pm.stage_name || "",
+        sub_stage_name: pm.sub_stage_name || "",
+        cost_amount: parseFloat(pm.cost_amount) || 0,
+        unit_name: pm.unit_name || "",
+      })),
+
+      total_making_charge_amount: makingChargeAmount,
+      
       // Markup
       markup_percentage: parseFloat(formState.markup_percentage) || 15,
 
@@ -568,14 +633,14 @@ const AddItemModal = ({
       igst_rate: selectedGST ? `${selectedGST.igst_percentage || 0}%` : "0%",
       utgst_rate: selectedGST ? `${selectedGST.utgst_percentage || 0}%` : "0%",
 
-      // Metals - send IDs with field names that match backend
+      // Metals - INCLUDING HALLMARK
       metals: metalsData.map((metal) => ({
-        metal_type: metal.metal_type, // This is the ID
-        purity: metal.purity, // This is the ID
+        metal_type: metal.metal_type,
+        purity: metal.purity,
         weight: parseFloat(metal.weight) || 0,
         unit: metal.unit || "g",
-
         rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
+        hallmark: metal.hallmark || "", // Add hallmark
       })),
 
       // Stones - send IDs with field names that match backend
@@ -610,10 +675,12 @@ const AddItemModal = ({
         subcategoryId: finalData.product_subcategory,
       },
       metalsCount: finalData.metals.length,
+      metalsWithHallmark: finalData.metals.filter(m => m.hallmark).length,
       stonesCount: finalData.stones.length,
       materialsCount: finalData.materials.length,
     });
-    console.log(finalData, "finalData");
+    console.log("Metals data with hallmarks:", finalData.metals);
+    
     if (onSave) {
       await onSave(finalData);
     }
@@ -745,44 +812,74 @@ const AddItemModal = ({
                     )}
                   </div>
 
+                  {/* MAKING CHARGE TYPE */}
                   <div className="mb-3">
-                    <label className="form-label">Making Charge Type</label>
-                    <select
-                      className={`form-select ${
-                        dropdownLoading ? "opacity-50" : ""
-                      }`}
-                      value={formState.cost_type || ""}
-                      onChange={(e) => {
-                        const selectedCostType = costTypes.find(
-                          (ct) => getId(ct) === e.target.value
+                    <label className="form-label">Making Charge Types</label>
+
+                    <Select
+                      isMulti
+                      options={priceMakings.map((pm) => ({
+                        value: getId(pm),
+                        label: pm.cost_type,
+                        originalData: pm,
+                      }))}
+                      value={formState.selected_price_makings.map((pm) => ({
+                        value: getId(pm),
+                        label: pm.cost_type,
+                        originalData: pm,
+                      }))}
+                      onChange={(selectedOptions) => {
+                        const selectedPriceMakings = selectedOptions.map(
+                          (option) => option.originalData
                         );
-                        handleInputChange("cost_type", e.target.value);
                         handleInputChange(
-                          "cost_type_name",
-                          getName(selectedCostType) || ""
+                          "selected_price_makings",
+                          selectedPriceMakings
                         );
                       }}
-                      disabled={
-                        loading || dropdownLoading || costTypes.length === 0
+                      placeholder={
+                        dropdownLoading || priceMakings.length === 0
+                          ? "Loading making charge types..."
+                          : "Select Making Charge Types"
                       }
-                    >
-                      <option value="">
-                        {dropdownLoading || costTypes.length === 0
-                          ? "Loading cost types..."
-                          : "Select Making Charge Type"}
-                      </option>
-                      {costTypes.map((costType) => (
-                        <option key={getId(costType)} value={getId(costType)}>
-                          {getName(costType)}
-                        </option>
-                      ))}
-                    </select>
-                    {formState.cost_type && !dropdownLoading && (
-                      <small className="text-muted">
-                        Selected:{" "}
-                        {getDisplayName(formState.cost_type, costTypes)}
-                      </small>
+                      isDisabled={
+                        loading || dropdownLoading || priceMakings.length === 0
+                      }
+                      className={`react-select-container ${
+                        dropdownLoading ? "opacity-50" : ""
+                      }`}
+                      classNamePrefix="react-select"
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderColor: errors.making_charge
+                            ? "#dc3545"
+                            : "#dee2e6",
+                          "&:hover": {
+                            borderColor: errors.making_charge
+                              ? "#dc3545"
+                              : "#ced4da",
+                          },
+                          backgroundColor: state.isDisabled
+                            ? "#e9ecef"
+                            : "white",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          zIndex: 9999,
+                        }),
+                      }}
+                    />
+
+                    {errors.making_charge && (
+                      <div className="invalid-feedback d-block">
+                        {errors.making_charge}
+                      </div>
                     )}
+
+                    <div className="form-text">
+                      You can select multiple making charge types
+                    </div>
                   </div>
                 </div>
 
@@ -1027,7 +1124,7 @@ const AddItemModal = ({
                 </div>
               </div>
 
-              {/* Metals Table - Empty by default */}
+              {/* Metals Table - Updated with Hallmark */}
               <div className="card mb-4 border">
                 <div className="card-header bg-light d-flex justify-content-between align-items-center">
                   <h6 className="mb-0 fw-bold">Metal Details</h6>
@@ -1054,6 +1151,7 @@ const AddItemModal = ({
                           <tr>
                             <th>Metal Type</th>
                             <th>Purity</th>
+                            <th>Hallmark</th>
                             <th>Weight</th>
                             <th>Unit</th>
                             <th>Rate/Gram</th>
@@ -1133,6 +1231,54 @@ const AddItemModal = ({
                                 </select>
                               </td>
                               <td>
+                                <select
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading || loadingHallmarks[metal.id]
+                                      ? "opacity-50"
+                                      : ""
+                                  }`}
+                                  value={metal.hallmark || ""}
+                                  onChange={(e) =>
+                                    updateMetal(
+                                      metal.id,
+                                      "hallmark",
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={
+                                    loading ||
+                                    dropdownLoading ||
+                                    loadingHallmarks[metal.id] ||
+                                    !metal.metal_type ||
+                                    (hallmarksByMetal[metal.id] || []).length === 0
+                                  }
+                                >
+                                  <option value="">
+                                    {loadingHallmarks[metal.id]
+                                      ? "Loading hallmarks..."
+                                      : !metal.metal_type
+                                      ? "Select metal first"
+                                      : (hallmarksByMetal[metal.id] || []).length === 0
+                                      ? "No hallmarks available"
+                                      : "Select Hallmark"}
+                                  </option>
+                                  {(hallmarksByMetal[metal.id] || []).map((hallmark) => (
+                                    <option key={hallmark._id} value={hallmark._id}>
+                                      {hallmark.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                {metal.hallmark && (
+                                  <small className="text-muted d-block mt-1">
+                                    Selected: {
+                                      (hallmarksByMetal[metal.id] || []).find(
+                                        h => h._id === metal.hallmark
+                                      )?.name || "Unknown"
+                                    }
+                                  </small>
+                                )}
+                              </td>
+                              <td>
                                 <input
                                   type="number"
                                   step="0.001"
@@ -1182,6 +1328,7 @@ const AddItemModal = ({
                                   ))}
                                 </select>
                               </td>
+
                               <td>
                                 <input
                                   type="number"
@@ -1677,6 +1824,43 @@ const AddItemModal = ({
                                 </td>
                               </tr>
                             )}
+
+                            {/* MAKING CHARGES SECTION IN PRICE SUMMARY */}
+                            {formState.selected_price_makings.length > 0 && (
+                              <>
+                                <tr className="border-top">
+                                  <td colSpan="2" className="fw-bold pt-3">
+                                    Making Charges:
+                                  </td>
+                                </tr>
+
+                                {formState.selected_price_makings.map(
+                                  (pm, index) => (
+                                    <tr key={getId(pm) || index}>
+                                      <td className="ps-3">
+                                        • {pm.cost_type || "Charge"}
+                                  
+                                      </td>
+                                      <td className="text-end">
+                                        ₹
+                                        {parseFloat(
+                                          pm.cost_amount || 0
+                                        ).toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  )
+                                )}
+
+                                <tr className="border-top">
+                                  <td className="fw-bold">
+                                    Total Making Charges:
+                                  </td>
+                                  <td className="text-end fw-bold">
+                                    ₹{makingChargeAmount.toFixed(2)}
+                                  </td>
+                                </tr>
+                              </>
+                            )}
                             {stones.length > 0 && (
                               <tr>
                                 <td className="fw-bold">Total Stones Cost:</td>
@@ -1695,6 +1879,24 @@ const AddItemModal = ({
                                 </td>
                               </tr>
                             )}
+
+                            {/* SUBTOTAL BEFORE MAKING CHARGE */}
+                            {metalsData.length > 0 && (
+                              <tr className="border-top">
+                                <td className="fw-bold">
+                                  Subtotal (Before Making Charge):
+                                </td>
+                                <td className="text-end">
+                                  ₹
+                                  {(
+                                    totalMetalsCost +
+                                    totalStonesCost +
+                                    totalMaterialsCost
+                                  ).toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+
                             <tr className="border-top">
                               <td className="fw-bold">
                                 Grand Total (Before Markup):
@@ -1817,6 +2019,41 @@ const AddItemModal = ({
                         </table>
                       </div>
                     </div>
+
+                    {/* Selected Making Charge Details
+                    {formState.selected_price_making && (
+                      <div className="alert alert-info small mt-3">
+                        <strong>Selected Making Charge Details:</strong>
+                        <ul className="mb-0 mt-1">
+                          <li>
+                            Type:{" "}
+                            {formState.selected_price_making.cost_type || "N/A"}
+                          </li>
+                          <li>
+                            Stage:{" "}
+                            {formState.selected_price_making.stage_name ||
+                              "N/A"}
+                          </li>
+                          <li>
+                            Sub-stage:{" "}
+                            {formState.selected_price_making.sub_stage_name ||
+                              "N/A"}
+                          </li>
+                          <li>
+                            Cost Amount: ₹
+                            {formState.selected_price_making.cost_amount || 0}
+                          </li>
+                          <li>
+                            Unit:{" "}
+                            {formState.selected_price_making.unit_name ||
+                              "Fixed"}
+                          </li>
+                          <li>
+                            Calculated Amount: ₹{makingChargeAmount.toFixed(2)}
+                          </li>
+                        </ul>
+                      </div>
+                    )} */}
                   </div>
                 </div>
               )}

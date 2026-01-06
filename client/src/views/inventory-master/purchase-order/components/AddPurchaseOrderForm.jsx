@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FiUpload, FiPlus, FiTrash2 } from "react-icons/fi";
 import usePurchaseOrders from "@/hooks/usePurchaseOrders";
 
@@ -12,13 +12,9 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     loadingUnits,
   } = usePurchaseOrders();
 
-  console.log("Form - Inventory Items:", inventoryItems);
-  console.log("Form - Units:", units);
-  console.log("Form - Suppliers:", suppliers);
-
   const [formData, setFormData] = useState({
     supplier_id: "",
-    order_date: new Date().toISOString().split('T')[0],
+    order_date: new Date().toISOString().split("T")[0],
     items: [
       {
         inventory_item_id: "",
@@ -28,6 +24,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
         rate: "",
         total: 0,
         expected_date: "",
+        metal_purity: "",
+        stone_purity: "",
+        metal_weight: "",
+        stone_type: "",
+        metal_type: "",
+        material_type: "",
+        track_by: "quantity", // Add track_by field
       },
     ],
     notes: "",
@@ -35,6 +38,103 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
   });
 
   const [errors, setErrors] = useState({});
+
+  // Helper function to get selected item details
+  const getSelectedItemDetails = (itemId) => {
+    if (!itemId) return null;
+    return inventoryItems.find((item) => item._id === itemId);
+  };
+
+  // Determine item type based on inventory item data
+  const getItemType = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item) return "material";
+    
+    if (item.metals && item.metals.length > 0) {
+      return "metal";
+    } else if (item.stones && item.stones.length > 0) {
+      return "stone";
+    } else {
+      return "material";
+    }
+  };
+
+  // Get metal details for selected item
+  const getMetalDetails = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item || !item.metals || item.metals.length === 0) return [];
+
+    return item.metals.map((metal) => {
+      let purity = "";
+      let metalName = "";
+      let metalWeight = null;
+
+      // Get metal purity
+      if (metal.purity_name) {
+        purity = metal.purity_name;
+      } else if (metal.purity_id?.purity_name) {
+        purity = metal.purity_id.purity_name;
+      }
+
+      // Get metal name/type
+      if (metal.metal_id?.name) {
+        metalName = metal.metal_id.name;
+      }
+
+      // Get metal weight
+      if (metal.metal_weight) {
+        metalWeight = metal.metal_weight;
+      }
+
+      return {
+        metal_type: metalName || "Metal",
+        purity: purity || "N/A",
+        metal_weight: metalWeight,
+      };
+    });
+  };
+
+  // Get stone details for selected item
+  const getStoneDetails = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item || !item.stones || item.stones.length === 0) return [];
+
+    return item.stones.map((stone) => {
+      let purity = "";
+      let stoneType = "";
+
+      // Get stone purity
+      if (stone.stone_purity_id?.stone_purity) {
+        purity = stone.stone_purity_id.stone_purity;
+      }
+
+      // Get stone type
+      if (stone.stone_id?.stone_type) {
+        stoneType = stone.stone_id.stone_type;
+      }
+
+      return {
+        stone_type: stoneType || "Stone",
+        purity: purity || "N/A",
+        stone_quantity: stone.stone_quantity || null,
+      };
+    });
+  };
+
+  // Get material type for selected item
+  const getMaterialType = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item) return "";
+    
+    return item.material_type_id?.material_type || "Material";
+  };
+
+  // Get track_by field from inventory item
+  const getTrackBy = (itemId) => {
+    const item = getSelectedItemDetails(itemId);
+    if (!item) return "quantity";
+    return item.track_by || "quantity";
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -54,15 +154,21 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
         if (!item.inventory_item_id) {
           newErrors[`items[${index}].inventory_item_id`] = "Item is required";
         }
-        if (!item.quantity && !item.weight) {
-          newErrors[`items[${index}].quantity_weight`] =
-            "Either quantity or weight is required";
+        
+        const trackBy = item.track_by || "quantity";
+        
+        if (trackBy === "quantity") {
+          if (!item.quantity || parseFloat(item.quantity) <= 0) {
+            newErrors[`items[${index}].quantity`] = "Quantity is required";
+          }
+        } else if (trackBy === "weight") {
+          if (!item.weight || parseFloat(item.weight) <= 0) {
+            newErrors[`items[${index}].weight`] = "Weight is required";
+          }
         }
+        
         if (!item.rate || parseFloat(item.rate) <= 0) {
           newErrors[`items[${index}].rate`] = "Valid rate is required";
-        }
-        if (!item.unit_id) {
-          newErrors[`items[${index}].unit_id`] = "Unit is required";
         }
       });
     }
@@ -71,13 +177,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const calculateItemTotal = (quantity, weight, rate) => {
+  const calculateItemTotal = (quantity, weight, rate, trackBy) => {
     const qty = parseFloat(quantity) || 0;
     const wt = parseFloat(weight) || 0;
     const rt = parseFloat(rate) || 0;
 
-    // Use either quantity or weight for calculation
-    const amount = qty > 0 ? qty : wt;
+    // Use quantity or weight based on track_by
+    const amount = trackBy === "quantity" ? qty : wt;
     return amount * rt;
   };
 
@@ -89,6 +195,56 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...formData.items];
+
+    // If inventory item is changing, auto-populate relevant details
+    if (field === "inventory_item_id") {
+      const itemDetails = getSelectedItemDetails(value);
+      
+      if (itemDetails) {
+        const itemType = getItemType(value);
+        const trackBy = getTrackBy(value);
+
+        // Reset all fields first
+        updatedItems[index].metal_purity = "";
+        updatedItems[index].stone_purity = "";
+        updatedItems[index].metal_weight = "";
+        updatedItems[index].metal_type = "";
+        updatedItems[index].stone_type = "";
+        updatedItems[index].material_type = "";
+        updatedItems[index].track_by = trackBy;
+
+        // Set only relevant fields based on item type
+        if (itemType === "metal") {
+          const metalDetails = getMetalDetails(value);
+          if (metalDetails.length > 0) {
+            // Use the first metal details
+            updatedItems[index].metal_purity = metalDetails[0].purity;
+            updatedItems[index].metal_weight = metalDetails[0].metal_weight || "";
+            updatedItems[index].metal_type = metalDetails[0].metal_type;
+          }
+        } else if (itemType === "stone") {
+          const stoneDetails = getStoneDetails(value);
+          if (stoneDetails.length > 0) {
+            // Use the first stone details
+            updatedItems[index].stone_purity = stoneDetails[0].purity || "N/A";
+            updatedItems[index].stone_type = stoneDetails[0].stone_type;
+          }
+        } else if (itemType === "material") {
+          // Set material type
+          updatedItems[index].material_type = getMaterialType(value);
+        }
+      } else {
+        // Reset all fields if no item selected
+        updatedItems[index].metal_purity = "";
+        updatedItems[index].stone_purity = "";
+        updatedItems[index].metal_weight = "";
+        updatedItems[index].metal_type = "";
+        updatedItems[index].stone_type = "";
+        updatedItems[index].material_type = "";
+        updatedItems[index].track_by = "quantity";
+      }
+    }
+
     updatedItems[index] = {
       ...updatedItems[index],
       [field]: value,
@@ -96,10 +252,12 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
 
     // Calculate total when quantity, weight, or rate changes
     if (field === "quantity" || field === "weight" || field === "rate") {
+      const trackBy = updatedItems[index].track_by || "quantity";
       updatedItems[index].total = calculateItemTotal(
         field === "quantity" ? value : updatedItems[index].quantity,
         field === "weight" ? value : updatedItems[index].weight,
-        field === "rate" ? value : updatedItems[index].rate
+        field === "rate" ? value : updatedItems[index].rate,
+        trackBy
       );
     }
 
@@ -139,6 +297,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
           rate: "",
           total: 0,
           expected_date: "",
+          metal_purity: "",
+          stone_purity: "",
+          metal_weight: "",
+          stone_type: "",
+          metal_type: "",
+          material_type: "",
+          track_by: "quantity",
         },
       ],
     }));
@@ -159,19 +324,58 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Prepare payload - don't send order_number (it will be generated on backend)
+    // Prepare payload
     const payload = {
       supplier_id: formData.supplier_id,
       order_date: formData.order_date,
-      items: formData.items.map((item) => ({
-        inventory_item_id: item.inventory_item_id,
-        quantity: parseFloat(item.quantity) || 0,
-        weight: parseFloat(item.weight) || 0,
-        unit_id: item.unit_id,
-        rate: parseFloat(item.rate),
-        total: parseFloat(item.total),
-        expected_date: item.expected_date || null,
-      })),
+      items: formData.items.map((item) => {
+        const itemType = getItemType(item.inventory_item_id);
+        const trackBy = item.track_by || "quantity";
+        
+        const baseItem = {
+          inventory_item_id: item.inventory_item_id,
+          quantity: trackBy === "quantity" ? parseFloat(item.quantity) || 0 : 0,
+          weight: trackBy === "weight" ? parseFloat(item.weight) || 0 : 0,
+          unit_id: item.unit_id,
+          rate: parseFloat(item.rate),
+          total: parseFloat(item.total),
+          expected_date: item.expected_date || null,
+          track_by: trackBy,
+        };
+
+        // Add item type specific fields
+        if (itemType === "metal") {
+          return {
+            ...baseItem,
+            metal_purity: item.metal_purity || null,
+            metal_weight: parseFloat(item.metal_weight) || null,
+            metal_type: item.metal_type || null,
+            stone_purity: null,
+            stone_type: null,
+            material_type: null,
+          };
+        } else if (itemType === "stone") {
+          return {
+            ...baseItem,
+            stone_purity: item.stone_purity || null,
+            stone_type: item.stone_type || null,
+            metal_purity: null,
+            metal_weight: null,
+            metal_type: null,
+            material_type: null,
+          };
+        } else {
+          return {
+            ...baseItem,
+            material_type: item.material_type || null,
+            metal_purity: null,
+            metal_weight: null,
+            metal_type: null,
+            stone_purity: null,
+            stone_type: null,
+          };
+        }
+      }),
       notes: formData.notes || "",
       total_amount: parseFloat(formData.total_amount),
     };
@@ -182,7 +386,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     // Reset form
     setFormData({
       supplier_id: "",
-      order_date: new Date().toISOString().split('T')[0],
+      order_date: new Date().toISOString().split("T")[0],
       items: [
         {
           inventory_item_id: "",
@@ -192,6 +396,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
           rate: "",
           total: 0,
           expected_date: "",
+          metal_purity: "",
+          stone_purity: "",
+          metal_weight: "",
+          stone_type: "",
+          metal_type: "",
+          material_type: "",
+          track_by: "quantity",
         },
       ],
       notes: "",
@@ -215,7 +426,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
   const handleClose = () => {
     setFormData({
       supplier_id: "",
-      order_date: new Date().toISOString().split('T')[0],
+      order_date: new Date().toISOString().split("T")[0],
       items: [
         {
           inventory_item_id: "",
@@ -225,6 +436,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
           rate: "",
           total: 0,
           expected_date: "",
+          metal_purity: "",
+          stone_purity: "",
+          metal_weight: "",
+          stone_type: "",
+          metal_type: "",
+          material_type: "",
+          track_by: "quantity",
         },
       ],
       notes: "",
@@ -234,17 +452,16 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     onClose();
   };
 
-  // Check if unit is a weight unit
-  const isWeightUnit = (unitId) => {
-    const unit = units.find((u) => u._id === unitId);
-    if (!unit) return false;
-
-    const unitName = unit.name?.toLowerCase() || "";
-    return (
-      unitName.includes("g") ||
-      unitName.includes("kg") ||
-      unitName.includes("gram")
-    );
+  // Get material type display with purity
+  const getMaterialTypeDisplay = (item) => {
+    if (item.metal_type) {
+      return `Metal: ${item.metal_type}`;
+    } else if (item.stone_type) {
+      return `Stone: ${item.stone_type}`;
+    } else if (item.material_type) {
+      return `Material: ${item.material_type}`;
+    }
+    return "N/A";
   };
 
   // Check if component fields should be disabled
@@ -293,7 +510,8 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                     suppliers.length > 0 ? (
                       suppliers.map((supplier) => (
                         <option key={supplier._id} value={supplier._id}>
-                          {supplier.name || supplier.supplier_name} - {supplier.phone || "No phone"}
+                          {supplier.name || supplier.supplier_name} -{" "}
+                          {supplier.phone || "No phone"}
                         </option>
                       ))
                     ) : (
@@ -351,20 +569,23 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                   <table className="table align-middle">
                     <thead>
                       <tr>
-                        <th width="25%">Item Name</th>
-                        <th width="12%">Quantity</th>
-                        <th width="12%">Weight</th>
-                        <th width="12%">Unit</th>
-                        <th width="12%">Rate (₹)</th>
-                        <th width="12%">Expected Date</th>
+                        <th width="20%">Item Name</th>
+                        <th width="10%">Unit</th>
+                        <th width="10%">Weight</th>
+                        <th width="10%">Quantity</th>
+                        <th width="10%">Rate (₹)</th>
+                        <th width="15%">Type & Purity</th>
                         <th width="10%">Total (₹)</th>
-                        <th width="5%">Action</th>
+                        <th width="10%">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {formData.items.map((item, index) => {
-                        // Check if the selected unit is a weight unit
-                        const isWeightItem = isWeightUnit(item.unit_id);
+                        const selectedItem = getSelectedItemDetails(
+                          item.inventory_item_id
+                        );
+                        const itemType = getItemType(item.inventory_item_id);
+                        const trackBy = item.track_by || "quantity";
 
                         return (
                           <tr key={index}>
@@ -389,14 +610,24 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                                 {inventoryItems &&
                                 Array.isArray(inventoryItems) &&
                                 inventoryItems.length > 0 ? (
-                                  inventoryItems.map((invItem) => (
-                                    <option
-                                      key={invItem._id}
-                                      value={invItem._id}
-                                    >
-                                      {invItem.item_name || invItem.name}
-                                    </option>
-                                  ))
+                                  inventoryItems.map((invItem) => {
+                                    const type =
+                                      invItem.metals?.length > 0
+                                        ? "metal"
+                                        : invItem.stones?.length > 0
+                                        ? "stone"
+                                        : "material";
+                                    const track = invItem.track_by || "quantity";
+
+                                    return (
+                                      <option
+                                        key={invItem._id}
+                                        value={invItem._id}
+                                      >
+                                        {invItem.item_name || invItem.name} ({type}, track: {track})
+                                      </option>
+                                    );
+                                  })
                                 ) : (
                                   <option value="">No items available</option>
                                 )}
@@ -404,63 +635,6 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                               {errors[`items[${index}].inventory_item_id`] && (
                                 <div className="invalid-feedback d-block">
                                   {errors[`items[${index}].inventory_item_id`]}
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Quantity field - enabled only if unit is NOT a weight unit */}
-                            <td>
-                              <input
-                                type="number"
-                                className={`form-control ${
-                                  errors[`items[${index}].quantity_weight`] ||
-                                  errors[`items[${index}].quantity`]
-                                    ? "is-invalid"
-                                    : ""
-                                }`}
-                                placeholder="Qty"
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "quantity",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled || isWeightItem}
-                                min="0"
-                                step="0.001"
-                              />
-                            </td>
-
-                            {/* Weight field - enabled only if unit IS a weight unit */}
-                            <td>
-                              <input
-                                type="number"
-                                className={`form-control ${
-                                  errors[`items[${index}].quantity_weight`] ||
-                                  errors[`items[${index}].weight`]
-                                    ? "is-invalid"
-                                    : ""
-                                }`}
-                                placeholder="Weight"
-                                value={item.weight}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "weight",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled || !isWeightItem}
-                                min="0"
-                                step="0.001"
-                              />
-                              {(errors[`items[${index}].quantity_weight`] ||
-                                errors[`items[${index}].weight`]) && (
-                                <div className="invalid-feedback d-block">
-                                  {errors[`items[${index}].quantity_weight`] ||
-                                    errors[`items[${index}].weight`]}
                                 </div>
                               )}
                             </td>
@@ -502,6 +676,80 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                               )}
                             </td>
 
+                            {/* Weight field - Show only if track_by is "weight" */}
+                            <td>
+                              {trackBy === "weight" ? (
+                                <div>
+                                  <input
+                                    type="number"
+                                    className={`form-control ${
+                                      errors[`items[${index}].weight`]
+                                        ? "is-invalid"
+                                        : ""
+                                    }`}
+                                    placeholder="Weight"
+                                    value={item.weight}
+                                    onChange={(e) =>
+                                      handleItemChange(
+                                        index,
+                                        "weight",
+                                        e.target.value
+                                      )
+                                    }
+                                    disabled={isDisabled}
+                                    min="0"
+                                    step="0.001"
+                                  />
+                                  {errors[`items[${index}].weight`] && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors[`items[${index}].weight`]}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-muted small">
+                                  Not applicable
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Quantity field - Show only if track_by is "quantity" */}
+                            <td>
+                              {trackBy === "quantity" ? (
+                                <div>
+                                  <input
+                                    type="number"
+                                    className={`form-control ${
+                                      errors[`items[${index}].quantity`]
+                                        ? "is-invalid"
+                                        : ""
+                                    }`}
+                                    placeholder="Qty"
+                                    value={item.quantity}
+                                    onChange={(e) =>
+                                      handleItemChange(
+                                        index,
+                                        "quantity",
+                                        e.target.value
+                                      )
+                                    }
+                                    disabled={isDisabled}
+                                    min="0"
+                                    step="0.001"
+                                  />
+                                  {errors[`items[${index}].quantity`] && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors[`items[${index}].quantity`]}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-muted small">
+                                  Not applicable
+                                </div>
+                              )}
+                            </td>
+
                             <td>
                               <input
                                 type="number"
@@ -530,21 +778,31 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                               )}
                             </td>
 
+                            {/* Type & Purity Field - Display only (not selectable) */}
                             <td>
-                              <input
-                                type="date"
-                                className="form-control"
-                                value={item.expected_date}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "expected_date",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled}
-                                min={formData.order_date}
-                              />
+                              <div>
+                                {/* Type */}
+                                <div className="fw-medium mb-1">
+                                  {getMaterialTypeDisplay(item)}
+                                </div>
+                                
+                                {/* Purity (display only) */}
+                                {(item.metal_type || item.stone_type) && (
+                                  <div>
+                                    <span className="text-muted">Purity: </span>
+                                    <span className="fw-medium">
+                                      {item.metal_type ? item.metal_purity : item.stone_purity}
+                                    </span>
+                                  </div>
+                                )}
+                                
+                                {/* Metal weight (if available) */}
+                                {item.metal_weight && (
+                                  <div className="small text-muted mt-1">
+                                    Weight: {item.metal_weight}g
+                                  </div>
+                                )}
+                              </div>
                             </td>
 
                             <td>

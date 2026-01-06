@@ -1,175 +1,159 @@
 import React, { useState, useEffect } from "react";
-import { FiUpload } from "react-icons/fi";
+import { FiUpload, FiPlus, FiTrash2 } from "react-icons/fi";
 
 const AddInventoryItemForm = ({
   onClose,
   onSave,
   loading = false,
   inventoryCategories = [],
-  units = [],
-  metalPurities = [],
-  stonePurities = [],
-  materials = [],
+  branches = [],
+  metalTypes = [],
+  stoneTypes = [],
 }) => {
-  // Main Form State
+  // Main Form State for jewelry inventory
   const [formData, setFormData] = useState({
+    // Basic Information
     item_name: "",
+    item_code: "",
+    description: "",
     inventory_category_id: "",
-
-    // Item type: "metal", "stone", or "material"
-    item_type: "",
-
-    // For metals
-    metal_type: "",
-    metal_purity_id: "",
-    metal_purity_name: "",
-
-    // For stones
-    stone_type: "",
-    stone_purity_id: "",
-    stone_purity_name: "",
-
-    // For materials
-    material_type_id: "",
-
-    // Tracking
-    track_by: "weight",
-    weight: "",
-    quantity: "",
-    unit_id: "",
-    status: true,
+    branch_id: "",
+    
+    // Metals Array
+    metals: [
+      {
+        metal_type: "gold",
+        purity: "22k",
+        weight: "",
+        color: "yellow",
+        hallmark: "916"
+      }
+    ],
+    
+    // Stones Array
+    stones: [
+      {
+        stone_type: "diamond",
+        shape: "round",
+        color: "G",
+        clarity: "VS1",
+        carat_weight: "",
+        quantity: 1,
+        certificate_type: "GIA"
+      }
+    ],
+    
+    // Rates
+    gold_rate: "",
+    stone_rate: "",
+    
+    // Making Charges
+    making_charges: "",
+    making_type: "percentage",
+    wastage_percentage: "5",
+    profit_margin: "20",
+    
+    // Stock
+    current_stock: "1",
+    minimum_stock: "1",
+    location_type: "showcase",
+    
+    // Pricing
+    mrp: "",
+    discount_type: "none",
+    discount_value: "0",
+    
+    // Tax
+    gst_percentage: "3",
+    
+    // Status
+    status: "active",
+    is_new_arrival: true,
+    
+    // Arrays
+    images: [],
+    tags: []
   });
 
   const [errors, setErrors] = useState({});
+  const [autoGenerateCode, setAutoGenerateCode] = useState(true);
 
-  // Helper function to get ID
-  const getId = (item) => item._id || item.id;
-
-  // Get unique metal types from metalPurities
-  const getMetalTypes = () => {
-    return [...new Set(metalPurities.map((p) => p.metal_type))]
-      .filter((type) => type)
-      .map((type) => ({
-        value: type,
-        label: type.charAt(0) + type.slice(1),
+  // Auto-generate item code on mount
+  useEffect(() => {
+    if (autoGenerateCode) {
+      const timestamp = Date.now().toString().slice(-6);
+      const randomNum = Math.floor(Math.random() * 1000);
+      setFormData(prev => ({
+        ...prev,
+        item_code: `JWL-${timestamp}${randomNum}`
       }));
-  };
+    }
+  }, [autoGenerateCode]);
 
-  // Get unique stone types from stonePurities
-  const getStoneTypes = () => {
-    return [...new Set(stonePurities.map((p) => p.stone_type))]
-      .filter((type) => type)
-      .map((type) => ({
-        value: type,
-        label: type.charAt(0) + type.slice(1),
+  // Calculate derived values
+  useEffect(() => {
+    // Calculate metal weight
+    const totalMetalWeight = formData.metals.reduce((sum, metal) => {
+      return sum + (parseFloat(metal.weight) || 0);
+    }, 0);
+    
+    // Calculate total carat
+    const totalCarat = formData.stones.reduce((sum, stone) => {
+      return sum + (parseFloat(stone.carat_weight) || 0);
+    }, 0);
+    
+    // Calculate costs if rates are available
+    const goldRate = parseFloat(formData.gold_rate) || 0;
+    const stoneRate = parseFloat(formData.stone_rate) || 0;
+    const metalCost = goldRate * totalMetalWeight;
+    const stoneCost = stoneRate * totalCarat;
+    
+    // Calculate making charges
+    let makingChargesAmount = parseFloat(formData.making_charges) || 0;
+    if (formData.making_type === "per_gram" && totalMetalWeight > 0) {
+      makingChargesAmount = totalMetalWeight * makingChargesAmount;
+    } else if (formData.making_type === "percentage" && metalCost > 0) {
+      makingChargesAmount = (metalCost * makingChargesAmount) / 100;
+    }
+    
+    // Calculate wastage
+    const wastagePercentage = parseFloat(formData.wastage_percentage) || 0;
+    const wastageCharges = wastagePercentage > 0 ? (metalCost * wastagePercentage) / 100 : 0;
+    
+    // Calculate total cost
+    const totalCost = metalCost + stoneCost + makingChargesAmount + wastageCharges;
+    
+    // Calculate selling price
+    const profitMargin = parseFloat(formData.profit_margin) || 0;
+    const sellingPrice = totalCost > 0 ? totalCost * (1 + profitMargin / 100) : 0;
+    
+    // Calculate MRP if not set
+    if (!formData.mrp && sellingPrice > 0) {
+      setFormData(prev => ({
+        ...prev,
+        mrp: (sellingPrice * 1.18).toFixed(2) // 18% above selling price
       }));
-  };
-
-  // Handle Item Type Change
-  const handleItemTypeChange = (e) => {
-    const value = e.target.value;
-
-    setFormData((prev) => ({
-      ...prev,
-      item_type: value,
-      // Reset all type-specific fields
-      metal_type: "",
-      metal_purity_id: "",
-      metal_purity_name: "",
-      stone_type: "",
-      stone_purity_id: "",
-      stone_purity_name: "",
-      material_type_id: "",
-      // Reset tracking based on item type
-      track_by: value === "stone" ? "quantity" : "weight",
-      weight: "",
-      quantity: "",
-      unit_id: "",
-    }));
-
-    // Clear errors
-    setErrors((prev) => ({
-      ...prev,
-      metal_type: "",
-      purity_id: "",
-      stone_type: "",
-      material_type_id: "",
-    }));
-  };
-
-  // Handle Metal Type Change
-  const handleMetalTypeChange = (e) => {
-    const value = e.target.value;
-
-    setFormData((prev) => ({
-      ...prev,
-      metal_type: value,
-      // Reset purity when metal type changes
-      metal_purity_id: "",
-      metal_purity_name: "",
-    }));
-
-    // Clear error
-    if (errors.metal_purity_id) {
-      setErrors((prev) => ({ ...prev, metal_purity_id: "" }));
     }
-  };
+    
+    // Calculate tax
+    const gstPercentage = parseFloat(formData.gst_percentage) || 0;
+    const cgst = sellingPrice * (gstPercentage / 200); // Half of GST for CGST
+    const sgst = sellingPrice * (gstPercentage / 200); // Half of GST for SGST
+    const priceWithTax = sellingPrice + cgst + sgst;
+    
+  }, [
+    formData.metals,
+    formData.stones,
+    formData.gold_rate,
+    formData.stone_rate,
+    formData.making_charges,
+    formData.making_type,
+    formData.wastage_percentage,
+    formData.profit_margin,
+    formData.gst_percentage
+  ]);
 
-  // Handle Stone Type Change
-  const handleStoneTypeChange = (e) => {
-    const value = e.target.value;
-
-    setFormData((prev) => ({
-      ...prev,
-      stone_type: value,
-      // Reset purity when stone type changes
-      stone_purity_id: "",
-      stone_purity_name: "",
-    }));
-
-    // Clear error
-    if (errors.stone_purity_id) {
-      setErrors((prev) => ({ ...prev, stone_purity_id: "" }));
-    }
-  };
-
-  // Handle Metal Purity Change
-  const handleMetalPurityChange = (e) => {
-    const purityId = e.target.value;
-    const purity = metalPurities.find((p) => getId(p) === purityId);
-
-    setFormData((prev) => ({
-      ...prev,
-      metal_purity_id: purityId,
-      metal_purity_name: purity?.purity_name || "",
-    }));
-  };
-
-  // Handle Stone Purity Change
-  const handleStonePurityChange = (e) => {
-    const purityId = e.target.value;
-    const purity = stonePurities.find((p) => getId(p) === purityId);
-
-    setFormData((prev) => ({
-      ...prev,
-      stone_purity_id: purityId,
-      stone_purity_name: purity?.stone_purity || "",
-      // Also store the stone_type from the purity data
-      stone_type: purity?.stone_type || "",
-    }));
-  };
-
-  // Handle Material Type Change
-  const handleMaterialTypeChange = (e) => {
-    const value = e.target.value;
-
-    setFormData((prev) => ({
-      ...prev,
-      material_type_id: value,
-    }));
-  };
-
-  // Handle Other Changes
+  // Handle change for basic fields
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
@@ -178,9 +162,112 @@ const AddInventoryItemForm = ({
       [name]: type === "checkbox" ? checked : value,
     }));
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // Handle numeric input
+  const handleNumericChange = (e) => {
+    const { name, value } = e.target;
+    
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      
+      if (errors[name]) {
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+    }
+  };
+
+  // Handle metal changes
+  const handleMetalChange = (index, field, value) => {
+    const updatedMetals = [...formData.metals];
+    updatedMetals[index] = {
+      ...updatedMetals[index],
+      [field]: value
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      metals: updatedMetals
+    }));
+  };
+
+  // Handle stone changes
+  const handleStoneChange = (index, field, value) => {
+    const updatedStones = [...formData.stones];
+    updatedStones[index] = {
+      ...updatedStones[index],
+      [field]: value
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      stones: updatedStones
+    }));
+  };
+
+  // Add new metal
+  const addMetal = () => {
+    setFormData(prev => ({
+      ...prev,
+      metals: [
+        ...prev.metals,
+        {
+          metal_type: "gold",
+          purity: "22k",
+          weight: "",
+          color: "yellow",
+          hallmark: ""
+        }
+      ]
+    }));
+  };
+
+  // Remove metal
+  const removeMetal = (index) => {
+    if (formData.metals.length > 1) {
+      const updatedMetals = [...formData.metals];
+      updatedMetals.splice(index, 1);
+      setFormData(prev => ({
+        ...prev,
+        metals: updatedMetals
+      }));
+    }
+  };
+
+  // Add new stone
+  const addStone = () => {
+    setFormData(prev => ({
+      ...prev,
+      stones: [
+        ...prev.stones,
+        {
+          stone_type: "diamond",
+          shape: "round",
+          color: "G",
+          clarity: "VS1",
+          carat_weight: "",
+          quantity: 1,
+          certificate_type: ""
+        }
+      ]
+    }));
+  };
+
+  // Remove stone
+  const removeStone = (index) => {
+    if (formData.stones.length > 1) {
+      const updatedStones = [...formData.stones];
+      updatedStones.splice(index, 1);
+      setFormData(prev => ({
+        ...prev,
+        stones: updatedStones
+      }));
     }
   };
 
@@ -193,54 +280,39 @@ const AddInventoryItemForm = ({
       newErrors.item_name = "Item name is required";
     }
 
+    if (!formData.item_code.trim()) {
+      newErrors.item_code = "Item code is required";
+    }
+
     if (!formData.inventory_category_id) {
       newErrors.inventory_category_id = "Inventory category is required";
     }
 
-    if (!formData.item_type) {
-      newErrors.item_type = "Item type is required";
+    if (!formData.branch_id) {
+      newErrors.branch_id = "Branch is required";
     }
 
-    // Type-specific validation
-    if (formData.item_type === "metal") {
-      if (!formData.metal_type) {
-        newErrors.metal_type = "Metal type is required";
+    // Metals Validation
+    formData.metals.forEach((metal, index) => {
+      if (!metal.weight || parseFloat(metal.weight) <= 0) {
+        newErrors[`metal_weight_${index}`] = "Metal weight must be greater than 0";
       }
-      if (!formData.metal_purity_id) {
-        newErrors.metal_purity_id = "Metal purity is required";
+    });
+
+    // Stones Validation
+    formData.stones.forEach((stone, index) => {
+      if (!stone.carat_weight || parseFloat(stone.carat_weight) <= 0) {
+        newErrors[`stone_carat_${index}`] = "Carat weight must be greater than 0";
       }
-    } else if (formData.item_type === "stone") {
-      if (!formData.stone_type) {
-        newErrors.stone_type = "Stone type is required";
-      }
-      if (!formData.stone_purity_id) {
-        newErrors.stone_purity_id = "Stone purity is required";
-      }
-    } else if (formData.item_type === "material") {
-      if (!formData.material_type_id) {
-        newErrors.material_type_id = "Material type is required";
-      }
+    });
+
+    // Rates Validation
+    if (!formData.gold_rate || parseFloat(formData.gold_rate) <= 0) {
+      newErrors.gold_rate = "Gold rate is required";
     }
 
-    // Tracking Validation - DIFFERENT FOR STONES
-    if (formData.item_type !== "stone") {
-      // For metals and materials, validate weight/unit
-      if (formData.track_by === "weight" && !formData.unit_id) {
-        newErrors.unit_id = "Unit is required";
-      }
-
-      if (formData.track_by === "weight") {
-        if (!formData.weight || parseFloat(formData.weight) <= 0) {
-          newErrors.weight = "Weight must be greater than 0";
-        }
-      }
-    }
-
-    // Quantity validation for all types when track_by is quantity
-    if (formData.track_by === "quantity") {
-      if (!formData.quantity || parseInt(formData.quantity) <= 0) {
-        newErrors.quantity = "Quantity must be greater than 0";
-      }
+    if (formData.stones.length > 0 && (!formData.stone_rate || parseFloat(formData.stone_rate) <= 0)) {
+      newErrors.stone_rate = "Stone rate is required when stones are added";
     }
 
     setErrors(newErrors);
@@ -255,127 +327,111 @@ const AddInventoryItemForm = ({
       return;
     }
 
-    // Prepare payload based on Postman structure
-    let payload = {
+    // Prepare payload
+    const payload = {
       item_name: formData.item_name.trim(),
+      item_code: formData.item_code.trim(),
+      description: formData.description.trim(),
       inventory_category_id: formData.inventory_category_id,
-      track_by: formData.track_by,
+      branch_id: formData.branch_id,
+      item_type: "jewelry",
+      
+      // Process metals
+      metals: formData.metals.map(metal => ({
+        metal_type: metal.metal_type,
+        purity: metal.purity,
+        weight: parseFloat(metal.weight) || 0,
+        color: metal.color,
+        hallmark: metal.hallmark || ""
+      })),
+      
+      // Process stones
+      stones: formData.stones.map(stone => ({
+        stone_type: stone.stone_type,
+        shape: stone.shape,
+        color: stone.color,
+        clarity: stone.clarity,
+        carat_weight: parseFloat(stone.carat_weight) || 0,
+        quantity: parseInt(stone.quantity) || 1,
+        certificate_type: stone.certificate_type || ""
+      })),
+      
+      // Rates
+      gold_rate: parseFloat(formData.gold_rate) || 0,
+      stone_rate: parseFloat(formData.stone_rate) || 0,
+      
+      // Making charges
+      making_charges: parseFloat(formData.making_charges) || 0,
+      making_type: formData.making_type,
+      wastage_percentage: parseFloat(formData.wastage_percentage) || 5,
+      profit_margin: parseFloat(formData.profit_margin) || 20,
+      
+      // Stock
+      current_stock: parseInt(formData.current_stock) || 1,
+      minimum_stock: parseInt(formData.minimum_stock) || 1,
+      location_type: formData.location_type,
+      
+      // Pricing
+      mrp: parseFloat(formData.mrp) || 0,
+      discount_type: formData.discount_type,
+      discount_value: parseFloat(formData.discount_value) || 0,
+      
+      // Tax
+      gst_percentage: parseFloat(formData.gst_percentage) || 3,
+      
+      // Status
       status: formData.status,
+      is_new_arrival: formData.is_new_arrival,
+      
+      // Arrays
+      images: formData.images,
+      tags: formData.tags
     };
 
-    // Add type-specific data
-    if (formData.item_type === "metal") {
-      payload.metal_type = formData.metal_type;
-      payload.metal_type_name =
-        formData.metal_type.charAt(0) + formData.metal_type.slice(1);
-      payload.metal_purity_name = formData.metal_purity_name;
-      // For metals, send both weight and unit if applicable
-      if (formData.track_by === "weight" || formData.track_by === "both") {
-        payload.weight = parseFloat(formData.weight) || null;
-        if (formData.unit_id) {
-          payload.unit_id = formData.unit_id;
-        }
-      }
-      if (formData.track_by === "quantity" || formData.track_by === "both") {
-        payload.quantity = parseInt(formData.quantity) || null;
-      }
-    } else if (formData.item_type === "stone") {
-      // For stones, we need to send stone_type (not stone_type_name)
-      payload.stone_type = formData.stone_type;
-      payload.stone_purity_name = formData.stone_purity_name;
-
-      // Try sending stone_purity_id instead of/in addition to name
-      if (formData.stone_purity_id) {
-        payload.stone_purity_id = formData.stone_purity_id;
-      }
-
-      // For stones, always send quantity
-      payload.quantity = parseInt(formData.quantity) || null;
-
-      // Don't send weight or unit_id for stones
-    } else if (formData.item_type === "material") {
-      payload.material_type_id = formData.material_type_id;
-      // For materials
-      if (formData.track_by === "weight" || formData.track_by === "both") {
-        payload.weight = parseFloat(formData.weight) || null;
-        if (formData.unit_id) {
-          payload.unit_id = formData.unit_id;
-        }
-      }
-      if (formData.track_by === "quantity" || formData.track_by === "both") {
-        payload.quantity = parseInt(formData.quantity) || null;
-      }
-    }
-
-    console.log("Submitting inventory item payload:", payload);
+    console.log("Submitting jewelry item payload:", payload);
     onSave(payload);
   };
 
-  const handleClose = () => {
-    if (!loading) onClose();
+  // Metal color options
+  const metalColors = [
+    { value: "yellow", label: "Yellow Gold" },
+    { value: "white", label: "White Gold" },
+    { value: "rose", label: "Rose Gold" },
+    { value: "platinum", label: "Platinum" },
+    { value: "silver", label: "Silver" }
+  ];
+
+  // Metal purity options
+  const metalPurities = {
+    gold: ["24k", "22k", "18k", "14k"],
+    silver: ["925", "999"],
+    platinum: ["950", "900", "850"],
+    other: ["N/A"]
   };
 
-  // Get filtered metal purities based on selected metal type
-  const getFilteredMetalPurities = () => {
-    if (formData.metal_type) {
-      return metalPurities.filter(
-        (p) => p.metal_type?.toLowerCase() === formData.metal_type.toLowerCase()
-      );
-    }
-    return [];
-  };
+  // Stone shape options
+  const stoneShapes = [
+    { value: "round", label: "Round" },
+    { value: "princess", label: "Princess" },
+    { value: "oval", label: "Oval" },
+    { value: "marquise", label: "Marquise" },
+    { value: "pear", label: "Pear" },
+    { value: "cushion", label: "Cushion" },
+    { value: "emerald", label: "Emerald" },
+    { value: "asscher", label: "Asscher" },
+    { value: "radiant", label: "Radiant" },
+    { value: "heart", label: "Heart" }
+  ];
 
-  // Get filtered stone purities based on selected stone type
-  const getFilteredStonePurities = () => {
-    if (formData.stone_type) {
-      return stonePurities.filter(
-        (p) => p.stone_type?.toLowerCase() === formData.stone_type.toLowerCase()
-      );
-    }
-    return [];
-  };
+  // Clarity options
+  const clarityOptions = [
+    "FL", "IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2", "I1", "I2", "I3"
+  ];
 
-  // Get appropriate units based on item type
-  const getFilteredUnits = () => {
-    if (formData.item_type === "stone") {
-      // Return empty array for stones (no units needed)
-      return [];
-    } else if (formData.item_type === "metal") {
-      return units.filter((unit) => unit.name);
-    } else if (formData.item_type === "material") {
-      return units.filter((unit) => unit.name);
-    }
-    return units;
-  };
-
-  // Get available item types
-  const getAvailableItemTypes = () => {
-    const types = [];
-    if (getMetalTypes().length > 0)
-      types.push({ value: "metal", label: "Metal" });
-    if (getStoneTypes().length > 0)
-      types.push({ value: "stone", label: "Stone" });
-    if (materials.length > 0)
-      types.push({ value: "material", label: "Material" });
-    return types;
-  };
-
-  // Check if weight should be shown
-  const showWeight = () => {
-    if (formData.item_type === "stone") return false;
-    return formData.track_by === "weight" || formData.track_by === "both";
-  };
-
-  // Check if unit should be shown
-  const showUnit = () => {
-    if (formData.item_type === "stone") return false;
-    return formData.track_by === "weight" || formData.track_by === "both";
-  };
-
-  // Check if quantity should be shown
-  const showQuantity = () => {
-    return formData.track_by === "quantity" || formData.track_by === "both";
-  };
+  // Color options for diamonds
+  const diamondColors = [
+    "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N-O", "P-R", "S-Z"
+  ];
 
   return (
     <div
@@ -383,427 +439,656 @@ const AddInventoryItemForm = ({
       style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
       tabIndex="-1"
     >
-      <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-dialog modal-dialog-centered modal-xl">
         <div className="modal-content rounded-3">
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Add Inventory Item</h5>
+            <h5 className="modal-title fw-bold fs-5">Add Jewelry Item</h5>
             <button
               type="button"
               className="btn-close"
-              onClick={handleClose}
+              onClick={onClose}
               disabled={loading}
               aria-label="Close"
             ></button>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="modal-body">
-              {/* Item Name */}
-              <div className="mb-3">
-                <label className="form-label fw-medium">
-                  Item Name <span className="text-danger">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="item_name"
-                  className={`form-control form-control-lg ${
-                    errors.item_name ? "is-invalid" : ""
-                  }`}
-                  placeholder="e.g., Gold 22K Ring, Diamond Earring, Production Item"
-                  value={formData.item_name}
-                  onChange={handleChange}
-                  disabled={loading}
-                />
-                {errors.item_name && (
-                  <div className="invalid-feedback">{errors.item_name}</div>
-                )}
-              </div>
-
-              {/* Inventory Category */}
-              <div className="mb-3">
-                <label className="form-label fw-medium">
-                  Inventory Category <span className="text-danger">*</span>
-                </label>
-                <select
-                  name="inventory_category_id"
-                  className={`form-select form-select-lg ${
-                    errors.inventory_category_id ? "is-invalid" : ""
-                  }`}
-                  value={formData.inventory_category_id}
-                  onChange={handleChange}
-                  disabled={loading || inventoryCategories.length === 0}
-                >
-                  <option value="">Select Inventory Category</option>
-                  {inventoryCategories.map((category) => (
-                    <option key={getId(category)} value={getId(category)}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.inventory_category_id && (
-                  <div className="invalid-feedback">
-                    {errors.inventory_category_id}
-                  </div>
-                )}
-              </div>
-
-              {/* Item Type Selection */}
-              <div className="mb-3">
-                <label className="form-label fw-medium">
-                  Item Type <span className="text-danger">*</span>
-                </label>
-                <select
-                  name="item_type"
-                  className={`form-select form-select-lg ${
-                    errors.item_type ? "is-invalid" : ""
-                  }`}
-                  value={formData.item_type}
-                  onChange={handleItemTypeChange}
-                  disabled={loading || getAvailableItemTypes().length === 0}
-                >
-                  <option value="">Select Item Type</option>
-                  {getAvailableItemTypes().map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.item_type && (
-                  <div className="invalid-feedback">{errors.item_type}</div>
-                )}
-              </div>
-
-              {/* Metal Type Selection */}
-              {formData.item_type === "metal" && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Metal Type <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    name="metal_type"
-                    className={`form-select form-select-lg ${
-                      errors.metal_type ? "is-invalid" : ""
-                    }`}
-                    value={formData.metal_type}
-                    onChange={handleMetalTypeChange}
-                    disabled={loading || getMetalTypes().length === 0}
-                  >
-                    <option value="">Select Metal Type</option>
-                    {getMetalTypes().map((metal) => (
-                      <option key={`metal-${metal.value}`} value={metal.value}>
-                        {metal.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.metal_type && (
-                    <div className="invalid-feedback">{errors.metal_type}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Metal Purity Selection */}
-              {formData.item_type === "metal" && formData.metal_type && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Metal Purity <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    name="metal_purity_id"
-                    className={`form-select form-select-lg ${
-                      errors.metal_purity_id ? "is-invalid" : ""
-                    }`}
-                    value={formData.metal_purity_id}
-                    onChange={handleMetalPurityChange}
-                    disabled={
-                      loading || getFilteredMetalPurities().length === 0
-                    }
-                  >
-                    <option value="">Select Metal Purity</option>
-                    {getFilteredMetalPurities().map((purity) => (
-                      <option key={getId(purity)} value={getId(purity)}>
-                        {purity.purity_name}
-                        {purity.percentage ? ` (${purity.percentage}%)` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.metal_purity_id && (
-                    <div className="invalid-feedback">
-                      {errors.metal_purity_id}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Stone Type Selection */}
-              {formData.item_type === "stone" && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Stone Type <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    name="stone_type"
-                    className={`form-select form-select-lg ${
-                      errors.stone_type ? "is-invalid" : ""
-                    }`}
-                    value={formData.stone_type}
-                    onChange={handleStoneTypeChange}
-                    disabled={loading || getStoneTypes().length === 0}
-                  >
-                    <option value="">Select Stone Type</option>
-                    {getStoneTypes().map((stone) => (
-                      <option key={`stone-${stone.value}`} value={stone.value}>
-                        {stone.label}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.stone_type && (
-                    <div className="invalid-feedback">{errors.stone_type}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Stone Purity Selection */}
-              {formData.item_type === "stone" && formData.stone_type && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Stone Purity <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    name="stone_purity_id"
-                    className={`form-select form-select-lg ${
-                      errors.stone_purity_id ? "is-invalid" : ""
-                    }`}
-                    value={formData.stone_purity_id}
-                    onChange={handleStonePurityChange}
-                    disabled={
-                      loading || getFilteredStonePurities().length === 0
-                    }
-                  >
-                    <option value="">Select Stone Purity</option>
-                    {getFilteredStonePurities().map((purity) => (
-                      <option key={getId(purity)} value={getId(purity)}>
-                        {purity.stone_purity}
-                        {purity.percentage ? ` (${purity.percentage}%)` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.stone_purity_id && (
-                    <div className="invalid-feedback">
-                      {errors.stone_purity_id}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Material Type Selection */}
-              {formData.item_type === "material" && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Material Type <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    name="material_type_id"
-                    className={`form-select form-select-lg ${
-                      errors.material_type_id ? "is-invalid" : ""
-                    }`}
-                    value={formData.material_type_id}
-                    onChange={handleMaterialTypeChange}
-                    disabled={loading || materials.length === 0}
-                  >
-                    <option value="">Select Material Type</option>
-                    {materials.map((material) => (
-                      <option key={material._id} value={material._id}>
-                        {material.material_type}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.material_type_id && (
-                    <div className="invalid-feedback">
-                      {errors.material_type_id}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Track By */}
-              <div className="mb-3">
-                <label className="form-label fw-medium">
-                  Track By <span className="text-danger">*</span>
-                </label>
-                <div className="d-flex gap-3">
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="track_by"
-                      id="trackWeight"
-                      value="weight"
-                      checked={formData.track_by === "weight"}
-                      onChange={handleChange}
-                      disabled={loading || formData.item_type === "stone"}
-                    />
-                    <label className="form-check-label" htmlFor="trackWeight">
-                      Weight
+            <div className="modal-body" style={{ maxHeight: "70vh", overflowY: "auto" }}>
+              {/* Basic Information Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Basic Information</h6>
+                
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">
+                      Item Name <span className="text-danger">*</span>
                     </label>
-                  </div>
-                  <div className="form-check">
                     <input
-                      className="form-check-input"
-                      type="radio"
-                      name="track_by"
-                      id="trackQuantity"
-                      value="quantity"
-                      checked={formData.track_by === "quantity"}
+                      type="text"
+                      name="item_name"
+                      className={`form-control ${errors.item_name ? "is-invalid" : ""}`}
+                      placeholder="e.g., Gold Diamond Ring, Silver Necklace"
+                      value={formData.item_name}
                       onChange={handleChange}
                       disabled={loading}
                     />
-                    <label className="form-check-label" htmlFor="trackQuantity">
-                      Quantity
-                    </label>
+                    {errors.item_name && (
+                      <div className="invalid-feedback">{errors.item_name}</div>
+                    )}
                   </div>
-                  <div className="form-check">
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="track_by"
-                      id="trackBoth"
-                      value="both"
-                      checked={formData.track_by === "both"}
-                      onChange={handleChange}
-                      disabled={loading || formData.item_type === "stone"}
-                    />
-                    <label className="form-check-label" htmlFor="trackBoth">
-                      Both
+
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">
+                      Item Code <span className="text-danger">*</span>
                     </label>
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        name="item_code"
+                        className={`form-control ${errors.item_code ? "is-invalid" : ""}`}
+                        placeholder="e.g., JWL-001"
+                        value={formData.item_code}
+                        onChange={handleChange}
+                        disabled={loading}
+                      />
+                      <div className="input-group-text">
+                        <input
+                          className="form-check-input mt-0"
+                          type="checkbox"
+                          checked={autoGenerateCode}
+                          onChange={(e) => setAutoGenerateCode(e.target.checked)}
+                          disabled={loading}
+                        />
+                        <span className="ms-2 small">Auto-generate</span>
+                      </div>
+                    </div>
+                    {errors.item_code && (
+                      <div className="invalid-feedback">{errors.item_code}</div>
+                    )}
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label fw-medium">Description</label>
+                    <textarea
+                      name="description"
+                      className="form-control"
+                      rows="2"
+                      placeholder="Enter item description..."
+                      value={formData.description}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">
+                      Inventory Category <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      name="inventory_category_id"
+                      className={`form-select ${errors.inventory_category_id ? "is-invalid" : ""}`}
+                      value={formData.inventory_category_id}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="">Select Category</option>
+                      {inventoryCategories.map((category) => (
+                        <option key={category._id} value={category._id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.inventory_category_id && (
+                      <div className="invalid-feedback">{errors.inventory_category_id}</div>
+                    )}
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">
+                      Branch <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      name="branch_id"
+                      className={`form-select ${errors.branch_id ? "is-invalid" : ""}`}
+                      value={formData.branch_id}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="">Select Branch</option>
+                      {branches.map((branch) => (
+                        <option key={branch._id} value={branch._id}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.branch_id && (
+                      <div className="invalid-feedback">{errors.branch_id}</div>
+                    )}
                   </div>
                 </div>
-                <small className="text-muted">
-                  {formData.item_type === "stone"
-                    ? "Stones are tracked by quantity only"
-                    : "Metals and materials can be tracked by weight or quantity"}
-                </small>
               </div>
 
-              {/* Weight - Don't show for stones */}
-              {showWeight() && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Weight{" "}
-                    {formData.track_by === "weight" ? (
-                      <span className="text-danger">*</span>
-                    ) : (
-                      ""
-                    )}
-                  </label>
-                  <input
-                    type="number"
-                    name="weight"
-                    step="0.01"
-                    min="0"
-                    className={`form-control form-control-lg ${
-                      errors.weight ? "is-invalid" : ""
-                    }`}
-                    placeholder={
-                      formData.item_type === "metal"
-                        ? "Enter weight in grams"
-                        : "Enter weight"
-                    }
-                    value={formData.weight}
-                    onChange={handleChange}
+              {/* Metals Section */}
+              <div className="mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="fw-bold text-primary mb-0">Metals Information</h6>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={addMetal}
                     disabled={loading}
-                  />
-                  {errors.weight && (
-                    <div className="invalid-feedback">{errors.weight}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Quantity - Show for all types */}
-              {showQuantity() && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Quantity{" "}
-                    {formData.track_by === "quantity" ? (
-                      <span className="text-danger">*</span>
-                    ) : (
-                      ""
-                    )}
-                  </label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    min="0"
-                    className={`form-control form-control-lg ${
-                      errors.quantity ? "is-invalid" : ""
-                    }`}
-                    placeholder="Enter quantity"
-                    value={formData.quantity}
-                    onChange={handleChange}
-                    disabled={loading}
-                  />
-                  {errors.quantity && (
-                    <div className="invalid-feedback">{errors.quantity}</div>
-                  )}
-                </div>
-              )}
-
-              {/* Unit - Don't show for stones */}
-              {showUnit() && (
-                <div className="mb-3">
-                  <label className="form-label fw-medium">
-                    Unit{" "}
-                    {formData.track_by === "weight" ? (
-                      <span className="text-danger">*</span>
-                    ) : (
-                      ""
-                    )}
-                  </label>
-                  <select
-                    name="unit_id"
-                    className={`form-select form-select-lg ${
-                      errors.unit_id ? "is-invalid" : ""
-                    }`}
-                    value={formData.unit_id}
-                    onChange={handleChange}
-                    disabled={loading || getFilteredUnits().length === 0}
                   >
-                    <option value="">Select Unit</option>
-                    {getFilteredUnits().map((unit) => (
-                      <option key={getId(unit)} value={getId(unit)}>
-                        {unit.name} {unit.symbol ? `(${unit.symbol})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.unit_id && (
-                    <div className="invalid-feedback">{errors.unit_id}</div>
-                  )}
-                  <small className="text-muted">
-                    {formData.item_type === "metal"
-                      ? "Select grams (g) for metals"
-                      : "Select appropriate unit"}
-                  </small>
+                    <FiPlus size={14} /> Add Metal
+                  </button>
                 </div>
-              )}
+                
+                {formData.metals.map((metal, index) => (
+                  <div key={index} className="card mb-3">
+                    <div className="card-body">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <h6 className="mb-0">Metal #{index + 1}</h6>
+                        {formData.metals.length > 1 && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => removeMetal(index)}
+                            disabled={loading}
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="row g-3">
+                        <div className="col-md-3">
+                          <label className="form-label fw-medium">Metal Type</label>
+                          <select
+                            className="form-select"
+                            value={metal.metal_type}
+                            onChange={(e) => handleMetalChange(index, 'metal_type', e.target.value)}
+                            disabled={loading}
+                          >
+                            {metalTypes.map((type) => (
+                              <option key={type._id} value={type._id}>
+                                {type.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-              {/* Status */}
-              <div className="mb-3">
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    role="switch"
-                    name="status"
-                    id="itemStatus"
-                    checked={formData.status}
-                    onChange={handleChange}
+                        <div className="col-md-2">
+                          <label className="form-label fw-medium">Purity</label>
+                          <select
+                            className="form-select"
+                            value={metal.purity}
+                            onChange={(e) => handleMetalChange(index, 'purity', e.target.value)}
+                            disabled={loading}
+                          >
+                            {metalPurities[metal.metal_type]?.map((purity) => (
+                              <option key={purity} value={purity}>
+                                {purity}
+                              </option>
+                            )) || <option value="N/A">N/A</option>}
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-medium">
+                            Weight (grams) <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            className={`form-control ${errors[`metal_weight_${index}`] ? "is-invalid" : ""}`}
+                            placeholder="e.g., 3.2"
+                            value={metal.weight}
+                            onChange={(e) => handleMetalChange(index, 'weight', e.target.value)}
+                            disabled={loading}
+                          />
+                          {errors[`metal_weight_${index}`] && (
+                            <div className="invalid-feedback">{errors[`metal_weight_${index}`]}</div>
+                          )}
+                        </div>
+
+                        <div className="col-md-3">
+                          <label className="form-label fw-medium">Color</label>
+                          <select
+                            className="form-select"
+                            value={metal.color}
+                            onChange={(e) => handleMetalChange(index, 'color', e.target.value)}
+                            disabled={loading}
+                          >
+                            <option value="">Select Color</option>
+                            {metalColors.map((color) => (
+                              <option key={color.value} value={color.value}>
+                                {color.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-medium">Hallmark</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g., 916"
+                            value={metal.hallmark}
+                            onChange={(e) => handleMetalChange(index, 'hallmark', e.target.value)}
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Stones Section */}
+              <div className="mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="fw-bold text-primary mb-0">Stones Information</h6>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={addStone}
                     disabled={loading}
-                  />
-                  <label
-                    className="form-check-label fw-medium"
-                    htmlFor="itemStatus"
                   >
-                    Status (Active/Inactive)
-                  </label>
+                    <FiPlus size={14} /> Add Stone
+                  </button>
+                </div>
+                
+                {formData.stones.map((stone, index) => (
+                  <div key={index} className="card mb-3">
+                    <div className="card-body">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <h6 className="mb-0">Stone #{index + 1}</h6>
+                        {formData.stones.length > 1 && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => removeStone(index)}
+                            disabled={loading}
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="row g-3">
+                        <div className="col-md-3">
+                          <label className="form-label fw-medium">Stone Type</label>
+                          <select
+                            className="form-select"
+                            value={stone.stone_type}
+                            onChange={(e) => handleStoneChange(index, 'stone_type', e.target.value)}
+                            disabled={loading}
+                          >
+                            {stoneTypes.map((type) => (
+                              <option key={type._id} value={type._id}>
+                                {type.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-medium">Shape</label>
+                          <select
+                            className="form-select"
+                            value={stone.shape}
+                            onChange={(e) => handleStoneChange(index, 'shape', e.target.value)}
+                            disabled={loading}
+                          >
+                            {stoneShapes.map((shape) => (
+                              <option key={shape.value} value={shape.value}>
+                                {shape.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-medium">Color</label>
+                          <select
+                            className="form-select"
+                            value={stone.color}
+                            onChange={(e) => handleStoneChange(index, 'color', e.target.value)}
+                            disabled={loading}
+                          >
+                            {diamondColors.map((color) => (
+                              <option key={color} value={color}>
+                                {color}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-medium">Clarity</label>
+                          <select
+                            className="form-select"
+                            value={stone.clarity}
+                            onChange={(e) => handleStoneChange(index, 'clarity', e.target.value)}
+                            disabled={loading}
+                          >
+                            {clarityOptions.map((clarity) => (
+                              <option key={clarity} value={clarity}>
+                                {clarity}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-2">
+                          <label className="form-label fw-medium">
+                            Carat Weight <span className="text-danger">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            className={`form-control ${errors[`stone_carat_${index}`] ? "is-invalid" : ""}`}
+                            placeholder="e.g., 0.5"
+                            value={stone.carat_weight}
+                            onChange={(e) => handleStoneChange(index, 'carat_weight', e.target.value)}
+                            disabled={loading}
+                          />
+                          {errors[`stone_carat_${index}`] && (
+                            <div className="invalid-feedback">{errors[`stone_carat_${index}`]}</div>
+                          )}
+                        </div>
+
+                        <div className="col-md-1">
+                          <label className="form-label fw-medium">Quantity</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={stone.quantity}
+                            onChange={(e) => handleStoneChange(index, 'quantity', e.target.value)}
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="row mt-3">
+                        <div className="col-md-6">
+                          <label className="form-label fw-medium">Certificate Type</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="e.g., GIA, IGI, HRD"
+                            value={stone.certificate_type}
+                            onChange={(e) => handleStoneChange(index, 'certificate_type', e.target.value)}
+                            disabled={loading}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Rates Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Rates</h6>
+                
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">
+                      Gold Rate (per gram) <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="gold_rate"
+                      className={`form-control ${errors.gold_rate ? "is-invalid" : ""}`}
+                      placeholder="e.g., 5000"
+                      value={formData.gold_rate}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                    {errors.gold_rate && (
+                      <div className="invalid-feedback">{errors.gold_rate}</div>
+                    )}
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">
+                      Stone Rate (per carat)
+                    </label>
+                    <input
+                      type="text"
+                      name="stone_rate"
+                      className={`form-control ${errors.stone_rate ? "is-invalid" : ""}`}
+                      placeholder="e.g., 80000"
+                      value={formData.stone_rate}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                    {errors.stone_rate && (
+                      <div className="invalid-feedback">{errors.stone_rate}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Making Charges Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Making Charges</h6>
+                
+                <div className="row g-3">
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Making Type</label>
+                    <select
+                      name="making_type"
+                      className="form-select"
+                      value={formData.making_type}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="percentage">Percentage of Metal Cost</option>
+                      <option value="per_gram">Per Gram</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </select>
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Making Charges</label>
+                    <input
+                      type="text"
+                      name="making_charges"
+                      className="form-control"
+                      placeholder={formData.making_type === "percentage" ? "e.g., 15" : "e.g., 500"}
+                      value={formData.making_charges}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Wastage Percentage</label>
+                    <input
+                      type="text"
+                      name="wastage_percentage"
+                      className="form-control"
+                      placeholder="e.g., 5"
+                      value={formData.wastage_percentage}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Pricing</h6>
+                
+                <div className="row g-3">
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Profit Margin (%)</label>
+                    <input
+                      type="text"
+                      name="profit_margin"
+                      className="form-control"
+                      placeholder="e.g., 20"
+                      value={formData.profit_margin}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">MRP (₹)</label>
+                    <input
+                      type="text"
+                      name="mrp"
+                      className="form-control"
+                      placeholder="e.g., 87320"
+                      value={formData.mrp}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Discount Type</label>
+                    <select
+                      name="discount_type"
+                      className="form-select"
+                      value={formData.discount_type}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="none">No Discount</option>
+                      <option value="percentage">Percentage</option>
+                      <option value="fixed">Fixed Amount</option>
+                    </select>
+                  </div>
+
+                  {formData.discount_type !== "none" && (
+                    <div className="col-md-4">
+                      <label className="form-label fw-medium">Discount Value</label>
+                      <input
+                        type="text"
+                        name="discount_value"
+                        className="form-control"
+                        placeholder={formData.discount_type === "percentage" ? "e.g., 10" : "e.g., 1000"}
+                        value={formData.discount_value}
+                        onChange={handleNumericChange}
+                        disabled={loading}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Stock & Location Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Stock & Location</h6>
+                
+                <div className="row g-3">
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Current Stock</label>
+                    <input
+                      type="number"
+                      name="current_stock"
+                      className="form-control"
+                      placeholder="e.g., 1"
+                      value={formData.current_stock}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Minimum Stock</label>
+                    <input
+                      type="number"
+                      name="minimum_stock"
+                      className="form-control"
+                      placeholder="e.g., 1"
+                      value={formData.minimum_stock}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-medium">Location Type</label>
+                    <select
+                      name="location_type"
+                      className="form-select"
+                      value={formData.location_type}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="showcase">Showcase</option>
+                      <option value="vault">Vault</option>
+                      <option value="workshop">Workshop</option>
+                      <option value="storage">Storage</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tax Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Tax Information</h6>
+                
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">GST Percentage (%)</label>
+                    <input
+                      type="text"
+                      name="gst_percentage"
+                      className="form-control"
+                      placeholder="e.g., 3"
+                      value={formData.gst_percentage}
+                      onChange={handleNumericChange}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Status</h6>
+                
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        name="is_new_arrival"
+                        id="isNewArrival"
+                        checked={formData.is_new_arrival}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          is_new_arrival: e.target.checked
+                        }))}
+                        disabled={loading}
+                      />
+                      <label className="form-check-label" htmlFor="isNewArrival">
+                        Mark as New Arrival
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">Item Status</label>
+                    <select
+                      name="status"
+                      className="form-select"
+                      value={formData.status}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="sold_out">Sold Out</option>
+                      <option value="discontinued">Discontinued</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -812,7 +1097,7 @@ const AddInventoryItemForm = ({
               <button
                 type="button"
                 className="btn btn-outline-secondary"
-                onClick={handleClose}
+                onClick={onClose}
                 disabled={loading}
               >
                 Cancel
@@ -834,7 +1119,7 @@ const AddInventoryItemForm = ({
                 ) : (
                   <>
                     <FiUpload size={16} />
-                    Save Inventory Item
+                    Save Jewelry Item
                   </>
                 )}
               </button>

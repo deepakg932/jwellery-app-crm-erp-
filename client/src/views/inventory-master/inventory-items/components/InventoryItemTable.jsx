@@ -25,8 +25,10 @@ const InventoryItemTable = () => {
     addInventoryItem,
     updateInventoryItem,
     deleteInventoryItem,
+    warehouses,
+    suppliers
   } = useInventoryItems();
-
+console.log(suppliers)
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -49,21 +51,29 @@ const InventoryItemTable = () => {
       (item.metals &&
         item.metals.some(
           (metal) =>
-            metal.metal_id?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            metal.metal_id?.name
+              ?.toLowerCase()
+              .includes(search.toLowerCase()) ||
             metal.purity_name?.toLowerCase().includes(search.toLowerCase())
         )) ||
       // Search in stones
       (item.stones &&
         item.stones.some(
           (stone) =>
-            stone.stone_id?.stone_type?.toLowerCase().includes(search.toLowerCase()) ||
-            stone.stone_purity_name?.toLowerCase().includes(search.toLowerCase())
+            stone.stone_id?.stone_type
+              ?.toLowerCase()
+              .includes(search.toLowerCase()) ||
+            stone.stone_purity_name
+              ?.toLowerCase()
+              .includes(search.toLowerCase())
         )) ||
       // Search in materials
       item.material_type_name?.toLowerCase().includes(search.toLowerCase()) ||
       // Search in tracking values
-      (item.track_by === "weight" && item.total_weight?.toString().includes(search)) ||
-      (item.track_by === "quantity" && item.total_quantity?.toString().includes(search))
+      (item.track_by === "weight" &&
+        item.total_weight?.toString().includes(search)) ||
+      (item.track_by === "quantity" &&
+        item.total_quantity?.toString().includes(search))
   );
 
   // Reset to first page when search changes
@@ -210,17 +220,20 @@ const InventoryItemTable = () => {
         quantity: item.total_quantity || item.quantity,
       };
     }
-    
+
     if (item.stones && item.stones.length > 0) {
       const stone = item.stones[0];
       return {
         type: "Stone",
         name: stone.stone_id?.stone_type || stone.stone_id || "Unknown Stone",
-        purity: stone.stone_purity_name || stone.stone_purity_id?.stone_purity || "N/A",
+        purity:
+          stone.stone_purity_name ||
+          stone.stone_purity_id?.stone_purity ||
+          "N/A",
         quantity: stone.stone_quantity || item.total_quantity || item.quantity,
       };
     }
-    
+
     if (item.material_type_name) {
       return {
         type: "Material",
@@ -229,22 +242,24 @@ const InventoryItemTable = () => {
         quantity: item.total_quantity || item.quantity,
       };
     }
-    
+
     return { type: "Unknown", name: "No details" };
   };
 
   // Format values display
   const formatValues = (item) => {
     const details = getItemDetails(item);
-    
+
     if (item.track_by === "weight") {
       return `${item.total_weight || item.weight || 0} ${item.unit_name || ""}`;
     } else if (item.track_by === "quantity") {
-      return `${item.total_quantity || item.quantity || 0} ${details.type === "Stone" ? "pcs" : item.unit_name || ""}`;
+      return `${item.total_quantity || item.quantity || 0} ${
+        details.type === "Stone" ? "pcs" : item.unit_name || ""
+      }`;
     } else if (item.track_by === "both") {
-      return `${item.total_weight || item.weight || 0} ${item.unit_name || ""} / ${
-        item.total_quantity || item.quantity || 0
-      } pcs`;
+      return `${item.total_weight || item.weight || 0} ${
+        item.unit_name || ""
+      } / ${item.total_quantity || item.quantity || 0} pcs`;
     }
     return "";
   };
@@ -443,7 +458,7 @@ const InventoryItemTable = () => {
                 currentItems.map((item, index) => {
                   const itemType = getItemType(item);
                   const itemDetails = getItemDetails(item);
-                  
+
                   return (
                     <tr key={item._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
@@ -458,7 +473,11 @@ const InventoryItemTable = () => {
 
                       {/* Type Column */}
                       <td>
-                        <span className={`badge fw-semibold ${formatTypeBadge(itemType)}`}>
+                        <span
+                          className={`badge fw-semibold ${formatTypeBadge(
+                            itemType
+                          )}`}
+                        >
                           {itemType}
                         </span>
                       </td>
@@ -466,12 +485,18 @@ const InventoryItemTable = () => {
                       {/* Details Column */}
                       <td>
                         <div className="small">
-                          <div><strong>{itemDetails.name}</strong></div>
+                          <div>
+                            <strong>{itemDetails.name}</strong>
+                          </div>
                           {itemDetails.purity && (
-                            <div className="text-muted">Purity: {itemDetails.purity}</div>
+                            <div className="text-muted">
+                              Purity: {itemDetails.purity}
+                            </div>
                           )}
                           {itemDetails.type === "Material" && (
-                            <div className="text-muted">Type: {itemDetails.name}</div>
+                            <div className="text-muted">
+                              Type: {itemDetails.name}
+                            </div>
                           )}
                         </div>
                       </td>
@@ -485,9 +510,7 @@ const InventoryItemTable = () => {
 
                       {/* Value Column */}
                       <td>
-                        <span className="fw-medium">
-                          {formatValues(item)}
-                        </span>
+                        <span className="fw-medium">{formatValues(item)}</span>
                       </td>
 
                       {/* Status Column */}
@@ -508,7 +531,8 @@ const InventoryItemTable = () => {
                             className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                             onClick={() => handleOpenEdit(item)}
                             disabled={
-                              actionLoading.type && actionLoading.id === item._id
+                              actionLoading.type &&
+                              actionLoading.id === item._id
                             }
                           >
                             {actionLoading.type === "update" &&
@@ -533,7 +557,8 @@ const InventoryItemTable = () => {
                             className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
                             onClick={() => handleOpenDelete(item)}
                             disabled={
-                              actionLoading.type && actionLoading.id === item._id
+                              actionLoading.type &&
+                              actionLoading.id === item._id
                             }
                           >
                             {actionLoading.type === "delete" &&
@@ -658,6 +683,8 @@ const InventoryItemTable = () => {
           metalPurities={metalPurities}
           stonePurities={stonePurities}
           materials={materials}
+          suppliers={suppliers} // Array of supplier objects
+          warehouses={warehouses}
         />
       )}
 

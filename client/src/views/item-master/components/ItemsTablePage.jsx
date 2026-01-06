@@ -23,7 +23,10 @@ export default function ItemsTablePage() {
     updateItem,
     deleteItem,
     toggleProductStatus,
+    getPuritiesByMetal,
+    getMaterialTypesByMetal,
     updateProductStatus,
+    getStonePuritiesByStoneType,
     bulkUpdateProductStatus,
     refreshItems,
     clearError,
@@ -32,6 +35,7 @@ export default function ItemsTablePage() {
     getCategoryIdFromName,
     getSubcategoriesForCategory,
     generateProductCode,
+    fetchHallmarksByMetal,
   } = useItems();
 
   const [search, setSearch] = useState("");
@@ -99,30 +103,22 @@ export default function ItemsTablePage() {
     }
   };
 
-  // Handle quick status update - USING updateProductStatus API
+  // Handle quick status update
   const handleStatusUpdate = async (itemId, newStatus) => {
     setActionLoading({ type: "status", id: itemId });
     setEditingStatusId(null);
 
     try {
-      // Use the updateProductStatus API directly
       await updateProductStatus(itemId, newStatus);
-
-      // Refresh the items list to get updated status
       await refreshItems();
     } catch (error) {
-      console.log(error)
-      // alert(
-      //   `Failed to update status: ${
-      //     error.response?.data?.message || error.message
-      //   }`
-      // );
+      console.log(error);
     } finally {
       setActionLoading({ type: null, id: null });
     }
   };
 
-  // Handle bulk status update - USING bulkUpdateProductStatus API
+  // Handle bulk status update
   const handleBulkStatusUpdate = async (selectedIds, status) => {
     if (!selectedIds || selectedIds.length === 0) {
       alert("Please select at least one product");
@@ -132,10 +128,8 @@ export default function ItemsTablePage() {
     setActionLoading({ type: "bulk-status", id: null });
 
     try {
-      // Use the bulk update API
       const response = await bulkUpdateProductStatus(selectedIds, status);
 
-      // Show success message
       alert(
         response.message ||
           `${
@@ -143,10 +137,7 @@ export default function ItemsTablePage() {
           } products updated to ${status}`
       );
 
-      // Clear selection
       setSelectedProducts([]);
-
-      // Refresh from server
       await refreshItems();
     } catch (error) {
       alert(
@@ -161,7 +152,6 @@ export default function ItemsTablePage() {
 
   // Get status display info
   const getStatusDisplay = (item) => {
-    // First check if item has a status field from database
     if (item.status) {
       const statusMap = {
         active: {
@@ -194,7 +184,6 @@ export default function ItemsTablePage() {
       return statusMap[item.status] || statusMap.active;
     }
 
-    // Fallback to old logic if no status field
     if (item.is_active === false) {
       return { text: "Inactive", variant: "secondary" };
     }
@@ -203,7 +192,6 @@ export default function ItemsTablePage() {
       return { text: "Draft", variant: "warning" };
     }
 
-    // Check if all required fields are filled
     const requiredFields = [
       "product_name",
       "product_category",
@@ -216,7 +204,6 @@ export default function ItemsTablePage() {
       return { text: "Incomplete", variant: "danger" };
     }
 
-    // Check if price calculations are done
     if (item.selling_price_with_gst > 0 && item.grand_total > 0) {
       return { text: "Active", variant: "success" };
     }
@@ -278,18 +265,13 @@ export default function ItemsTablePage() {
     );
   };
 
-  // Handle add (keep your existing handleAdd function)
-  // In ItemsTablePage component, update the handleAdd function:
-
+  // Handle add
   const handleAdd = async (itemData) => {
     setActionLoading({ type: "add", id: null });
     try {
-      // Send the data directly as received from AddItemModal
-      // The AddItemModal already formats the data correctly
       await addItem(itemData);
       setShowAddModal(false);
       await refreshItems();
-      // alert("Item added successfully!");
     } catch (error) {
       console.error("Failed to add item:", error);
       alert(`Failed to add item: ${error.message}`);
@@ -298,13 +280,12 @@ export default function ItemsTablePage() {
     }
   };
 
-  // Similarly, update handleUpdate:
+  // Handle update
   const handleUpdate = async (itemData) => {
     if (!selectedItem) return;
 
     setActionLoading({ type: "update", id: selectedItem._id });
     try {
-      // Send the data directly as received from EditItemModal
       await updateItem(selectedItem._id, itemData);
       setShowEditModal(false);
       setSelectedItem(null);
@@ -317,73 +298,6 @@ export default function ItemsTablePage() {
       setActionLoading({ type: null, id: null });
     }
   };
-  // Handle update (keep your existing handleUpdate function)
-  // const handleUpdate = async (itemData) => {
-  //   if (!selectedItem) return;
-
-  //   setActionLoading({ type: "update", id: selectedItem._id });
-  //   try {
-  //     const formattedData = {
-  //       ...itemData,
-  //       product_category: itemData.product_category,
-  //       product_subcategory: itemData.product_subcategory || "",
-  //       product_brand: itemData.product_brand || "",
-
-  //       metals: (itemData.metals || []).map((metal) => ({
-  //         ...metal,
-  //         weight: parseFloat(metal.weight) || 0,
-  //         making_charge_value: parseFloat(metal.making_charge_value) || 0,
-  //         rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
-  //         subtotal: parseFloat(metal.subtotal) || 0,
-  //       })),
-
-  //       stones: (itemData.stones || []).map((stone) => ({
-  //         ...stone,
-  //         size: parseFloat(stone.size) || 0,
-  //         quantity: parseInt(stone.quantity) || 1,
-  //         weight: parseFloat(stone.weight) || 0,
-  //         price_per_carat: parseFloat(stone.price_per_carat) || 0,
-  //         subtotal: parseFloat(stone.subtotal) || 0,
-  //       })),
-
-  //       materials: (itemData.materials || []).map((material) => ({
-  //         ...material,
-  //         weight: parseFloat(material.weight) || 0,
-  //         rate_per_unit: parseFloat(material.rate_per_unit) || 0,
-  //         cost: parseFloat(material.cost) || 0,
-  //       })),
-
-  //       markup_percentage: parseFloat(itemData.markup_percentage) || 0,
-  //       gst_rate: getGSTRateValue(itemData.gst_rate) || 0,
-  //       cgst_rate: getGSTRateValue(itemData.cgst_rate) || 0,
-  //       sgst_rate: getGSTRateValue(itemData.sgst_rate) || 0,
-  //       igst_rate: getGSTRateValue(itemData.igst_rate) || 0,
-  //       utgst_rate: getGSTRateValue(itemData.utgst_rate) || 0,
-  //       selling_price_before_tax:
-  //         parseFloat(itemData.selling_price_before_tax) || 0,
-  //       gst_amount: parseFloat(itemData.gst_amount) || 0,
-  //       cgst_amount: parseFloat(itemData.cgst_amount) || 0,
-  //       sgst_amount: parseFloat(itemData.sgst_amount) || 0,
-  //       igst_amount: parseFloat(itemData.igst_amount) || 0,
-  //       utgst_amount: parseFloat(itemData.utgst_amount) || 0,
-  //       selling_price_with_gst:
-  //         parseFloat(itemData.selling_price_with_gst) || 0,
-  //       total_metals_cost: parseFloat(itemData.total_metals_cost) || 0,
-  //       total_stones_cost: parseFloat(itemData.total_stones_cost) || 0,
-  //       total_materials_cost: parseFloat(itemData.total_materials_cost) || 0,
-  //       grand_total: parseFloat(itemData.grand_total) || 0,
-  //     };
-
-  //     await updateItem(selectedItem._id, formattedData);
-  //     setShowEditModal(false);
-  //     setSelectedItem(null);
-  //     await refreshItems();
-  //   } catch (error) {
-  //     alert(`Failed to update item: ${error.message}`);
-  //   } finally {
-  //     setActionLoading({ type: null, id: null });
-  //   }
-  // };
 
   // Handle delete
   const handleDelete = async () => {
@@ -905,7 +819,11 @@ export default function ItemsTablePage() {
           getSubcategoriesForCategory={getSubcategoriesForCategory}
           generateProductCode={generateProductCode}
           getGSTRateValue={getGSTRateValue}
-          dropdownLoading={loading} // This will show loading state in dropdowns
+          getPuritiesByMetal={getPuritiesByMetal}
+          getStonePuritiesByStoneType={getStonePuritiesByStoneType}
+          getMaterialTypesByMetal={getMaterialTypesByMetal}
+          fetchHallmarksByMetal={fetchHallmarksByMetal}
+          dropdownLoading={loading}
         />
       )}
 
@@ -927,6 +845,7 @@ export default function ItemsTablePage() {
           getSubcategoriesForCategory={getSubcategoriesForCategory}
           getCategoryIdFromName={getCategoryIdFromName}
           getGSTRateValue={getGSTRateValue}
+          fetchHallmarksByMetal={fetchHallmarksByMetal}
         />
       )}
 
