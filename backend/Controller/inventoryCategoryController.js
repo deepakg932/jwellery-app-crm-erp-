@@ -1,7 +1,5 @@
 import InventoryCategory from "../Models/models/InventoryCategory.js";
-import Metal from "../Models/models/MetalTypeModel.js"
-import MaterialTypes from "../Models/models/MaterialTypes.js";
-import StoneType from "../Models/models/StoneType.js";
+
 import mongoose from "mongoose";
 
 export const createInventoryCategory = async (req, res) => {
@@ -17,53 +15,16 @@ export const createInventoryCategory = async (req, res) => {
 
     
 
-    // if (!mongoose.Types.ObjectId.isValid(material_type)) {
-    //   return res.status(400).json({ success: false, message: "Invalid ObjectId"});
-    // }
-
-    // let metals = [];
-    // let stones = [];
-    // let materials = [];
-
-   
-    // const metalDoc = await Metal.findById(material_type);
-    // if (metalDoc) {
-    //   metals.push({ metal_id: metalDoc._id });
-    // } else {
-     
-    //   const stoneDoc = await StoneType.findById(material_type);
-    //   if (stoneDoc) {
-    //     stones.push({ stone_id: stoneDoc._id });
-    //   } else {
-    
-    //     const materialDoc = await MaterialTypes.findById(material_type);
-    //     if (materialDoc) {
-    //       materials.push({ material_id: materialDoc._id });
-    //     } else {
-    //       return res.status(404).json({success: false,message: "ID not found in Metal, StoneType or MaterialTypes"});
-    //     }
-    //   }
-    // }
-
-    
+  
 
     const category = await InventoryCategory.create({
       name,
       description,
-    // //   parent_category_id: parent_category_id || null,
-    //   metals,
-    //   stones,
-    //   materials
+  
     });
     console.log(category,"category")
 
  
-    // const populatedCategory = await InventoryCategory.findById(category._id)
-    //   .populate("metals.metal_id", "name")
-    //   .populate("stones.stone_id", "stone_type")
-    //   .populate("materials.material_id", "material_type");
-    //   console.log(populatedCategory,"populatedCategory")
-
     return res.status(200).json({success: true,message: "Inventory Category created successfully",data: category});
 
   } catch (err) {

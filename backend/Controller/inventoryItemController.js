@@ -14,263 +14,229 @@ import Branch from "../Models/models/Branch.js"
 
 
 
-export const createInventoryItem = async (req, res) => {
-  try {
-    const { 
-      item_name,
-      item_code,
-      inventory_category_id,
-      branch_id,
-      metals = [],
-      stones = [],
-      gold_rate,
-      stone_rate,
-      making_charges = 0,
-      making_type = "percentage",
-      wastage_percentage = 5,
-      profit_margin = 20,
-      // Other fields
-      design_number,
-      jewelry_type,
-      size,
-      gender,
-      occasion,
-      discount_type = "none",
-      discount_value = 0,
-      gst_percentage = 3,
-      current_stock = 1,
-      minimum_stock = 1,
-      location_type = "showcase",
-      location_details,
-      supplier_id,
-      purchase_date,
-      purchase_invoice,
-      purchase_price = 0,
-      images = [],
-      description,
-      tags, // यहाँ tags लें
-      status = "active",
-      created_by
-    } = req.body;
-    
-    console.log("📥 Received tags:", tags); // Debug log
-    
-    // ==================== VALIDATION ====================
-    
-    // Required fields
-    if (!item_name || !item_code || !inventory_category_id || !branch_id) {
-      return res.status(400).json({ 
-        success: false,
-        message: "Required fields: item_name, item_code, inventory_category_id, branch_id" 
-      });
-    }
-    
-    // Check for duplicate item_code
-    const existingItem = await InventoryItem.findOne({ item_code });
-    if (existingItem) {
-      return res.status(400).json({
-        success: false,
-        message: "Item code already exists"
-      });
-    }
-    
-    // Check category exists
-    const category = await InventoryCategory.findById(inventory_category_id);
-    if (!category) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Inventory Category not found" 
-      });
-    }
-    
-    // Check branch exists
-    const branch = await Branch.findById(branch_id);
-    if (!branch) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Branch not found" 
-      });
-    }
-    
-    // ==================== CALCULATIONS IN CONTROLLER ====================
-    
-    // Calculate metal weight
-    let metal_weight = 0;
-    if (metals.length > 0) {
-      metal_weight = metals.reduce((sum, metal) => sum + (metal.weight || 0), 0);
-    }
-    
-    // Calculate total carat
-    let total_carat = 0;
-    if (stones.length > 0) {
-      total_carat = stones.reduce((sum, stone) => sum + (stone.carat_weight || 0), 0);
-    }
-    
-    // Calculate costs
-    const metal_cost = gold_rate && metal_weight ? gold_rate * metal_weight : 0;
-    const stone_cost = stone_rate && total_carat ? stone_rate * total_carat : 0;
-    
-    // Calculate wastage charges
-    const wastage_charges = wastage_percentage > 0 && metal_cost ? 
-      (metal_cost * wastage_percentage) / 100 : 0;
-    
-    // Calculate making charges
-    let makingChargesAmount = making_charges;
-    if (making_type === "per_gram" && metal_weight) {
-      makingChargesAmount = metal_weight * making_charges;
-    } else if (making_type === "percentage" && metal_cost) {
-      makingChargesAmount = (metal_cost * making_charges) / 100;
-    }
-    
-    // Calculate total cost
-    const total_cost_price = metal_cost + stone_cost + makingChargesAmount + wastage_charges;
-    
-    // Calculate selling price
-    const selling_price = total_cost_price > 0 && profit_margin > 0 ?
-      total_cost_price * (1 + profit_margin / 100) : 0;
-    
-    // ==================== CREATE ITEM ====================
-    
-    const itemData = {
-      // Basic Information
-      item_name,
-      item_code,
-      inventory_category_id,
-      branch_id,
-      
-      // Metals and Stones
-      metals,
-      stones,
-      
-      // Jewelry Details
-      design_number,
-      jewelry_type,
-      size,
-      gender,
-      occasion,
-      
-      // Pricing
-      gold_rate,
-      stone_rate,
-      making_charges,
-      making_type,
-      wastage_percentage,
-      profit_margin,
-      discount_type,
-      discount_value,
-      gst_percentage,
-      
-      // Pre-calculated values
-      metal_weight,
-      total_carat,
-      metal_cost,
-      stone_cost,
-      wastage_charges,
-      total_cost_price,
-      selling_price,
-      
-      // Stock and Location
-      current_stock,
-      minimum_stock,
-      location_type,
-      location_details,
-      
-      // Supplier
-      supplier_id: supplier_id || null,
-      purchase_date: purchase_date || null,
-      purchase_invoice: purchase_invoice || "",
-      purchase_price: purchase_price || 0,
-      
-      // Images and Description
-      images: images || [],
-      description: description || "",
-      
-      // Tags - यहाँ add करें
-      tags: tags || "",
-      
-      // Status
-      status: status || "active",
-      
-      // Created by
-      created_by: created_by || req.user?._id || null,
-    };
-    
-    console.log("✅ Item data with tags:", itemData.tags); 
-    
-    const item = await InventoryItem.create(itemData);
-    
-    return res.status(201).json({
-      success: true,
-      message: "Item created successfully",
-      data: item
-    });
-    
-  } catch (err) {
-    console.error("Error:", err.message);
-    console.error("Full error:", err);
-    
-    // Handle duplicate key errors
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return res.status(409).json({ 
-        success: false, 
-        message: `${field} already exists` 
-      });
-    }
-    
-    // Handle validation errors
-    if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map(val => val.message);
-      return res.status(400).json({
-        success: false,
-        message: messages.join(', ')
-      });
-    }
-    
-    return res.status(500).json({ 
-      success: false, 
-      message: "Server error",
-      error: err.message 
-    });
-  }
-};
-
-
-
-
-// export const getInventoryItems = async (req, res) => {
+// export const createInventoryItem = async (req, res) => {
 //   try {
-//     const items = await InventoryItem.find()
-//       .populate("inventory_category_id", "name")
-//       .populate("material_type_id", "material_type")
-//       .populate("product_id", "product_name")
-//       .populate("unit_id", "name")
-//       .populate({
-//         path: "metals.metal_id",
-//         select: "name"
-//       })
-//       .populate({
-//         path: "metals.purity_id",
-//         select: "purity_name metal_type percentage karat"
-//       })
-//       .populate({
-//         path: "stones.stone_id",
-//         select: "stone_type stone_purity percentage"
-//       })
-//       .populate({
-//         path: "stones.stone_purity_id",
-//         select: "stone_type stone_purity percentage"
-//       })
-//       .sort({ createdAt: -1 }); 
-
-//     console.log(items, "items");
-
-//     return res.status(200).json({ success: true, count: items.length,data: items });
+//     const { 
+//       item_name,
+//       item_code,
+//       inventory_category_id,
+//       branch_id,
+//       metals = [],
+//       stones = [],
+//       gold_rate,
+//       stone_rate,
+//       making_charges = 0,
+//       making_type = "percentage",
+//       wastage_percentage = 5,
+//       profit_margin = 20,
+//       // Other fields
+//       design_number,
+//       jewelry_type,
+//       size,
+//       gender,
+//       occasion,
+//       discount_type = "none",
+//       discount_value = 0,
+//       gst_percentage = 3,
+//       current_stock = 1,
+//       minimum_stock = 1,
+//       location_type = "showcase",
+//       location_details,
+//       supplier_id,
+//       purchase_date,
+//       purchase_invoice,
+//       purchase_price = 0,
+//       images = [],
+//       description,
+//       tags, // यहाँ tags लें
+//       status = "active",
+//       created_by
+//     } = req.body;
+    
+//     console.log("📥 Received tags:", tags); // Debug log
+    
+//     // ==================== VALIDATION ====================
+    
+//     // Required fields
+//     if (!item_name || !item_code || !inventory_category_id || !branch_id) {
+//       return res.status(400).json({ 
+//         success: false,
+//         message: "Required fields: item_name, item_code, inventory_category_id, branch_id" 
+//       });
+//     }
+    
+//     // Check for duplicate item_code
+//     const existingItem = await InventoryItem.findOne({ item_code });
+//     if (existingItem) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Item code already exists"
+//       });
+//     }
+    
+//     // Check category exists
+//     const category = await InventoryCategory.findById(inventory_category_id);
+//     if (!category) {
+//       return res.status(404).json({ 
+//         success: false, 
+//         message: "Inventory Category not found" 
+//       });
+//     }
+    
+//     // Check branch exists
+//     const branch = await Branch.findById(branch_id);
+//     if (!branch) {
+//       return res.status(404).json({ 
+//         success: false, 
+//         message: "Branch not found" 
+//       });
+//     }
+    
+//     // ==================== CALCULATIONS IN CONTROLLER ====================
+    
+//     // Calculate metal weight
+//     let metal_weight = 0;
+//     if (metals.length > 0) {
+//       metal_weight = metals.reduce((sum, metal) => sum + (metal.weight || 0), 0);
+//     }
+    
+//     // Calculate total carat
+//     let total_carat = 0;
+//     if (stones.length > 0) {
+//       total_carat = stones.reduce((sum, stone) => sum + (stone.carat_weight || 0), 0);
+//     }
+    
+//     // Calculate costs
+//     const metal_cost = gold_rate && metal_weight ? gold_rate * metal_weight : 0;
+//     const stone_cost = stone_rate && total_carat ? stone_rate * total_carat : 0;
+    
+//     // Calculate wastage charges
+//     const wastage_charges = wastage_percentage > 0 && metal_cost ? 
+//       (metal_cost * wastage_percentage) / 100 : 0;
+    
+//     // Calculate making charges
+//     let makingChargesAmount = making_charges;
+//     if (making_type === "per_gram" && metal_weight) {
+//       makingChargesAmount = metal_weight * making_charges;
+//     } else if (making_type === "percentage" && metal_cost) {
+//       makingChargesAmount = (metal_cost * making_charges) / 100;
+//     }
+    
+//     // Calculate total cost
+//     const total_cost_price = metal_cost + stone_cost + makingChargesAmount + wastage_charges;
+    
+//     // Calculate selling price
+//     const selling_price = total_cost_price > 0 && profit_margin > 0 ?
+//       total_cost_price * (1 + profit_margin / 100) : 0;
+    
+//     // ==================== CREATE ITEM ====================
+    
+//     const itemData = {
+//       // Basic Information
+//       item_name,
+//       item_code,
+//       inventory_category_id,
+//       branch_id,
+      
+//       // Metals and Stones
+//       metals,
+//       stones,
+      
+//       // Jewelry Details
+//       design_number,
+//       jewelry_type,
+//       size,
+//       gender,
+//       occasion,
+      
+//       // Pricing
+//       gold_rate,
+//       stone_rate,
+//       making_charges,
+//       making_type,
+//       wastage_percentage,
+//       profit_margin,
+//       discount_type,
+//       discount_value,
+//       gst_percentage,
+      
+//       // Pre-calculated values
+//       metal_weight,
+//       total_carat,
+//       metal_cost,
+//       stone_cost,
+//       wastage_charges,
+//       total_cost_price,
+//       selling_price,
+      
+//       // Stock and Location
+//       current_stock,
+//       minimum_stock,
+//       location_type,
+//       location_details,
+      
+//       // Supplier
+//       supplier_id: supplier_id || null,
+//       purchase_date: purchase_date || null,
+//       purchase_invoice: purchase_invoice || "",
+//       purchase_price: purchase_price || 0,
+      
+//       // Images and Description
+//       images: images || [],
+//       description: description || "",
+      
+//       // Tags - यहाँ add करें
+//       tags: tags || "",
+      
+//       // Status
+//       status: status || "active",
+      
+//       // Created by
+//       created_by: created_by || req.user?._id || null,
+//     };
+    
+//     console.log("✅ Item data with tags:", itemData.tags); 
+    
+//     const item = await InventoryItem.create(itemData);
+    
+//     return res.status(201).json({
+//       success: true,
+//       message: "Item created successfully",
+//       data: item
+//     });
+    
 //   } catch (err) {
-//     console.error("Get Inventory Items Error:", err);
-//     return res.status(500).json({ success: false, message: "Server error",error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+//     console.error("Error:", err.message);
+//     console.error("Full error:", err);
+    
+//     // Handle duplicate key errors
+//     if (err.code === 11000) {
+//       const field = Object.keys(err.keyPattern)[0];
+//       return res.status(409).json({ 
+//         success: false, 
+//         message: `${field} already exists` 
+//       });
+//     }
+    
+//     // Handle validation errors
+//     if (err.name === 'ValidationError') {
+//       const messages = Object.values(err.errors).map(val => val.message);
+//       return res.status(400).json({
+//         success: false,
+//         message: messages.join(', ')
+//       });
+//     }
+    
+//     return res.status(500).json({ 
+//       success: false, 
+//       message: "Server error",
+//       error: err.message 
+//     });
 //   }
 // };
+
+
+
 
 
 
@@ -851,6 +817,285 @@ export const deleteinventoryitem = async (req,res) => {
   } catch (errr) {
     console.log(errr, "errr");
     return res.status(500).json({ success: false, message: errr.message });
+  }
+};
+
+
+
+export const createInventoryItem = async (req, res) => {
+  try {
+    // Extract JSON data from body
+    let bodyData = {};
+    
+    try {
+      if (req.body.data) {
+        // If data is sent as JSON string
+        bodyData = JSON.parse(req.body.data);
+      } else {
+        // If fields are sent as form-data
+        bodyData = { ...req.body };
+        
+        // Parse arrays from form-data
+        if (bodyData.metals) {
+          bodyData.metals = JSON.parse(bodyData.metals);
+        }
+        if (bodyData.stones) {
+          bodyData.stones = JSON.parse(bodyData.stones);
+        }
+        if (bodyData.images) {
+          bodyData.images = JSON.parse(bodyData.images);
+        }
+        if (bodyData.tags) {
+          bodyData.tags = JSON.parse(bodyData.tags);
+        }
+      }
+    } catch (parseError) {
+      console.error("Parse error:", parseError);
+      return res.status(400).json({
+        success: false,
+        message: "Invalid data format"
+      });
+    }
+    
+    const { 
+      item_name,
+      item_code,
+      inventory_category_id,
+      branch_id,
+      metals = [],
+      stones = [],
+      gold_rate,
+      stone_rate,
+      making_charges = 0,
+      making_type = "percentage",
+      wastage_percentage = 5,
+      profit_margin = 20,
+      design_number,
+      jewelry_type,
+      size,
+      gender,
+      occasion,
+      discount_type = "none",
+      discount_value = 0,
+      gst_percentage = 3,
+      current_stock = 1,
+      minimum_stock = 1,
+      location_type = "showcase",
+      location_details,
+      supplier_id,
+      purchase_date,
+      purchase_invoice,
+      purchase_price = 0,
+      images = [],
+      description,
+      tags = [],
+      status = "active",
+      created_by
+    } = bodyData;
+    
+    console.log("📥 Received tags:", tags);
+    
+    // ==================== VALIDATION ====================
+    
+    // Required fields
+    if (!item_name || !item_code || !inventory_category_id || !branch_id) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Required fields: item_name, item_code, inventory_category_id, branch_id" 
+      });
+    }
+    
+    // Check for duplicate item_code
+    const existingItem = await InventoryItem.findOne({ item_code });
+    if (existingItem) {
+      return res.status(400).json({
+        success: false,
+        message: "Item code already exists"
+      });
+    }
+    
+    // Check category exists
+    const category = await InventoryCategory.findById(inventory_category_id);
+    if (!category) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Inventory Category not found" 
+      });
+    }
+    
+    // Check branch exists
+    const branch = await Branch.findById(branch_id);
+    if (!branch) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Branch not found" 
+      });
+    }
+    
+    // ==================== HANDLE UPLOADED FILES ====================
+    
+    let uploadedImages = [];
+    if (req.files && req.files.length > 0) {
+      uploadedImages = req.files.map(file => {
+        // Create dynamic URL
+        const imageUrl = `${req.protocol}://${req.get('host')}/uploads/inventory/${file.filename}`;
+        
+        return {
+          filename: file.filename,
+          originalname: file.originalname,
+          path: file.path,
+          url: imageUrl,
+          size: file.size,
+          mimetype: file.mimetype,
+          uploaded_at: new Date()
+        };
+      });
+    }
+    
+    // Combine existing images (if any) with uploaded ones
+    const allImages = [...images, ...uploadedImages];
+    
+    // ==================== CALCULATIONS ====================
+    
+    // Calculate metal weight
+    let metal_weight = 0;
+    if (metals.length > 0) {
+      metal_weight = metals.reduce((sum, metal) => sum + (metal.weight || 0), 0);
+    }
+    
+    // Calculate total carat
+    let total_carat = 0;
+    if (stones.length > 0) {
+      total_carat = stones.reduce((sum, stone) => sum + (stone.carat_weight || 0), 0);
+    }
+    
+    // Calculate costs
+    const metal_cost = gold_rate && metal_weight ? gold_rate * metal_weight : 0;
+    const stone_cost = stone_rate && total_carat ? stone_rate * total_carat : 0;
+    
+    // Calculate wastage charges
+    const wastage_charges = wastage_percentage > 0 && metal_cost ? 
+      (metal_cost * wastage_percentage) / 100 : 0;
+    
+    // Calculate making charges
+    let makingChargesAmount = making_charges;
+    if (making_type === "per_gram" && metal_weight) {
+      makingChargesAmount = metal_weight * making_charges;
+    } else if (making_type === "percentage" && metal_cost) {
+      makingChargesAmount = (metal_cost * making_charges) / 100;
+    }
+    
+    // Calculate total cost
+    const total_cost_price = metal_cost + stone_cost + makingChargesAmount + wastage_charges;
+    
+    // Calculate selling price
+    const selling_price = total_cost_price > 0 && profit_margin > 0 ?
+      total_cost_price * (1 + profit_margin / 100) : 0;
+    
+    // ==================== CREATE ITEM ====================
+    
+    const itemData = {
+      // Basic Information
+      item_name,
+      item_code,
+      inventory_category_id,
+      branch_id,
+      
+      // Metals and Stones
+      metals,
+      stones,
+      
+      // Jewelry Details
+      design_number,
+      jewelry_type,
+      size,
+      gender,
+      occasion,
+      
+      // Pricing
+      gold_rate,
+      stone_rate,
+      making_charges,
+      making_type,
+      wastage_percentage,
+      profit_margin,
+      discount_type,
+      discount_value,
+      gst_percentage,
+      
+      // Pre-calculated values
+      metal_weight,
+      total_carat,
+      metal_cost,
+      stone_cost,
+      wastage_charges,
+      total_cost_price,
+      selling_price,
+      
+      // Stock and Location
+      current_stock,
+      minimum_stock,
+      location_type,
+      location_details,
+      
+      // Supplier
+      supplier_id: supplier_id || null,
+      purchase_date: purchase_date || null,
+      purchase_invoice: purchase_invoice || "",
+      purchase_price: purchase_price || 0,
+      
+      // Images and Description
+      images: allImages,
+      description: description || "",
+      
+      // Tags
+      tags: Array.isArray(tags) ? tags : [tags].filter(Boolean),
+      
+      // Status
+      status: status || "active",
+      
+      // Created by
+      created_by: created_by || req.user?._id || null,
+    };
+    
+    console.log("✅ Item data with tags:", itemData.tags);
+    console.log("✅ Item images:", itemData.images);
+    
+    const item = await InventoryItem.create(itemData);
+    
+    return res.status(201).json({
+      success: true,
+      message: "Item created successfully",
+      data: item
+    });
+    
+  } catch (err) {
+    console.error("Error:", err.message);
+    console.error("Full error:", err);
+    
+    // Handle duplicate key errors
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(409).json({ 
+        success: false, 
+        message: `${field} already exists` 
+      });
+    }
+    
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(val => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', ')
+      });
+    }
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error",
+      error: err.message 
+    });
   }
 };
 

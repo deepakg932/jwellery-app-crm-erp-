@@ -5,37 +5,6 @@ const InventoryCategorySchema = new mongoose.Schema(
     
 
 
-    category_code: {
-       type: String,
-       unique: true
-      },
-
-    // parent_category_id: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "InventoryCategory",
-    //   default: null
-    // },
-
-    // metals: [{
-    //   metal_id: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "Metal"
-    //   }
-    // }],
-
-    // stones: [{
-    //   stone_id: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "StoneType"
-    //   }
-    // }],
-
-    // materials: [{
-    //   material_id: {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "MaterialTypes"
-    //   }
-    // }],
 
     description: {
       type: String,
