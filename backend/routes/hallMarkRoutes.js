@@ -5,6 +5,9 @@ import {
   getHallmarkById,
   updateHallmark,
   deleteHallmark,
+  getMetalsWithHallmarks,
+  getHallmarksByMetal,
+  getMetalDetails,
   getPurityPercentages,getHallmarkDashboardStats
 } from "../Controller/hallMarkController.js"
 
@@ -19,6 +22,9 @@ router.put("/update-hallmark/:id",hallMarkupload.single('image'), updateHallmark
 router.delete("/delete-hallmark/:id", deleteHallmark);
 router.get("/getperc",getPurityPercentages)
 router.get("/hallmark/stats", getHallmarkDashboardStats);
+router.get("/getssss",getMetalsWithHallmarks)
+router.get('/all-with-details', getMetalDetails);
+router.get("/getHallmarksByMetal/:id",getHallmarksByMetal)
 
 
 

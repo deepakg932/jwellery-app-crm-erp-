@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const MakingStageSchema = new mongoose.Schema(
   {
-    stage_name: { type: String, required: true},
+    stage_name: { type: String,},
 
     // description: { type: String, default: "" },
 

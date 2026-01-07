@@ -5,6 +5,16 @@ const HallmarkSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },   // Hallmark Name/Code
 
+      metal_type: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Metal",
+      required: true 
+    },
+
+    metal_type_name: { 
+      type: String 
+    },
+
     purity_id: { type: mongoose.Schema.Types.ObjectId, ref: "Purity",},
 
     // mark_id: { type: mongoose.Schema.Types.ObjectId, ref: "Mark", required: true },

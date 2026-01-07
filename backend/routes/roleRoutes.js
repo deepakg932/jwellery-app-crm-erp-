@@ -1,11 +1,11 @@
 import express from "express";
 import Role from "../Models/models/Role.js"
-import { authenticate } from "../middleware/auth.js";
+import { authMiddleware } from "../middleware/auth.js";
 import { requireRole } from "../middleware/authorize.js";
 
 const router = express.Router();
 
-router.post("/", authenticate, requireRole(["admin"]), async (req, res) => {
+router.post("/", authMiddleware, requireRole(["admin"]), async (req, res) => {
   try {
     const { name, permissions = [], description } = req.body;
     const role = new Role({ name, permissions, description });
@@ -18,7 +18,7 @@ router.post("/", authenticate, requireRole(["admin"]), async (req, res) => {
 });
 
 
-router.put("/:roleName", authenticate, requireRole(["admin"]), async (req, res) => {
+router.put("/:roleName", authMiddleware, requireRole(["admin"]), async (req, res) => {
   try {
     const { roleName } = req.params;
     const { permissions } = req.body;
@@ -31,7 +31,7 @@ router.put("/:roleName", authenticate, requireRole(["admin"]), async (req, res) 
   }
 });
 
-router.get("/", authenticate, requireRole(["admin"]), async (req, res) => {
+router.get("/", authMiddleware, requireRole(["admin"]), async (req, res) => {
   const roles = await Role.find({});
   res.json({ roles });
 });

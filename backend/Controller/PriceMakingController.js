@@ -65,16 +65,65 @@ export const createPriceMaking = async (req, res) => {
 
 export const getPriceMakings = async (req, res) => {
   try {
-    const priceMakings = await Pricemaking.find();
-    //   .populate({ path: "stage_name", select: "stage_name" })
-    //   .populate({ path: "sub_stage_name", select: "sub_stage_name" })
-    //   .populate({ path: "cost_type", select: "cost_type" })
-    //   .populate({ path: "unit_name", select: "unit_name" })
-    //   .sort({ createdAt: -1 });
-    console.log(priceMakings, "priceMakings");
-    return res.json({ success: true, data: priceMakings });
+    const { 
+      stage_name, 
+      sub_stage_name, 
+      cost_type, 
+      is_active,
+      search,
+      page = 1, 
+      limit = 10 
+    } = req.query;
+    
+    // Build filter
+    const filter = {};
+    
+    // Exact match filters
+    if (stage_name) filter.stage_name = stage_name;
+    if (sub_stage_name) filter.sub_stage_name = sub_stage_name;
+    if (cost_type) filter.cost_type = cost_type;
+    if (is_active !== undefined) filter.is_active = is_active === 'true';
+    
+    // Search across multiple fields
+    if (search) {
+      filter.$or = [
+        { stage_name: { $regex: search, $options: "i" } },
+        { sub_stage_name: { $regex: search, $options: "i" } },
+        { cost_type: { $regex: search, $options: "i" } },
+        { unit_name: { $regex: search, $options: "i" } }
+      ];
+    }
+    
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Execute query
+    const [priceMakings, totalCount] = await Promise.all([
+      Pricemaking.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Pricemaking.countDocuments(filter)
+    ]);
+    
+    console.log(`Fetched ${priceMakings.length} price makings`);
+    
+    return res.json({ 
+      success: true, 
+      data: priceMakings,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalCount,
+        limit: parseInt(limit)
+      }
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    console.error("Error fetching price makings:", err);
+    return res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
   }
 };
 

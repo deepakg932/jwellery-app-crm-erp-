@@ -14,27 +14,27 @@ const GRNSchema = new mongoose.Schema({
   po_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "PurchaseOrder",
-    required: true
+    // required: true
   },
   supplier_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Suppliers",
-    required: true
+    // required: true
   },
   branch_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Branch",
-    required: true
+    // required: true
   },
   items: [{
     po_item_id: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true
+      // required: true
     },
     inventory_item_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "InventoryItem",
-      required: true
+      // required: true
     },
     unit_id: {
       type: mongoose.Schema.Types.ObjectId,

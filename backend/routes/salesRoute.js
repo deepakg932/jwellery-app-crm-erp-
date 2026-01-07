@@ -1,9 +1,8 @@
 import express from "express";
 import { createSale } from "../Controller/salesController.js"
-import auth from "../middlewares/auth.js";
 
 const router = express.Router();
 
-router.post("/create", auth, createSale);
+router.post("/sale", createSale);
 
 export default router;

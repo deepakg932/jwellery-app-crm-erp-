@@ -1,26 +1,22 @@
-const saleSchema = new mongoose.Schema({
+import mongoose from "mongoose";
+
+const SaleSchema = new mongoose.Schema({
   invoiceNo: String,
   customer: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
   branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
 
   items: [{
-    item: { type: mongoose.Schema.Types.ObjectId, ref: "Item" },
+    inventory_item_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InventoryItem"
+    },
+    quantity: Number,
     grossWeight: Number,
     netWeight: Number,
-    makingCharge: Number,
-    gstAmount: Number,
-    totalAmount: Number
+    price: Number
   }],
 
-  subtotal: Number,
-  discount: Number,
-  gstTotal: Number,
-  grandTotal: Number,
-
-  paymentStatus: {
-    type: String,
-    enum: ["PAID", "PARTIAL", "UNPAID"]
-  }
+  totalAmount: Number
 }, { timestamps: true });
 
-export default mongoose.model("Sale", saleSchema);
+export default mongoose.model("Sale", SaleSchema);

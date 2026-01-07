@@ -48,6 +48,9 @@ export const register = async (req, res) => {
     //   return res.status(400).json({ message: "tenant_id is required for non-admin roles" });
     // }
 
+
+
+
     const existingUser = await User.findOne({ email});
     if (existingUser) return res.status(400).json({ message: "User already exists with this email " });
 
@@ -101,12 +104,8 @@ export const login = async (req, res) => {
     if (!match) 
       return res.status(400).json({ message: "Invalid credentials" });
 
-    const payload = {
-      sub: user._id,
-      // tenant_id: user.tenant_id,
-      // role: user.role,
-      email: user.email
-    };
+    const payload = { id: user._id, 
+       email: user.email };
 console.log(payload,"payload")
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);

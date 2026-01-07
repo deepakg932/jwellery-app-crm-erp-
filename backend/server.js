@@ -32,6 +32,11 @@ import inventoryItemRoute from "./routes/inventoryItemRoute.js"
 import supplierRoute from "./routes/supplierRoutes.js";
 import purchaseRoutes from "./routes/purchaseRoutes.js"
 import grn from "./routes/grn(STOCK-IN)Routes.js";
+import StockLedgerRoute from "./routes/StockLedgerRoute.js";
+import InventoryStockRoutes from "./routes/InventoryStockRoutes.js"
+import stockTransferRoute from "./routes/stockTransferRoute.js";
+import stockAdjustmentRoutes from "./routes/stockAdjustmentRoutes.js";
+import salesRoute from "./routes/salesRoute.js"
 
 
 dotenv.config(); 
@@ -82,6 +87,14 @@ app.use("/api/inventory-item",inventoryItemRoute)
 app.use('/api/supplier',supplierRoute)
 app.use("/api/purchase-orders",purchaseRoutes)
 app.use("/api/stock-grn",grn)
+app.use("/api/stock-ledger",StockLedgerRoute)
+app.use("/api/Inventory-stock",InventoryStockRoutes)
+app.use("/api/stock-transfer",stockTransferRoute)
+app.use("/api/stock-adjustment",stockAdjustmentRoutes)
+app.use("api/sales",salesRoute)
+
+
+
 
 
 

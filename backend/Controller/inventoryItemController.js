@@ -8,7 +8,8 @@ import Product from "../Models/models/ProductModel.js"
 import Unit from "../Models/models/unitModel.js";
 import mongoose from "mongoose";
 import stonePurityModel from "../Models/models/stonePurityModel.js";
-
+import Supplier from "../Models/models/SuppliersModel.js";
+import Branch from "../Models/models/Branch.js"
 
 
 
@@ -16,294 +17,260 @@ import stonePurityModel from "../Models/models/stonePurityModel.js";
 export const createInventoryItem = async (req, res) => {
   try {
     const { 
-      item_name, 
+      item_name,
+      item_code,
       inventory_category_id,
-      material_type_id,  
-      metal_type_name, 
-      metal_purity_name,
-      stone_type_name, 
-      stone_purity_name,
-      unit_id, 
-      product_id, 
-      track_by, 
-      weight,
-      quantity 
+      branch_id,
+      metals = [],
+      stones = [],
+      gold_rate,
+      stone_rate,
+      making_charges = 0,
+      making_type = "percentage",
+      wastage_percentage = 5,
+      profit_margin = 20,
+      // Other fields
+      design_number,
+      jewelry_type,
+      size,
+      gender,
+      occasion,
+      discount_type = "none",
+      discount_value = 0,
+      gst_percentage = 3,
+      current_stock = 1,
+      minimum_stock = 1,
+      location_type = "showcase",
+      location_details,
+      supplier_id,
+      purchase_date,
+      purchase_invoice,
+      purchase_price = 0,
+      images = [],
+      description,
+      tags, // यहाँ tags लें
+      status = "active",
+      created_by
     } = req.body;
     
-    console.log(req.body, "req.body");
-
-    // // 1. Basic validations - material_type_id is NOT required
-    // if (!item_name || !inventory_category_id || !track_by || !unit_id) {
-    //   return res.status(400).json({ 
-    //     success: false,
-    //     message: "Required fields missing: item_name, inventory_category_id, track_by, unit_id" 
-    //   });
-    // }
-
-    // 2. Check: User must provide EITHER metal details OR stone details OR material details
-    const hasMetal = metal_type_name || metal_purity_name;
-    const hasStone = stone_type_name || stone_purity_name;
-    const hasMaterial = material_type_id;
+    console.log("📥 Received tags:", tags); // Debug log
     
-    if (!hasMetal && !hasStone && !hasMaterial) {
-      return res.status(400).json({success: false,message: "Please provide either metal details, stone details, or material type"});
+    // ==================== VALIDATION ====================
+    
+    // Required fields
+    if (!item_name || !item_code || !inventory_category_id || !branch_id) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Required fields: item_name, item_code, inventory_category_id, branch_id" 
+      });
     }
-
-   
-    const validateObjectId = (id, fieldName) => {
-      if (id && !mongoose.Types.ObjectId.isValid(id)) {
-        throw new Error(`Invalid ${fieldName}`);
-      }
-      return true;
-    };
-
-    try {
-      if (material_type_id) validateObjectId(material_type_id, "material type");
-      validateObjectId(inventory_category_id, "inventory category");
-      validateObjectId(unit_id, "unit");
-      if (product_id) validateObjectId(product_id, "product");
-    } catch (validationError) {
-      return res.status(400).json({success: false,message: validationError.message});
+    
+    // Check for duplicate item_code
+    const existingItem = await InventoryItem.findOne({ item_code });
+    if (existingItem) {
+      return res.status(400).json({
+        success: false,
+        message: "Item code already exists"
+      });
     }
-
-
+    
+    // Check category exists
     const category = await InventoryCategory.findById(inventory_category_id);
     if (!category) {
-      return res.status(404).json({ success: false, message: "Inventory Category not found" });
-    }
-    console.log(category, "category");
-    
-    
-    const unit = await Unit.findById(unit_id);
-    console.log(unit, "unit");
-    // if (!unit) {
-    //   return res.status(404).json({ 
-    //     success: false, 
-    //     message: "Unit not found" 
-    //   });
-    // }
-
-    
-    let materialType = null;
-    if (material_type_id) {
-      materialType = await MaterialTypes.findById(material_type_id);
-      if (!materialType) {
-        return res.status(404).json({success: false,message: "Material type not found"});
-      }
-      console.log(materialType, "materialType");
-    }
-
- 
-    if (track_by === "weight" && (!weight || weight <= 0)) {
-      return res.status(400).json({ success: false,message: "Valid weight is required when track_by is 'weight'" });
-    }
-
-    if (track_by === "quantity" && (!quantity || quantity <= 0)) {
-      return res.status(400).json({  success: false, message: "Valid quantity is required when track_by is 'quantity'" });
-    }
-
-    if (track_by === "both" && (!weight || weight <= 0 || !quantity || quantity <= 0)) {
-      return res.status(400).json({success: false,message: "Both weight and quantity are required and must be positive"});
-    }
-
-    let metals = [];
-    console.log(metals)
-    if (metal_type_name) {
-      
-      if (!metal_purity_name) {
-        return res.status(400).json({success: false,message: "Metal purity name is required when metal type is provided"});
-      }
-
-      const metalDoc = await Metal.findOne({ name: metal_type_name });
-      console.log(metalDoc, "metalDoc");
-      
-      if (!metalDoc) {
-        return res.status(404).json({ success: false, message: `Metal type '${metal_type_name}' not found` });
-      }
-
-      let purityDoc = await Purity.findOne({ purity_name: metal_purity_name });
-      console.log(purityDoc, "purityDoc");
-
-      if (!purityDoc) {
-        purityDoc = await Purity.findOne({ 
-          metal_type: metal_type_name,
-          $or: [
-            { purity_name: metal_purity_name },
-            { karat: parseInt(metal_purity_name) || 0 }
-          ]
-        });
-      }
-      
-      if (!purityDoc) {
-        return res.status(404).json({success: false,message: `Metal purity '${metal_purity_name}' not found for metal type '${metal_type_name}'`});
-      }
-
-      if (purityDoc.stone_purity) {
-        return res.status(400).json({success: false,message: "This purity is for stone, not for metal"});
-      }
-
-      if (purityDoc.metal_type && purityDoc.metal_type.toLowerCase() !== metal_type_name.toLowerCase()) {
-        return res.status(400).json({success: false,message: `Purity '${metal_purity_name}' does not belong to metal type '${metal_type_name}'`});
-      }
-
-      metals.push({
-        metal_id: metalDoc._id,
-        purity_id: purityDoc._id,
-        purity_name: purityDoc.purity_name || purityDoc.metal_type,
-        karat: purityDoc.karat || null,
-        percentage: purityDoc.percentage || null,
-        metal_weight: track_by === "weight" || track_by === "both" ? weight : null
+      return res.status(404).json({ 
+        success: false, 
+        message: "Inventory Category not found" 
       });
     }
-
     
-    let stones = [];
-    console.log(stones,"stones")
-    if (stone_type_name) {
-      
-      const stoneDoc = await StoneType.findOne({ stone_type: stone_type_name });
-      console.log(stoneDoc, "stoneDoc");
-      
-      if (!stoneDoc) {
-        return res.status(404).json({ success: false, message: `Stone type '${stone_type_name}' not found` });
-      }
-
-      let stonePurityInfo = null;
-      console.log(stonePurityInfo, "stonePurityInfo");
-      
-      if (stone_purity_name) {
-        let stonePurityDoc = await StoneType.findOne({ 
-          stone_type: stone_type_name,
-          stone_purity: stone_purity_name 
-        });
-        
-        if (stonePurityDoc) {
-          stonePurityInfo = {
-            stone_purity_id: stonePurityDoc._id,
-            stone_purity_value: stonePurityDoc.stone_purity,
-            percentage: stonePurityDoc.percentage || null
-          };
-        } else {
-          const purityDoc = await Purity.findOne({ 
-            stone_type: stone_type_name,
-            stone_purity: stone_purity_name 
-          });
-          
-          if (purityDoc) {
-            stonePurityInfo = {
-              stone_purity_id: purityDoc._id,
-              stone_purity_value: purityDoc.stone_purity,
-              percentage: purityDoc.percentage || null
-            };
-          } else {
-            const stonePurityByModel = await stonePurityModel.findOne({ 
-              stone_purity: stone_purity_name 
-            });
-            
-            if (stonePurityByModel) {
-              stonePurityInfo = {
-                stone_purity_id: stonePurityByModel._id,
-                stone_purity_value: stonePurityByModel.stone_purity,
-                percentage: stonePurityByModel.percentage || null
-              };
-            } else {
-              stonePurityInfo = {
-                stone_purity_value: stone_purity_name,
-                percentage: null
-              };
-            }
-          }
-        }
-      } else {
-        stonePurityInfo = {
-          stone_purity_value: stoneDoc.stone_purity || null,
-          percentage: stoneDoc.percentage || null
-        };
-      }
-
-      stones.push({
-        stone_id: stoneDoc._id,
-        stone_purity_id: stonePurityInfo.stone_purity_id || null,
-        stone_purity_value: stonePurityInfo.stone_purity_value,
-        percentage: stonePurityInfo.percentage,
-        stone_quantity: track_by === "quantity" || track_by === "both" ? quantity : null
+    // Check branch exists
+    const branch = await Branch.findById(branch_id);
+    if (!branch) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Branch not found" 
       });
     }
-
     
-    const sku_code = `SKU-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    console.log(sku_code, "sku_code");
-
-
-    const itemData = {
-      item_name,
-      sku_code,
-      unit_id,
-      inventory_category_id,
-      track_by,
-      total_weight: track_by === "weight" || track_by === "both" ? weight : null,
-      total_quantity: track_by === "quantity" || track_by === "both" ? quantity : null,
-    };
-
-    if (material_type_id && materialType) {
-      itemData.material_type_id = materialType._id;
-    }
-  
+    // ==================== CALCULATIONS IN CONTROLLER ====================
+    
+    // Calculate metal weight
+    let metal_weight = 0;
     if (metals.length > 0) {
-      itemData.metals = metals;
+      metal_weight = metals.reduce((sum, metal) => sum + (metal.weight || 0), 0);
     }
-
+    
+    // Calculate total carat
+    let total_carat = 0;
     if (stones.length > 0) {
-      itemData.stones = stones;
+      total_carat = stones.reduce((sum, stone) => sum + (stone.carat_weight || 0), 0);
     }
     
-    console.log(itemData, "itemData");
-
-   
-    if (product_id) {
-      const product = await Product.findById(product_id);
-      console.log("product", product);
-      if (product) itemData.product_id = product_id;
+    // Calculate costs
+    const metal_cost = gold_rate && metal_weight ? gold_rate * metal_weight : 0;
+    const stone_cost = stone_rate && total_carat ? stone_rate * total_carat : 0;
+    
+    // Calculate wastage charges
+    const wastage_charges = wastage_percentage > 0 && metal_cost ? 
+      (metal_cost * wastage_percentage) / 100 : 0;
+    
+    // Calculate making charges
+    let makingChargesAmount = making_charges;
+    if (making_type === "per_gram" && metal_weight) {
+      makingChargesAmount = metal_weight * making_charges;
+    } else if (making_type === "percentage" && metal_cost) {
+      makingChargesAmount = (metal_cost * making_charges) / 100;
     }
-
+    
+    // Calculate total cost
+    const total_cost_price = metal_cost + stone_cost + makingChargesAmount + wastage_charges;
+    
+    // Calculate selling price
+    const selling_price = total_cost_price > 0 && profit_margin > 0 ?
+      total_cost_price * (1 + profit_margin / 100) : 0;
+    
+    // ==================== CREATE ITEM ====================
+    
+    const itemData = {
+      // Basic Information
+      item_name,
+      item_code,
+      inventory_category_id,
+      branch_id,
+      
+      // Metals and Stones
+      metals,
+      stones,
+      
+      // Jewelry Details
+      design_number,
+      jewelry_type,
+      size,
+      gender,
+      occasion,
+      
+      // Pricing
+      gold_rate,
+      stone_rate,
+      making_charges,
+      making_type,
+      wastage_percentage,
+      profit_margin,
+      discount_type,
+      discount_value,
+      gst_percentage,
+      
+      // Pre-calculated values
+      metal_weight,
+      total_carat,
+      metal_cost,
+      stone_cost,
+      wastage_charges,
+      total_cost_price,
+      selling_price,
+      
+      // Stock and Location
+      current_stock,
+      minimum_stock,
+      location_type,
+      location_details,
+      
+      // Supplier
+      supplier_id: supplier_id || null,
+      purchase_date: purchase_date || null,
+      purchase_invoice: purchase_invoice || "",
+      purchase_price: purchase_price || 0,
+      
+      // Images and Description
+      images: images || [],
+      description: description || "",
+      
+      // Tags - यहाँ add करें
+      tags: tags || "",
+      
+      // Status
+      status: status || "active",
+      
+      // Created by
+      created_by: created_by || req.user?._id || null,
+    };
+    
+    console.log("✅ Item data with tags:", itemData.tags); 
+    
     const item = await InventoryItem.create(itemData);
-    console.log(item, "item");
-
-    const populatedItem = await InventoryItem.findById(item._id)
-      .populate("inventory_category_id", "name")
-      .populate("unit_id", "name")
-      .populate("product_id", "product_name")
-      .populate("material_type_id", "material_type")
-      .populate({
-        path: "metals.metal_id",
-        select: "name"
-      })
-      .populate({
-        path: "metals.purity_id",
-        select: "purity_name metal_type percentage karat"
-      })
-      .populate({
-        path: "stones.stone_id",
-        select: "stone_type stone_purity percentage"
-      })
-      .populate({
-        path: "stones.stone_purity_id",
-        select: "stone_type stone_purity percentage"
-      });
     
-    console.log(populatedItem, "populatedItem");
-
-    return res.status(200).json({success: true, message: "Inventory Item created successfully",data: populatedItem,});
+    return res.status(201).json({
+      success: true,
+      message: "Item created successfully",
+      data: item
+    });
+    
   } catch (err) {
-    console.error("Create Inventory Item Error:", err);
+    console.error("Error:", err.message);
+    console.error("Full error:", err);
     
+    // Handle duplicate key errors
     if (err.code === 11000) {
-      return res.status(409).json({ success: false,  message: "SKU already exists" });
+      const field = Object.keys(err.keyPattern)[0];
+      return res.status(409).json({ 
+        success: false, 
+        message: `${field} already exists` 
+      });
     }
     
-    return res.status(500).json({  success: false,  message: "Server error", error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    // Handle validation errors
+    if (err.name === 'ValidationError') {
+      const messages = Object.values(err.errors).map(val => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', ')
+      });
+    }
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error",
+      error: err.message 
+    });
   }
 };
+
+
+
+
+// export const getInventoryItems = async (req, res) => {
+//   try {
+//     const items = await InventoryItem.find()
+//       .populate("inventory_category_id", "name")
+//       .populate("material_type_id", "material_type")
+//       .populate("product_id", "product_name")
+//       .populate("unit_id", "name")
+//       .populate({
+//         path: "metals.metal_id",
+//         select: "name"
+//       })
+//       .populate({
+//         path: "metals.purity_id",
+//         select: "purity_name metal_type percentage karat"
+//       })
+//       .populate({
+//         path: "stones.stone_id",
+//         select: "stone_type stone_purity percentage"
+//       })
+//       .populate({
+//         path: "stones.stone_purity_id",
+//         select: "stone_type stone_purity percentage"
+//       })
+//       .sort({ createdAt: -1 }); 
+
+//     console.log(items, "items");
+
+//     return res.status(200).json({ success: true, count: items.length,data: items });
+//   } catch (err) {
+//     console.error("Get Inventory Items Error:", err);
+//     return res.status(500).json({ success: false, message: "Server error",error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+//   }
+// };
 
 
 
@@ -312,39 +279,81 @@ export const createInventoryItem = async (req, res) => {
 
 export const getInventoryItems = async (req, res) => {
   try {
-    const items = await InventoryItem.find()
+    // Optional: Add query parameters for filtering
+    const { 
+      page = 1, 
+      limit = 10, 
+      category_id, 
+      branch_id, 
+      status, 
+      item_type,
+      search
+    } = req.query;
+    
+    // Build query object
+    const query = {};
+    
+    if (category_id) {
+      query.inventory_category_id = category_id;
+    }
+    
+    if (branch_id) {
+      query.branch_id = branch_id;
+    }
+    
+    if (status) {
+      query.status = status;
+    }
+    
+    if (item_type) {
+      query.item_type = item_type;
+    }
+    
+    if (search) {
+      query.$or = [
+        { item_name: { $regex: search, $options: 'i' } },
+        { item_code: { $regex: search, $options: 'i' } },
+        { sku_code: { $regex: search, $options: 'i' } },
+        { design_number: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+    
+    // Execute query with pagination
+    const items = await InventoryItem.find(query)
       .populate("inventory_category_id", "name")
-      .populate("material_type_id", "material_type")
-      .populate("product_id", "product_name")
-      .populate("unit_id", "name")
-      .populate({
-        path: "metals.metal_id",
-        select: "name"
-      })
-      .populate({
-        path: "metals.purity_id",
-        select: "purity_name metal_type percentage karat"
-      })
-      .populate({
-        path: "stones.stone_id",
-        select: "stone_type stone_purity percentage"
-      })
-      .populate({
-        path: "stones.stone_purity_id",
-        select: "stone_type stone_purity percentage"
-      })
-      .sort({ createdAt: -1 }); 
-
-    console.log(items, "items");
-
-    return res.status(200).json({ success: true, count: items.length,data: items });
+      .populate("branch_id", "name address phone")
+      .populate("supplier_id", "name contact_person phone email")
+      .populate("created_by", "name email")
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
+    // Get total count for pagination info
+    const total = await InventoryItem.countDocuments(query);
+    
+    console.log(`✅ Found ${items.length} items out of ${total} total`);
+    
+    return res.status(200).json({ 
+      success: true, 
+      count: items.length,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+      data: items 
+    });
+    
   } catch (err) {
-    console.error("Get Inventory Items Error:", err);
-    return res.status(500).json({ success: false, message: "Server error",error: process.env.NODE_ENV === 'development' ? err.message : undefined });
+    console.error("❌ Get Inventory Items Error:", err);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Server error",
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
   }
 };
-
-
 
 
 

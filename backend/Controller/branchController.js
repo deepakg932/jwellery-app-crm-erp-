@@ -3,10 +3,15 @@ import BranchType from '../Models/models/BranchType.js';
 
 export const createBranch = async (req, res) => {
   try {
-    const { branch_name, address, status, branch_type ,phone,} = req.body;
+    const { branch_name,branch_code, address, status, branch_type ,contact_person,is_warehouse,phone} = req.body;
     console.log(req.body,"req.body")
+    const a = await Branch.findOne({branch_name:branch_name})
+    console.log(a,"duplicate")
+    if(a){
+      return res.status(400).json({status:false,message:"Branch already exit"})
+    }
 
-    const branch = await Branch.create({branch_name,branch_type, address,status,phone});
+    const branch = await Branch.create({branch_name,branch_code,branch_type ,contact_person,address,is_warehouse,status,phone});
     console.log(branch,"branch")
 
     const populatedBranch = await Branch.findById(branch._id)
@@ -158,35 +163,35 @@ export const getAllBranchTypes = async (req, res) => {
   }
 };
 
-export const getBranches = async (req, res) => {
-  try {
-    const branches = await Branch.find({})
-      .select("_id branch_name branch_type address phone status")
-      .populate({
-        path: "branch_type",
-        select: "_id branch_type"
-      })
-      .sort({ branch_name: 1 });
+// export const getBranches = async (req, res) => {
+//   try {
+//     const branches = await Branch.find({})
+//       .select("_id branch_name branch_type address phone status")
+//       .populate({
+//         path: "branch_type",
+//         select: "_id branch_type"
+//       })
+//       .sort({ branch_name: 1 });
 
-    console.log(branches, "all branches");
+//     console.log(branches, "all branches");
 
-    return res.status(200).json({success: true,message: "Branches fetched successfully",data: branches.map(branch => ({
-        id: branch._id,
-        name: branch.branch_name,
-        address: branch.address,
-        phone: branch.phone,
-        status: branch.status,
-        branch_type: {
-          id: branch.branch_type?._id,
-          name: branch.branch_type?.branch_type
-        }
-      }))
-    });
+//     return res.status(200).json({success: true,message: "Branches fetched successfully",data: branches.map(branch => ({
+//         id: branch._id,
+//         name: branch.branch_name,
+//         address: branch.address,
+//         phone: branch.phone,
+//         status: branch.status,
+//         branch_type: {
+//           id: branch.branch_type?._id,
+//           name: branch.branch_type?.branch_type
+//         }
+//       }))
+//     });
 
-  } catch (err) {
-    return res.status(500).json({success: false,message: "Server error",error: err.message});
-  }
-};
+//   } catch (err) {
+//     return res.status(500).json({success: false,message: "Server error",error: err.message});
+//   }
+// };
 
 
 export const getBranchById = async (req, res) => {
@@ -204,13 +209,11 @@ export const updateBranch = async (req, res) => {
     const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        message: "Branch ID is required",
+      return res.status(400).json({success: false,message: "Branch ID is required",
       });
     }
 
-    // update branch
+    
     const updated = await Branch.findByIdAndUpdate(
       id,
       req.body,
@@ -218,13 +221,10 @@ export const updateBranch = async (req, res) => {
     );
 
     if (!updated) {
-      return res.status(404).json({
-        success: false,
-        message: "Branch not found",
-      });
+      return res.status(404).json({success: false,message: "Branch not found",});
     }
 
-    // populate branch_type (id + branch_type name)
+  
     const populatedBranch = await Branch.findById(updated._id)
       .populate({
         path: "branch_type",
@@ -233,16 +233,10 @@ export const updateBranch = async (req, res) => {
 
     console.log(populatedBranch, "updated branch with populate");
 
-    return res.status(200).json({
-      success: true,
-      data: populatedBranch,
-    });
+    return res.status(200).json({success: true,data: populatedBranch,});
 
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    return res.status(500).json({success: false,message: err.message,});
   }
 };
 
@@ -257,3 +251,42 @@ export const deleteBranch = async (req, res) => {
 };
 
 
+export const getBranches = async (req, res) => {
+  try {
+    const branches = await Branch.find({})
+      .select("_id branch_name branch_code branch_type address phone contact_person is_warehouse status")
+      .populate({
+        path: "branch_type",
+        select: "_id branch_type"
+      })
+      .sort({ branch_name: 1 });
+
+    console.log(branches, "all branches");
+
+    return res.status(200).json({
+      success: true,
+      message: "Branches fetched successfully",
+      data: branches.map(branch => ({
+        id: branch._id,
+        branch_name: branch.branch_name,
+        branch_code: branch.branch_code,
+        address: branch.address,
+        phone: branch.phone,
+        contact_person: branch.contact_person,
+        is_warehouse: branch.is_warehouse,
+        status: branch.status,
+        branch_type: {
+          id: branch.branch_type?._id,
+          name: branch.branch_type?.branch_type
+        }
+      }))
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message
+    });
+  }
+};

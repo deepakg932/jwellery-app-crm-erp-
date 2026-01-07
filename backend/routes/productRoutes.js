@@ -7,6 +7,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+
   getProductImages,
   deleteProductImage,unitCreate,getUnits,unitUpdate,unitDelete,
 bulkUpdateProductStatus,updateProductStatus
@@ -27,7 +28,7 @@ router.post(
   '/createProduct',
   // authenticate,
   // requirePermission("products:create"),
-Productupload.array("images", 5), // "images" = key in Postman, max 5 files
+Productupload.single('image'), // "images" = key in Postman, max 5 files
   createProduct
 );
 
@@ -44,7 +45,7 @@ Productupload.array("images", 5), // "images" = key in Postman, max 5 files
 
 router.put(
   "/updateProduct/:id",
- Productupload.array("images", 5), 
+ Productupload.single('image'),  
   updateProduct
 );
 
@@ -57,6 +58,7 @@ router.put(
 
 
 router.delete('/delete-product/:id',deleteProduct);
+
 
 // router.put('/products/:id/toggle-status', toggleProductStatus); // Toggle single product status
 // router.put('/products/bulk-status', bulkUpdateProductStatus); 
