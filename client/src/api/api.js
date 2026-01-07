@@ -363,7 +363,6 @@ export const API_ENDPOINTS = {
   createHallmark: () => endpoint(PATHS.HALLMARK, ROUTES.CREATE_HALLMARK),
   updateHallmark: (id) => endpoint(PATHS.HALLMARK, ROUTES.UPDATE_HALLMARK, id),
   deleteHallmark: (id) => endpoint(PATHS.HALLMARK, ROUTES.DELETE_HALLMARK, id),
-    // getHallmarksByMetal: (metalId) => `${API_BASE_URL}${PATHS.HALLMARK}/by-metal/${metalId}`,
 
   // ========== METAL PURITY OPERATIONS ==========
   getPurities: () => endpoint(PATHS.PURITY, ROUTES.GET_PURITY),

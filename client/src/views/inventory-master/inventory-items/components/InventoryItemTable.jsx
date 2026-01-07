@@ -25,7 +25,8 @@ const InventoryItemTable = () => {
     addInventoryItem,
     updateInventoryItem,
     deleteInventoryItem,
-    warehouses,
+    branches,
+    hallmarks ,
     suppliers
   } = useInventoryItems();
 console.log(suppliers)
@@ -672,21 +673,19 @@ console.log(suppliers)
       </div>
 
       {/* ADD MODAL */}
-      {showAddModal && (
-        <AddInventoryItemModal
-          key="add-modal"
-          onClose={() => setShowAddModal(false)}
-          onSave={handleAddItem}
-          loading={actionLoading.type === "add"}
-          inventoryCategories={inventoryCategories}
-          units={units}
-          metalPurities={metalPurities}
-          stonePurities={stonePurities}
-          materials={materials}
-          suppliers={suppliers} // Array of supplier objects
-          warehouses={warehouses}
-        />
-      )}
+{showAddModal && (
+  <AddInventoryItemModal
+    key="add-modal"
+    onClose={() => setShowAddModal(false)}
+    onSave={handleAddItem}
+    loading={actionLoading.type === "add"}
+    inventoryCategories={inventoryCategories}
+    branches={branches}
+    metalPurities={metalPurities}
+    stonePurities={stonePurities}
+    hallmarks={hallmarks}
+  />
+)}
 
       {/* EDIT MODAL */}
       {showEditModal && selectedItem && (

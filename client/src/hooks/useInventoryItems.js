@@ -5,11 +5,10 @@ import { API_ENDPOINTS } from "@/api/api";
 export default function useInventoryItems() {
   const [items, setItems] = useState([]);
   const [inventoryCategories, setInventoryCategories] = useState([]);
-  const [units, setUnits] = useState([]);
-  const [metalTypes, setMetalTypes] = useState([]);
-  const [stoneTypes, setStoneTypes] = useState([]);
   const [branches, setBranches] = useState([]);
-  
+  const [metalPurities, setMetalPurities] = useState([]);
+  const [stonePurities, setStonePurities] = useState([]);
+  const [hallmarks, setHallmarks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -58,114 +57,136 @@ export default function useInventoryItems() {
     }
   };
 
-  // === FETCH METAL TYPES ===
-  const fetchMetalTypes = async () => {
+  // === FETCH METAL PURITIES ===
+  const fetchMetalPurities = async () => {
     try {
       setLoading(true);
-      // Assuming you have an API for metal types
-      const res = await axios.get(API_ENDPOINTS.getMetalTypes || '/api/metals');
+      const res = await axios.get(API_ENDPOINTS.getPurities());
       
-      let metalData = [];
+      let metalPurityData = [];
       
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        metalData = res.data.data;
+      if (res.data?.success && Array.isArray(res.data.purity)) {
+        metalPurityData = res.data.purity;
       } else if (Array.isArray(res.data)) {
-        metalData = res.data;
+        metalPurityData = res.data;
       }
       
-      // Map common metal types if API doesn't exist
-      const defaultMetals = [
-        { _id: "gold", name: "Gold", purities: ["24k", "22k", "18k", "14k"] },
-        { _id: "silver", name: "Silver", purities: ["925", "999"] },
-        { _id: "platinum", name: "Platinum", purities: ["950", "900"] },
-        { _id: "diamond", name: "Diamond" },
-        { _id: "other", name: "Other" }
-      ];
+      // Group by metal type
+      const groupedByMetal = {};
+      metalPurityData.forEach(purity => {
+        const metalType = purity.metal_type || "other";
+        if (!groupedByMetal[metalType]) {
+          groupedByMetal[metalType] = [];
+        }
+        groupedByMetal[metalType].push({
+          _id: getId(purity),
+          purity_name: purity.purity_name || purity.name || "",
+          metal_type: metalType,
+          percentage: purity.percentage || 0,
+          ...purity
+        });
+      });
       
-      const mappedMetals = metalData.length > 0 ? metalData.map((metal) => ({
-        _id: getId(metal),
-        name: metal.name || metal.metal_type || "",
-        purities: metal.purities || [],
-        ...metal
-      })) : defaultMetals;
-      
-      setMetalTypes(mappedMetals);
-      return mappedMetals;
+      setMetalPurities(metalPurityData);
+      return metalPurityData;
     } catch (err) {
-      console.error("Fetch metal types error:", err);
-      // Return default metals if API fails
-      const defaultMetals = [
-        { _id: "gold", name: "Gold", purities: ["24k", "22k", "18k", "14k"] },
-        { _id: "silver", name: "Silver", purities: ["925", "999"] },
-        { _id: "platinum", name: "Platinum", purities: ["950", "900"] },
-      ];
-      setMetalTypes(defaultMetals);
-      return defaultMetals;
+      console.error("Fetch metal purities error:", err);
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
-  // === FETCH STONE TYPES ===
-  const fetchStoneTypes = async () => {
+  // === FETCH STONE PURITIES (Clarity) ===
+  const fetchStonePurities = async () => {
     try {
       setLoading(true);
-      // Assuming you have an API for stone types
-      const res = await axios.get(API_ENDPOINTS.getStoneTypes || '/api/stones');
+      const res = await axios.get(API_ENDPOINTS.getAllStonePurities());
       
-      let stoneData = [];
+      let stonePurityData = [];
       
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        stoneData = res.data.data;
+      if (res.data?.success && Array.isArray(res.data.purity)) {
+        stonePurityData = res.data.purity;
       } else if (Array.isArray(res.data)) {
-        stoneData = res.data;
+        stonePurityData = res.data;
       }
       
-      // Map common stone types if API doesn't exist
-      const defaultStones = [
-        { _id: "diamond", name: "Diamond" },
-        { _id: "ruby", name: "Ruby" },
-        { _id: "sapphire", name: "Sapphire" },
-        { _id: "emerald", name: "Emerald" },
-        { _id: "pearl", name: "Pearl" },
-        { _id: "other", name: "Other" }
-      ];
+      // Group by stone type
+      const groupedByStone = {};
+      stonePurityData.forEach(purity => {
+        const stoneType = purity.stone_type || "diamond";
+        if (!groupedByStone[stoneType]) {
+          groupedByStone[stoneType] = [];
+        }
+        groupedByStone[stoneType].push({
+          _id: getId(purity),
+          stone_purity: purity.stone_purity || purity.name || "",
+          stone_type: stoneType,
+          percentage: purity.percentage || 0,
+          clarity: purity.stone_purity || "", // Using stone_purity as clarity
+          ...purity
+        });
+      });
       
-      const mappedStones = stoneData.length > 0 ? stoneData.map((stone) => ({
-        _id: getId(stone),
-        name: stone.name || stone.stone_type || "",
-        ...stone
-      })) : defaultStones;
-      
-      setStoneTypes(mappedStones);
-      return mappedStones;
+      setStonePurities(stonePurityData);
+      return stonePurityData;
     } catch (err) {
-      console.error("Fetch stone types error:", err);
-      // Return default stones if API fails
-      const defaultStones = [
-        { _id: "diamond", name: "Diamond" },
-        { _id: "ruby", name: "Ruby" },
-        { _id: "sapphire", name: "Sapphire" },
-        { _id: "emerald", name: "Emerald" },
-      ];
-      setStoneTypes(defaultStones);
-      return defaultStones;
+      console.error("Fetch stone purities error:", err);
+      return [];
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch inventory categories
+  // === FETCH HALLMARKS ===
+  const fetchHallmarks = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(API_ENDPOINTS.getHallmarks());
+      
+      let hallmarkData = [];
+      
+      if (res.data?.success && Array.isArray(res.data.hallmarks)) {
+        hallmarkData = res.data.hallmarks;
+      } else if (Array.isArray(res.data)) {
+        hallmarkData = res.data;
+      }
+      
+      // Group by metal type
+      const groupedByMetal = {};
+      hallmarkData.forEach(hallmark => {
+        const metalType = hallmark.metal_type_name || "gold";
+        if (!groupedByMetal[metalType]) {
+          groupedByMetal[metalType] = [];
+        }
+        groupedByMetal[metalType].push({
+          _id: getId(hallmark),
+          name: hallmark.name || "",
+          metal_type: hallmark.metal_type,
+          metal_type_name: metalType,
+          ...hallmark
+        });
+      });
+      
+      setHallmarks(hallmarkData);
+      return hallmarkData;
+    } catch (err) {
+      console.error("Fetch hallmarks error:", err);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // === FETCH INVENTORY CATEGORIES ===
   const fetchInventoryCategories = async () => {
     try {
       setLoading(true);
       const res = await axios.get(API_ENDPOINTS.getInventoryCategories());
       
       let categoriesData = [];
-
-      console.log("Inventory categories response:", res.data);
       
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         categoriesData = res.data.data;
       } else if (Array.isArray(res.data)) {
         categoriesData = res.data;
@@ -196,7 +217,7 @@ export default function useInventoryItems() {
       
       let itemsData = [];
       
-      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+      if (res.data?.success && Array.isArray(res.data.data)) {
         itemsData = res.data.data;
       } else if (Array.isArray(res.data)) {
         itemsData = res.data;
@@ -229,11 +250,17 @@ export default function useInventoryItems() {
           stone_type: stone.stone_type || "",
           shape: stone.shape || "",
           color: stone.color || "",
-          clarity: stone.clarity || "",
+          clarity: stone.clarity || "", // Using stone_purity as clarity
           carat_weight: stone.carat_weight || 0,
           quantity: stone.quantity || 0,
           certificate_type: stone.certificate_type || ""
         })) : [],
+        
+        // Jewelry Type Details
+        jewelry_type: item.jewelry_type || "Ring",
+        size: item.size || "",
+        gender: item.gender || "women",
+        occasion: item.occasion || "wedding",
         
         // Rates and Costs
         gold_rate: item.gold_rate || 0,
@@ -272,19 +299,18 @@ export default function useInventoryItems() {
         minimum_stock: item.minimum_stock || 0,
         stock_status: item.stock_status || "in_stock",
         location_type: item.location_type || "showcase",
+        location_details: item.location_details || "",
         
         // Status
         status: item.status || "active",
-        is_new_arrival: item.is_new_arrival || false,
         images: Array.isArray(item.images) ? item.images : [],
-        tags: Array.isArray(item.tags) ? item.tags : [],
+        tags: item.tags || "",
         
         createdAt: item.created_at || item.createdAt || "",
         updatedAt: item.updated_at || item.updatedAt || "",
         ...item
       }));
       
-      console.log("Mapped inventory items:", mappedItems);
       setItems(mappedItems);
       return mappedItems;
     } catch (err) {
@@ -301,24 +327,39 @@ export default function useInventoryItems() {
     try {
       setLoading(true);
       
-      console.log("Received itemData from form:", itemData);
-      
       // Prepare payload matching backend structure
       const payload = {
         item_name: itemData.item_name,
         item_code: itemData.item_code,
-        description: itemData.description || "",
         inventory_category_id: itemData.inventory_category_id,
         branch_id: itemData.branch_id,
-        
-        // Item type (assuming jewelry)
         item_type: "jewelry",
         
         // Metals array
-        metals: itemData.metals || [],
+        metals: itemData.metals.map(metal => ({
+          metal_type: metal.metal_type,
+          purity: metal.purity,
+          weight: parseFloat(metal.weight) || 0,
+          color: metal.color,
+          hallmark: metal.hallmark || ""
+        })),
         
         // Stones array
-        stones: itemData.stones || [],
+        stones: itemData.stones.map(stone => ({
+          stone_type: stone.stone_type,
+          shape: stone.shape,
+          color: stone.color,
+          clarity: stone.clarity, // Using stone_purity as clarity
+          carat_weight: parseFloat(stone.carat_weight) || 0,
+          quantity: parseInt(stone.quantity) || 1,
+          certificate_type: stone.certificate_type || ""
+        })),
+        
+        // Jewelry Details
+        jewelry_type: itemData.jewelry_type,
+        size: itemData.size,
+        gender: itemData.gender,
+        occasion: itemData.occasion,
         
         // Rates
         gold_rate: parseFloat(itemData.gold_rate) || 0,
@@ -328,43 +369,29 @@ export default function useInventoryItems() {
         making_charges: parseFloat(itemData.making_charges) || 0,
         making_type: itemData.making_type || "percentage",
         wastage_percentage: parseFloat(itemData.wastage_percentage) || 5,
-        profit_margin: parseFloat(itemData.profit_margin) || 20,
+        profit_margin: parseFloat(itemData.profit_margin) || 25,
         
         // Stock
         current_stock: parseInt(itemData.current_stock) || 1,
         minimum_stock: parseInt(itemData.minimum_stock) || 1,
         location_type: itemData.location_type || "showcase",
-        
-        // Pricing
-        mrp: parseFloat(itemData.mrp) || 0,
-        discount_type: itemData.discount_type || "none",
-        discount_value: parseFloat(itemData.discount_value) || 0,
+        location_details: itemData.location_details || "",
         
         // Tax
         gst_percentage: parseFloat(itemData.gst_percentage) || 3,
         
+        // Description
+        description: itemData.description || "",
+        
         // Status
         status: itemData.status || "active",
-        is_new_arrival: itemData.is_new_arrival || true,
         
         // Arrays
         images: itemData.images || [],
-        tags: itemData.tags || []
+        tags: itemData.tags || ""
       };
       
-      // Calculate additional fields (these can be calculated on backend too)
-      if (itemData.metals && itemData.metals.length > 0) {
-        payload.metal_weight = itemData.metals.reduce((sum, metal) => sum + (metal.weight || 0), 0);
-      }
-      
-      if (itemData.stones && itemData.stones.length > 0) {
-        payload.total_carat = itemData.stones.reduce((sum, stone) => sum + (stone.carat_weight || 0), 0);
-      }
-      
-      console.log("Sending payload to API:", JSON.stringify(payload, null, 2));
-      
       const res = await axios.post(API_ENDPOINTS.createInventoryItem(), payload);
-      console.log("Add inventory item response:", res.data);
       
       let newItem = {};
       
@@ -379,7 +406,10 @@ export default function useInventoryItems() {
           inventory_category_name: item.inventory_category_id?.name || "",
           
           // Jewelry Details
-          item_type: item.item_type || "jewelry",
+          jewelry_type: item.jewelry_type || "Ring",
+          size: item.size || "",
+          gender: item.gender || "women",
+          occasion: item.occasion || "wedding",
           
           // Metals
           metals: Array.isArray(item.metals) ? item.metals : [],
@@ -392,44 +422,20 @@ export default function useInventoryItems() {
           stone_rate: item.stone_rate || 0,
           metal_weight: item.metal_weight || 0,
           total_carat: item.total_carat || 0,
-          metal_cost: item.metal_cost || 0,
-          stone_cost: item.stone_cost || 0,
-          
-          // Making Charges
-          making_charges: item.making_charges || 0,
-          making_type: item.making_type || "percentage",
-          wastage_percentage: item.wastage_percentage || 0,
-          wastage_charges: item.wastage_charges || 0,
-          
-          // Pricing
-          total_cost_price: item.total_cost_price || 0,
-          profit_margin: item.profit_margin || 0,
-          selling_price: item.selling_price || 0,
-          mrp: item.mrp || 0,
-          discount_type: item.discount_type || "none",
-          discount_value: item.discount_value || 0,
-          final_price: item.final_price || 0,
-          
-          // Tax
-          gst_percentage: item.gst_percentage || 0,
-          cgst: item.cgst || 0,
-          sgst: item.sgst || 0,
-          total_tax: item.total_tax || 0,
-          price_with_tax: item.price_with_tax || 0,
           
           // Branch/Location
           branch_id: item.branch_id || "",
           branch_name: item.branch_id?.name || "",
           current_stock: item.current_stock || 0,
           minimum_stock: item.minimum_stock || 0,
-          stock_status: item.stock_status || "in_stock",
           location_type: item.location_type || "showcase",
+          location_details: item.location_details || "",
           
           // Status
           status: item.status || "active",
-          is_new_arrival: item.is_new_arrival || false,
+          
           images: Array.isArray(item.images) ? item.images : [],
-          tags: Array.isArray(item.tags) ? item.tags : [],
+          tags: item.tags || "",
           
           createdAt: item.created_at || item.createdAt || "",
           updatedAt: item.updated_at || item.updatedAt || "",
@@ -459,21 +465,39 @@ export default function useInventoryItems() {
     try {
       setLoading(true);
       
-      console.log("Received itemData for update:", itemData);
-      
       // Prepare payload matching backend structure
       const payload = {
         item_name: itemData.item_name,
         item_code: itemData.item_code,
-        description: itemData.description || "",
         inventory_category_id: itemData.inventory_category_id,
         branch_id: itemData.branch_id,
+        item_type: "jewelry",
         
         // Metals array
-        metals: itemData.metals || [],
+        metals: itemData.metals.map(metal => ({
+          metal_type: metal.metal_type,
+          purity: metal.purity,
+          weight: parseFloat(metal.weight) || 0,
+          color: metal.color,
+          hallmark: metal.hallmark || ""
+        })),
         
         // Stones array
-        stones: itemData.stones || [],
+        stones: itemData.stones.map(stone => ({
+          stone_type: stone.stone_type,
+          shape: stone.shape,
+          color: stone.color,
+          clarity: stone.clarity,
+          carat_weight: parseFloat(stone.carat_weight) || 0,
+          quantity: parseInt(stone.quantity) || 1,
+          certificate_type: stone.certificate_type || ""
+        })),
+        
+        // Jewelry Details
+        jewelry_type: itemData.jewelry_type,
+        size: itemData.size,
+        gender: itemData.gender,
+        occasion: itemData.occasion,
         
         // Rates
         gold_rate: parseFloat(itemData.gold_rate) || 0,
@@ -483,30 +507,29 @@ export default function useInventoryItems() {
         making_charges: parseFloat(itemData.making_charges) || 0,
         making_type: itemData.making_type || "percentage",
         wastage_percentage: parseFloat(itemData.wastage_percentage) || 5,
-        profit_margin: parseFloat(itemData.profit_margin) || 20,
+        profit_margin: parseFloat(itemData.profit_margin) || 25,
         
         // Stock
         current_stock: parseInt(itemData.current_stock) || 1,
         minimum_stock: parseInt(itemData.minimum_stock) || 1,
         location_type: itemData.location_type || "showcase",
-        
-        // Pricing
-        mrp: parseFloat(itemData.mrp) || 0,
-        discount_type: itemData.discount_type || "none",
-        discount_value: parseFloat(itemData.discount_value) || 0,
+        location_details: itemData.location_details || "",
         
         // Tax
         gst_percentage: parseFloat(itemData.gst_percentage) || 3,
         
+        // Description
+        description: itemData.description || "",
+        
         // Status
         status: itemData.status || "active",
-        is_new_arrival: itemData.is_new_arrival || false,
+        
+        // Arrays
+        images: itemData.images || [],
+        tags: itemData.tags || ""
       };
       
-      console.log("Sending update payload to API:", JSON.stringify(payload, null, 2));
-      
       const res = await axios.put(API_ENDPOINTS.updateInventoryItem(id), payload);
-      console.log("Update inventory item response:", res.data);
       
       let updatedItem = {};
       if (res.data && res.data.success && res.data.data) {
@@ -519,6 +542,12 @@ export default function useInventoryItems() {
           inventory_category_id: item.inventory_category_id || "",
           inventory_category_name: item.inventory_category_id?.name || "",
           
+          // Jewelry Details
+          jewelry_type: item.jewelry_type || "Ring",
+          size: item.size || "",
+          gender: item.gender || "women",
+          occasion: item.occasion || "wedding",
+          
           // Metals
           metals: Array.isArray(item.metals) ? item.metals : [],
           
@@ -530,22 +559,20 @@ export default function useInventoryItems() {
           stone_rate: item.stone_rate || 0,
           metal_weight: item.metal_weight || 0,
           total_carat: item.total_carat || 0,
-          metal_cost: item.metal_cost || 0,
-          stone_cost: item.stone_cost || 0,
-          
-          // Pricing
-          total_cost_price: item.total_cost_price || 0,
-          profit_margin: item.profit_margin || 0,
-          selling_price: item.selling_price || 0,
           
           // Branch/Location
           branch_id: item.branch_id || "",
           branch_name: item.branch_id?.name || "",
           current_stock: item.current_stock || 0,
           minimum_stock: item.minimum_stock || 0,
+          location_type: item.location_type || "showcase",
+          location_details: item.location_details || "",
           
           // Status
           status: item.status || "active",
+          
+          images: Array.isArray(item.images) ? item.images : [],
+          tags: item.tags || "",
           
           createdAt: item.created_at || item.createdAt || "",
           updatedAt: item.updated_at || item.updatedAt || "",
@@ -599,8 +626,9 @@ export default function useInventoryItems() {
       await Promise.all([
         fetchBranches(),
         fetchInventoryCategories(),
-        fetchMetalTypes(),
-        fetchStoneTypes(),
+        fetchMetalPurities(),
+        fetchStonePurities(),
+        fetchHallmarks(),
         fetchInventoryItems()
       ]);
     } catch (err) {
@@ -619,8 +647,9 @@ export default function useInventoryItems() {
     items,
     branches,
     inventoryCategories,
-    metalTypes,
-    stoneTypes,
+    metalPurities,
+    stonePurities,
+    hallmarks,
     
     // Loading States
     loading,
@@ -635,10 +664,8 @@ export default function useInventoryItems() {
     fetchInventoryItems,
     fetchBranches,
     fetchInventoryCategories,
-    fetchMetalTypes,
-    fetchStoneTypes,
-    
-    // Helper
-    getId,
+    fetchMetalPurities,
+    fetchStonePurities,
+    fetchHallmarks,
   };
 }

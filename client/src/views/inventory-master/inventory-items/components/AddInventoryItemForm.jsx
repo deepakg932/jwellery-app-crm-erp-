@@ -7,10 +7,11 @@ const AddInventoryItemForm = ({
   loading = false,
   inventoryCategories = [],
   branches = [],
-  metalTypes = [],
-  stoneTypes = [],
+  metalPurities = [],
+  stonePurities = [],
+  hallmarks = [],
 }) => {
-  // Main Form State for jewelry inventory
+  // Main Form State
   const [formData, setFormData] = useState({
     // Basic Information
     item_name: "",
@@ -19,14 +20,20 @@ const AddInventoryItemForm = ({
     inventory_category_id: "",
     branch_id: "",
     
+    // Jewelry Type Details
+    jewelry_type: "Ring",
+    size: "",
+    gender: "women",
+    occasion: "wedding",
+    
     // Metals Array
     metals: [
       {
         metal_type: "gold",
-        purity: "22k",
+        purity: "",
         weight: "",
         color: "yellow",
-        hallmark: "916"
+        hallmark: ""
       }
     ],
     
@@ -36,10 +43,10 @@ const AddInventoryItemForm = ({
         stone_type: "diamond",
         shape: "round",
         color: "G",
-        clarity: "VS1",
+        clarity: "",
         carat_weight: "",
         quantity: 1,
-        certificate_type: "GIA"
+        certificate_type: ""
       }
     ],
     
@@ -51,28 +58,23 @@ const AddInventoryItemForm = ({
     making_charges: "",
     making_type: "percentage",
     wastage_percentage: "5",
-    profit_margin: "20",
+    profit_margin: "25",
     
     // Stock
     current_stock: "1",
     minimum_stock: "1",
     location_type: "showcase",
-    
-    // Pricing
-    mrp: "",
-    discount_type: "none",
-    discount_value: "0",
+    location_details: "",
     
     // Tax
     gst_percentage: "3",
     
     // Status
     status: "active",
-    is_new_arrival: true,
     
     // Arrays
     images: [],
-    tags: []
+    tags: ""
   });
 
   const [errors, setErrors] = useState({});
@@ -127,19 +129,10 @@ const AddInventoryItemForm = ({
     const profitMargin = parseFloat(formData.profit_margin) || 0;
     const sellingPrice = totalCost > 0 ? totalCost * (1 + profitMargin / 100) : 0;
     
-    // Calculate MRP if not set
-    if (!formData.mrp && sellingPrice > 0) {
-      setFormData(prev => ({
-        ...prev,
-        mrp: (sellingPrice * 1.18).toFixed(2) // 18% above selling price
-      }));
-    }
-    
     // Calculate tax
     const gstPercentage = parseFloat(formData.gst_percentage) || 0;
-    const cgst = sellingPrice * (gstPercentage / 200); // Half of GST for CGST
-    const sgst = sellingPrice * (gstPercentage / 200); // Half of GST for SGST
-    const priceWithTax = sellingPrice + cgst + sgst;
+    const cgst = sellingPrice * (gstPercentage / 200);
+    const sgst = sellingPrice * (gstPercentage / 200);
     
   }, [
     formData.metals,
@@ -153,13 +146,60 @@ const AddInventoryItemForm = ({
     formData.gst_percentage
   ]);
 
+  // Get unique metal types from metal purities
+  const getMetalTypes = () => {
+    const uniqueTypes = [...new Set(metalPurities.map(p => p.metal_type))];
+    return uniqueTypes.map(type => ({
+      value: type,
+      label: type.charAt(0).toUpperCase() + type.slice(1)
+    }));
+  };
+
+  // Get purities for selected metal type
+  const getPuritiesForMetal = (metalType) => {
+    return metalPurities
+      .filter(p => p.metal_type === metalType)
+      .map(p => ({
+        value: p.purity_name,
+        label: p.purity_name
+      }));
+  };
+
+  // Get unique stone types from stone purities
+  const getStoneTypes = () => {
+    const uniqueTypes = [...new Set(stonePurities.map(p => p.stone_type))];
+    return uniqueTypes.map(type => ({
+      value: type,
+      label: type.charAt(0).toUpperCase() + type.slice(1)
+    }));
+  };
+
+  // Get clarities (stone purities) for selected stone type
+  const getClaritiesForStone = (stoneType) => {
+    return stonePurities
+      .filter(p => p.stone_type === stoneType)
+      .map(p => ({
+        value: p.stone_purity,
+        label: p.stone_purity
+      }));
+  };
+
+  // Get hallmarks for selected metal type
+  const getHallmarksForMetal = (metalType) => {
+    return hallmarks
+      .filter(h => h.metal_type_name === metalType)
+      .map(h => ({
+        value: h.name,
+        label: h.name
+      }));
+  };
+
   // Handle change for basic fields
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]: value,
     }));
 
     if (errors[name]) {
@@ -183,13 +223,28 @@ const AddInventoryItemForm = ({
     }
   };
 
-  // Handle metal changes
+  // Handle metal changes - with dependent updates
   const handleMetalChange = (index, field, value) => {
     const updatedMetals = [...formData.metals];
+    const currentMetal = updatedMetals[index];
+    
+    // Update the field
     updatedMetals[index] = {
-      ...updatedMetals[index],
+      ...currentMetal,
       [field]: value
     };
+    
+    // If metal_type changes, reset purity and fetch available purities/hallmarks
+    if (field === 'metal_type') {
+      const purities = getPuritiesForMetal(value);
+      const metalHallmarks = getHallmarksForMetal(value);
+      
+      updatedMetals[index] = {
+        ...updatedMetals[index],
+        purity: purities.length > 0 ? purities[0].value : "",
+        hallmark: metalHallmarks.length > 0 ? metalHallmarks[0].value : ""
+      };
+    }
     
     setFormData(prev => ({
       ...prev,
@@ -200,31 +255,26 @@ const AddInventoryItemForm = ({
   // Handle stone changes
   const handleStoneChange = (index, field, value) => {
     const updatedStones = [...formData.stones];
+    const currentStone = updatedStones[index];
+    
+    // Update the field
     updatedStones[index] = {
-      ...updatedStones[index],
+      ...currentStone,
       [field]: value
     };
+    
+    // If stone_type changes, reset clarity
+    if (field === 'stone_type') {
+      const clarities = getClaritiesForStone(value);
+      updatedStones[index] = {
+        ...updatedStones[index],
+        clarity: clarities.length > 0 ? clarities[0].value : ""
+      };
+    }
     
     setFormData(prev => ({
       ...prev,
       stones: updatedStones
-    }));
-  };
-
-  // Add new metal
-  const addMetal = () => {
-    setFormData(prev => ({
-      ...prev,
-      metals: [
-        ...prev.metals,
-        {
-          metal_type: "gold",
-          purity: "22k",
-          weight: "",
-          color: "yellow",
-          hallmark: ""
-        }
-      ]
     }));
   };
 
@@ -240,20 +290,23 @@ const AddInventoryItemForm = ({
     }
   };
 
-  // Add new stone
-  const addStone = () => {
+  // Add new metal with default values
+  const addMetal = () => {
+    const metalTypes = getMetalTypes();
+    const defaultMetalType = metalTypes.length > 0 ? metalTypes[0].value : "gold";
+    const purities = getPuritiesForMetal(defaultMetalType);
+    const metalHallmarks = getHallmarksForMetal(defaultMetalType);
+    
     setFormData(prev => ({
       ...prev,
-      stones: [
-        ...prev.stones,
+      metals: [
+        ...prev.metals,
         {
-          stone_type: "diamond",
-          shape: "round",
-          color: "G",
-          clarity: "VS1",
-          carat_weight: "",
-          quantity: 1,
-          certificate_type: ""
+          metal_type: defaultMetalType,
+          purity: purities.length > 0 ? purities[0].value : "",
+          weight: "",
+          color: "yellow",
+          hallmark: metalHallmarks.length > 0 ? metalHallmarks[0].value : ""
         }
       ]
     }));
@@ -269,6 +322,29 @@ const AddInventoryItemForm = ({
         stones: updatedStones
       }));
     }
+  };
+
+  // Add new stone with default values
+  const addStone = () => {
+    const stoneTypes = getStoneTypes();
+    const defaultStoneType = stoneTypes.length > 0 ? stoneTypes[0].value : "diamond";
+    const clarities = getClaritiesForStone(defaultStoneType);
+    
+    setFormData(prev => ({
+      ...prev,
+      stones: [
+        ...prev.stones,
+        {
+          stone_type: defaultStoneType,
+          shape: "round",
+          color: "G",
+          clarity: clarities.length > 0 ? clarities[0].value : "",
+          carat_weight: "",
+          quantity: 1,
+          certificate_type: ""
+        }
+      ]
+    }));
   };
 
   // Form Validation
@@ -297,12 +373,18 @@ const AddInventoryItemForm = ({
       if (!metal.weight || parseFloat(metal.weight) <= 0) {
         newErrors[`metal_weight_${index}`] = "Metal weight must be greater than 0";
       }
+      if (!metal.purity) {
+        newErrors[`metal_purity_${index}`] = "Purity is required";
+      }
     });
 
     // Stones Validation
     formData.stones.forEach((stone, index) => {
       if (!stone.carat_weight || parseFloat(stone.carat_weight) <= 0) {
         newErrors[`stone_carat_${index}`] = "Carat weight must be greater than 0";
+      }
+      if (!stone.clarity) {
+        newErrors[`stone_clarity_${index}`] = "Clarity is required";
       }
     });
 
@@ -336,6 +418,12 @@ const AddInventoryItemForm = ({
       branch_id: formData.branch_id,
       item_type: "jewelry",
       
+      // Jewelry Details
+      jewelry_type: formData.jewelry_type,
+      size: formData.size,
+      gender: formData.gender,
+      occasion: formData.occasion,
+      
       // Process metals
       metals: formData.metals.map(metal => ({
         metal_type: metal.metal_type,
@@ -364,24 +452,19 @@ const AddInventoryItemForm = ({
       making_charges: parseFloat(formData.making_charges) || 0,
       making_type: formData.making_type,
       wastage_percentage: parseFloat(formData.wastage_percentage) || 5,
-      profit_margin: parseFloat(formData.profit_margin) || 20,
+      profit_margin: parseFloat(formData.profit_margin) || 25,
       
       // Stock
       current_stock: parseInt(formData.current_stock) || 1,
       minimum_stock: parseInt(formData.minimum_stock) || 1,
       location_type: formData.location_type,
-      
-      // Pricing
-      mrp: parseFloat(formData.mrp) || 0,
-      discount_type: formData.discount_type,
-      discount_value: parseFloat(formData.discount_value) || 0,
+      location_details: formData.location_details,
       
       // Tax
       gst_percentage: parseFloat(formData.gst_percentage) || 3,
       
       // Status
       status: formData.status,
-      is_new_arrival: formData.is_new_arrival,
       
       // Arrays
       images: formData.images,
@@ -390,23 +473,6 @@ const AddInventoryItemForm = ({
 
     console.log("Submitting jewelry item payload:", payload);
     onSave(payload);
-  };
-
-  // Metal color options
-  const metalColors = [
-    { value: "yellow", label: "Yellow Gold" },
-    { value: "white", label: "White Gold" },
-    { value: "rose", label: "Rose Gold" },
-    { value: "platinum", label: "Platinum" },
-    { value: "silver", label: "Silver" }
-  ];
-
-  // Metal purity options
-  const metalPurities = {
-    gold: ["24k", "22k", "18k", "14k"],
-    silver: ["925", "999"],
-    platinum: ["950", "900", "850"],
-    other: ["N/A"]
   };
 
   // Stone shape options
@@ -423,14 +489,54 @@ const AddInventoryItemForm = ({
     { value: "heart", label: "Heart" }
   ];
 
-  // Clarity options
-  const clarityOptions = [
-    "FL", "IF", "VVS1", "VVS2", "VS1", "VS2", "SI1", "SI2", "I1", "I2", "I3"
-  ];
-
   // Color options for diamonds
   const diamondColors = [
     "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N-O", "P-R", "S-Z"
+  ];
+
+  // Location type options
+  const locationTypes = [
+    { value: "showcase", label: "Showcase" },
+    { value: "vault", label: "Vault" },
+    { value: "workshop", label: "Workshop" },
+    { value: "storage", label: "Storage" },
+    { value: "display", label: "Display" },
+    { value: "safe", label: "Safe" }
+  ];
+
+  // Gender options
+  const genderOptions = [
+    { value: "women", label: "Women" },
+    { value: "men", label: "Men" },
+    { value: "unisex", label: "Unisex" },
+    { value: "kids", label: "Kids" }
+  ];
+
+  // Occasion options
+  const occasionOptions = [
+    { value: "wedding", label: "Wedding" },
+    { value: "engagement", label: "Engagement" },
+    { value: "birthday", label: "Birthday" },
+    { value: "anniversary", label: "Anniversary" },
+    { value: "everyday", label: "Everyday Wear" },
+    { value: "party", label: "Party" },
+    { value: "festival", label: "Festival" },
+    { value: "other", label: "Other" }
+  ];
+
+  // Jewelry type options
+  const jewelryTypeOptions = [
+    { value: "Ring", label: "Ring" },
+    { value: "Necklace", label: "Necklace" },
+    { value: "Earring", label: "Earring" },
+    { value: "Bracelet", label: "Bracelet" },
+    { value: "Pendant", label: "Pendant" },
+    { value: "Bangle", label: "Bangle" },
+    { value: "Chain", label: "Chain" },
+    { value: "Brooch", label: "Brooch" },
+    { value: "Anklet", label: "Anklet" },
+    { value: "Cufflinks", label: "Cufflinks" },
+    { value: "Other", label: "Other" }
   ];
 
   return (
@@ -557,13 +663,83 @@ const AddInventoryItemForm = ({
                       <option value="">Select Branch</option>
                       {branches.map((branch) => (
                         <option key={branch._id} value={branch._id}>
-                          {branch.name}
+                          {branch.branch_name}
                         </option>
                       ))}
                     </select>
                     {errors.branch_id && (
                       <div className="invalid-feedback">{errors.branch_id}</div>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Jewelry Details Section */}
+              <div className="mb-4">
+                <h6 className="fw-bold text-primary mb-3">Jewelry Details</h6>
+                <div className="row g-3">
+                  <div className="col-md-3">
+                    <label className="form-label fw-medium">Jewelry Type</label>
+                    <select
+                      name="jewelry_type"
+                      className="form-select"
+                      value={formData.jewelry_type}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      {jewelryTypeOptions.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="col-md-3">
+                    <label className="form-label fw-medium">Size</label>
+                    <input
+                      type="text"
+                      name="size"
+                      className="form-control"
+                      placeholder="e.g., 18"
+                      value={formData.size}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                  </div>
+                  
+                  <div className="col-md-3">
+                    <label className="form-label fw-medium">Gender</label>
+                    <select
+                      name="gender"
+                      className="form-select"
+                      value={formData.gender}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      {genderOptions.map((gender) => (
+                        <option key={gender.value} value={gender.value}>
+                          {gender.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="col-md-3">
+                    <label className="form-label fw-medium">Occasion</label>
+                    <select
+                      name="occasion"
+                      className="form-select"
+                      value={formData.occasion}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      {occasionOptions.map((occasion) => (
+                        <option key={occasion.value} value={occasion.value}>
+                          {occasion.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -582,105 +758,121 @@ const AddInventoryItemForm = ({
                   </button>
                 </div>
                 
-                {formData.metals.map((metal, index) => (
-                  <div key={index} className="card mb-3">
-                    <div className="card-body">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <h6 className="mb-0">Metal #{index + 1}</h6>
-                        {formData.metals.length > 1 && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => removeMetal(index)}
-                            disabled={loading}
-                          >
-                            <FiTrash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                      
-                      <div className="row g-3">
-                        <div className="col-md-3">
-                          <label className="form-label fw-medium">Metal Type</label>
-                          <select
-                            className="form-select"
-                            value={metal.metal_type}
-                            onChange={(e) => handleMetalChange(index, 'metal_type', e.target.value)}
-                            disabled={loading}
-                          >
-                            {metalTypes.map((type) => (
-                              <option key={type._id} value={type._id}>
-                                {type.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-md-2">
-                          <label className="form-label fw-medium">Purity</label>
-                          <select
-                            className="form-select"
-                            value={metal.purity}
-                            onChange={(e) => handleMetalChange(index, 'purity', e.target.value)}
-                            disabled={loading}
-                          >
-                            {metalPurities[metal.metal_type]?.map((purity) => (
-                              <option key={purity} value={purity}>
-                                {purity}
-                              </option>
-                            )) || <option value="N/A">N/A</option>}
-                          </select>
-                        </div>
-
-                        <div className="col-md-2">
-                          <label className="form-label fw-medium">
-                            Weight (grams) <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className={`form-control ${errors[`metal_weight_${index}`] ? "is-invalid" : ""}`}
-                            placeholder="e.g., 3.2"
-                            value={metal.weight}
-                            onChange={(e) => handleMetalChange(index, 'weight', e.target.value)}
-                            disabled={loading}
-                          />
-                          {errors[`metal_weight_${index}`] && (
-                            <div className="invalid-feedback">{errors[`metal_weight_${index}`]}</div>
+                {formData.metals.map((metal, index) => {
+                  const metalTypes = getMetalTypes();
+                  const purities = getPuritiesForMetal(metal.metal_type);
+                  const metalHallmarks = getHallmarksForMetal(metal.metal_type);
+                  
+                  return (
+                    <div key={index} className="card mb-3">
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <h6 className="mb-0">Metal #{index + 1}</h6>
+                          {formData.metals.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => removeMetal(index)}
+                              disabled={loading}
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
                           )}
                         </div>
+                        
+                        <div className="row g-3">
+                          <div className="col-md-3">
+                            <label className="form-label fw-medium">Metal Type</label>
+                            <select
+                              className="form-select"
+                              value={metal.metal_type}
+                              onChange={(e) => handleMetalChange(index, 'metal_type', e.target.value)}
+                              disabled={loading}
+                            >
+                              {metalTypes.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                  {type.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                        <div className="col-md-3">
-                          <label className="form-label fw-medium">Color</label>
-                          <select
-                            className="form-select"
-                            value={metal.color}
-                            onChange={(e) => handleMetalChange(index, 'color', e.target.value)}
-                            disabled={loading}
-                          >
-                            <option value="">Select Color</option>
-                            {metalColors.map((color) => (
-                              <option key={color.value} value={color.value}>
-                                {color.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                          <div className="col-md-2">
+                            <label className="form-label fw-medium">
+                              Purity <span className="text-danger">*</span>
+                            </label>
+                            <select
+                              className={`form-select ${errors[`metal_purity_${index}`] ? "is-invalid" : ""}`}
+                              value={metal.purity}
+                              onChange={(e) => handleMetalChange(index, 'purity', e.target.value)}
+                              disabled={loading}
+                            >
+                              <option value="">Select Purity</option>
+                              {purities.map((purity) => (
+                                <option key={purity.value} value={purity.value}>
+                                  {purity.label}
+                                </option>
+                              ))}
+                            </select>
+                            {errors[`metal_purity_${index}`] && (
+                              <div className="invalid-feedback">{errors[`metal_purity_${index}`]}</div>
+                            )}
+                          </div>
 
-                        <div className="col-md-2">
-                          <label className="form-label fw-medium">Hallmark</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="e.g., 916"
-                            value={metal.hallmark}
-                            onChange={(e) => handleMetalChange(index, 'hallmark', e.target.value)}
-                            disabled={loading}
-                          />
+                          <div className="col-md-2">
+                            <label className="form-label fw-medium">
+                              Weight (grams) <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className={`form-control ${errors[`metal_weight_${index}`] ? "is-invalid" : ""}`}
+                              placeholder="e.g., 3.2"
+                              value={metal.weight}
+                              onChange={(e) => handleMetalChange(index, 'weight', e.target.value)}
+                              disabled={loading}
+                            />
+                            {errors[`metal_weight_${index}`] && (
+                              <div className="invalid-feedback">{errors[`metal_weight_${index}`]}</div>
+                            )}
+                          </div>
+
+                          <div className="col-md-2">
+                            <label className="form-label fw-medium">Color</label>
+                            <select
+                              className="form-select"
+                              value={metal.color}
+                              onChange={(e) => handleMetalChange(index, 'color', e.target.value)}
+                              disabled={loading}
+                            >
+                              <option value="yellow">Yellow</option>
+                              <option value="white">White</option>
+                              <option value="rose">Rose</option>
+                              <option value="platinum">Platinum</option>
+                              <option value="silver">Silver</option>
+                            </select>
+                          </div>
+
+                          <div className="col-md-3">
+                            <label className="form-label fw-medium">Hallmark</label>
+                            <select
+                              className="form-select"
+                              value={metal.hallmark}
+                              onChange={(e) => handleMetalChange(index, 'hallmark', e.target.value)}
+                              disabled={loading}
+                            >
+                              <option value="">Select Hallmark</option>
+                              {metalHallmarks.map((hallmark) => (
+                                <option key={hallmark.value} value={hallmark.value}>
+                                  {hallmark.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Stones Section */}
@@ -697,133 +889,144 @@ const AddInventoryItemForm = ({
                   </button>
                 </div>
                 
-                {formData.stones.map((stone, index) => (
-                  <div key={index} className="card mb-3">
-                    <div className="card-body">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <h6 className="mb-0">Stone #{index + 1}</h6>
-                        {formData.stones.length > 1 && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => removeStone(index)}
-                            disabled={loading}
-                          >
-                            <FiTrash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                      
-                      <div className="row g-3">
-                        <div className="col-md-3">
-                          <label className="form-label fw-medium">Stone Type</label>
-                          <select
-                            className="form-select"
-                            value={stone.stone_type}
-                            onChange={(e) => handleStoneChange(index, 'stone_type', e.target.value)}
-                            disabled={loading}
-                          >
-                            {stoneTypes.map((type) => (
-                              <option key={type._id} value={type._id}>
-                                {type.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-md-2">
-                          <label className="form-label fw-medium">Shape</label>
-                          <select
-                            className="form-select"
-                            value={stone.shape}
-                            onChange={(e) => handleStoneChange(index, 'shape', e.target.value)}
-                            disabled={loading}
-                          >
-                            {stoneShapes.map((shape) => (
-                              <option key={shape.value} value={shape.value}>
-                                {shape.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-md-2">
-                          <label className="form-label fw-medium">Color</label>
-                          <select
-                            className="form-select"
-                            value={stone.color}
-                            onChange={(e) => handleStoneChange(index, 'color', e.target.value)}
-                            disabled={loading}
-                          >
-                            {diamondColors.map((color) => (
-                              <option key={color} value={color}>
-                                {color}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-md-2">
-                          <label className="form-label fw-medium">Clarity</label>
-                          <select
-                            className="form-select"
-                            value={stone.clarity}
-                            onChange={(e) => handleStoneChange(index, 'clarity', e.target.value)}
-                            disabled={loading}
-                          >
-                            {clarityOptions.map((clarity) => (
-                              <option key={clarity} value={clarity}>
-                                {clarity}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-md-2">
-                          <label className="form-label fw-medium">
-                            Carat Weight <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className={`form-control ${errors[`stone_carat_${index}`] ? "is-invalid" : ""}`}
-                            placeholder="e.g., 0.5"
-                            value={stone.carat_weight}
-                            onChange={(e) => handleStoneChange(index, 'carat_weight', e.target.value)}
-                            disabled={loading}
-                          />
-                          {errors[`stone_carat_${index}`] && (
-                            <div className="invalid-feedback">{errors[`stone_carat_${index}`]}</div>
+                {formData.stones.map((stone, index) => {
+                  const stoneTypes = getStoneTypes();
+                  const clarities = getClaritiesForStone(stone.stone_type);
+                  
+                  return (
+                    <div key={index} className="card mb-3">
+                      <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <h6 className="mb-0">Stone #{index + 1}</h6>
+                          {formData.stones.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => removeStone(index)}
+                              disabled={loading}
+                            >
+                              <FiTrash2 size={14} />
+                            </button>
                           )}
                         </div>
+                        
+                        <div className="row g-3">
+                          <div className="col-md-3">
+                            <label className="form-label fw-medium">Stone Type</label>
+                            <select
+                              className="form-select"
+                              value={stone.stone_type}
+                              onChange={(e) => handleStoneChange(index, 'stone_type', e.target.value)}
+                              disabled={loading}
+                            >
+                              {stoneTypes.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                  {type.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
 
-                        <div className="col-md-1">
-                          <label className="form-label fw-medium">Quantity</label>
-                          <input
-                            type="number"
-                            className="form-control"
-                            value={stone.quantity}
-                            onChange={(e) => handleStoneChange(index, 'quantity', e.target.value)}
-                            disabled={loading}
-                          />
+                          <div className="col-md-2">
+                            <label className="form-label fw-medium">Shape</label>
+                            <select
+                              className="form-select"
+                              value={stone.shape}
+                              onChange={(e) => handleStoneChange(index, 'shape', e.target.value)}
+                              disabled={loading}
+                            >
+                              {stoneShapes.map((shape) => (
+                                <option key={shape.value} value={shape.value}>
+                                  {shape.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="col-md-2">
+                            <label className="form-label fw-medium">Color</label>
+                            <select
+                              className="form-select"
+                              value={stone.color}
+                              onChange={(e) => handleStoneChange(index, 'color', e.target.value)}
+                              disabled={loading}
+                            >
+                              {diamondColors.map((color) => (
+                                <option key={color} value={color}>
+                                  {color}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="col-md-2">
+                            <label className="form-label fw-medium">
+                              Clarity <span className="text-danger">*</span>
+                            </label>
+                            <select
+                              className={`form-select ${errors[`stone_clarity_${index}`] ? "is-invalid" : ""}`}
+                              value={stone.clarity}
+                              onChange={(e) => handleStoneChange(index, 'clarity', e.target.value)}
+                              disabled={loading}
+                            >
+                              <option value="">Select Clarity</option>
+                              {clarities.map((clarity) => (
+                                <option key={clarity.value} value={clarity.value}>
+                                  {clarity.label}
+                                </option>
+                              ))}
+                            </select>
+                            {errors[`stone_clarity_${index}`] && (
+                              <div className="invalid-feedback">{errors[`stone_clarity_${index}`]}</div>
+                            )}
+                          </div>
+
+                          <div className="col-md-2">
+                            <label className="form-label fw-medium">
+                              Carat Weight <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className={`form-control ${errors[`stone_carat_${index}`] ? "is-invalid" : ""}`}
+                              placeholder="e.g., 0.5"
+                              value={stone.carat_weight}
+                              onChange={(e) => handleStoneChange(index, 'carat_weight', e.target.value)}
+                              disabled={loading}
+                            />
+                            {errors[`stone_carat_${index}`] && (
+                              <div className="invalid-feedback">{errors[`stone_carat_${index}`]}</div>
+                            )}
+                          </div>
+
+                          <div className="col-md-1">
+                            <label className="form-label fw-medium">Quantity</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={stone.quantity}
+                              onChange={(e) => handleStoneChange(index, 'quantity', e.target.value)}
+                              disabled={loading}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="row mt-3">
-                        <div className="col-md-6">
-                          <label className="form-label fw-medium">Certificate Type</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="e.g., GIA, IGI, HRD"
-                            value={stone.certificate_type}
-                            onChange={(e) => handleStoneChange(index, 'certificate_type', e.target.value)}
-                            disabled={loading}
-                          />
+                        
+                        <div className="row mt-3">
+                          <div className="col-md-6">
+                            <label className="form-label fw-medium">Certificate Type</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              placeholder="e.g., GIA, IGI, HRD"
+                              value={stone.certificate_type}
+                              onChange={(e) => handleStoneChange(index, 'certificate_type', e.target.value)}
+                              disabled={loading}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Rates Section */}
@@ -922,61 +1125,18 @@ const AddInventoryItemForm = ({
                 <h6 className="fw-bold text-primary mb-3">Pricing</h6>
                 
                 <div className="row g-3">
-                  <div className="col-md-4">
+                  <div className="col-md-6">
                     <label className="form-label fw-medium">Profit Margin (%)</label>
                     <input
                       type="text"
                       name="profit_margin"
                       className="form-control"
-                      placeholder="e.g., 20"
+                      placeholder="e.g., 25"
                       value={formData.profit_margin}
                       onChange={handleNumericChange}
                       disabled={loading}
                     />
                   </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label fw-medium">MRP (₹)</label>
-                    <input
-                      type="text"
-                      name="mrp"
-                      className="form-control"
-                      placeholder="e.g., 87320"
-                      value={formData.mrp}
-                      onChange={handleNumericChange}
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label fw-medium">Discount Type</label>
-                    <select
-                      name="discount_type"
-                      className="form-select"
-                      value={formData.discount_type}
-                      onChange={handleChange}
-                      disabled={loading}
-                    >
-                      <option value="none">No Discount</option>
-                      <option value="percentage">Percentage</option>
-                      <option value="fixed">Fixed Amount</option>
-                    </select>
-                  </div>
-
-                  {formData.discount_type !== "none" && (
-                    <div className="col-md-4">
-                      <label className="form-label fw-medium">Discount Value</label>
-                      <input
-                        type="text"
-                        name="discount_value"
-                        className="form-control"
-                        placeholder={formData.discount_type === "percentage" ? "e.g., 10" : "e.g., 1000"}
-                        value={formData.discount_value}
-                        onChange={handleNumericChange}
-                        disabled={loading}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1020,11 +1180,30 @@ const AddInventoryItemForm = ({
                       onChange={handleChange}
                       disabled={loading}
                     >
-                      <option value="showcase">Showcase</option>
-                      <option value="vault">Vault</option>
-                      <option value="workshop">Workshop</option>
-                      <option value="storage">Storage</option>
+                      {locationTypes.map((location) => (
+                        <option key={location.value} value={location.value}>
+                          {location.label}
+                        </option>
+                      ))}
                     </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Details Section */}
+              <div className="mb-4">
+                <div className="row g-3">
+                  <div className="col-md-12">
+                    <label className="form-label fw-medium">Location Details</label>
+                    <input
+                      type="text"
+                      name="location_details"
+                      className="form-control"
+                      placeholder="e.g., Showcase 3, Shelf A"
+                      value={formData.location_details}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
                   </div>
                 </div>
               </div>
@@ -1049,31 +1228,29 @@ const AddInventoryItemForm = ({
                 </div>
               </div>
 
+              {/* Tags Section */}
+              <div className="mb-4">
+                <div className="row g-3">
+                  <div className="col-md-12">
+                    <label className="form-label fw-medium">Tags</label>
+                    <input
+                      type="text"
+                      name="tags"
+                      className="form-control"
+                      placeholder="Enter tags separated by commas"
+                      value={formData.tags}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Status Section */}
               <div className="mb-4">
                 <h6 className="fw-bold text-primary mb-3">Status</h6>
                 
                 <div className="row g-3">
-                  <div className="col-md-6">
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="checkbox"
-                        name="is_new_arrival"
-                        id="isNewArrival"
-                        checked={formData.is_new_arrival}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          is_new_arrival: e.target.checked
-                        }))}
-                        disabled={loading}
-                      />
-                      <label className="form-check-label" htmlFor="isNewArrival">
-                        Mark as New Arrival
-                      </label>
-                    </div>
-                  </div>
-
                   <div className="col-md-6">
                     <label className="form-label fw-medium">Item Status</label>
                     <select
