@@ -1,4 +1,4 @@
-import Product from "../models/models/Product.js";
+import Product from "../Models/models/Product.js";
 import ProductImage from "../models/models/ProductImage.js";
 import Unit from "../Models/models/unitModel.js";
 import GstRate from "../Models/models/GstRate.js";
