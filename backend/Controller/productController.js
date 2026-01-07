@@ -1,5 +1,5 @@
 import Product from "../Models/models/Product.js";
-import ProductImage from "../models/models/ProductImage.js";
+import ProductImage from "../Models/models/ProductImage.js";
 import Unit from "../Models/models/unitModel.js";
 import GstRate from "../Models/models/GstRate.js";
 import MaterialTypes from "../Models/models/MaterialTypes.js";
