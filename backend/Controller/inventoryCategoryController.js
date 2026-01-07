@@ -9,7 +9,8 @@ export const createInventoryCategory = async (req, res) => {
     console.log(req.body,"req.body")
 
 
-    const existingCategory = await InventoryCategory.findOne({ name }); if (existingCategory) {
+    const existingCategory = await InventoryCategory.findOne({ name });
+     if (existingCategory) {
        return res.status(400).json({ success: false, message: "Inventory Category name already exists" });
        }
 
