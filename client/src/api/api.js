@@ -55,6 +55,10 @@ export const PATHS = {
 
   INVENTORY_CATEGORIES: "/api/inventory-categories",
 
+  // inventory sub category
+
+  INVENTORY_SUB_CATEGORIES:"/api/inventory-sub-categories",
+
   // inventory items related
 
   INVENTORY_ITEMS: "/api/inventory-item",
@@ -73,6 +77,8 @@ export const PATHS = {
 
   // Stock IN - GRNS
   GRNS: "/api/stock-grn",
+
+
 };
 
 // Route names for all your endpoints
@@ -202,8 +208,17 @@ export const ROUTES = {
   UPDATE_INVENTORY_CATEGORY: "update-inventory-category",
   DELETE_INVENTORY_CATEGORY: "delete-inventory-category",
 
+  // inventory items sub category routes
+
+  GET_INVENTORY_SUB_CATEGORIES: "get-inventory-sub-categories",
+  CREATE_INVENTORY_SUB_CATEGORIES: "create-inventory-sub-category",
+  UPDATE_INVENTORY_SUB_CATEGORIES: "update-inventory-sub-category",
+  DELETE_INVENTORY_SUB_CATEGORIES: "delete-inventory-sub-category",
+
+
   // inventory items routes
-  GET_INVENTORY_ITEMS: "get-inventory-items",
+  // GET_INVENTORY_ITEMS: "get-inventory-items",
+  GET_PAGINATION_INVENTORY_ITEMS: "get-pagination-inventory-items",
   CREATE_INVENTORY_ITEMS: "create-inventory-item",
   UPDATE_INVENTORY_ITEMS: "update-inventory-item",
   DELETE_INVENTORY_ITEMS: "delete-inventory-item",
@@ -452,10 +467,21 @@ export const API_ENDPOINTS = {
   deleteInventoryCategory: (id) =>
     endpoint(PATHS.INVENTORY_CATEGORIES, ROUTES.DELETE_INVENTORY_CATEGORY, id),
 
+  // ========== INVENTORY CATEGORY OPERATIONS ==========
+
+   getInventorySubCategories: () =>
+    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.GET_INVENTORY_SUB_CATEGORIES),
+  createInventorySubCategory: () =>
+    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.CREATE_INVENTORY_SUB_CATEGORIES),
+  updateInventorySubCategory: (id) =>
+    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.UPDATE_INVENTORY_SUB_CATEGORIES, id),
+  deleteInventorySubCategory: (id) =>
+    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.DELETE_INVENTORY_SUB_CATEGORIES, id),
+
   // ========== INVENTORY ITEMS OPERATIONS ==========
 
   getInventoryItems: () =>
-    endpoint(PATHS.INVENTORY_ITEMS, ROUTES.GET_INVENTORY_ITEMS),
+    endpoint(PATHS.INVENTORY_ITEMS, ROUTES.GET_PAGINATION_INVENTORY_ITEMS),
   createInventoryItem: () =>
     endpoint(PATHS.INVENTORY_ITEMS, ROUTES.CREATE_INVENTORY_ITEMS),
   updateInventoryItem: (id) =>

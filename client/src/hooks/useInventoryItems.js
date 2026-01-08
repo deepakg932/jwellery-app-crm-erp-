@@ -5,173 +5,98 @@ import { API_ENDPOINTS } from "@/api/api";
 export default function useInventoryItems() {
   const [items, setItems] = useState([]);
   const [inventoryCategories, setInventoryCategories] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [metalPurities, setMetalPurities] = useState([]);
-  const [stonePurities, setStonePurities] = useState([]);
-  const [hallmarks, setHallmarks] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Helper function to get ID
   const getId = (item) => item._id || item.id;
 
-  // === FETCH BRANCHES ===
-  const fetchBranches = async () => {
+  // === FETCH SUPPLIERS ===
+  const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(API_ENDPOINTS.getBranches());
+      const res = await axios.get(API_ENDPOINTS.getSuppliers());
       
-      let branchesData = [];
+      let suppliersData = [];
       
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        branchesData = res.data.data;
+      // Handle different response structures
+      if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        suppliersData = res.data.fetched;
+      } else if (res.data?.success && Array.isArray(res.data.data)) {
+        suppliersData = res.data.data;
       } else if (Array.isArray(res.data)) {
-        branchesData = res.data;
+        suppliersData = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        suppliersData = res.data.data;
       }
       
-      const mappedBranches = branchesData
-        .filter(branch => branch.status !== false)
-        .map((branch) => ({
-          _id: getId(branch),
-          name: branch.name || "",
-          code: branch.code || "",
-          address: branch.address || "",
-          city: branch.city || "",
-          state: branch.state || "",
-          country: branch.country || "",
-          phone: branch.phone || "",
-          email: branch.email || "",
-          is_warehouse: branch.is_warehouse || false,
-          status: branch.status !== false,
-          ...branch
+      const mappedSuppliers = suppliersData
+        .filter(supplier => supplier.status !== false)
+        .map((supplier) => ({
+          _id: getId(supplier),
+          id: getId(supplier),
+          name: supplier.supplier_name || supplier.name || "",
+          supplier_name: supplier.supplier_name || "",
+          supplier_code: supplier.supplier_code || "",
+          contact_person: supplier.contact_person || "",
+          phone: supplier.phone || "",
+          email: supplier.email || "",
+          address: supplier.address || "",
+          city: supplier.city || "",
+          state: supplier.state || "",
+          status: supplier.status || true,
+          ...supplier
         }));
       
-      setBranches(mappedBranches);
-      return mappedBranches;
+      setSuppliers(mappedSuppliers);
+      return mappedSuppliers;
     } catch (err) {
-      console.error("Fetch branches error:", err);
-      setError("Failed to load branches");
+      console.error("Fetch suppliers error:", err);
+      setError("Failed to load suppliers");
       return [];
     } finally {
       setLoading(false);
     }
   };
 
-  // === FETCH METAL PURITIES ===
-  const fetchMetalPurities = async () => {
+  // === FETCH SUB-CATEGORIES ===
+  const fetchSubCategories = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(API_ENDPOINTS.getPurities());
+      const res = await axios.get(API_ENDPOINTS.getInventorySubCategories());
       
-      let metalPurityData = [];
+      let subCategoriesData = [];
       
-      if (res.data?.success && Array.isArray(res.data.purity)) {
-        metalPurityData = res.data.purity;
+      // Handle different response structures
+      if (res.data?.success && res.data?.data?.data && Array.isArray(res.data.data.data)) {
+        // Structure: { success: true, data: { data: [...] } }
+        subCategoriesData = res.data.data.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        subCategoriesData = res.data.data;
+      } else if (res.data?.success && Array.isArray(res.data.data)) {
+        subCategoriesData = res.data.data;
       } else if (Array.isArray(res.data)) {
-        metalPurityData = res.data;
+        subCategoriesData = res.data;
       }
       
-      // Group by metal type
-      const groupedByMetal = {};
-      metalPurityData.forEach(purity => {
-        const metalType = purity.metal_type || "other";
-        if (!groupedByMetal[metalType]) {
-          groupedByMetal[metalType] = [];
-        }
-        groupedByMetal[metalType].push({
-          _id: getId(purity),
-          purity_name: purity.purity_name || purity.name || "",
-          metal_type: metalType,
-          percentage: purity.percentage || 0,
-          ...purity
-        });
-      });
+      const mappedSubCategories = subCategoriesData.map((subCat) => ({
+        _id: getId(subCat),
+        id: getId(subCat),
+        name: subCat.name || "",
+        category_id: subCat.category?._id || subCat.category || "",
+        category_name: subCat.category?.name || "",
+        description: subCat.description || "",
+        status: subCat.status || true,
+        ...subCat
+      }));
       
-      setMetalPurities(metalPurityData);
-      return metalPurityData;
+      setSubCategories(mappedSubCategories);
+      return mappedSubCategories;
     } catch (err) {
-      console.error("Fetch metal purities error:", err);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // === FETCH STONE PURITIES (Clarity) ===
-  const fetchStonePurities = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(API_ENDPOINTS.getAllStonePurities());
-      
-      let stonePurityData = [];
-      
-      if (res.data?.success && Array.isArray(res.data.purity)) {
-        stonePurityData = res.data.purity;
-      } else if (Array.isArray(res.data)) {
-        stonePurityData = res.data;
-      }
-      
-      // Group by stone type
-      const groupedByStone = {};
-      stonePurityData.forEach(purity => {
-        const stoneType = purity.stone_type || "diamond";
-        if (!groupedByStone[stoneType]) {
-          groupedByStone[stoneType] = [];
-        }
-        groupedByStone[stoneType].push({
-          _id: getId(purity),
-          stone_purity: purity.stone_purity || purity.name || "",
-          stone_type: stoneType,
-          percentage: purity.percentage || 0,
-          clarity: purity.stone_purity || "", // Using stone_purity as clarity
-          ...purity
-        });
-      });
-      
-      setStonePurities(stonePurityData);
-      return stonePurityData;
-    } catch (err) {
-      console.error("Fetch stone purities error:", err);
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // === FETCH HALLMARKS ===
-  const fetchHallmarks = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(API_ENDPOINTS.getHallmarks());
-      
-      let hallmarkData = [];
-      
-      if (res.data?.success && Array.isArray(res.data.hallmarks)) {
-        hallmarkData = res.data.hallmarks;
-      } else if (Array.isArray(res.data)) {
-        hallmarkData = res.data;
-      }
-      
-      // Group by metal type
-      const groupedByMetal = {};
-      hallmarkData.forEach(hallmark => {
-        const metalType = hallmark.metal_type_name || "gold";
-        if (!groupedByMetal[metalType]) {
-          groupedByMetal[metalType] = [];
-        }
-        groupedByMetal[metalType].push({
-          _id: getId(hallmark),
-          name: hallmark.name || "",
-          metal_type: hallmark.metal_type,
-          metal_type_name: metalType,
-          ...hallmark
-        });
-      });
-      
-      setHallmarks(hallmarkData);
-      return hallmarkData;
-    } catch (err) {
-      console.error("Fetch hallmarks error:", err);
+      console.error("Fetch sub-categories error:", err);
+      setError("Failed to load sub-categories");
       return [];
     } finally {
       setLoading(false);
@@ -188,13 +113,20 @@ export default function useInventoryItems() {
       
       if (res.data?.success && Array.isArray(res.data.data)) {
         categoriesData = res.data.data;
+      } else if (res.data?.success && res.data?.data?.data && Array.isArray(res.data.data.data)) {
+        categoriesData = res.data.data.data;
       } else if (Array.isArray(res.data)) {
         categoriesData = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        categoriesData = res.data.data;
       }
       
       const mappedCategories = categoriesData.map((cat) => ({
         _id: getId(cat),
+        id: getId(cat),
         name: cat.name || "",
+        description: cat.description || "",
+        status: cat.status || "active",
         ...cat
       }));
       
@@ -217,99 +149,62 @@ export default function useInventoryItems() {
       
       let itemsData = [];
       
-      if (res.data?.success && Array.isArray(res.data.data)) {
+      if (res.data?.success && res.data?.data?.data && Array.isArray(res.data.data.data)) {
+        // Structure: { success: true, data: { data: [...] } }
+        itemsData = res.data.data.data;
+      } else if (res.data?.success && Array.isArray(res.data.data)) {
         itemsData = res.data.data;
       } else if (Array.isArray(res.data)) {
         itemsData = res.data;
-      } else if (res.data && Array.isArray(res.data.items)) {
-        itemsData = res.data.items;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        itemsData = res.data.data;
       }
       
-      const mappedItems = itemsData.map((item) => ({
-        _id: getId(item),
-        item_name: item.item_name || "",
-        item_code: item.item_code || item.sku_code || "",
-        description: item.description || "",
-        inventory_category_id: item.inventory_category_id || "",
-        inventory_category_name: item.inventory_category_id?.name || "",
+      const mappedItems = itemsData.map((item) => {
+        // Extract nested data from response
+        const categoryId = item.category?._id || item.category || "";
+        const categoryName = item.category?.name || "";
+        const subCategoryId = item.sub_category?.id || item.sub_category || "";
+        const subCategoryName = item.sub_category?.name || "";
+        const supplierId = item.supplier?._id || item.supplier || "";
+        const supplierName = item.supplier?.supplier_name || "";
+        const supplierPhone = item.supplier?.phone || "";
+        const supplierEmail = item.supplier?.email || "";
+        const supplierAddress = item.supplier?.address || "";
         
-        // Jewelry Details
-        item_type: item.item_type || "jewelry",
+        const newItem = {
+          _id: getId(item),
+          id: getId(item),
+          item_code: item.item_code || "",
+          name: item.name || "",
+          purity: item.purity || "",
+          category: categoryId,
+          category_name: categoryName,
+          sub_category: subCategoryId,
+          sub_category_name: subCategoryName,
+          description: item.description || "",
+          discount: item.discount || 0,
+          tax: item.tax || 0,
+          purchase_price: item.purchase_price || 0,
+          profit_margin: item.profit_margin || 0,
+          supplier: supplierId,
+          supplier_name: supplierName,
+          supplier_phone: supplierPhone,
+          supplier_email: supplierEmail,
+          supplier_address: supplierAddress,
+          images: Array.isArray(item.images) ? item.images : [],
+          status: item.status || "active",
+          selling_price: item.selling_price || 0,
+          discount_amount: item.discount_amount || 0,
+          tax_amount: item.tax_amount || 0,
+          final_price: item.final_price || 0,
+          createdAt: item.createdAt || "",
+          updatedAt: item.updatedAt || "",
+          ...item
+        };
         
-        // Metals Array
-        metals: Array.isArray(item.metals) ? item.metals.map(metal => ({
-          metal_type: metal.metal_type || "",
-          purity: metal.purity || "",
-          weight: metal.weight || 0,
-          color: metal.color || "",
-          hallmark: metal.hallmark || ""
-        })) : [],
-        
-        // Stones Array
-        stones: Array.isArray(item.stones) ? item.stones.map(stone => ({
-          stone_type: stone.stone_type || "",
-          shape: stone.shape || "",
-          color: stone.color || "",
-          clarity: stone.clarity || "", // Using stone_purity as clarity
-          carat_weight: stone.carat_weight || 0,
-          quantity: stone.quantity || 0,
-          certificate_type: stone.certificate_type || ""
-        })) : [],
-        
-        // Jewelry Type Details
-        jewelry_type: item.jewelry_type || "Ring",
-        size: item.size || "",
-        gender: item.gender || "women",
-        occasion: item.occasion || "wedding",
-        
-        // Rates and Costs
-        gold_rate: item.gold_rate || 0,
-        stone_rate: item.stone_rate || 0,
-        metal_weight: item.metal_weight || 0,
-        total_carat: item.total_carat || 0,
-        metal_cost: item.metal_cost || 0,
-        stone_cost: item.stone_cost || 0,
-        
-        // Making Charges
-        making_charges: item.making_charges || 0,
-        making_type: item.making_type || "percentage",
-        wastage_percentage: item.wastage_percentage || 0,
-        wastage_charges: item.wastage_charges || 0,
-        
-        // Pricing
-        total_cost_price: item.total_cost_price || 0,
-        profit_margin: item.profit_margin || 0,
-        selling_price: item.selling_price || 0,
-        mrp: item.mrp || 0,
-        discount_type: item.discount_type || "none",
-        discount_value: item.discount_value || 0,
-        final_price: item.final_price || 0,
-        
-        // Tax
-        gst_percentage: item.gst_percentage || 0,
-        cgst: item.cgst || 0,
-        sgst: item.sgst || 0,
-        total_tax: item.total_tax || 0,
-        price_with_tax: item.price_with_tax || 0,
-        
-        // Branch/Location
-        branch_id: item.branch_id || "",
-        branch_name: item.branch_id?.name || "",
-        current_stock: item.current_stock || 0,
-        minimum_stock: item.minimum_stock || 0,
-        stock_status: item.stock_status || "in_stock",
-        location_type: item.location_type || "showcase",
-        location_details: item.location_details || "",
-        
-        // Status
-        status: item.status || "active",
-        images: Array.isArray(item.images) ? item.images : [],
-        tags: item.tags || "",
-        
-        createdAt: item.created_at || item.createdAt || "",
-        updatedAt: item.updated_at || item.updatedAt || "",
-        ...item
-      }));
+        return newItem;
+      });
       
       setItems(mappedItems);
       return mappedItems;
@@ -327,124 +222,77 @@ export default function useInventoryItems() {
     try {
       setLoading(true);
       
-      // Prepare payload matching backend structure
-      const payload = {
-        item_name: itemData.item_name,
-        item_code: itemData.item_code,
-        inventory_category_id: itemData.inventory_category_id,
-        branch_id: itemData.branch_id,
-        item_type: "jewelry",
-        
-        // Metals array
-        metals: itemData.metals.map(metal => ({
-          metal_type: metal.metal_type,
-          purity: metal.purity,
-          weight: parseFloat(metal.weight) || 0,
-          color: metal.color,
-          hallmark: metal.hallmark || ""
-        })),
-        
-        // Stones array
-        stones: itemData.stones.map(stone => ({
-          stone_type: stone.stone_type,
-          shape: stone.shape,
-          color: stone.color,
-          clarity: stone.clarity, // Using stone_purity as clarity
-          carat_weight: parseFloat(stone.carat_weight) || 0,
-          quantity: parseInt(stone.quantity) || 1,
-          certificate_type: stone.certificate_type || ""
-        })),
-        
-        // Jewelry Details
-        jewelry_type: itemData.jewelry_type,
-        size: itemData.size,
-        gender: itemData.gender,
-        occasion: itemData.occasion,
-        
-        // Rates
-        gold_rate: parseFloat(itemData.gold_rate) || 0,
-        stone_rate: parseFloat(itemData.stone_rate) || 0,
-        
-        // Making charges
-        making_charges: parseFloat(itemData.making_charges) || 0,
-        making_type: itemData.making_type || "percentage",
-        wastage_percentage: parseFloat(itemData.wastage_percentage) || 5,
-        profit_margin: parseFloat(itemData.profit_margin) || 25,
-        
-        // Stock
-        current_stock: parseInt(itemData.current_stock) || 1,
-        minimum_stock: parseInt(itemData.minimum_stock) || 1,
-        location_type: itemData.location_type || "showcase",
-        location_details: itemData.location_details || "",
-        
-        // Tax
-        gst_percentage: parseFloat(itemData.gst_percentage) || 3,
-        
-        // Description
-        description: itemData.description || "",
-        
-        // Status
-        status: itemData.status || "active",
-        
-        // Arrays
-        images: itemData.images || [],
-        tags: itemData.tags || ""
-      };
+      // Create FormData for file upload
+      const formData = new FormData();
       
-      const res = await axios.post(API_ENDPOINTS.createInventoryItem(), payload);
+      // Add all form fields
+      formData.append("name", itemData.name);
+      formData.append("purity", itemData.purity);
+      formData.append("category", itemData.category);
+      if (itemData.sub_category) {
+        formData.append("sub_category", itemData.sub_category);
+      }
+      formData.append("description", itemData.description || "");
+      formData.append("discount", parseFloat(itemData.discount) || 0);
+      formData.append("tax", parseFloat(itemData.tax) || 0);
+      formData.append("purchase_price", parseFloat(itemData.purchase_price) || 0);
+      formData.append("profit_margin", parseFloat(itemData.profit_margin) || 25);
+      if (itemData.supplier) {
+        formData.append("supplier", itemData.supplier);
+      }
+      
+      // Add image file if exists
+      if (itemData.image && itemData.image.length > 0) {
+        formData.append("image", itemData.image[0]); // Only first image as per your backend
+      }
+      
+      const res = await axios.post(API_ENDPOINTS.createInventoryItem(), formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       let newItem = {};
       
       if (res.data && res.data.success && res.data.data) {
         const item = res.data.data;
+        
+        // Extract nested data
+        const categoryId = item.category?._id || item.category || "";
+        const categoryName = item.category?.name || "";
+        const subCategoryId = item.sub_category?.id || item.sub_category || "";
+        const subCategoryName = item.sub_category?.name || "";
+        const supplierId = item.supplier?._id || item.supplier || "";
+        const supplierName = item.supplier?.supplier_name || "";
+        
         newItem = {
           _id: getId(item),
-          item_name: item.item_name || "",
-          item_code: item.item_code || item.sku_code || "",
+          id: getId(item),
+          item_code: item.item_code || "",
+          name: item.name || "",
+          purity: item.purity || "",
+          category: categoryId,
+          category_name: categoryName,
+          sub_category: subCategoryId,
+          sub_category_name: subCategoryName,
           description: item.description || "",
-          inventory_category_id: item.inventory_category_id || "",
-          inventory_category_name: item.inventory_category_id?.name || "",
-          
-          // Jewelry Details
-          jewelry_type: item.jewelry_type || "Ring",
-          size: item.size || "",
-          gender: item.gender || "women",
-          occasion: item.occasion || "wedding",
-          
-          // Metals
-          metals: Array.isArray(item.metals) ? item.metals : [],
-          
-          // Stones
-          stones: Array.isArray(item.stones) ? item.stones : [],
-          
-          // Rates and Costs
-          gold_rate: item.gold_rate || 0,
-          stone_rate: item.stone_rate || 0,
-          metal_weight: item.metal_weight || 0,
-          total_carat: item.total_carat || 0,
-          
-          // Branch/Location
-          branch_id: item.branch_id || "",
-          branch_name: item.branch_id?.name || "",
-          current_stock: item.current_stock || 0,
-          minimum_stock: item.minimum_stock || 0,
-          location_type: item.location_type || "showcase",
-          location_details: item.location_details || "",
-          
-          // Status
-          status: item.status || "active",
-          
+          discount: item.discount || 0,
+          tax: item.tax || 0,
+          purchase_price: item.purchase_price || 0,
+          profit_margin: item.profit_margin || 0,
+          supplier: supplierId,
+          supplier_name: supplierName,
           images: Array.isArray(item.images) ? item.images : [],
-          tags: item.tags || "",
-          
-          createdAt: item.created_at || item.createdAt || "",
-          updatedAt: item.updated_at || item.updatedAt || "",
+          status: item.status || "active",
+          selling_price: item.selling_price || 0,
+          discount_amount: item.discount_amount || 0,
+          tax_amount: item.tax_amount || 0,
+          final_price: item.final_price || 0,
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
         };
       } else {
-        newItem = {
-          _id: `temp-${Date.now()}`,
-          ...itemData
-        };
+        throw new Error("Failed to create item");
       }
       
       setItems(prev => [...prev, newItem]);
@@ -453,7 +301,7 @@ export default function useInventoryItems() {
       return newItem;
     } catch (err) {
       console.error("Add inventory item error:", err);
-      setError("Failed to add inventory item");
+      setError(err.response?.data?.message || "Failed to add inventory item");
       throw err;
     } finally {
       setLoading(false);
@@ -465,123 +313,80 @@ export default function useInventoryItems() {
     try {
       setLoading(true);
       
-      // Prepare payload matching backend structure
-      const payload = {
-        item_name: itemData.item_name,
-        item_code: itemData.item_code,
-        inventory_category_id: itemData.inventory_category_id,
-        branch_id: itemData.branch_id,
-        item_type: "jewelry",
-        
-        // Metals array
-        metals: itemData.metals.map(metal => ({
-          metal_type: metal.metal_type,
-          purity: metal.purity,
-          weight: parseFloat(metal.weight) || 0,
-          color: metal.color,
-          hallmark: metal.hallmark || ""
-        })),
-        
-        // Stones array
-        stones: itemData.stones.map(stone => ({
-          stone_type: stone.stone_type,
-          shape: stone.shape,
-          color: stone.color,
-          clarity: stone.clarity,
-          carat_weight: parseFloat(stone.carat_weight) || 0,
-          quantity: parseInt(stone.quantity) || 1,
-          certificate_type: stone.certificate_type || ""
-        })),
-        
-        // Jewelry Details
-        jewelry_type: itemData.jewelry_type,
-        size: itemData.size,
-        gender: itemData.gender,
-        occasion: itemData.occasion,
-        
-        // Rates
-        gold_rate: parseFloat(itemData.gold_rate) || 0,
-        stone_rate: parseFloat(itemData.stone_rate) || 0,
-        
-        // Making charges
-        making_charges: parseFloat(itemData.making_charges) || 0,
-        making_type: itemData.making_type || "percentage",
-        wastage_percentage: parseFloat(itemData.wastage_percentage) || 5,
-        profit_margin: parseFloat(itemData.profit_margin) || 25,
-        
-        // Stock
-        current_stock: parseInt(itemData.current_stock) || 1,
-        minimum_stock: parseInt(itemData.minimum_stock) || 1,
-        location_type: itemData.location_type || "showcase",
-        location_details: itemData.location_details || "",
-        
-        // Tax
-        gst_percentage: parseFloat(itemData.gst_percentage) || 3,
-        
-        // Description
-        description: itemData.description || "",
-        
-        // Status
-        status: itemData.status || "active",
-        
-        // Arrays
-        images: itemData.images || [],
-        tags: itemData.tags || ""
-      };
+      // Create FormData for file upload
+      const formData = new FormData();
       
-      const res = await axios.put(API_ENDPOINTS.updateInventoryItem(id), payload);
+      // Add all form fields
+      formData.append("name", itemData.name);
+      formData.append("purity", itemData.purity);
+      formData.append("category", itemData.category);
+      if (itemData.sub_category) {
+        formData.append("sub_category", itemData.sub_category);
+      }
+      formData.append("description", itemData.description || "");
+      formData.append("discount", parseFloat(itemData.discount) || 0);
+      formData.append("tax", parseFloat(itemData.tax) || 0);
+      formData.append("purchase_price", parseFloat(itemData.purchase_price) || 0);
+      formData.append("profit_margin", parseFloat(itemData.profit_margin) || 25);
+      if (itemData.supplier) {
+        formData.append("supplier", itemData.supplier);
+      }
+      formData.append("status", itemData.status || "active");
+      
+      // Add image file if exists (and it's a File object)
+      if (itemData.image && itemData.image.length > 0) {
+        const image = itemData.image[0];
+        if (image instanceof File) {
+          formData.append("image", image);
+        }
+      }
+      
+      const res = await axios.put(API_ENDPOINTS.updateInventoryItem(id), formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       let updatedItem = {};
       if (res.data && res.data.success && res.data.data) {
         const item = res.data.data;
+        
+        // Extract nested data
+        const categoryId = item.category?._id || item.category || "";
+        const categoryName = item.category?.name || "";
+        const subCategoryId = item.sub_category?.id || item.sub_category || "";
+        const subCategoryName = item.sub_category?.name || "";
+        const supplierId = item.supplier?._id || item.supplier || "";
+        const supplierName = item.supplier?.supplier_name || "";
+        
         updatedItem = {
           _id: getId(item) || id,
-          item_name: item.item_name || "",
-          item_code: item.item_code || item.sku_code || "",
+          id: getId(item) || id,
+          item_code: item.item_code || "",
+          name: item.name || "",
+          purity: item.purity || "",
+          category: categoryId,
+          category_name: categoryName,
+          sub_category: subCategoryId,
+          sub_category_name: subCategoryName,
           description: item.description || "",
-          inventory_category_id: item.inventory_category_id || "",
-          inventory_category_name: item.inventory_category_id?.name || "",
-          
-          // Jewelry Details
-          jewelry_type: item.jewelry_type || "Ring",
-          size: item.size || "",
-          gender: item.gender || "women",
-          occasion: item.occasion || "wedding",
-          
-          // Metals
-          metals: Array.isArray(item.metals) ? item.metals : [],
-          
-          // Stones
-          stones: Array.isArray(item.stones) ? item.stones : [],
-          
-          // Rates and Costs
-          gold_rate: item.gold_rate || 0,
-          stone_rate: item.stone_rate || 0,
-          metal_weight: item.metal_weight || 0,
-          total_carat: item.total_carat || 0,
-          
-          // Branch/Location
-          branch_id: item.branch_id || "",
-          branch_name: item.branch_id?.name || "",
-          current_stock: item.current_stock || 0,
-          minimum_stock: item.minimum_stock || 0,
-          location_type: item.location_type || "showcase",
-          location_details: item.location_details || "",
-          
-          // Status
-          status: item.status || "active",
-          
+          discount: item.discount || 0,
+          tax: item.tax || 0,
+          purchase_price: item.purchase_price || 0,
+          profit_margin: item.profit_margin || 0,
+          supplier: supplierId,
+          supplier_name: supplierName,
           images: Array.isArray(item.images) ? item.images : [],
-          tags: item.tags || "",
-          
-          createdAt: item.created_at || item.createdAt || "",
-          updatedAt: item.updated_at || item.updatedAt || "",
+          status: item.status || "active",
+          selling_price: item.selling_price || 0,
+          discount_amount: item.discount_amount || 0,
+          tax_amount: item.tax_amount || 0,
+          final_price: item.final_price || 0,
+          updatedAt: item.updatedAt || new Date().toISOString(),
+          createdAt: item.createdAt || "",
         };
       } else {
-        updatedItem = {
-          _id: id,
-          ...itemData
-        };
+        throw new Error("Failed to update item");
       }
       
       setItems(prev => 
@@ -593,7 +398,7 @@ export default function useInventoryItems() {
       return updatedItem;
     } catch (err) {
       console.error("Update inventory item error:", err);
-      setError("Failed to update inventory item");
+      setError(err.response?.data?.message || "Failed to update inventory item");
       throw err;
     } finally {
       setLoading(false);
@@ -624,11 +429,9 @@ export default function useInventoryItems() {
     try {
       setLoading(true);
       await Promise.all([
-        fetchBranches(),
+        fetchSuppliers(),
         fetchInventoryCategories(),
-        fetchMetalPurities(),
-        fetchStonePurities(),
-        fetchHallmarks(),
+        fetchSubCategories(),
         fetchInventoryItems()
       ]);
     } catch (err) {
@@ -645,11 +448,9 @@ export default function useInventoryItems() {
   return {
     // Data
     items,
-    branches,
     inventoryCategories,
-    metalPurities,
-    stonePurities,
-    hallmarks,
+    subCategories,
+    suppliers,
     
     // Loading States
     loading,
@@ -662,10 +463,8 @@ export default function useInventoryItems() {
     
     // Fetch Functions
     fetchInventoryItems,
-    fetchBranches,
+    fetchSuppliers,
     fetchInventoryCategories,
-    fetchMetalPurities,
-    fetchStonePurities,
-    fetchHallmarks,
+    fetchSubCategories,
   };
 }

@@ -259,10 +259,16 @@ export const menuItems = [
         url: "/inventory/dashboard",
       },
       {
-        key: "inventory-items-categories",
-        label: "Inventory Items Categories",
-        url: "/inventory/items-categories",
+        key: "inventory-categories",
+        label: "Inventory Categories",
+        url: "/inventory/categories",
       },
+         {
+        key: "inventory-sub-categories",
+        label: "Inventory Sub Categories",
+        url: "/inventory/sub-categories",
+      },
+
       {
         key: "inventory-items",
         label: "Inventory Items",

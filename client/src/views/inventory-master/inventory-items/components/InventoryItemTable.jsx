@@ -7,6 +7,8 @@ import {
   FiChevronRight,
   FiChevronsLeft,
   FiChevronsRight,
+  FiDollarSign,
+  FiImage,
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import AddInventoryItemModal from "./AddInventoryItemForm";
@@ -17,19 +19,14 @@ const InventoryItemTable = () => {
   const {
     items,
     inventoryCategories,
-    units,
-    metalPurities,
-    stonePurities,
-    materials,
     loading,
     addInventoryItem,
     updateInventoryItem,
     deleteInventoryItem,
-    branches,
-    hallmarks ,
-    suppliers
+    suppliers,
+    subCategories,
   } = useInventoryItems();
-console.log(suppliers)
+
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -44,37 +41,13 @@ console.log(suppliers)
   // Filter items based on search
   const filtered = items.filter(
     (item) =>
-      item.item_name?.toLowerCase().includes(search.toLowerCase()) ||
-      item.inventory_category_name
-        ?.toLowerCase()
-        .includes(search.toLowerCase()) ||
-      // Search in metals
-      (item.metals &&
-        item.metals.some(
-          (metal) =>
-            metal.metal_id?.name
-              ?.toLowerCase()
-              .includes(search.toLowerCase()) ||
-            metal.purity_name?.toLowerCase().includes(search.toLowerCase())
-        )) ||
-      // Search in stones
-      (item.stones &&
-        item.stones.some(
-          (stone) =>
-            stone.stone_id?.stone_type
-              ?.toLowerCase()
-              .includes(search.toLowerCase()) ||
-            stone.stone_purity_name
-              ?.toLowerCase()
-              .includes(search.toLowerCase())
-        )) ||
-      // Search in materials
-      item.material_type_name?.toLowerCase().includes(search.toLowerCase()) ||
-      // Search in tracking values
-      (item.track_by === "weight" &&
-        item.total_weight?.toString().includes(search)) ||
-      (item.track_by === "quantity" &&
-        item.total_quantity?.toString().includes(search))
+      item.name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.item_code?.toLowerCase().includes(search.toLowerCase()) ||
+      item.category_name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.sub_category_name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.purity?.toLowerCase().includes(search.toLowerCase()) ||
+      item.supplier_name?.toLowerCase().includes(search.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.toLowerCase())
   );
 
   // Reset to first page when search changes
@@ -187,96 +160,67 @@ console.log(suppliers)
     return pageNumbers;
   };
 
-  // Format track by display
-  const formatTrackBy = (trackBy) => {
-    switch (trackBy) {
-      case "weight":
-        return "Weight";
-      case "quantity":
-        return "Quantity";
-      case "both":
-        return "Both";
-      default:
-        return trackBy;
-    }
+  // Format category name
+  const getCategoryName = (item) => {
+    return item.category_name || "No Category";
   };
 
-  // Get item type
-  const getItemType = (item) => {
-    if (item.metals && item.metals.length > 0) return "Metal";
-    if (item.stones && item.stones.length > 0) return "Stone";
-    if (item.material_type_name) return "Material";
-    return "Unknown";
+  // Format sub-category name
+  const getSubCategoryName = (item) => {
+    return item.sub_category_name || "No Sub-Category";
   };
 
-  // Get item details
-  const getItemDetails = (item) => {
-    if (item.metals && item.metals.length > 0) {
-      const metal = item.metals[0];
-      return {
-        type: "Metal",
-        name: metal.metal_id?.name || metal.metal_id || "Unknown Metal",
-        purity: metal.purity_name || "N/A",
-        weight: metal.metal_weight,
-        quantity: item.total_quantity || item.quantity,
-      };
-    }
-
-    if (item.stones && item.stones.length > 0) {
-      const stone = item.stones[0];
-      return {
-        type: "Stone",
-        name: stone.stone_id?.stone_type || stone.stone_id || "Unknown Stone",
-        purity:
-          stone.stone_purity_name ||
-          stone.stone_purity_id?.stone_purity ||
-          "N/A",
-        quantity: stone.stone_quantity || item.total_quantity || item.quantity,
-      };
-    }
-
-    if (item.material_type_name) {
-      return {
-        type: "Material",
-        name: item.material_type_name,
-        weight: item.total_weight || item.weight,
-        quantity: item.total_quantity || item.quantity,
-      };
-    }
-
-    return { type: "Unknown", name: "No details" };
+  // Format supplier name
+  const getSupplierName = (item) => {
+    return item.supplier_name || "No Supplier";
   };
 
-  // Format values display
-  const formatValues = (item) => {
-    const details = getItemDetails(item);
-
-    if (item.track_by === "weight") {
-      return `${item.total_weight || item.weight || 0} ${item.unit_name || ""}`;
-    } else if (item.track_by === "quantity") {
-      return `${item.total_quantity || item.quantity || 0} ${
-        details.type === "Stone" ? "pcs" : item.unit_name || ""
-      }`;
-    } else if (item.track_by === "both") {
-      return `${item.total_weight || item.weight || 0} ${
-        item.unit_name || ""
-      } / ${item.total_quantity || item.quantity || 0} pcs`;
-    }
-    return "";
+  // Format price with Indian Rupees
+  const formatPrice = (price) => {
+    return `₹${parseFloat(price || 0).toLocaleString('en-IN')}`;
   };
 
-  // Format item type badge
-  const formatTypeBadge = (type) => {
-    switch (type) {
-      case "Metal":
-        return "bg-warning";
-      case "Stone":
-        return "bg-info";
-      case "Material":
-        return "bg-secondary";
-      default:
-        return "bg-dark";
-    }
+  // Get selling price
+  const getSellingPrice = (item) => {
+    return item.final_price || item.selling_price || 0;
+  };
+
+  // Show image in modal
+  const showImageModal = (imageUrl) => {
+    if (!imageUrl) return;
+    
+    const modalHtml = `
+      <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8)" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Item Image</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+              <img src="${imageUrl}" alt="Item Image" class="img-fluid" style="max-height: 70vh; object-fit: contain;" />
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHtml;
+    document.body.appendChild(modalContainer);
+    
+    // Add click handler to close modal
+    const closeBtn = modalContainer.querySelector('.btn-close');
+    closeBtn.addEventListener('click', () => {
+      document.body.removeChild(modalContainer);
+    });
+    
+    // Close modal when clicking outside
+    modalContainer.addEventListener('click', (e) => {
+      if (e.target === modalContainer) {
+        document.body.removeChild(modalContainer);
+      }
+    });
   };
 
   // Delete Confirmation Modal
@@ -305,7 +249,7 @@ console.log(suppliers)
           <div className="modal-body">
             <p>
               Are you sure you want to delete{" "}
-              <strong>{selectedItem?.item_name}</strong>?
+              <strong>{selectedItem?.name}</strong>?
             </p>
             <p className="text-muted small">This action cannot be undone.</p>
           </div>
@@ -356,7 +300,7 @@ console.log(suppliers)
             <div className="col-md-6">
               <h1 className="h3 fw-bold mb-2">Inventory Items</h1>
               <p className="text-muted mb-0">
-                Manage metals, stones, and materials inventory
+                Manage jewelry items inventory
               </p>
             </div>
 
@@ -382,7 +326,7 @@ console.log(suppliers)
                 <input
                   type="text"
                   className="form-control border-start-0"
-                  placeholder="Search items, metals, stones, materials..."
+                  placeholder="Search items, categories, suppliers..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   disabled={loading}
@@ -422,12 +366,15 @@ console.log(suppliers)
             <thead>
               <tr>
                 <th>#</th>
+                <th>Item Code</th>
                 <th>Item Name</th>
-                <th>Inventory Category</th>
-                <th>Type</th>
-                <th>Details</th>
-                <th>Track By</th>
-                <th>Value</th>
+                <th>Category</th>
+                <th>Sub Category</th>
+                <th>Purity</th>
+                <th>Purchase Price</th>
+                <th>Selling Price</th>
+                <th>Profit Margin</th>
+                <th>Supplier</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
@@ -436,7 +383,7 @@ console.log(suppliers)
             <tbody>
               {loading && items.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4">
+                  <td colSpan="13" className="text-center py-4">
                     <div className="d-flex justify-content-center">
                       <div
                         className="spinner-border text-primary"
@@ -449,7 +396,7 @@ console.log(suppliers)
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4 text-muted">
+                  <td colSpan="13" className="text-center py-4 text-muted">
                     {search
                       ? "No inventory items found for your search"
                       : "No inventory items available"}
@@ -457,71 +404,96 @@ console.log(suppliers)
                 </tr>
               ) : (
                 currentItems.map((item, index) => {
-                  const itemType = getItemType(item);
-                  const itemDetails = getItemDetails(item);
-
+                  const sellingPrice = getSellingPrice(item);
+                  
                   return (
                     <tr key={item._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
 
-                      <td className="fw-semibold">{item.item_name}</td>
-
                       <td>
-                        <span className="badge bg-primary fw-semibold">
-                          {item.inventory_category_name || "No Category"}
-                        </span>
-                      </td>
-
-                      {/* Type Column */}
-                      <td>
-                        <span
-                          className={`badge fw-semibold ${formatTypeBadge(
-                            itemType
-                          )}`}
-                        >
-                          {itemType}
-                        </span>
-                      </td>
-
-                      {/* Details Column */}
-                      <td>
-                        <div className="small">
-                          <div>
-                            <strong>{itemDetails.name}</strong>
-                          </div>
-                          {itemDetails.purity && (
-                            <div className="text-muted">
-                              Purity: {itemDetails.purity}
-                            </div>
-                          )}
-                          {itemDetails.type === "Material" && (
-                            <div className="text-muted">
-                              Type: {itemDetails.name}
-                            </div>
-                          )}
+                        <div className="fw-medium text-primary">
+                          {item.item_code || "N/A"}
                         </div>
                       </td>
 
-                      {/* Track By Column */}
                       <td>
-                        <span className="badge bg-light text-dark fw-semibold border">
-                          {formatTrackBy(item.track_by)}
+                        <div className="fw-semibold">{item.name}</div>
+                        {/* {item.description && (
+                          <div className="text-muted small text-truncate" style={{ maxWidth: "200px" }}>
+                            {item.description}
+                          </div>
+                        )} */}
+                      </td>
+
+                      <td>
+                        <span className="badge bg-primary fw-semibold">
+                          {getCategoryName(item)}
                         </span>
                       </td>
 
-                      {/* Value Column */}
                       <td>
-                        <span className="fw-medium">{formatValues(item)}</span>
+                        <span className="badge bg-info fw-semibold">
+                          {getSubCategoryName(item)}
+                        </span>
                       </td>
+
+                      <td>
+                        <span className="badge bg-warning text-dark fw-semibold">
+                          {item.purity || "No Purity"}
+                        </span>
+                      </td>
+
+                      <td className="fw-bold text-success">
+                        {formatPrice(item.purchase_price)}
+                      </td>
+
+                      <td className="fw-bold text-primary">
+                        {formatPrice(sellingPrice)}
+                      </td>
+
+                      <td>
+                        <span className="fw-medium">
+                          {item.profit_margin || 0}%
+                        </span>
+                      </td>
+
+                      <td>
+                        <div className="small">
+                          <span className="text-muted">
+                            {getSupplierName(item)}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Image Column */}
+                      {/* <td>
+                        {hasImage ? (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
+                            onClick={() => showImageModal(item.images[0])}
+                            title="View Image"
+                          >
+                            <FiImage size={16} />
+                            View
+                          </button>
+                        ) : (
+                          <span className="text-muted small">No Image</span>
+                        )}
+                      </td> */}
 
                       {/* Status Column */}
                       <td>
                         <span
                           className={`badge fw-semibold ${
-                            item.status ? "bg-success" : "bg-danger"
+                            item.status === "active" 
+                              ? "bg-success" 
+                              : item.status === "inactive" 
+                                ? "bg-danger" 
+                                : "bg-secondary"
                           }`}
                         >
-                          {item.status ? "Active" : "Inactive"}
+                          {item.status?.toUpperCase() || "UNKNOWN"}
                         </span>
                       </td>
 
@@ -673,19 +645,17 @@ console.log(suppliers)
       </div>
 
       {/* ADD MODAL */}
-{showAddModal && (
-  <AddInventoryItemModal
-    key="add-modal"
-    onClose={() => setShowAddModal(false)}
-    onSave={handleAddItem}
-    loading={actionLoading.type === "add"}
-    inventoryCategories={inventoryCategories}
-    branches={branches}
-    metalPurities={metalPurities}
-    stonePurities={stonePurities}
-    hallmarks={hallmarks}
-  />
-)}
+      {showAddModal && (
+        <AddInventoryItemModal
+          key="add-modal"
+          onClose={() => setShowAddModal(false)}
+          onSave={handleAddItem}
+          loading={actionLoading.type === "add"}
+          inventoryCategories={inventoryCategories}
+          subCategories={subCategories}
+          suppliers={suppliers || []}
+        />
+      )}
 
       {/* EDIT MODAL */}
       {showEditModal && selectedItem && (
@@ -702,10 +672,8 @@ console.log(suppliers)
             actionLoading.id === selectedItem._id
           }
           inventoryCategories={inventoryCategories}
-          units={units}
-          metalPurities={metalPurities}
-          stonePurities={stonePurities}
-          materials={materials}
+          subCategories={subCategories}
+          suppliers={suppliers || []}
         />
       )}
 

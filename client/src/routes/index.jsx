@@ -49,6 +49,7 @@ const ItemsPage = lazy(() => import('@/views/item-master'));
 
 // inventory master
 const InvetoryCategoryPage = lazy(() => import('@/views/inventory-master/inventory-items-category'));
+const InvetorySubCategoryPage = lazy(() => import('@/views/inventory-master/inventory-items-sub-category'));
 const InventoryItemsPage = lazy(() => import('@/views/inventory-master/inventory-items'));
 const BranchTypePage = lazy(() => import('@/views/inventory-master/branch-master/branch-type'));
 const BranchPage = lazy(() => import('@/views/inventory-master/branch-master/branch'));
@@ -488,10 +489,16 @@ const itemsRoutes = [
   element: <SocialFeed />
 },
 ];
-const inventoryRoutes = [{
-  path: '/inventory/items-categories',
+const inventoryRoutes = [
+  {
+  path: '/inventory/categories',
   element: <InvetoryCategoryPage/>
-}, {
+},
+  {
+  path: '/inventory/sub-categories',
+  element: <InvetorySubCategoryPage/>
+},
+ {
   path: '/inventory/items',
   element: <InventoryItemsPage />
 }, {
@@ -851,9 +858,9 @@ const mapRoutes = [{
 }];
 const allRoutes = [{
    element: (
-    <ProtectedRoute>
+    // <ProtectedRoute>
       <MainLayout />
-     </ProtectedRoute>
+    //  {/* </ProtectedRoute> */}
   ),
   children: [{
     path: '/',
