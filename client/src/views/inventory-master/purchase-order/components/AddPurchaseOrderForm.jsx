@@ -720,7 +720,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
       <div className="modal-dialog modal-dialog-centered modal-xl">
         <div
           className="modal-content rounded-3"
-          style={{ maxHeight: "90vh", overflow: "hidden" }}
+          style={{ maxHeight: "95vh", overflow: "hidden" }}
         >
           <div
             className="modal-header border-bottom pb-3 sticky-top bg-white"

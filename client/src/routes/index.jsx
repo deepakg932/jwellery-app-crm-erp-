@@ -858,9 +858,9 @@ const mapRoutes = [{
 }];
 const allRoutes = [{
    element: (
-    // <ProtectedRoute>
+    <ProtectedRoute>
       <MainLayout />
-    //  {/* </ProtectedRoute> */}
+     </ProtectedRoute>
   ),
   children: [{
     path: '/',
