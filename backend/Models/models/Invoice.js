@@ -1,22 +1,52 @@
-// src/models/Invoice.js
-import mongoose from 'mongoose';
-import InvoiceItemSchema from './InvoiceItem.js';
+// models/Invoice.js
+import mongoose from "mongoose";
+
 const InvoiceSchema = new mongoose.Schema(
   {
-    invoice_no: { type: String, required: true, unique: true, trim: true },
-    customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
-    branch_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch', required: true, index: true },
-    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    invoice_date: { type: Date, default: Date.now },
-    total_amount: { type: Number, required: true },
-    discount: { type: Number, default: 0 },
-    netamount: { type: Number, required: true },
-    paidamount: { type: Number, default: 0 },
-    dueamount: { type: Number, default: 0 },
-    paymentstatus: { type: String, enum: ['unpaid', 'partial', 'paid'], default: 'unpaid', index: true },
-    paymentmode: { type: String, enum: ['cash', 'upi', 'card'], default: 'cash' },
-    items: { type: [InvoiceItemSchema], default: [] },
+    invoice_number: {
+      type: String,
+      unique: true,
+      default: () => `INV-${Date.now()}`
+    },
+
+    sale_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SalesOrder",
+      required: true
+    },
+
+    customer_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+      required: true
+    },
+
+    items: [
+      {
+        item_id: { type: mongoose.Schema.Types.ObjectId, ref: "InventoryItem" },
+        quantity: Number,
+        rate: Number,
+        tax: Number,
+        total: Number
+      }
+    ],
+
+    subtotal: Number,
+    tax_amount: Number,
+    grand_total: Number,
+
+    payment_status: {
+      type: String,
+      enum: ["pending", "partial", "paid"],
+      default: "pending"
+    },
+
+    generated_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    }
   },
-  { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
+  { timestamps: true }
 );
-export default mongoose.model('Invoice', InvoiceSchema);
+
+export default mongoose.model("Invoice", InvoiceSchema);

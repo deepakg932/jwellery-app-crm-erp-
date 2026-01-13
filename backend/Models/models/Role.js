@@ -1,10 +1,14 @@
+
 import mongoose from "mongoose";
 
 const RoleSchema = new mongoose.Schema(
   {
-    name: { type: String, unique: true, required: true, trim: true },
-    permissions: [{ type: String }], // simple permission strings e.g. "products:create"
-    description: { type: String }
+    role_name: {
+      type: String,
+      unique: true,
+    },
+    // permissions: [{ type: String }],
+    description: String,
   },
   { timestamps: true }
 );

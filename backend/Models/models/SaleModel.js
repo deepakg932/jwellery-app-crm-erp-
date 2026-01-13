@@ -1,22 +1,115 @@
 import mongoose from "mongoose";
 
-const SaleSchema = new mongoose.Schema({
-  invoiceNo: String,
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
-  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
-
-  items: [{
-    inventory_item_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "InventoryItem"
+const SalesOrderSchema = new mongoose.Schema(
+  {
+    so_number: {
+      type: String,
+      unique: true,
+      default: () => `SO-${Date.now()}`,
     },
-    quantity: Number,
-    grossWeight: Number,
-    netWeight: Number,
-    price: Number
-  }],
 
-  totalAmount: Number
-}, { timestamps: true });
+    sale_date: {
+      type: Date,
+      required: true,
+    },
 
-export default mongoose.model("Sale", SaleSchema);
+    reference_no: String,
+
+    customer_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+      required: true,
+    },
+
+    branch_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+    },
+
+    // biller_id: {  
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "Biller",
+    // },
+
+    currency: {
+      type: String,
+      default: "USD",
+    },
+
+    exchange_rate: {
+      type: Number,
+      default: 1,
+    },
+
+    items: [
+      {
+        item_id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "InventoryItem",
+          required: true,
+        },
+        quantity: { type: Number, default: 0 },
+        weight: { type: Number, default: 0 },
+        unit_id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Unit",
+        },
+        rate: Number,
+        discount: { type: Number, default: 0 },
+        net_unit_price: Number,
+        tax: { type: Number, default: 0 },
+        total: Number,
+
+        delivered_quantity: { type: Number, default: 0 },
+        delivered_weight: { type: Number, default: 0 },
+
+        status: {
+          type: String,
+          enum: ["pending", "partially_delivered", "delivered", "completed"],
+          default: "pending",
+        },
+      },
+    ],
+
+    order_tax: { type: Number, default: 0 },
+
+    order_discount_type: {
+      type: String,
+      enum: ["flat", "percentage"],
+      default: "flat",
+    },
+
+    order_discount_value: { type: Number, default: 0 },
+
+    shipping_cost: { type: Number, default: 0 },
+
+    total_amount: Number,
+    grand_total: Number,
+
+    payment_status: {
+      type: String,
+      enum: ["pending", "partial", "paid"],
+      default: "pending",
+    },
+
+    sale_status: {
+      type: String,
+      enum: ["pending", "completed", "cancelled"],
+      default: "pending",
+    },
+
+    sale_note: String,
+    staff_note: String,
+
+    document: String,
+
+    created_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("Sale", SalesOrderSchema);

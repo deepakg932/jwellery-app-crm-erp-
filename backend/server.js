@@ -3,7 +3,7 @@ import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./db/DbConnect.js";
 import AuthRoutes from "./routes/AuthRoutes.js";
-import roleRoutes from "./routes/roleRoutes.js";
+
 import protectedRoutes from "./routes/protectedExample.js";
 import cors from "cors"
 import productRoutes from './routes/productRoutes.js';
@@ -31,12 +31,21 @@ import wastageMaterialtypeRoutes from "./routes/wastageMaterialtypeRoutes.js";
 import inventoryItemRoute from "./routes/inventoryItemRoute.js"
 import supplierRoute from "./routes/supplierRoutes.js";
 import purchaseRoutes from "./routes/purchaseRoutes.js"
-import grn from "./routes/grn(STOCK-IN)Routes.js";
-import StockLedgerRoute from "./routes/StockLedgerRoute.js";
+// import grn from "./routes/grn(STOCK-IN)Routes.js";
+
 import InventoryStockRoutes from "./routes/InventoryStockRoutes.js"
-import stockTransferRoute from "./routes/stockTransferRoute.js";
-import stockAdjustmentRoutes from "./routes/stockAdjustmentRoutes.js";
-import salesRoute from "./routes/salesRoute.js"
+
+
+import inventorySubCategory from "./routes/inventorySubCategory.js"
+import stockRoutes from "./routes/stockRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js"
+import PurchaseReturnRoutes from "./routes/PurchaseReturnRoutes.js";
+import customerGroupRoutes from "./routes/customerGroupRoutes.js";
+import customerRoutes from "./routes/customerRoutes.js";
+import roleRoutes from "./routes/roleRoutes.js";
+import employeeRoutes from "./routes/employeeRoutes.js";
+import salesRoute from "./routes/salesRoute.js";
+
 
 
 dotenv.config(); 
@@ -49,7 +58,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// app.set("trust proxy", true);
+
 
 app.use(cors())
 app.use('/uploads', express.static('uploads'));
@@ -83,18 +92,37 @@ app.use("/api/gst",gstRoutes)
 app.use("/api/wastage",wastageRoutes)
 app.use("/api/material-types",wastageMaterialtypeRoutes)
 app.use("/api/inventory-categories", inventorycategoryRoute);
+app.use("/api/inventory-sub-categories",inventorySubCategory)
 app.use("/api/inventory-item",inventoryItemRoute)
 app.use('/api/supplier',supplierRoute)
 app.use("/api/purchase-orders",purchaseRoutes)
-app.use("/api/stock-grn",grn)
-app.use("/api/stock-ledger",StockLedgerRoute)
+app.use("/api/stock-movement",stockRoutes)
+app.use("/api/purchase-return",PurchaseReturnRoutes)
+app.use("/api/report",reportRoutes)
+app.use("/api/customers-group",customerGroupRoutes)
+app.use("/api/employees",employeeRoutes)
+app.use("/api/sales",salesRoute)
+// app.use("/api/stock-grn",grn)
+// app.use("/api/stock-ledger",StockLedgerRoute)
+app.use("/api/customers",customerRoutes)
 app.use("/api/Inventory-stock",InventoryStockRoutes)
-app.use("/api/stock-transfer",stockTransferRoute)
-app.use("/api/stock-adjustment",stockAdjustmentRoutes)
-app.use("api/sales",salesRoute)
+// app.use("/api/stock-transfer",stockTransferRoute)
+// app.use("/api/stock-adjustment",stockAdjustmentRoutes)
 
 
 
+app.use((req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = { _id: decoded.id };
+    } catch (e) {
+      req.user = null;
+    }
+  }
+  next();
+});
 
 
 

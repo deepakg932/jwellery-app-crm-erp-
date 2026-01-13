@@ -1,20 +1,23 @@
 import mongoose from "mongoose";
+
 const InventoryCategorySchema = new mongoose.Schema(
   {
-    name: { type: String },
-    
-
-
-
+    name: { 
+      type: String, 
+      required: true 
+    },
+   
     description: {
       type: String,
     },
-    status: { type: Boolean, default: true },
+    status: { 
+      type: Boolean, 
+      default: true 
+    },
+   
   },
   { timestamps: true }
 );
-
-
 
 InventoryCategorySchema.pre("save", async function () {
   if (!this.category_code) {

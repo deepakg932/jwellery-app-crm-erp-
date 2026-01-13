@@ -42,7 +42,11 @@ export const authMiddleware = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id || decoded.sub); 
+    console.log(decoded,decoded)
+    const user = await User.findById(decoded.id).select("_id");
+    console.log("user",user)
+
+    // const user = await User.findById(decoded.id || decoded.sub); 
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid token" });
     }

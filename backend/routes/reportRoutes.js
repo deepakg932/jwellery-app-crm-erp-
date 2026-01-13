@@ -1,9 +1,10 @@
 
 import express from 'express';
-import { getReport } from '../controllers/reportController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { getStockReport } from "../Controller/reportController.js"
+// import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
-router.get('/:type', protect, getReport);
+router.get("/klklk",getStockReport)
+// router.get('/:type', protect, getReport);
 
 export default router;
