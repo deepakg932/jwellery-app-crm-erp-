@@ -110,11 +110,11 @@ const InventoryItemTable = () => {
   };
 
   // Open edit modal
-  const handleOpenEdit = (item) => {
-    setSelectedItem(item);
-    setShowEditModal(true);
-  };
-
+const handleOpenEdit = (purchaseOrder) => {
+  // You can also fetch the full data here if needed
+  setSelectedItem(purchaseOrder);
+  setShowEditModal(true);
+};
   // Open delete modal
   const handleOpenDelete = (item) => {
     setSelectedItem(item);

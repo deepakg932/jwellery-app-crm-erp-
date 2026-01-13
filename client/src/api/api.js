@@ -57,7 +57,7 @@ export const PATHS = {
 
   // inventory sub category
 
-  INVENTORY_SUB_CATEGORIES:"/api/inventory-sub-categories",
+  INVENTORY_SUB_CATEGORIES: "/api/inventory-sub-categories",
 
   // inventory items related
 
@@ -75,10 +75,28 @@ export const PATHS = {
   // Purchase Orders
   PURCHASE_ORDERS: "/api/purchase-orders",
 
-  // Stock IN - GRNS
-  GRNS: "/api/stock-grn",
+  // Stock Movement
+  STOCK_MOVEMENTS: "/api/stock-movement",
 
+  // purchase return
 
+  PURCHASE_RETURN: "/api/purchase-return",
+
+  // Customer group-related
+  CUSTOMER_GROUPS: "/api/customers-group",
+
+  // Customer-related
+  CUSTOMERS: "/api/customers",
+
+  // role related
+  ROLES: "/api/roles",
+
+  // employee
+  EMPLOYEES: "/api/employees",
+
+  //SALE_ITEMS
+
+  SALE_ITEMS: "/api/sale-items",
 };
 
 // Route names for all your endpoints
@@ -215,7 +233,6 @@ export const ROUTES = {
   UPDATE_INVENTORY_SUB_CATEGORIES: "update-inventory-sub-category",
   DELETE_INVENTORY_SUB_CATEGORIES: "delete-inventory-sub-category",
 
-
   // inventory items routes
   // GET_INVENTORY_ITEMS: "get-inventory-items",
   GET_PAGINATION_INVENTORY_ITEMS: "get-pagination-inventory-items",
@@ -249,11 +266,45 @@ export const ROUTES = {
   GET_PURCHASE_ORDER_BY_ID: "get-purchase-order",
 
   // Stock IN - GRNS routes
-  GET_GRNS: "get-stock-grns",
-  CREATE_GRN: "create-stock-grn",
-  UPDATE_GRN: "update-stock-grn",
-  DELETE_GRN: "delete-stock-grn",
-  GET_GRN_BY_ID: "get-grn",
+  GET_STOCK_MOVEMENTS: "get-stock-grns",
+  CREATE_RECEIVE_ITEM: "create-receive-item",
+  UPDATE_RECEIVE_ITEM: "update-receive-item",
+
+  // purchase return
+  GET_PURCHASE_RETURNS: "get-purchase-returns",
+  CREATE_PURCHASE_RETURN: "create-purchase-return",
+  UPDATE_PURCHASE_RETURN: "update-purchase-return",
+  DELETE_PURCHASE_RETURN: "delete-purchase-return",
+
+  // Customer Group routes
+  GET_CUSTOMER_GROUPS: "get-customer-groups",
+  CREATE_CUSTOMER_GROUP: "create-customer-group",
+  UPDATE_CUSTOMER_GROUP: "update-customer-group",
+  DELETE_CUSTOMER_GROUP: "delete-customer-group",
+
+  // Customer routes
+  GET_CUSTOMERS: "get-customers",
+  CREATE_CUSTOMER: "create-customer",
+  UPDATE_CUSTOMER: "update-customer",
+  DELETE_CUSTOMER: "delete-customer",
+
+  // Role routes
+  GET_ROLES: "get-roles",
+  CREATE_ROLE: "create-role",
+  UPDATE_ROLE: "update-role",
+  DELETE_ROLE: "delete-role",
+
+  // Employee routes
+  GET_EMPLOYEES: "get-employees",
+  CREATE_EMPLOYEE: "create-employee",
+  UPDATE_EMPLOYEE: "update-employee",
+  DELETE_EMPLOYEE: "delete-employee",
+
+  // In your ROUTES object,
+  GET_SALE_ITEMS: "get-sale-items",
+  CREATE_SALE_ITEM: "create-sale-item",
+  UPDATE_SALE_ITEM: "update-sale-item",
+  DELETE_SALE_ITEM: "delete-sale-item",
 };
 
 // Dynamic endpoint generator
@@ -469,14 +520,28 @@ export const API_ENDPOINTS = {
 
   // ========== INVENTORY CATEGORY OPERATIONS ==========
 
-   getInventorySubCategories: () =>
-    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.GET_INVENTORY_SUB_CATEGORIES),
+  getInventorySubCategories: () =>
+    endpoint(
+      PATHS.INVENTORY_SUB_CATEGORIES,
+      ROUTES.GET_INVENTORY_SUB_CATEGORIES
+    ),
   createInventorySubCategory: () =>
-    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.CREATE_INVENTORY_SUB_CATEGORIES),
+    endpoint(
+      PATHS.INVENTORY_SUB_CATEGORIES,
+      ROUTES.CREATE_INVENTORY_SUB_CATEGORIES
+    ),
   updateInventorySubCategory: (id) =>
-    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.UPDATE_INVENTORY_SUB_CATEGORIES, id),
+    endpoint(
+      PATHS.INVENTORY_SUB_CATEGORIES,
+      ROUTES.UPDATE_INVENTORY_SUB_CATEGORIES,
+      id
+    ),
   deleteInventorySubCategory: (id) =>
-    endpoint(PATHS.INVENTORY_SUB_CATEGORIES, ROUTES.DELETE_INVENTORY_SUB_CATEGORIES, id),
+    endpoint(
+      PATHS.INVENTORY_SUB_CATEGORIES,
+      ROUTES.DELETE_INVENTORY_SUB_CATEGORIES,
+      id
+    ),
 
   // ========== INVENTORY ITEMS OPERATIONS ==========
 
@@ -523,11 +588,61 @@ export const API_ENDPOINTS = {
     endpoint(PATHS.PURCHASE_ORDERS, ROUTES.DELETE_PURCHASE_ORDER, id),
 
   // ========== STOCK IN - GRN OPERATIONS ==========
-  getGRNs: () => endpoint(PATHS.GRNS, ROUTES.GET_GRNS),
-  getGRNById: (id) => endpoint(PATHS.GRNS, ROUTES.GET_GRN_BY_ID, id),
-  createGRN: () => endpoint(PATHS.GRNS, ROUTES.CREATE_GRN),
-  updateGRN: (id) => endpoint(PATHS.GRNS, ROUTES.UPDATE_GRN, id),
-  deleteGRN: (id) => endpoint(PATHS.GRNS, ROUTES.DELETE_GRN, id),
+  getStockMovements: () =>
+    endpoint(PATHS.STOCK_MOVEMENTS, ROUTES.GET_STOCK_MOVEMENTS),
+  createStockMovement: () =>
+    endpoint(PATHS.STOCK_MOVEMENTS, ROUTES.CREATE_RECEIVE_ITEM),
+  updateStockMovement: (id) =>
+    endpoint(PATHS.STOCK_MOVEMENTS, ROUTES.UPDATE_RECEIVE_ITEM, id),
+  deleteStockMovement: (id) =>
+    endpoint(PATHS.STOCK_MOVEMENTS, ROUTES.DELETE_STOCK_MOVEMENT, id),
+
+  //================== PURCHASE ORDER RETURN ==============
+
+  getPurchaseReturns: () =>
+    endpoint(PATHS.PURCHASE_RETURN, ROUTES.GET_PURCHASE_RETURNS),
+  createPurchaseReturn: () =>
+    endpoint(PATHS.PURCHASE_RETURN, ROUTES.CREATE_PURCHASE_RETURN),
+  updatePurchaseReturn: (id) =>
+    endpoint(PATHS.PURCHASE_RETURN, ROUTES.UPDATE_PURCHASE_RETURN, id),
+  deletePurchaseReturn: (id) =>
+    endpoint(PATHS.PURCHASE_RETURN, ROUTES.DELETE_PURCHASE_RETURN, id),
+
+  // ========== CUSTOMER GROUP OPERATIONS ==========
+  getCustomerGroups: () =>
+    endpoint(PATHS.CUSTOMER_GROUPS, ROUTES.GET_CUSTOMER_GROUPS),
+  createCustomerGroup: () =>
+    endpoint(PATHS.CUSTOMER_GROUPS, ROUTES.CREATE_CUSTOMER_GROUP),
+  updateCustomerGroup: (id) =>
+    endpoint(PATHS.CUSTOMER_GROUPS, ROUTES.UPDATE_CUSTOMER_GROUP, id),
+  deleteCustomerGroup: (id) =>
+    endpoint(PATHS.CUSTOMER_GROUPS, ROUTES.DELETE_CUSTOMER_GROUP, id),
+
+  // ========== CUSTOMER OPERATIONS ==========
+  getCustomers: () => endpoint(PATHS.CUSTOMERS, ROUTES.GET_CUSTOMERS),
+  createCustomer: () => endpoint(PATHS.CUSTOMERS, ROUTES.CREATE_CUSTOMER),
+  updateCustomer: (id) => endpoint(PATHS.CUSTOMERS, ROUTES.UPDATE_CUSTOMER, id),
+  deleteCustomer: (id) => endpoint(PATHS.CUSTOMERS, ROUTES.DELETE_CUSTOMER, id),
+
+  // ========== ROLE OPERATIONS ==========
+  getRoles: () => endpoint(PATHS.ROLES, ROUTES.GET_ROLES),
+  createRole: () => endpoint(PATHS.ROLES, ROUTES.CREATE_ROLE),
+  updateRole: (id) => endpoint(PATHS.ROLES, ROUTES.UPDATE_ROLE, id),
+  deleteRole: (id) => endpoint(PATHS.ROLES, ROUTES.DELETE_ROLE, id),
+
+  // ========== EMPLOYEE OPERATIONS ==========
+  getEmployees: () => endpoint(PATHS.EMPLOYEES, ROUTES.GET_EMPLOYEES),
+  createEmployee: () => endpoint(PATHS.EMPLOYEES, ROUTES.CREATE_EMPLOYEE),
+  updateEmployee: (id) => endpoint(PATHS.EMPLOYEES, ROUTES.UPDATE_EMPLOYEE, id),
+  deleteEmployee: (id) => endpoint(PATHS.EMPLOYEES, ROUTES.DELETE_EMPLOYEE, id),
+
+  // ========== SALE ITEM OPERATIONS ==========
+  getSaleItems: () => endpoint(PATHS.SALE_ITEMS, ROUTES.GET_SALE_ITEMS),
+  createSaleItem: () => endpoint(PATHS.SALE_ITEMS, ROUTES.CREATE_SALE_ITEM),
+  updateSaleItem: (id) =>
+    endpoint(PATHS.SALE_ITEMS, ROUTES.UPDATE_SALE_ITEM, id),
+  deleteSaleItem: (id) =>
+    endpoint(PATHS.SALE_ITEMS, ROUTES.DELETE_SALE_ITEM, id),
 
   // ========== PRODUCT OPERATIONS ==========
   // Get all products

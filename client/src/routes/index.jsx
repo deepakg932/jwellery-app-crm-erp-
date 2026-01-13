@@ -8,7 +8,6 @@ import PurityPage from '../views/product-section/purity/components/PurityTable';
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AddItemModal from '../views/item-master/components/AddItemForm';
 import ViewItemModal from '../views/item-master/components/ViewItemModal';
-import StockINTable from '../views/inventory-master/stock-in/components/StockINTable';
 
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
@@ -55,8 +54,9 @@ const BranchTypePage = lazy(() => import('@/views/inventory-master/branch-master
 const BranchPage = lazy(() => import('@/views/inventory-master/branch-master/branch'));
 const SuppliersPage = lazy(() => import('@/views/inventory-master/suppliers'));
 const PurchaseOrdersPage = lazy(() => import('@/views/inventory-master/purchase-order'));
-const StockINPage = lazy(() => import('@/views/inventory-master/stock-in'));
 const InventoryMovementsPage = lazy(() => import('@/views/inventory-master/inventory-movements'));
+const PurchaseReturnPage  = lazy(() => import('@/views/inventory-master/purchase-order/purchase-return'));
+
 const InvoiceList = lazy(() => import('@/views/apps/invoice/invoices'));
 const InvoiceDetails = lazy(() => import('@/views/apps/invoice/invoices/[invoiceId]'));
 const AddInvoice = lazy(() => import('@/views/apps/invoice/add-invoice'));
@@ -79,13 +79,19 @@ const Proposals = lazy(() => import('@/views/apps/crm/proposals'));
 
 //users
 const Profile = lazy(() => import('@/views/apps/users/profile'));
+const CustomerGroupPage = lazy(() => import('@/views/user/customer-group'));
+const Customer = lazy(() => import('@/views/user/customer'));
+const RolePage = lazy(() => import('@/views/user/role'));
+const EmployeesPage = lazy(() => import('@/views/user/employee'));
+
+
+
 const UserContacts = lazy(() => import('@/views/apps/users/contacts'));
 const Permissions = lazy(() => import('@/views/apps/users/permissions'));
-const Roles = lazy(() => import('@/views/apps/users/roles'));
 const RolesDetail = lazy(() => import('@/views/apps/users/roles-details'));
 
-// Pages
-const Faq = lazy(() => import('@/views/pages/faq'));
+// sale
+const SaleItemPage = lazy(() => import('@/views/sales-master/sales-items'));
 const Pricing = lazy(() => import('@/views/pages/pricing'));
 const EmptyPage = lazy(() => import('@/views/pages/empty-page'));
 const Timeline = lazy(() => import('@/views/pages/timeline'));
@@ -423,10 +429,9 @@ const itemsRoutes = [
 }, {
   path: '/users/contacts',
   element: <UserContacts />
-}, {
-  path: '/users/roles',
-  element: <Roles />
-}, {
+},
+
+ {
   path: '/users/permissions',
   element: <Permissions />
 }, {
@@ -510,31 +515,33 @@ const inventoryRoutes = [
 }, {
   path: '/inventory/suppliers',
   element: <SuppliersPage />
-}, {
+},
+ {
   path: '/inventory/purchase-orders',
   element: <PurchaseOrdersPage/>
 },
  {
-  path: '/inventory/movements',
-  element: <InventoryMovementsPage />
+  path: '/inventory/purchase-return',
+  element: <PurchaseReturnPage/>
 },
+
 {
-  path: '/inventory/stock-in',
-  element: <StockINPage />
+  path: '/inventory/purchase-received',
+  element: <InventoryMovementsPage />
 }
 ];
-const miscellaneousRoutes = [{
-  path: '/miscellaneous/nestable-list',
-  element: <NestableList />
+const userRoutes = [{
+  path: '/users/customer-group',
+  element: <CustomerGroupPage />
 }, {
-  path: '/miscellaneous/pdf-viewer',
-  element: <PdfViewer />
+  path: '/users/customer',
+  element: <Customer />
 }, {
-  path: '/miscellaneous/sweet-alert',
-  element: <SweetAlert />
+  path: '/users/roles',
+  element: <RolePage />
 }, {
-  path: '/miscellaneous/password-meter',
-  element: <PasswordMeter />
+  path: '/users/employee',
+  element: <EmployeesPage/>
 }, {
   path: '/miscellaneous/clipboard',
   element: <Clipboard />
@@ -545,9 +552,9 @@ const miscellaneousRoutes = [{
   path: '/miscellaneous/tour',
   element: <Tour />
 }];
-const layoutRoutes = [{
-  path: '/layouts/scrollable',
-  element: <ScrollableLayout />
+const saleRoutes = [{
+  path: '/sale/sale-item',
+  element: <SaleItemPage />
 }, {
   path: '/layouts/compact',
   element: <CompactLayout />
@@ -865,7 +872,7 @@ const allRoutes = [{
   children: [{
     path: '/',
     element: <Navigate to="/dashboard" replace />
-  }, ...dashboardRoutes, ...pruducSectionRoutes, ...itemsRoutes, ...inventoryRoutes, ...miscellaneousRoutes, ...layoutRoutes, ...uiRoutes, ...componentRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
+  }, ...dashboardRoutes, ...pruducSectionRoutes, ...itemsRoutes, ...inventoryRoutes, ...userRoutes, ...saleRoutes, ...uiRoutes, ...componentRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
 }];
 const otherRoutes = [...authRoutes, ...errorRoutes, ...landingRoute, ...otherPagesRoutes];
 export const routes = [...allRoutes, ...otherRoutes];

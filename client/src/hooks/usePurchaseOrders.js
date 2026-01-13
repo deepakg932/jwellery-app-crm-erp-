@@ -15,16 +15,15 @@ export default function usePurchaseOrders() {
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
 
-
-    // Add fetchBranches function
+  // Add fetchBranches function
   const fetchBranches = async () => {
     try {
       setLoadingBranches(true);
       const res = await axios.get(API_ENDPOINTS.getBranches());
       let branchesData = [];
-      
+
       console.log("Branches API Response:", res.data);
-      
+
       // Handle branch response structure
       if (res.data?.success && Array.isArray(res.data.data)) {
         branchesData = res.data.data;
@@ -35,7 +34,7 @@ export default function usePurchaseOrders() {
       } else if (res.data?.data && Array.isArray(res.data.data)) {
         branchesData = res.data.data;
       }
-      
+
       console.log("Processed branches:", branchesData);
       setBranches(branchesData);
       return branchesData;
@@ -47,7 +46,6 @@ export default function usePurchaseOrders() {
       setLoadingBranches(false);
     }
   };
-
 
   // Fetch suppliers (for dropdown)
   const fetchSuppliers = async () => {
@@ -316,32 +314,35 @@ export default function usePurchaseOrders() {
     }
   };
 
-  // Delete a purchase order
-  const deletePurchaseOrder = async (id) => {
-    try {
-      setLoading(true);
-      setError("");
+// In usePurchaseOrders hook - update deletePurchaseOrder function:
+const deletePurchaseOrder = async (id) => {
+  try {
+    setLoading(true);
+    setError("");
 
-      const url = API_ENDPOINTS.deletePurchaseOrder(id);
-      console.log("Deleting purchase order at:", url);
+    const url = API_ENDPOINTS.deletePurchaseOrder(id);
+    console.log("Deleting purchase order at:", url);
 
-      const res = await axios.delete(url);
-      console.log("Delete response:", res.data);
+    const res = await axios.delete(url);
+    console.log("Delete response:", res.data);
 
-      if (res.data?.success) {
-        setPurchaseOrders((prev) => prev.filter((item) => item._id !== id));
-      } else {
-        throw new Error(res.data?.message || "Failed to delete purchase order");
-      }
-    } catch (err) {
-      console.error("Delete purchase order error:", err);
-      setError("Failed to delete purchase order");
-      throw err;
-    } finally {
-      setLoading(false);
+    if (res.data?.success) {
+      // Remove the item from state immediately
+      setPurchaseOrders((prev) => prev.filter((item) => item._id !== id));
+      // Remove the setTimeout call
+    } else {
+      throw new Error(res.data?.message || "Failed to delete purchase order");
     }
-  };
-
+    
+    return res.data; // Return the response
+  } catch (err) {
+    console.error("Delete purchase order error:", err);
+    setError("Failed to delete purchase order");
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
   // Initialize data on mount
   useEffect(() => {
     const initializeData = async () => {
@@ -349,7 +350,7 @@ export default function usePurchaseOrders() {
         fetchSuppliers(),
         fetchInventoryItems(),
         fetchUnits(),
-        fetchBranches() // Add branches fetch
+        fetchBranches(), // Add branches fetch
       ]);
     };
 
@@ -384,7 +385,7 @@ export default function usePurchaseOrders() {
     fetchSuppliers,
     fetchInventoryItems,
     fetchUnits,
-     fetchBranches,
+    fetchBranches,
     addPurchaseOrder,
     updatePurchaseOrder,
     deletePurchaseOrder,

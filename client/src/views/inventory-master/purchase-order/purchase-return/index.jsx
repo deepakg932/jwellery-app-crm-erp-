@@ -1,10 +1,11 @@
 import React from 'react'
-import PurchaseReceivedTable from './componets/PurchaseReceivedTable'
+import PurchaseReturnTable from './components/PurchaseReturnTable'
 
 const index = () => {
   return (
     <div>
-        <PurchaseReceivedTable/>
+              <PurchaseReturnTable />
+
     </div>
   )
 }

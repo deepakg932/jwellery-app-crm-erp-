@@ -25,24 +25,17 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
         unit_id: "",
         rate: "",
         total: 0,
-        expected_date: "",
         item_code: "",
         item_name: "",
-        purchase_price: 0,
-        profit_margin: 0,
         discount: 0,
         tax: 0,
-        selling_price: 0,
-        discount_amount: 0,
-        tax_amount: 0,
-        final_price: 0,
       },
     ],
     notes: "",
     total_amount: 0,
     vat: 0,
     discount: 0,
-    shipping_cost: 0, // Add shipping cost
+    shipping_cost: 0,
     subtotal: 0,
     grand_total: 0,
     payment_status: "pending",
@@ -222,87 +215,70 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     setShowSearchResults(true);
   };
 
-  // Handle item selection from search results
-  const handleItemSelect = (item) => {
-    // Find the first empty item slot or add a new one
-    let itemIndex = formData.items.findIndex((item) => !item.inventory_item_id);
+// Handle item selection from search results
+const handleItemSelect = (item) => {
+  // Find the first empty item slot or add a new one
+  let itemIndex = formData.items.findIndex((item) => !item.inventory_item_id);
 
-    if (itemIndex === -1) {
-      // Add new item row
-      itemIndex = formData.items.length;
-      setFormData((prev) => ({
-        ...prev,
-        items: [
-          ...prev.items,
-          {
-            inventory_item_id: "",
-            quantity: "",
-            weight: "",
-            unit_id: "",
-            rate: "",
-            total: 0,
-            expected_date: "",
-            item_code: "",
-            item_name: "",
-            purchase_price: 0,
-            profit_margin: 0,
-            discount: 0,
-            tax: 0,
-            selling_price: 0,
-            discount_amount: 0,
-            tax_amount: 0,
-            final_price: 0,
-          },
-        ],
-      }));
-    }
-
-    // Safely extract values with null checks
-    const inventoryData = {
-      purchase_price: parseFloat(item.purchase_price) || 0,
-      profit_margin: parseFloat(item.profit_margin) || 0,
-      discount: parseFloat(item.discount) || 0,
-      tax: parseFloat(item.tax) || 0,
-      selling_price: parseFloat(item.selling_price) || 0,
-      discount_amount: parseFloat(item.discount_amount) || 0,
-      tax_amount: parseFloat(item.tax_amount) || 0,
-      final_price: parseFloat(item.final_price) || 0,
-    };
-
-    // Update the item with data from the selected inventory item
-    const updatedItems = [...formData.items];
-    updatedItems[itemIndex] = {
-      ...updatedItems[itemIndex],
-      inventory_item_id: item._id,
-      item_code: item.item_code || "",
-      item_name: item.name || "",
-      purchase_price: inventoryData.purchase_price,
-      profit_margin: inventoryData.profit_margin,
-      discount: inventoryData.discount,
-      tax: inventoryData.tax,
-      selling_price: inventoryData.selling_price,
-      discount_amount: inventoryData.discount_amount,
-      tax_amount: inventoryData.tax_amount,
-      final_price: inventoryData.final_price,
-      rate: inventoryData.purchase_price,
-      quantity: "",
-      weight: "",
-      unit_id: "",
-      total: 0, // Set total to 0 initially
-    };
-
+  if (itemIndex === -1) {
+    // Add new item row
+    itemIndex = formData.items.length;
     setFormData((prev) => ({
       ...prev,
-      items: updatedItems,
+      items: [
+        ...prev.items,
+        {
+          inventory_item_id: "",
+          quantity: "",
+          weight: "",
+          unit_id: "",
+          rate: "",
+          total: 0,
+          item_code: "",
+          item_name: "",
+          discount: 0,
+          tax: 0,
+        },
+      ],
     }));
+  }
 
-    setSearchQuery("");
-    setShowSearchResults(false);
-    setSearchResults([]);
-
-    // Recalculate totals
-    calculateTotals();
+  // Safely extract values with null checks
+  const inventoryData = {
+    discount_amount: parseFloat(item.discount_amount) || 0,
+    tax_amount: parseFloat(item.tax_amount) || 0,
+    final_price: parseFloat(item.final_price) || 0,
   };
+
+  // Update the item with data from the selected inventory item
+  const updatedItems = [...formData.items]; // MOVE THIS LINE HERE - it was missing
+  
+  updatedItems[itemIndex] = {
+    ...updatedItems[itemIndex],
+    inventory_item_id: item._id,
+    item_code: item.item_code || "",
+    item_name: item.name || "",
+    discount_amount: inventoryData.discount_amount,
+    tax_amount: inventoryData.tax_amount,
+    rate: inventoryData.final_price,
+    quantity: "",
+    weight: "",
+    unit_id: "",
+    total: 0,
+  };
+
+  setFormData((prev) => ({
+    ...prev,
+    items: updatedItems,
+  }));
+
+  setSearchQuery("");
+  setShowSearchResults(false);
+  setSearchResults([]);
+
+  // Recalculate totals
+  calculateTotals();
+};
 
   const handleUnitChange = (index, unitId) => {
     const updatedItems = [...formData.items];
@@ -471,34 +447,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     }
   };
 
-  // Add new item row manually
-  // const addItem = () => {
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     items: [
-  //       ...prev.items,
-  //       {
-  //         inventory_item_id: "",
-  //         quantity: "",
-  //         weight: "",
-  //         unit_id: "",
-  //         rate: "",
-  //         total: 0,
-  //         expected_date: "",
-  //         item_code: "",
-  //         item_name: "",
-  //         purchase_price: 0,
-  //         profit_margin: 0,
-  //         discount: 0,
-  //         tax: 0,
-  //         selling_price: 0,
-  //         discount_amount: 0,
-  //         tax_amount: 0,
-  //         final_price: 0,
-  //       },
-  //     ],
-  //   }));
-  // };
+
 
   // Remove item row
   const removeItem = (index) => {
@@ -523,17 +472,10 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
       unit_id: "",
       rate: "",
       total: 0,
-      expected_date: "",
       item_code: "",
       item_name: "",
-      purchase_price: 0,
-      profit_margin: 0,
       discount: 0,
       tax: 0,
-      selling_price: 0,
-      discount_amount: 0,
-      tax_amount: 0,
-      final_price: 0,
     };
 
     setFormData((prev) => ({
@@ -546,7 +488,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
 
   useEffect(() => {
     calculateTotals();
-  }, [formData.vat, formData.discount, formData.shipping_cost, formData.items, formData.exchange_rate]);
+  }, [
+    formData.vat,
+    formData.discount,
+    formData.shipping_cost,
+    formData.items,
+    formData.exchange_rate,
+  ]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -578,17 +526,10 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
           unit_id: item.unit_id,
           rate: parseFloat(item.rate) || 0,
           total: parseFloat(item.total) || 0,
-          expected_date: item.expected_date || null,
           item_code: item.item_code,
           item_name: item.item_name,
-          purchase_price: parseFloat(item.purchase_price) || 0,
-          profit_margin: parseFloat(item.profit_margin) || 0,
-          discount: parseFloat(item.discount) || 0,
-          tax: parseFloat(item.tax) || 0,
-          selling_price: parseFloat(item.selling_price) || 0,
-          discount_amount: parseFloat(item.discount_amount) || 0,
-          tax_amount: parseFloat(item.tax_amount) || 0,
-          final_price: parseFloat(item.final_price) || 0,
+          discount: parseFloat(item.discount_amount) || 0,
+          tax: parseFloat(item.tax_amount) || 0,
         })),
       notes: formData.notes,
       total_amount: parseFloat(formData.total_amount) || 0,
@@ -619,17 +560,10 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
           unit_id: "",
           rate: "",
           total: 0,
-          expected_date: "",
           item_code: "",
           item_name: "",
-          purchase_price: 0,
-          profit_margin: 0,
           discount: 0,
           tax: 0,
-          selling_price: 0,
-          discount_amount: 0,
-          tax_amount: 0,
-          final_price: 0,
         },
       ],
       notes: "",
@@ -662,17 +596,10 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
           unit_id: "",
           rate: "",
           total: 0,
-          expected_date: "",
           item_code: "",
           item_name: "",
-          purchase_price: 0,
-          profit_margin: 0,
           discount: 0,
           tax: 0,
-          selling_price: 0,
-          discount_amount: 0,
-          tax_amount: 0,
-          final_price: 0,
         },
       ],
       notes: "",
@@ -917,9 +844,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                       placeholder="0.00"
                     />
                   </div>
-                  <small className="text-muted">Additional shipping charges</small>
+                  <small className="text-muted">
+                    Additional shipping charges
+                  </small>
                   {errors.shipping_cost && (
-                    <div className="invalid-feedback">{errors.shipping_cost}</div>
+                    <div className="invalid-feedback">
+                      {errors.shipping_cost}
+                    </div>
                   )}
                 </div>
               </div>
@@ -942,7 +873,9 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                     />
                     <span className="input-group-text">%</span>
                   </div>
-                  <small className="text-muted">Value Added Tax percentage</small>
+                  <small className="text-muted">
+                    Value Added Tax percentage
+                  </small>
                 </div>
 
                 <div className="col-md-4 mb-3">
@@ -987,15 +920,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
               <div className="border rounded-3 p-3 mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h6 className="fw-bold mb-0">Order Table</h6>
-                  {/* <button
-                    type="button"
-                    className="btn btn-sm btn-primary d-flex align-items-center gap-1"
-                    onClick={addItem}
-                    disabled={isDisabled}
-                  >
-                    <FiPlus size={16} />
-                    Add Item
-                  </button> */}
+                 
                 </div>
 
                 {/* Search Bar Section */}
@@ -1047,14 +972,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                               Code: {item.item_code} | Category:{" "}
                               {item.category?.name || "N/A"}
                             </div>
-                            <div className="mt-1">
-                              <span className="text-primary fw-medium">
-                                Purchase Price: {getCurrencySymbol()}
-                                {parseFloat(item.purchase_price || 0).toFixed(
-                                  2
-                                )}
-                              </span>
-                            </div>
+                           
                           </div>
                         ))}
                       </div>
@@ -1081,9 +999,8 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                         <th style={{ minWidth: "250px" }}>Product</th>
                         <th style={{ minWidth: "100px" }}>Qty/Weight</th>
                         <th style={{ minWidth: "120px" }}>Unit</th>
-                        <th style={{ minWidth: "120px" }}>Net Unit Cost</th>
-                        <th style={{ minWidth: "100px" }}>Profit Margin</th>
-                        <th style={{ minWidth: "120px" }}>Product Price</th>
+                        <th style={{ minWidth: "120px" }}>Rate</th>
+                   
                         <th style={{ minWidth: "100px" }}>Discount</th>
                         <th style={{ minWidth: "100px" }}>Tax</th>
                         <th style={{ minWidth: "120px" }}>Subtotal</th>
@@ -1193,7 +1110,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                                       ? "is-invalid"
                                       : ""
                                   }`}
-                                  placeholder="Cost"
+                                  placeholder="rate"
                                   value={item.rate}
                                   onChange={(e) =>
                                     handleItemChange(
@@ -1212,26 +1129,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                                   </div>
                                 )}
                               </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control bg-light"
-                                  value={`${parseFloat(
-                                    item.profit_margin || 0
-                                  ).toFixed(2)}%`}
-                                  readOnly
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control bg-light"
-                                  value={`${getCurrencySymbol()}${parseFloat(
-                                    item.selling_price || 0
-                                  ).toFixed(2)}`}
-                                  readOnly
-                                />
-                              </td>
+
                               <td>
                                 <input
                                   type="text"
@@ -1392,7 +1290,9 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                             <span className="text-muted">Shipping Cost:</span>
                             <span className="float-end fw-medium">
                               {getCurrencySymbol()}
-                              {parseFloat(formData.shipping_cost || 0).toFixed(2)}
+                              {parseFloat(formData.shipping_cost || 0).toFixed(
+                                2
+                              )}
                             </span>
                           </div>
                         </div>

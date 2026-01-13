@@ -11,26 +11,26 @@ import {
   FiEye,
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
-import AddPurchaseOrderForm from "./AddPurchaseOrderForm";
-import EditPurchaseOrderForm from "./EditPurchaseOrderForm";
-import ViewPurchaseOrderModal from "./ViewPurchaseOrderModal"; // Add this import
-import usePurchaseOrders from "@/hooks/usePurchaseOrders";
+import AddSaleForm from "./AddSaleForm";
+import EditSaleForm from "./EditSaleForm";
+import ViewSaleModal from "./ViewSaleModal";
+import useSales from "@/hooks/useSales";
 
-const PurchaseOrderTable = () => {
+const SalesTable = () => {
   const {
-    purchaseOrders,
+    sales,
     loading,
     error,
-    addPurchaseOrder,
-    updatePurchaseOrder,
-    deletePurchaseOrder,
-    fetchPurchaseOrders,
-  } = usePurchaseOrders();
+    addSale,
+    updateSale,
+    deleteSale,
+    fetchSales,
+  } = useSales();
 
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false); // Add this state
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState([]);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
@@ -39,20 +39,18 @@ const PurchaseOrderTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Filter purchase orders based on search
-  const filteredPurchaseOrders = purchaseOrders.filter(
-    (po) =>
-      po.order_number?.toLowerCase().includes(search.toLowerCase()) ||
-      po.supplier?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      po.status?.toLowerCase().includes(search.toLowerCase()) ||
-      po.items?.some(
+  // Filter sales based on search
+  const filteredSales = sales.filter(
+    (sale) =>
+      sale.sale_number?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.reference_no?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.customer_id?.name?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.customer_id?.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.status?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.items?.some(
         (item) =>
-          item.inventory_item_id?.name
-            ?.toLowerCase()
-            .includes(search.toLowerCase()) ||
-          item.inventory_item?.name
-            ?.toLowerCase()
-            .includes(search.toLowerCase())
+          item.product?.name?.toLowerCase().includes(search.toLowerCase()) ||
+          item.item_name?.toLowerCase().includes(search.toLowerCase())
       )
   );
 
@@ -62,34 +60,38 @@ const PurchaseOrderTable = () => {
   }, [search]);
 
   // Calculate pagination
-  const totalItems = filteredPurchaseOrders.length;
+  const totalItems = filteredSales.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Get current items for the page
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentPurchaseOrders = filteredPurchaseOrders.slice(
+  const currentSales = filteredSales.slice(
     indexOfFirstItem,
     indexOfLastItem
   );
 
-  // Calculate totals for each purchase order
+  // Calculate totals for each sale
   const calculateTotal = (items) => {
     if (!items) return 0;
     return items.reduce((total, item) => {
       const quantity = parseFloat(item.quantity) || 0;
-      const weight = parseFloat(item.weight) || 0;
       const rate = parseFloat(item.rate) || 0;
-      const amount = quantity > 0 ? quantity : weight;
-      return total + amount * rate;
+      const discount = parseFloat(item.discount) || 0;
+      const tax = parseFloat(item.tax) || 0;
+      
+      const subtotal = quantity * rate;
+      const itemTotal = subtotal - discount + tax;
+      
+      return total + itemTotal;
     }, 0);
   };
 
-  // Add new purchase order
-  const handleAddPurchaseOrder = async (purchaseOrderData) => {
+  // Add new sale
+  const handleAddSale = async (saleData) => {
     setActionLoading({ type: "add", id: null });
     try {
-      await addPurchaseOrder(purchaseOrderData);
+      await addSale(saleData);
       setShowAddModal(false);
     } catch (error) {
       console.error("Add failed:", error);
@@ -97,13 +99,14 @@ const PurchaseOrderTable = () => {
       setActionLoading({ type: null, id: null });
     }
   };
-  // Edit purchase order
-  const handleEditPurchaseOrder = async (updatedPurchaseOrder) => {
+
+  // Edit sale
+  const handleEditSale = async (updatedSale) => {
     if (!selectedItem) return;
 
     setActionLoading({ type: "update", id: selectedItem?._id });
     try {
-      await updatePurchaseOrder(selectedItem._id, updatedPurchaseOrder);
+      await updateSale(selectedItem._id, updatedSale);
       setShowEditModal(false);
       setSelectedItem(null);
     } catch (error) {
@@ -113,57 +116,43 @@ const PurchaseOrderTable = () => {
     }
   };
 
-  // Delete purchase order
-  const handleDeletePurchaseOrder = async () => {
+  // Delete sale
+  const handleDeleteSale = async () => {
     if (!selectedItem) return;
-
-    console.log("1. Starting delete, selectedItem:", selectedItem._id);
-    console.log("2. showDeleteModal before:", showDeleteModal);
 
     setActionLoading({ type: "delete", id: selectedItem._id });
     try {
-      console.log("3. Calling deletePurchaseOrder");
-      await deletePurchaseOrder(selectedItem._id);
-      console.log("4. Delete successful");
-
-      console.log("5. Setting showDeleteModal to false");
+      await deleteSale(selectedItem._id);
       setShowDeleteModal(false);
-
-      console.log("6. Setting selectedItem to null");
       setSelectedItem(null);
     } catch (error) {
-      console.error("7. Delete failed:", error);
+      console.error("Delete failed:", error);
     } finally {
-      console.log("8. Finally block - clearing loading state");
       setActionLoading({ type: null, id: null });
-      console.log("9. showDeleteModal after:", showDeleteModal);
     }
   };
+
   // Open view modal
-  const handleOpenView = (purchaseOrder) => {
-    setSelectedItem(purchaseOrder);
+  const handleOpenView = (sale) => {
+    setSelectedItem(sale);
     setShowViewModal(true);
   };
 
   // Open edit modal
-  const handleOpenEdit = (purchaseOrder) => {
-    setSelectedItem(purchaseOrder);
-    console.log(
-      setSelectedItem(purchaseOrder),
-      "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
-    );
+  const handleOpenEdit = (sale) => {
+    setSelectedItem(sale);
     setShowEditModal(true);
   };
 
   // Open delete modal
-  const handleOpenDelete = (purchaseOrder) => {
-    setSelectedItem(purchaseOrder);
+  const handleOpenDelete = (sale) => {
+    setSelectedItem(sale);
     setShowDeleteModal(true);
   };
 
   // Handle refresh
   const handleRefresh = () => {
-    fetchPurchaseOrders();
+    fetchSales();
   };
 
   // Pagination handlers
@@ -225,14 +214,9 @@ const PurchaseOrderTable = () => {
       (sum, item) => sum + (parseFloat(item.quantity) || 0),
       0
     );
-    const weightSum = items.reduce(
-      (sum, item) => sum + (parseFloat(item.weight) || 0),
-      0
-    );
 
     let details = `${itemCount} item${itemCount > 1 ? "s" : ""}`;
     if (quantitySum > 0) details += `, ${quantitySum} qty`;
-    if (weightSum > 0) details += `, ${weightSum} wt`;
 
     return details;
   };
@@ -243,8 +227,9 @@ const PurchaseOrderTable = () => {
 
     const names = items.map((item) => {
       return (
-        item.inventory_item?.name ||
-        item.inventory_item_id?.name ||
+        item.product?.name ||
+        item.item_name ||
+        item.product_id?.name ||
         "Unknown Item"
       );
     });
@@ -254,6 +239,12 @@ const PurchaseOrderTable = () => {
     } else {
       return `${names[0]}, ${names[1]} +${names.length - 2} more`;
     }
+  };
+
+  // Get customer name
+  const getCustomerName = (customer) => {
+    if (!customer) return "N/A";
+    return customer.name || customer.customer_name || "Unknown Customer";
   };
 
   // Delete Confirmation Modal
@@ -269,9 +260,7 @@ const PurchaseOrderTable = () => {
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content rounded-3">
             <div className="modal-header border-bottom pb-3">
-              <h5 className="modal-title fw-bold fs-5">
-                Delete Purchase Order
-              </h5>
+              <h5 className="modal-title fw-bold fs-5">Delete Sale</h5>
               <button
                 type="button"
                 className="btn-close"
@@ -286,8 +275,8 @@ const PurchaseOrderTable = () => {
 
             <div className="modal-body">
               <p>
-                Are you sure you want to delete Purchase Order{" "}
-                <strong>{selectedItem?.order_number}</strong>?
+                Are you sure you want to delete Sale{" "}
+                <strong>{selectedItem?.sale_number}</strong>?
               </p>
               <p className="text-muted small">This action cannot be undone.</p>
             </div>
@@ -307,7 +296,7 @@ const PurchaseOrderTable = () => {
               <button
                 type="button"
                 className="btn btn-danger"
-                onClick={handleDeletePurchaseOrder}
+                onClick={handleDeleteSale}
                 disabled={actionLoading.type === "delete"}
               >
                 {actionLoading.type === "delete" ? (
@@ -342,14 +331,15 @@ const PurchaseOrderTable = () => {
           <button type="button" className="btn-close" onClick={() => {}} />
         </div>
       )}
+
       {/* HEADER */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
           <div className="row align-items-center mb-4">
             <div className="col-md-6">
-              <h1 className="h3 fw-bold mb-2">Purchase Orders</h1>
+              <h1 className="h3 fw-bold mb-2">Sales</h1>
               <p className="text-muted mb-0">
-                Manage your purchase orders in a table layout
+                Manage your sales in a table layout
               </p>
             </div>
 
@@ -367,7 +357,7 @@ const PurchaseOrderTable = () => {
                 disabled={loading || actionLoading.type === "add"}
               >
                 <FiPlus size={18} />
-                New Purchase Order
+                New Sale
               </button>
             </div>
           </div>
@@ -382,7 +372,7 @@ const PurchaseOrderTable = () => {
                 <input
                   type="text"
                   className="form-control border-start-0"
-                  placeholder="Search by PO number, supplier, status, or item..."
+                  placeholder="Search by Sale number, reference, customer, or item..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   disabled={loading}
@@ -414,6 +404,7 @@ const PurchaseOrderTable = () => {
           </div>
         </div>
       </div>
+
       {/* TABLE */}
       <div className="card border-0 shadow-sm">
         <div className="card-body table-responsive">
@@ -421,21 +412,22 @@ const PurchaseOrderTable = () => {
             <thead>
               <tr>
                 <th>#</th>
-                <th>PO Number</th>
-                <th>Supplier</th>
-                <th>Branch</th>
-                <th>Order Date</th>
+                <th>Sale Number</th>
+                <th>Customer</th>
+                <th>Sale Date</th>
+                <th>Reference No</th>
                 <th>Items</th>
                 <th>Total Amount</th>
                 <th>Status</th>
+                <th>Payment Status</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
 
             <tbody>
-              {loading && purchaseOrders.length === 0 ? (
+              {loading && sales.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-4">
+                  <td colSpan="10" className="text-center py-4">
                     <div className="d-flex justify-content-center">
                       <div
                         className="spinner-border text-primary"
@@ -446,61 +438,57 @@ const PurchaseOrderTable = () => {
                     </div>
                   </td>
                 </tr>
-              ) : filteredPurchaseOrders.length === 0 ? (
+              ) : filteredSales.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-4 text-muted">
+                  <td colSpan="10" className="text-center py-4 text-muted">
                     {search
-                      ? "No purchase orders found for your search"
-                      : "No purchase orders available"}
+                      ? "No sales found for your search"
+                      : "No sales available"}
                   </td>
                 </tr>
               ) : (
-                currentPurchaseOrders.map((po, index) => {
-                  const total = po.total_amount || calculateTotal(po.items);
+                currentSales.map((sale, index) => {
+                  const total = sale.grand_total || calculateTotal(sale.items);
                   return (
-                    <tr key={po._id || index}>
+                    <tr key={sale._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
 
                       <td className="fw-semibold">
-                        {po.order_number || "PO-N/A"}
+                        {sale.sale_number || "SALE-N/A"}
                       </td>
 
                       <td>
                         <div className="fw-medium">
-                          {po.supplier?.supplier_name ||
-                            po.supplier?.name ||
-                            "N/A"}
+                          {getCustomerName(sale.customer_id)}
                         </div>
                         <div className="text-muted small">
-                          {po.supplier?.phone || ""}
-                          {po.supplier?.supplier_code
-                            ? ` (${po.supplier.supplier_code})`
+                          {sale.customer_id?.phone || ""}
+                          {sale.customer_id?.customer_code
+                            ? ` (${sale.customer_id.customer_code})`
                             : ""}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="fw-medium">
-                          {po.branch?.branch_name || po.branch?.name || "N/A"}
-                        </div>
-                        <div className="text-muted small">
-                          {po.branch?.branch_code || po.branch?.code || ""}
                         </div>
                       </td>
 
                       <td>
                         <span className="badge bg-light text-dark">
                           <FiCalendar className="me-1" size={12} />
-                          {formatDate(po.order_date)}
+                          {formatDate(sale.sale_date)}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span className="fw-medium">
+                          {sale.reference_no || "N/A"}
                         </span>
                       </td>
 
                       <td>
                         <div className="small">
                           <div className="fw-medium">
-                            {getItemNames(po.items)}
+                            {getItemNames(sale.items)}
                           </div>
                           <div className="text-muted">
-                            {getItemDetails(po.items)}
+                            {getItemDetails(sale.items)}
                           </div>
                         </div>
                       </td>
@@ -514,35 +502,54 @@ const PurchaseOrderTable = () => {
                       <td>
                         <span
                           className={`badge fw-semibold ${
-                            po.status === "completed"
+                            sale.status === "completed"
                               ? "bg-success"
-                              : po.status === "draft"
+                              : sale.status === "draft"
                               ? "bg-secondary"
-                              : po.status === "pending"
+                              : sale.status === "pending"
                               ? "bg-warning"
-                              : po.status === "cancelled"
+                              : sale.status === "cancelled"
                               ? "bg-danger"
-                              : po.status === "approved"
+                              : sale.status === "approved"
                               ? "bg-primary"
-                              : po.status === "shipped"
+                              : sale.status === "shipped"
                               ? "bg-info"
                               : "bg-secondary"
                           }`}
                         >
-                          {po.status
-                            ? po.status.charAt(0).toUpperCase() +
-                              po.status.slice(1)
+                          {sale.status
+                            ? sale.status.charAt(0).toUpperCase() +
+                              sale.status.slice(1)
                             : "Draft"}
                         </span>
                       </td>
 
-                      {/* ACTION BUTTONS - Updated to include View */}
+                      <td>
+                        <span
+                          className={`badge fw-semibold ${
+                            sale.payment_status === "paid"
+                              ? "bg-success"
+                              : sale.payment_status === "pending"
+                              ? "bg-warning"
+                              : sale.payment_status === "partial"
+                              ? "bg-info"
+                              : "bg-secondary"
+                          }`}
+                        >
+                          {sale.payment_status
+                            ? sale.payment_status.charAt(0).toUpperCase() +
+                              sale.payment_status.slice(1)
+                            : "Pending"}
+                        </span>
+                      </td>
+
+                      {/* ACTION BUTTONS */}
                       <td>
                         <div className="d-flex justify-content-end gap-2">
                           {/* View Button */}
                           <button
                             className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
-                            onClick={() => handleOpenView(po)}
+                            onClick={() => handleOpenView(sale)}
                             title="View Details"
                           >
                             <FiEye size={14} />
@@ -552,14 +559,14 @@ const PurchaseOrderTable = () => {
                           {/* Edit Button */}
                           <button
                             className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                            onClick={() => handleOpenEdit(po)}
+                            onClick={() => handleOpenEdit(sale)}
                             disabled={
-                              actionLoading.type && actionLoading.id === po._id
+                              actionLoading.type && actionLoading.id === sale._id
                             }
                             title="Edit"
                           >
                             {actionLoading.type === "update" &&
-                            actionLoading.id === po._id ? (
+                            actionLoading.id === sale._id ? (
                               <>
                                 <span
                                   className="spinner-border spinner-border-sm me-1"
@@ -579,14 +586,14 @@ const PurchaseOrderTable = () => {
                           {/* Delete Button */}
                           <button
                             className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                            onClick={() => handleOpenDelete(po)}
+                            onClick={() => handleOpenDelete(sale)}
                             disabled={
-                              actionLoading.type && actionLoading.id === po._id
+                              actionLoading.type && actionLoading.id === sale._id
                             }
                             title="Delete"
                           >
                             {actionLoading.type === "delete" &&
-                            actionLoading.id === po._id ? (
+                            actionLoading.id === sale._id ? (
                               <>
                                 <span
                                   className="spinner-border spinner-border-sm me-1"
@@ -612,7 +619,7 @@ const PurchaseOrderTable = () => {
           </table>
 
           {/* PAGINATION */}
-          {filteredPurchaseOrders.length > 0 && (
+          {filteredSales.length > 0 && (
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center border-top pt-3 mt-3">
               <div className="mb-2 mb-md-0">
                 <p className="text-muted mb-0">
@@ -694,129 +701,50 @@ const PurchaseOrderTable = () => {
           )}
         </div>
       </div>
+
       {/* ADD MODAL */}
       {showAddModal && (
-        <AddPurchaseOrderForm
+        <AddSaleForm
           key="add-modal"
           onClose={() => setShowAddModal(false)}
-          onSave={handleAddPurchaseOrder}
+          onSave={handleAddSale}
           loading={actionLoading.type === "add"}
         />
       )}
+
       {/* VIEW MODAL */}
       {showViewModal && selectedItem && (
-        <ViewPurchaseOrderModal
+        <ViewSaleModal
           key={`view-modal-${selectedItem._id}`}
-          purchaseOrder={selectedItem}
+          sale={selectedItem}
           onClose={() => {
             setShowViewModal(false);
             setSelectedItem(null);
           }}
         />
       )}
+
       {/* EDIT MODAL */}
       {showEditModal && selectedItem && (
-        <EditPurchaseOrderForm
+        <EditSaleForm
           key={`edit-modal-${selectedItem._id}`}
           onClose={() => {
             setShowEditModal(false);
             setSelectedItem(null);
           }}
-          onSave={handleEditPurchaseOrder}
-          purchaseOrder={selectedItem}
+          onSave={handleEditSale}
+          sale={selectedItem}
           loading={
             actionLoading.type === "update" &&
             actionLoading.id === selectedItem._id
           }
         />
       )}
+
       {/* DELETE MODAL */}
-      {showDeleteModal && selectedItem && (
-        <div
-          className="modal fade show d-block"
-          style={{
-            backgroundColor: "rgba(0,0,0,0.5)",
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 1050,
-          }}
-          onClick={() => {
-            setShowDeleteModal(false);
-            setSelectedItem(null);
-          }}
-        >
-          <div
-            className="modal-dialog modal-dialog-centered"
-            onClick={(e) => e.stopPropagation()} // Prevent click from bubbling up
-          >
-            <div className="modal-content rounded-3">
-              <div className="modal-header border-bottom pb-3">
-                <h5 className="modal-title fw-bold fs-5">
-                  Delete Purchase Order
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setSelectedItem(null);
-                  }}
-                  disabled={actionLoading.type === "delete"}
-                  aria-label="Close"
-                ></button>
-              </div>
-
-              <div className="modal-body">
-                <p>
-                  Are you sure you want to delete Purchase Order{" "}
-                  <strong>{selectedItem?.order_number}</strong>?
-                </p>
-                <p className="text-muted small">
-                  This action cannot be undone.
-                </p>
-              </div>
-
-              <div className="modal-footer border-top pt-3">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary"
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setSelectedItem(null);
-                  }}
-                  disabled={actionLoading.type === "delete"}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={handleDeletePurchaseOrder}
-                  disabled={actionLoading.type === "delete"}
-                >
-                  {actionLoading.type === "delete" ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Deleting...
-                    </>
-                  ) : (
-                    "Delete"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmationModal />
     </div>
   );
 };
 
-export default PurchaseOrderTable;
+export default SalesTable;

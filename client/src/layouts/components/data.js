@@ -263,7 +263,7 @@ export const menuItems = [
         label: "Inventory Categories",
         url: "/inventory/categories",
       },
-         {
+      {
         key: "inventory-sub-categories",
         label: "Inventory Sub Categories",
         url: "/inventory/sub-categories",
@@ -290,43 +290,21 @@ export const menuItems = [
         url: "/inventory/suppliers",
       },
       {
-        key: "purchase",
-        label: "Purchase",
-        children: [
-          {
-            key: "purchase-orders",
-            label: "Purchase Orders",
-            url: "/inventory/purchase-orders",
-          },
-          {
-            key: "stock-in",
-            label: "GRN (Stock In)",
-            url: "/inventory/stock-in",
-          },
-        ],
+        key: "purchase-orders",
+        label: "Purchase Orders",
+        url: "/inventory/purchase-orders",
       },
- {
-        key: "stock",
-        label: "Stock",
-        children: [
-          {
-            key: "current-stock",
-            label: "Current Stock",
-            url: "/inventory/current-stock",
-          },
-          {
-            key: "stock-transfer",
-            label: "Stock Transfer",
-            url: "/inventory/stock-transfer",
-          },
-             {
-            key: "stock-adjustment",
-            label: "Stock Adjustment",
-            url: "/inventory/stock-adjustment",
-          },
-        ],
+      {
+        key: "purchase-return",
+        label: "Purchase Return",
+        url: "/inventory/purchase-return",
       },
-       {
+      {
+        key: "purchase-received",
+        label: "Purchase Received",
+        url: "/inventory/purchase-received",
+      },
+      {
         key: "sales",
         label: "Sales",
         children: [
@@ -340,7 +318,7 @@ export const menuItems = [
             label: "Repair",
             url: "/inventory/stock-transfer",
           },
-             {
+          {
             key: "old-gold",
             label: "Old Gold",
             url: "/inventory/old-gold",
@@ -352,145 +330,144 @@ export const menuItems = [
         label: "Inventory Movements",
         url: "/inventory/movements",
       },
+    ],
+  },
+  // {
+  //   key: "master-data-model",
+  //   label: "Master Data Model",
+  //   icon: LuDatabase,
+  //   children: [
+  //     {
+  //       key: "users",
+  //       label: "Users",
+  //       url: "/users",
+  //     },
+  //     {
+  //       key: "roles",
+  //       label: "Roles",
+  //       url: "/roles",
+  //     },
+  //     {
+  //       key: "permissions",
+  //       label: "Permissions",
+  //       url: "/permissions",
+  //     },
 
-    ],
-  },
-  {
-    key: "master-data-model",
-    label: "Master Data Model",
-    icon: LuDatabase,
-    children: [
-      {
-        key: "users",
-        label: "Users",
-        url: "/users",
-      },
-      {
-        key: "roles",
-        label: "Roles",
-        url: "/roles",
-      },
-      {
-        key: "permissions",
-        label: "Permissions",
-        url: "/permissions",
-      },
-    
-      {
-        key: "customers",
-        label: "Customers",
-        url: "/customers",
-      },
-      {
-        key: "karigars",
-        label: "Karigars",
-        url: "/karigars",
-      },
-      {
-        key: "tax_profiles",
-        label: "Tax Profiles",
-        url: "/tax_profiles",
-      },
-      {
-        key: "metal_rates",
-        label: "Metal Rates",
-        url: "/metal_rates",
-      },
-      {
-        key: "labour_charge",
-        label: "Labour Charge",
-        url: "/labour_charge",
-      },
-      {
-        key: "files",
-        label: "Files",
-        url: "/files",
-      },
-    ],
-  },
-  {
-    key: "transactional-data-model",
-    label: "Transactional Data Model",
-    icon: LuRepeat2,
-    children: [
-      {
-        key: "stock_transactions",
-        label: "Stock Transactions",
-        url: "/stock_transactions",
-      },
-      {
-        key: "stock_transaction_lines",
-        label: "Stock Transaction Lines",
-        url: "/stock_transaction_lines",
-      },
-      {
-        key: "sales_orders",
-        label: "Sales Orders",
-        url: "/sales_orders",
-      },
-      {
-        key: "sales_order_lines",
-        label: "Sales Order Lines",
-        url: "/sales_order_lines",
-      },
-      {
-        key: "invoices",
-        label: "Invoices",
-        url: "/invoices",
-      },
-      {
-        key: "invoice_payments",
-        label: "Invoice Payments",
-        url: "/invoice_payments",
-      },
-      {
-        key: "purchases",
-        label: "Purchases",
-        url: "/purchases",
-      },
-      {
-        key: "purchase_lines",
-        label: "Purchase Lines",
-        url: "/purchase_lines",
-      },
-      {
-        key: "purchase_inwards",
-        label: "Purchase Inwards",
-        url: "/purchase_inwards",
-      },
-    ],
-  },
-  {
-    key: "accounting-data-model",
-    label: "Accounting Data Model",
-    icon: LuBanknote,
-    badge: {
-      variant: "danger",
-      text: "New",
-    },
-    children: [
-      {
-        key: "accounts",
-        label: "Accounts",
-        url: "/accounts",
-      },
-      {
-        key: "ledger_entries",
-        label: "Ledger Entries",
-        url: "/ledger_entries",
-      },
-      {
-        key: "ledger_lines",
-        label: "Ledger Lines",
-        url: "/ledger_lines",
-      },
-      {
-        key: "email-templates",
-        label: "Email Templates",
-        url: "/email-templates",
-      },
-    ],
-  },
+  //     {
+  //       key: "customers",
+  //       label: "Customers",
+  //       url: "/customers",
+  //     },
+  //     {
+  //       key: "karigars",
+  //       label: "Karigars",
+  //       url: "/karigars",
+  //     },
+  //     {
+  //       key: "tax_profiles",
+  //       label: "Tax Profiles",
+  //       url: "/tax_profiles",
+  //     },
+  //     {
+  //       key: "metal_rates",
+  //       label: "Metal Rates",
+  //       url: "/metal_rates",
+  //     },
+  //     {
+  //       key: "labour_charge",
+  //       label: "Labour Charge",
+  //       url: "/labour_charge",
+  //     },
+  //     {
+  //       key: "files",
+  //       label: "Files",
+  //       url: "/files",
+  //     },
+  //   ],
+  // },
+  // {
+  //   key: "transactional-data-model",
+  //   label: "Transactional Data Model",
+  //   icon: LuRepeat2,
+  //   children: [
+  //     {
+  //       key: "stock_transactions",
+  //       label: "Stock Transactions",
+  //       url: "/stock_transactions",
+  //     },
+  //     {
+  //       key: "stock_transaction_lines",
+  //       label: "Stock Transaction Lines",
+  //       url: "/stock_transaction_lines",
+  //     },
+  //     {
+  //       key: "sales_orders",
+  //       label: "Sales Orders",
+  //       url: "/sales_orders",
+  //     },
+  //     {
+  //       key: "sales_order_lines",
+  //       label: "Sales Order Lines",
+  //       url: "/sales_order_lines",
+  //     },
+  //     {
+  //       key: "invoices",
+  //       label: "Invoices",
+  //       url: "/invoices",
+  //     },
+  //     {
+  //       key: "invoice_payments",
+  //       label: "Invoice Payments",
+  //       url: "/invoice_payments",
+  //     },
+  //     {
+  //       key: "purchases",
+  //       label: "Purchases",
+  //       url: "/purchases",
+  //     },
+  //     {
+  //       key: "purchase_lines",
+  //       label: "Purchase Lines",
+  //       url: "/purchase_lines",
+  //     },
+  //     {
+  //       key: "purchase_inwards",
+  //       label: "Purchase Inwards",
+  //       url: "/purchase_inwards",
+  //     },
+  //   ],
+  // },
+  // {
+  //   key: "accounting-data-model",
+  //   label: "Accounting Data Model",
+  //   icon: LuBanknote,
+  //   badge: {
+  //     variant: "danger",
+  //     text: "New",
+  //   },
+  //   children: [
+  //     {
+  //       key: "accounts",
+  //       label: "Accounts",
+  //       url: "/accounts",
+  //     },
+  //     {
+  //       key: "ledger_entries",
+  //       label: "Ledger Entries",
+  //       url: "/ledger_entries",
+  //     },
+  //     {
+  //       key: "ledger_lines",
+  //       label: "Ledger Lines",
+  //       url: "/ledger_lines",
+  //     },
+  //     {
+  //       key: "email-templates",
+  //       label: "Email Templates",
+  //       url: "/email-templates",
+  //     },
+  //   ],
+  // },
 
   {
     key: "users",
@@ -498,14 +475,14 @@ export const menuItems = [
     icon: TbUsers,
     children: [
       {
-        key: "contacts",
-        label: "Contacts",
-        url: "/users/contacts",
+        key: "customer-group",
+        label: "Customer Groups",
+        url: "/users/customer-group",
       },
       {
-        key: "profile",
-        label: "Profile",
-        url: "/users/profile",
+        key: "customer",
+        label: "Customers",
+        url: "/users/customer",
       },
       {
         key: "roles",
@@ -513,26 +490,22 @@ export const menuItems = [
         url: "/users/roles",
       },
       {
-        key: "roles-details",
-        label: "Roles Details",
-        url: "/users/roles-details",
+        key: "employee",
+        label: "Employees",
+        url: "/users/employee",
       },
-      {
-        key: "permissions",
-        label: "Permissions",
-        url: "/users/permissions",
-      },
+    
     ],
   },
   {
-    key: "invoice",
-    label: "Invoice",
+    key: "sale",
+    label: "Sale",
     icon: LuReceiptText,
     children: [
       {
-        key: "invoice-list",
-        label: "Invoice",
-        url: "/invoices",
+        key: "sale-item",
+        label: "Sale",
+        url: "/sale/sale-item",
       },
       {
         key: "invoice-details",
