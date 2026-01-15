@@ -1,3 +1,6 @@
+import { id } from "date-fns/locale/id";
+import { update } from "lodash";
+
 // constants/api.js
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -305,6 +308,17 @@ export const ROUTES = {
   CREATE_SALE_ITEM: "create-sale-item",
   UPDATE_SALE_ITEM: "update-sale-item",
   DELETE_SALE_ITEM: "delete-sale-item",
+
+  UPDATE_SAlE_PAYMENT: "update-sale-payment",
+  PDF_DOWNLOAD: "invoice-pdf",
+
+  // Sale Return routes
+  GET_SALE_RETURNS: "get-sale-returns",
+  GET_SALE_RETURN_BY_ID: "get-sale-return",
+  SALE_RETURN: "sale-return",
+  UPDATE_SALE_RETURN: "update-sale-return",
+  DELETE_SALE_RETURN: "delete-sale-return",
+  GET_SALE_RETURN_BY_SALE_ID: "get-return-by-sale",
 };
 
 // Dynamic endpoint generator
@@ -643,6 +657,25 @@ export const API_ENDPOINTS = {
     endpoint(PATHS.SALE_ITEMS, ROUTES.UPDATE_SALE_ITEM, id),
   deleteSaleItem: (id) =>
     endpoint(PATHS.SALE_ITEMS, ROUTES.DELETE_SALE_ITEM, id),
+
+  updateSalePayment: (id) =>
+    endpoint(PATHS.SALE_ITEMS, ROUTES.UPDATE_SAlE_PAYMENT, id),
+  pdfDownload: (invoice_id) => endpoint(PATHS.SALE_ITEMS, ROUTES.PDF_DOWNLOAD, invoice_id),
+
+  // ========== SALE RETURN OPERATIONS ==========
+  getSaleReturns: () => endpoint(PATHS.SALE_ITEMS, ROUTES.GET_SALE_RETURNS),
+  getSaleReturnById: (id) =>
+    endpoint(PATHS.SALE_RETURNS, ROUTES.GET_SALE_RETURN_BY_ID, id),
+  createSaleReturn: () => endpoint(PATHS.SALE_ITEMS, ROUTES.SALE_RETURN),
+  updateSaleReturn: (id) =>
+    endpoint(PATHS.SALE_RETURNS, ROUTES.UPDATE_SALE_RETURN, id),
+  deleteSaleReturn: (id) =>
+    endpoint(PATHS.SALE_RETURNS, ROUTES.DELETE_SALE_RETURN, id),
+  getSaleReturnBySaleId: (saleId) =>
+    endpoint(
+      PATHS.SALE_RETURNS,
+      `${ROUTES.GET_SALE_RETURN_BY_SALE_ID}/${saleId}`
+    ),
 
   // ========== PRODUCT OPERATIONS ==========
   // Get all products

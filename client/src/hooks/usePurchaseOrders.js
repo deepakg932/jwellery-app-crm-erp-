@@ -314,35 +314,37 @@ export default function usePurchaseOrders() {
     }
   };
 
-// In usePurchaseOrders hook - update deletePurchaseOrder function:
-const deletePurchaseOrder = async (id) => {
-  try {
-    setLoading(true);
-    setError("");
+  // In usePurchaseOrders hook - update deletePurchaseOrder function:
+  const deletePurchaseOrder = async (id) => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const url = API_ENDPOINTS.deletePurchaseOrder(id);
-    console.log("Deleting purchase order at:", url);
+      const url = API_ENDPOINTS.deletePurchaseOrder(id);
+      console.log("Deleting purchase order at:", url);
 
-    const res = await axios.delete(url);
-    console.log("Delete response:", res.data);
+      const res = await axios.delete(url);
+      console.log("Delete response:", res.data);
 
-    if (res.data?.success) {
-      // Remove the item from state immediately
-      setPurchaseOrders((prev) => prev.filter((item) => item._id !== id));
-      // Remove the setTimeout call
-    } else {
-      throw new Error(res.data?.message || "Failed to delete purchase order");
+      if (res.data?.success || res.data?.status === true) {
+        // Remove the item from state immediately
+        setPurchaseOrders((prev) => prev.filter((item) => item._id !== id));
+        return res.data;
+      } else {
+        throw new Error(res.data?.message || "Failed to delete purchase order");
+      }
+    } catch (err) {
+      console.error("Delete purchase order error:", err);
+      setError(
+        "Failed to delete purchase order: " +
+          (err.response?.data?.message || err.message)
+      );
+      throw err;
+    } finally {
+      setLoading(false);
     }
-    
-    return res.data; // Return the response
-  } catch (err) {
-    console.error("Delete purchase order error:", err);
-    setError("Failed to delete purchase order");
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
   // Initialize data on mount
   useEffect(() => {
     const initializeData = async () => {

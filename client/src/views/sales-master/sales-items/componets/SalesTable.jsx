@@ -9,12 +9,18 @@ import {
   FiChevronsRight,
   FiCalendar,
   FiEye,
+  FiRepeat,
+  FiDollarSign,
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import AddSaleForm from "./AddSaleForm";
 import EditSaleForm from "./EditSaleForm";
 import ViewSaleModal from "./ViewSaleModal";
+import CreateSaleReturnModal from "../../sales-return/componets/CreateSaleReturnModal";
 import useSales from "@/hooks/useSales";
+import useSalesReturn from "@/hooks/useSalesReturn";
+
+import PaymentStatusUpdateModal from "./PaymentStatusUpdateModal";
 
 const SalesTable = () => {
   const {
@@ -25,13 +31,22 @@ const SalesTable = () => {
     updateSale,
     deleteSale,
     fetchSales,
+    updateSalePayment,
   } = useSales();
+
+  // Add useSalesReturn hook
+  const { createSaleReturn } = useSalesReturn();
 
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showPaymentStatusModal, setShowPaymentStatusModal] = useState(false); // New state for payment status modal
+  const [selectedSaleForReturn, setSelectedSaleForReturn] = useState(null);
+  const [selectedSaleForPaymentUpdate, setSelectedSaleForPaymentUpdate] =
+    useState(null); // New state
   const [selectedItem, setSelectedItem] = useState([]);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
 
@@ -39,14 +54,68 @@ const SalesTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // Helper function for status badge classes
+  const getStatusBadgeClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case "completed":
+      case "approved":
+        return "bg-success";
+      case "pending":
+        return "bg-warning";
+      case "cancelled":
+      case "rejected":
+        return "bg-danger";
+      case "draft":
+        return "bg-secondary";
+      case "shipped":
+      case "processing":
+        return "bg-info";
+      case "delivered":
+        return "bg-primary";
+      default:
+        return "bg-secondary";
+    }
+  };
+
+  // Helper function for payment status badge classes
+  const getPaymentStatusBadgeClass = (paymentStatus) => {
+    switch (paymentStatus?.toLowerCase()) {
+      case "paid":
+        return "bg-success";
+      case "pending":
+        return "bg-warning";
+      case "partial":
+        return "bg-info";
+      case "overdue":
+        return "bg-danger";
+      case "cancelled":
+        return "bg-secondary";
+      default:
+        return "bg-secondary";
+    }
+  };
+
+  // Get payment status options
+  const getPaymentStatusOptions = () => {
+    return [
+      { value: "pending", label: "Pending", color: "warning" },
+      { value: "partial", label: "Partial", color: "info" },
+      { value: "paid", label: "Paid", color: "success" },
+      { value: "overdue", label: "Overdue", color: "danger" },
+      { value: "cancelled", label: "Cancelled", color: "secondary" },
+    ];
+  };
+
   // Filter sales based on search
   const filteredSales = sales.filter(
     (sale) =>
-      sale.sale_number?.toLowerCase().includes(search.toLowerCase()) ||
       sale.reference_no?.toLowerCase().includes(search.toLowerCase()) ||
       sale.customer_id?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      sale.customer_id?.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.customer_id?.customer_name
+        ?.toLowerCase()
+        .includes(search.toLowerCase()) ||
       sale.status?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.payment_status?.toLowerCase().includes(search.toLowerCase()) || // Added payment status search
       sale.items?.some(
         (item) =>
           item.product?.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -66,10 +135,7 @@ const SalesTable = () => {
   // Get current items for the page
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentSales = filteredSales.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
+  const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
 
   // Calculate totals for each sale
   const calculateTotal = (items) => {
@@ -79,12 +145,28 @@ const SalesTable = () => {
       const rate = parseFloat(item.rate) || 0;
       const discount = parseFloat(item.discount) || 0;
       const tax = parseFloat(item.tax) || 0;
-      
+
       const subtotal = quantity * rate;
       const itemTotal = subtotal - discount + tax;
-      
+
       return total + itemTotal;
     }, 0);
+  };
+
+  // Calculate balance amount
+  const calculateBalanceAmount = (sale) => {
+    // Use balance_amount from API if available
+    if (sale.balance_amount !== undefined) {
+      return sale.balance_amount;
+    }
+
+    // Calculate if not available from API
+    const totalAmount =
+      sale.grand_total || sale.total_amount || calculateTotal(sale.items) || 0;
+
+    const paidAmount = sale.paid_amount || 0;
+
+    return totalAmount - paidAmount;
   };
 
   // Add new sale
@@ -132,6 +214,66 @@ const SalesTable = () => {
     }
   };
 
+  // Update payment status handler
+  const handleUpdatePaymentStatus = async (paymentData) => {
+    if (!selectedSaleForPaymentUpdate) return;
+
+    setActionLoading({
+      type: "payment_update",
+      id: selectedSaleForPaymentUpdate._id,
+    });
+
+    try {
+      console.log(
+        "Updating payment status for sale:",
+        selectedSaleForPaymentUpdate._id,
+        paymentData
+      );
+
+      await updateSalePayment(selectedSaleForPaymentUpdate._id, paymentData);
+
+      // Success message
+      alert(
+        `Payment status updated to ${paymentData.payment_status.toUpperCase()} successfully!`
+      );
+
+      // Close modal and reset
+      setShowPaymentStatusModal(false);
+      setSelectedSaleForPaymentUpdate(null);
+
+      // Refresh sales data
+      fetchSales();
+    } catch (error) {
+      console.error("Payment status update failed:", error);
+
+      // More specific error message
+      if (error.message.includes("Network error")) {
+        alert("Network error. Please check your internet connection.");
+      } else {
+        alert(`Failed to update payment status: ${error.message}`);
+      }
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
+  };
+
+  // Create sale return
+  const handleCreateReturn = async (returnData) => {
+    setActionLoading({ type: "return", id: selectedSaleForReturn?._id });
+    try {
+      await createSaleReturn(returnData);
+      alert("Sale return created successfully!");
+      setShowReturnModal(false);
+      setSelectedSaleForReturn(null);
+      fetchSales();
+    } catch (error) {
+      console.error("Create return failed:", error);
+      alert("Return allowed only for completed sales");
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
+  };
+
   // Open view modal
   const handleOpenView = (sale) => {
     setSelectedItem(sale);
@@ -148,6 +290,18 @@ const SalesTable = () => {
   const handleOpenDelete = (sale) => {
     setSelectedItem(sale);
     setShowDeleteModal(true);
+  };
+
+  // Open return modal
+  const handleOpenReturn = (sale) => {
+    setSelectedSaleForReturn(sale);
+    setShowReturnModal(true);
+  };
+
+  // Open payment status update modal
+  const handleOpenPaymentStatusUpdate = (sale) => {
+    setSelectedSaleForPaymentUpdate(sale);
+    setShowPaymentStatusModal(true);
   };
 
   // Handle refresh
@@ -228,7 +382,7 @@ const SalesTable = () => {
     const names = items.map((item) => {
       return (
         item.product?.name ||
-        item.item_name ||
+        item.product_name ||
         item.product_id?.name ||
         "Unknown Item"
       );
@@ -331,7 +485,6 @@ const SalesTable = () => {
           <button type="button" className="btn-close" onClick={() => {}} />
         </div>
       )}
-
       {/* HEADER */}
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
@@ -404,7 +557,6 @@ const SalesTable = () => {
           </div>
         </div>
       </div>
-
       {/* TABLE */}
       <div className="card border-0 shadow-sm">
         <div className="card-body table-responsive">
@@ -412,14 +564,15 @@ const SalesTable = () => {
             <thead>
               <tr>
                 <th>#</th>
-                <th>Sale Number</th>
+                <th>Reference No</th>
                 <th>Customer</th>
                 <th>Sale Date</th>
-                <th>Reference No</th>
+                <th>Branch</th>
                 <th>Items</th>
                 <th>Total Amount</th>
-                <th>Status</th>
+                <th> Sale Status</th>
                 <th>Payment Status</th>
+                <th>Balance Amount</th> {/* NEW COLUMN ADDED */}
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
@@ -427,120 +580,224 @@ const SalesTable = () => {
             <tbody>
               {loading && sales.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="text-center py-4">
-                    <div className="d-flex justify-content-center">
+                  <td colSpan="11" className="text-center py-5">
+                    {" "}
+                    {/* Updated colSpan from 10 to 11 */}
+                    <div className="d-flex flex-column align-items-center">
                       <div
-                        className="spinner-border text-primary"
+                        className="spinner-border text-primary mb-3"
                         role="status"
                       >
                         <span className="visually-hidden">Loading...</span>
                       </div>
+                      <p className="text-muted">Loading sales data...</p>
                     </div>
                   </td>
                 </tr>
               ) : filteredSales.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="text-center py-4 text-muted">
-                    {search
-                      ? "No sales found for your search"
-                      : "No sales available"}
+                  <td colSpan="11" className="text-center py-5">
+                    {" "}
+                    {/* Updated colSpan from 10 to 11 */}
+                    <div className="d-flex flex-column align-items-center">
+                      <FiSearch size={48} className="text-muted mb-3" />
+                      <p className="text-muted mb-1">
+                        {search
+                          ? "No sales found matching your search"
+                          : "No sales available"}
+                      </p>
+                      <small className="text-muted">
+                        {search
+                          ? "Try different keywords"
+                          : "Create a new sale to get started"}
+                      </small>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 currentSales.map((sale, index) => {
-                  const total = sale.grand_total || calculateTotal(sale.items);
+                  // Calculate total if not available
+                  const total =
+                    sale.grand_total ||
+                    sale.total_amount ||
+                    calculateTotal(sale.items) ||
+                    0;
+
+                  // Calculate balance amount
+                  const balanceAmount = calculateBalanceAmount(sale);
+
+                  // Get customer info
+                  const customerName =
+                    sale.customer_name ||
+                    getCustomerName(sale.customer_id) ||
+                    "Unknown Customer";
+                  const customerCode =
+                    sale.customer_code || sale.customer_id?.customer_code || "";
+                  const customerPhone =
+                    sale.customer_phone || sale.customer_id?.phone || "";
+
                   return (
-                    <tr key={sale._id || index}>
-                      <td>{indexOfFirstItem + index + 1}</td>
-
-                      <td className="fw-semibold">
-                        {sale.sale_number || "SALE-N/A"}
+                    <tr key={sale._id || index} className="hover-row">
+                      <td className="text-muted">
+                        {indexOfFirstItem + index + 1}
                       </td>
 
                       <td>
-                        <div className="fw-medium">
-                          {getCustomerName(sale.customer_id)}
+                        <div className="fw-bold text-primary">
+                          {sale.reference_no || sale.sale_number || "REF-N/A"}
                         </div>
+                        {sale.reference_no?.startsWith("TEMP-") && (
+                          <small className="text-warning small">
+                            (Pending)
+                          </small>
+                        )}
+                      </td>
+                      <td>
+                        <div className="fw-medium">{customerName}</div>
                         <div className="text-muted small">
-                          {sale.customer_id?.phone || ""}
-                          {sale.customer_id?.customer_code
-                            ? ` (${sale.customer_id.customer_code})`
-                            : ""}
+                          {customerPhone && `${customerPhone}`}
+                          {customerCode && ` (${customerCode})`}
                         </div>
+                        {sale.customer_id?.email && (
+                          <div className="text-muted small">
+                            {sale.customer_id.email}
+                          </div>
+                        )}
                       </td>
 
                       <td>
-                        <span className="badge bg-light text-dark">
-                          <FiCalendar className="me-1" size={12} />
-                          {formatDate(sale.sale_date)}
-                        </span>
+                        <div className="d-flex align-items-center">
+                          <FiCalendar className="me-1 text-muted" size={14} />
+                          <span className="fw-medium">
+                            {formatDate(sale.sale_date)}
+                          </span>
+                        </div>
+                        {sale.due_date && (
+                          <small className="text-muted d-block">
+                            Due: {formatDate(sale.due_date)}
+                          </small>
+                        )}
                       </td>
 
                       <td>
-                        <span className="fw-medium">
-                          {sale.reference_no || "N/A"}
-                        </span>
+                        <div className="fw-medium">{sale.branch_name}</div>
                       </td>
 
                       <td>
                         <div className="small">
-                          <div className="fw-medium">
+                          <div
+                            className="fw-medium text-truncate"
+                            style={{ maxWidth: "200px" }}
+                          >
                             {getItemNames(sale.items)}
                           </div>
                           <div className="text-muted">
                             {getItemDetails(sale.items)}
                           </div>
+                          {sale.items?.some((item) => item.product_code) && (
+                            <div className="text-muted">
+                              {sale.items
+                                .filter((item) => item.product_code)
+                                .slice(0, 2)
+                                .map((item) => item.product_code)
+                                .join(", ")}
+                              {sale.items.filter((item) => item.product_code)
+                                .length > 2 && "..."}
+                            </div>
+                          )}
                         </div>
                       </td>
 
                       <td>
-                        <span className="fw-bold">
-                          ₹{total.toLocaleString("en-IN")}
-                        </span>
+                        <div className="fw-bold text-dark">
+                          ₹
+                          {total.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                        {sale.currency && sale.currency !== "INR" && (
+                          <small className="text-muted">{sale.currency}</small>
+                        )}
                       </td>
 
                       <td>
                         <span
-                          className={`badge fw-semibold ${
-                            sale.status === "completed"
-                              ? "bg-success"
-                              : sale.status === "draft"
-                              ? "bg-secondary"
-                              : sale.status === "pending"
-                              ? "bg-warning"
-                              : sale.status === "cancelled"
-                              ? "bg-danger"
-                              : sale.status === "approved"
-                              ? "bg-primary"
-                              : sale.status === "shipped"
-                              ? "bg-info"
-                              : "bg-secondary"
-                          }`}
+                          className={`badge fw-semibold ${getStatusBadgeClass(
+                            sale.status
+                          )}`}
                         >
                           {sale.status
                             ? sale.status.charAt(0).toUpperCase() +
                               sale.status.slice(1)
                             : "Draft"}
                         </span>
+                        {sale.payment_method && (
+                          <small className="d-block text-muted mt-1">
+                            {sale.payment_method}
+                          </small>
+                        )}
+                      </td>
+                      <td>
+                        <div className="d-flex flex-column gap-1">
+                          <span
+                            className={`badge fw-semibold ${getPaymentStatusBadgeClass(
+                              sale.payment_status
+                            )}`}
+                          >
+                            {sale.payment_status
+                              ? sale.payment_status.charAt(0).toUpperCase() +
+                                sale.payment_status.slice(1)
+                              : "Pending"}
+                          </span>
+                          {sale.paid_amount !== undefined &&
+                            sale.paid_amount > 0 && (
+                              <small className="text-muted">
+                                Paid: ₹
+                                {sale.paid_amount.toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </small>
+                            )}
+                        </div>
                       </td>
 
+                      {/* NEW: Balance Amount Column */}
                       <td>
-                        <span
-                          className={`badge fw-semibold ${
-                            sale.payment_status === "paid"
-                              ? "bg-success"
-                              : sale.payment_status === "pending"
-                              ? "bg-warning"
-                              : sale.payment_status === "partial"
-                              ? "bg-info"
-                              : "bg-secondary"
-                          }`}
-                        >
-                          {sale.payment_status
-                            ? sale.payment_status.charAt(0).toUpperCase() +
-                              sale.payment_status.slice(1)
-                            : "Pending"}
-                        </span>
+                        <div className="d-flex flex-column">
+                          <div
+                            className={`fw-bold ${
+                              balanceAmount === 0
+                                ? "text-success"
+                                : balanceAmount < 0
+                                ? "text-danger"
+                                : "text-warning"
+                            }`}
+                          >
+                            ₹
+                            {balanceAmount.toLocaleString("en-IN", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </div>
+                          {balanceAmount > 0 &&
+                            sale.payment_status === "partial" && (
+                              <small className="text-muted">Due</small>
+                            )}
+                          {balanceAmount === 0 &&
+                            sale.payment_status === "paid" && (
+                              <small className="text-success">Fully Paid</small>
+                            )}
+                          {balanceAmount < 0 && (
+                            <small className="text-danger">Overpaid</small>
+                          )}
+                          {sale.due_date &&
+                            balanceAmount > 0 &&
+                            new Date(sale.due_date) < new Date() && (
+                              <small className="text-danger">Overdue</small>
+                            )}
+                        </div>
                       </td>
 
                       {/* ACTION BUTTONS */}
@@ -551,9 +808,60 @@ const SalesTable = () => {
                             className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
                             onClick={() => handleOpenView(sale)}
                             title="View Details"
+                            disabled={
+                              actionLoading.type &&
+                              actionLoading.id === sale._id
+                            }
                           >
                             <FiEye size={14} />
-                            View
+                            <span className="d-none d-md-inline">View</span>
+                          </button>
+
+                          {/* Payment Status Button */}
+                          <button
+                            className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                            onClick={() => handleOpenPaymentStatusUpdate(sale)}
+                            disabled={
+                              actionLoading.type &&
+                              actionLoading.id === sale._id
+                            }
+                            title="Update Payment Status"
+                          >
+                            <FiDollarSign size={14} />
+                            <span className="d-none d-md-inline">Payment</span>
+                          </button>
+
+                          {/* Return Button */}
+                          <button
+                            className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+                            onClick={() => handleOpenReturn(sale)}
+                            disabled={
+                              sale.status === "cancelled" ||
+                              (actionLoading.type &&
+                                actionLoading.id === sale._id)
+                            }
+                            title="Create Return"
+                          >
+                            {actionLoading.type === "return" &&
+                            actionLoading.id === sale._id ? (
+                              <>
+                                <span
+                                  className="spinner-border spinner-border-sm me-1"
+                                  role="status"
+                                  aria-hidden="true"
+                                ></span>
+                                <span className="d-none d-md-inline">
+                                  Returning...
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <FiRepeat size={14} />
+                                <span className="d-none d-md-inline">
+                                  Return
+                                </span>
+                              </>
+                            )}
                           </button>
 
                           {/* Edit Button */}
@@ -561,7 +869,8 @@ const SalesTable = () => {
                             className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                             onClick={() => handleOpenEdit(sale)}
                             disabled={
-                              actionLoading.type && actionLoading.id === sale._id
+                              actionLoading.type &&
+                              actionLoading.id === sale._id
                             }
                             title="Edit"
                           >
@@ -573,12 +882,14 @@ const SalesTable = () => {
                                   role="status"
                                   aria-hidden="true"
                                 ></span>
-                                Editing...
+                                <span className="d-none d-md-inline">
+                                  Editing...
+                                </span>
                               </>
                             ) : (
                               <>
                                 <FiEdit2 size={14} />
-                                Edit
+                                <span className="d-none d-md-inline">Edit</span>
                               </>
                             )}
                           </button>
@@ -588,7 +899,8 @@ const SalesTable = () => {
                             className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
                             onClick={() => handleOpenDelete(sale)}
                             disabled={
-                              actionLoading.type && actionLoading.id === sale._id
+                              actionLoading.type &&
+                              actionLoading.id === sale._id
                             }
                             title="Delete"
                           >
@@ -600,12 +912,16 @@ const SalesTable = () => {
                                   role="status"
                                   aria-hidden="true"
                                 ></span>
-                                Deleting...
+                                <span className="d-none d-md-inline">
+                                  Deleting...
+                                </span>
                               </>
                             ) : (
                               <>
                                 <RiDeleteBin6Line size={14} />
-                                Delete
+                                <span className="d-none d-md-inline">
+                                  Delete
+                                </span>
                               </>
                             )}
                           </button>
@@ -702,6 +1018,7 @@ const SalesTable = () => {
         </div>
       </div>
 
+      {/* MODALS */}
       {/* ADD MODAL */}
       {showAddModal && (
         <AddSaleForm
@@ -721,6 +1038,38 @@ const SalesTable = () => {
             setShowViewModal(false);
             setSelectedItem(null);
           }}
+        />
+      )}
+
+      {/* PAYMENT STATUS UPDATE MODAL */}
+      <PaymentStatusUpdateModal
+        showModal={showPaymentStatusModal}
+        onClose={() => {
+          setShowPaymentStatusModal(false);
+          setSelectedSaleForPaymentUpdate(null);
+        }}
+        sale={selectedSaleForPaymentUpdate}
+        onUpdate={handleUpdatePaymentStatus}
+        loading={
+          actionLoading.type === "payment_update" &&
+          actionLoading.id === selectedSaleForPaymentUpdate?._id
+        }
+      />
+
+      {/* RETURN MODAL */}
+      {showReturnModal && selectedSaleForReturn && (
+        <CreateSaleReturnModal
+          key={`return-modal-${selectedSaleForReturn._id}`}
+          sale={selectedSaleForReturn}
+          onClose={() => {
+            setShowReturnModal(false);
+            setSelectedSaleForReturn(null);
+          }}
+          onSave={handleCreateReturn}
+          loading={
+            actionLoading.type === "return" &&
+            actionLoading.id === selectedSaleForReturn._id
+          }
         />
       )}
 

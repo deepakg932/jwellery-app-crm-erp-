@@ -131,16 +131,7 @@ export const menuItems = [
         label: "Metal Types",
         url: "/metal-types",
       },
-      {
-        key: "item-categories",
-        label: "Item Categories",
-        url: "/item-categories",
-      },
-      {
-        key: "item-sub-categories",
-        label: "Item Sub Categories",
-        url: "/item-sub-categories",
-      },
+     
       {
         key: "purity",
         label: "Metal Purity",
@@ -236,11 +227,22 @@ export const menuItems = [
     label: "Item",
     icon: LuShoppingBag,
     children: [
+       {
+        key: "item-categories",
+        label: "Item Categories",
+        url: "/item-categories",
+      },
+      {
+        key: "item-sub-categories",
+        label: "Item Sub Categories",
+        url: "/item-sub-categories",
+      },
       {
         key: "item-list",
         label: "Item List",
         url: "/item-list",
       },
+
       // {
       //   key: "add-item",
       //   label: "Add Item",
@@ -508,9 +510,9 @@ export const menuItems = [
         url: "/sale/sale-item",
       },
       {
-        key: "invoice-details",
-        label: "Single Invoice",
-        url: "/invoices/1",
+        key: "sales-return",
+        label: "Sale Return",
+        url: "/sale-return",
       },
       {
         key: "add-invoice",

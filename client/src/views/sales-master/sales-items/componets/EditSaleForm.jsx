@@ -1,31 +1,46 @@
 import React, { useState, useEffect, useRef } from "react";
-import { FiUpload, FiTrash2, FiSearch, FiX, FiPlus } from "react-icons/fi";
+import {
+  FiUpload,
+  FiTrash2,
+  FiSearch,
+  FiX,
+  FiPlus,
+  FiInfo,
+} from "react-icons/fi";
 import useSales from "@/hooks/useSales";
 
 const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
   const {
     customers,
     items,
-    units,
     branches,
     loadingCustomers,
     loadingItems,
-    loadingUnits,
     loadingBranches,
   } = useSales();
 
   const [formData, setFormData] = useState({
     customer_id: "",
     sale_date: new Date().toISOString().split("T")[0],
-    reference_no: "",
-    items: [],
+    items: [
+      {
+        product_id: "",
+        quantity: "",
+        price_before_tax: 0,
+        gst_rate: 0,
+        gst_amount: 0,
+        selling_total: 0,
+        final_total: 0,
+        product_name: "",
+        product_code: "",
+      },
+    ],
     sale_note: "",
     shipping_cost: 0,
     discount: 0,
-    vat: 0,
     subtotal: 0,
+    total_tax: 0,
     total_amount: 0,
-    grand_total: 0,
     branch_id: "",
     status: "draft",
     payment_status: "pending",
@@ -35,6 +50,8 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [selectedProductDetails, setSelectedProductDetails] = useState(null);
+  const [showProductDetails, setShowProductDetails] = useState(false);
   const searchRef = useRef(null);
 
   // Sale status options
@@ -55,43 +72,85 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     { value: "overdue", label: "Overdue", color: "danger" },
   ];
 
+  // Helper function to extract product display info
+  const getProductDisplayInfo = (product) => {
+    if (!product)
+      return {
+        name: "",
+        code: "",
+        price_before_tax: 0,
+        gst_rate: 0,
+        gst_amount: 0,
+      };
+
+    // Parse GST rate from string (e.g., "14%" -> 14)
+    const gstRateStr = product.gst_rate || "0%";
+    const gstRate = parseFloat(gstRateStr.replace("%", "")) || 0;
+
+    return {
+      name: product.product_name || "Unnamed Product",
+      code: product.product_code || "",
+      price_before_tax: product.selling_price_before_tax || 0,
+      gst_rate: gstRate,
+      gst_amount: product.gst_amount || 0,
+      selling_total:
+        (product.selling_price_before_tax || 0) + (product.gst_amount || 0),
+      category: product.product_category || product.product_category_id?.name,
+      brand: product.product_brand || product.product_brand_id?.name,
+      metalWeight: product.total_metals_cost
+        ? `${product.metals?.[0]?.weight || 0}g`
+        : "0g",
+      stoneCount: product.stones?.length || 0,
+      image: product.images?.[0] || null,
+    };
+  };
+
   // Initialize form with sale data
   useEffect(() => {
     if (sale) {
+      const saleItems = sale.items?.map(item => ({
+        product_id: item.product_id?._id || item.product_id || "",
+        quantity: item.quantity?.toString() || "",
+        price_before_tax: item.price_before_tax || 0,
+        gst_rate: item.gst_rate || 0,
+        gst_amount: item.gst_amount || 0,
+        selling_total: item.selling_total || 0,
+        final_total: item.final_total || 0,
+        product_name: item.product_name || item.product_id?.product_name || "",
+        product_code: item.product_code || item.product_id?.product_code || "",
+      })) || [];
+
+      // Ensure at least one item row exists
+      if (saleItems.length === 0) {
+        saleItems.push({
+          product_id: "",
+          quantity: "",
+          price_before_tax: 0,
+          gst_rate: 0,
+          gst_amount: 0,
+          selling_total: 0,
+          final_total: 0,
+          product_name: "",
+          product_code: "",
+        });
+      }
+
       setFormData({
         customer_id: sale.customer_id?._id || sale.customer_id || "",
         sale_date: sale.sale_date || new Date().toISOString().split("T")[0],
-        reference_no: sale.reference_no || "",
-        items: sale.items?.map(item => ({
-          product_id: item.product_id?._id || item.product_id || "",
-          quantity: item.quantity || "",
-          unit_id: item.unit_id || "",
-          rate: item.rate || "",
-          discount: item.discount || 0,
-          tax: item.tax || 0,
-          total: item.total || 0,
-          product_name: item.product_name || item.product_id?.name || "",
-          product_code: item.product_code || item.product_id?.product_code || "",
-        })) || [],
+        items: saleItems,
         sale_note: sale.sale_note || "",
         shipping_cost: sale.shipping_cost || 0,
         discount: sale.discount || 0,
-        vat: sale.vat || 0,
         subtotal: sale.subtotal || 0,
+        total_tax: sale.total_tax || 0,
         total_amount: sale.total_amount || 0,
-        grand_total: sale.grand_total || 0,
         branch_id: sale.branch_id?._id || sale.branch_id || "",
         status: sale.status || "draft",
         payment_status: sale.payment_status || "pending",
       });
     }
   }, [sale]);
-
-  // Helper function to get selected product details
-  const getSelectedProductDetails = (productId) => {
-    if (!productId) return null;
-    return items.find((item) => item._id === productId);
-  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -113,9 +172,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     }
 
     // Filter only items that have product_id (selected items)
-    const selectedItems = formData.items.filter(
-      (item) => item.product_id
-    );
+    const selectedItems = formData.items.filter((item) => item.product_id);
 
     if (selectedItems.length === 0) {
       newErrors.items = "At least one item is required";
@@ -127,15 +184,8 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       );
 
       if (!item.quantity || parseFloat(item.quantity) <= 0) {
-        newErrors[`items[${originalIndex}].quantity`] = "Valid quantity is required";
-      }
-
-      if (!item.unit_id) {
-        newErrors[`items[${originalIndex}].unit_id`] = "Unit is required";
-      }
-
-      if (!item.rate || parseFloat(item.rate) <= 0) {
-        newErrors[`items[${originalIndex}].rate`] = "Valid rate is required";
+        newErrors[`items[${originalIndex}].quantity`] =
+          "Valid quantity is required";
       }
     });
 
@@ -149,64 +199,69 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       newErrors.discount = "Discount cannot be negative";
     }
 
-    // Validate VAT (can be 0)
-    if (formData.vat < 0) {
-      newErrors.vat = "VAT cannot be negative";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const calculateItemTotal = (quantity, rate, discount, tax) => {
+  const calculateItemTotal = (quantity, selling_total) => {
     const qty = parseFloat(quantity) || 0;
-    const rt = parseFloat(rate) || 0;
-    const disc = parseFloat(discount) || 0;
-    const tx = parseFloat(tax) || 0;
+    const sellingTotal = parseFloat(selling_total) || 0;
 
-    const subtotal = qty * rt;
-    const total = subtotal - disc + tx;
-    
-    return total > 0 ? total : 0;
+    const subtotal = sellingTotal * qty;
+    const finalTotal = subtotal;
+
+    return {
+      subtotal: subtotal,
+      final_total: finalTotal > 0 ? finalTotal : 0,
+    };
   };
 
   const calculateTotals = () => {
     // Calculate item totals
-    const itemSubtotal = formData.items
+    const itemsCalculated = formData.items
       .filter((item) => item.product_id)
-      .reduce((total, item) => {
-        const qty = parseFloat(item.quantity) || 0;
-        const rt = parseFloat(item.rate) || 0;
-        return total + (qty * rt);
-      }, 0);
+      .map((item) => {
+        const { subtotal, final_total } = calculateItemTotal(
+          item.quantity,
+          item.selling_total
+        );
+        return { ...item, subtotal, final_total };
+      });
 
-    const itemDiscount = formData.items
-      .filter((item) => item.product_id)
-      .reduce((total, item) => {
-        return total + (parseFloat(item.discount) || 0);
-      }, 0);
-
-    const itemTax = formData.items
-      .filter((item) => item.product_id)
-      .reduce((total, item) => {
-        return total + (parseFloat(item.tax) || 0);
-      }, 0);
-
-    const itemTotal = itemSubtotal - itemDiscount + itemTax;
+    const itemSubtotal = itemsCalculated.reduce(
+      (total, item) => total + (item.subtotal || 0),
+      0
+    );
+    const itemGstTotal = itemsCalculated.reduce((total, item) => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const gstAmount = parseFloat(item.gst_amount) || 0;
+      return total + gstAmount * quantity;
+    }, 0);
+    const itemTotal = itemsCalculated.reduce(
+      (total, item) => total + (item.final_total || 0),
+      0
+    );
 
     // Calculate additional charges/discounts
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
     const additionalDiscount = parseFloat(formData.discount) || 0;
-    const vatAmount = (itemTotal * (parseFloat(formData.vat) || 0)) / 100;
 
-    const subtotal = itemTotal;
-    const grandTotal = itemTotal + shippingCost - additionalDiscount + vatAmount;
+    const subtotal = itemSubtotal;
+    const totalTax = itemGstTotal;
+    const grandTotal = itemTotal + shippingCost - additionalDiscount;
 
+    // Update form data with calculated totals
     setFormData((prev) => ({
       ...prev,
+      items: prev.items.map((item, index) => {
+        const calculatedItem = itemsCalculated.find(
+          (calc) => calc.product_id === item.product_id
+        );
+        return calculatedItem ? calculatedItem : item;
+      }),
       subtotal: subtotal,
-      total_amount: itemTotal,
-      grand_total: grandTotal > 0 ? grandTotal : 0,
+      total_tax: totalTax,
+      total_amount: grandTotal > 0 ? grandTotal : 0,
     }));
   };
 
@@ -225,17 +280,29 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       .filter((item) => item.product_id)
       .map((item) => item.product_id);
 
-    const results = items.filter(
-      (item) =>
-        ((item.product_name && item.product_name.toLowerCase().includes(query.toLowerCase())) ||
-         (item.product_code && item.product_code.toLowerCase().includes(query.toLowerCase())) ||
-         (item.name && item.name.toLowerCase().includes(query.toLowerCase())) ||
-         (item.code && item.code.toLowerCase().includes(query.toLowerCase()))) &&
-        !selectedProductIds.includes(item._id)
-    );
+    const results = items.filter((product) => {
+      const displayInfo = getProductDisplayInfo(product);
+      return (
+        ((displayInfo.name &&
+          displayInfo.name.toLowerCase().includes(query.toLowerCase())) ||
+          (displayInfo.code &&
+            displayInfo.code.toLowerCase().includes(query.toLowerCase())) ||
+          (product.product_code &&
+            product.product_code
+              .toLowerCase()
+              .includes(query.toLowerCase()))) &&
+        !selectedProductIds.includes(product._id)
+      );
+    });
 
-    setSearchResults(results);
+    setSearchResults(results.slice(0, 10));
     setShowSearchResults(true);
+  };
+
+  // Show product details modal
+  const showProductDetailModal = (product) => {
+    setSelectedProductDetails(product);
+    setShowProductDetails(true);
   };
 
   // Handle product selection from search results
@@ -253,11 +320,11 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
           {
             product_id: "",
             quantity: "",
-            unit_id: "",
-            rate: "",
-            discount: 0,
-            tax: 0,
-            total: 0,
+            price_before_tax: 0,
+            gst_rate: 0,
+            gst_amount: 0,
+            selling_total: 0,
+            final_total: 0,
             product_name: "",
             product_code: "",
           },
@@ -265,19 +332,24 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       }));
     }
 
+    const displayInfo = getProductDisplayInfo(product);
+
+    // Calculate initial total for quantity 1
+    const initialCalc = calculateItemTotal(1, displayInfo.selling_total, 0);
+
     // Update the item with data from the selected product
     const updatedItems = [...formData.items];
     updatedItems[itemIndex] = {
       ...updatedItems[itemIndex],
       product_id: product._id,
-      product_code: product.product_code || product.code || "",
-      product_name: product.product_name || product.name || "",
-      rate: product.selling_price || product.price || 0,
-      unit_id: product.unit_id || "",
+      product_code: displayInfo.code,
+      product_name: displayInfo.name,
+      price_before_tax: displayInfo.price_before_tax,
+      gst_rate: displayInfo.gst_rate,
+      gst_amount: displayInfo.gst_amount,
+      selling_total: displayInfo.selling_total,
       quantity: "",
-      discount: 0,
-      tax: 0,
-      total: 0,
+      final_total: 0,
     };
 
     setFormData((prev) => ({
@@ -291,124 +363,29 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
   };
 
   const handleQuantityChange = (index, value) => {
-    const item = formData.items[index];
-    const rate = parseFloat(item.rate) || 0;
-    const discount = parseFloat(item.discount) || 0;
-    const tax = parseFloat(item.tax) || 0;
-
     const updatedItems = [...formData.items];
-    updatedItems[index] = {
-      ...item,
-      quantity: value,
-      total: calculateItemTotal(value, rate, discount, tax),
-    };
-
-    setFormData((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
-
-    calculateTotals();
-
-    // Clear quantity error if any
+    const item = updatedItems[index];
+    
+    // Update quantity
+    item.quantity = value;
+    
+    // Calculate total only if valid quantity
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue) && numValue > 0) {
+      const selling_total = parseFloat(item.selling_total) || 0;
+      const calculated = calculateItemTotal(numValue, selling_total);
+      item.final_total = calculated.final_total;
+    } else {
+      item.final_total = 0;
+    }
+    
+    setFormData((prev) => ({ ...prev, items: updatedItems }));
+    
+    // Clear error if exists
     if (errors[`items[${index}].quantity`]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[`items[${index}].quantity`];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleRateChange = (index, value) => {
-    const item = formData.items[index];
-    const quantity = parseFloat(item.quantity) || 0;
-    const discount = parseFloat(item.discount) || 0;
-    const tax = parseFloat(item.tax) || 0;
-
-    const updatedItems = [...formData.items];
-    updatedItems[index] = {
-      ...item,
-      rate: value,
-      total: calculateItemTotal(quantity, value, discount, tax),
-    };
-
-    setFormData((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
-
-    calculateTotals();
-
-    // Clear rate error if any
-    if (errors[`items[${index}].rate`]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[`items[${index}].rate`];
-        return newErrors;
-      });
-    }
-  };
-
-  const handleItemDiscountChange = (index, value) => {
-    const item = formData.items[index];
-    const quantity = parseFloat(item.quantity) || 0;
-    const rate = parseFloat(item.rate) || 0;
-    const tax = parseFloat(item.tax) || 0;
-
-    const updatedItems = [...formData.items];
-    updatedItems[index] = {
-      ...item,
-      discount: value,
-      total: calculateItemTotal(quantity, rate, value, tax),
-    };
-
-    setFormData((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
-
-    calculateTotals();
-  };
-
-  const handleItemTaxChange = (index, value) => {
-    const item = formData.items[index];
-    const quantity = parseFloat(item.quantity) || 0;
-    const rate = parseFloat(item.rate) || 0;
-    const discount = parseFloat(item.discount) || 0;
-
-    const updatedItems = [...formData.items];
-    updatedItems[index] = {
-      ...item,
-      tax: value,
-      total: calculateItemTotal(quantity, rate, discount, value),
-    };
-
-    setFormData((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
-
-    calculateTotals();
-  };
-
-  const handleUnitChange = (index, unitId) => {
-    const updatedItems = [...formData.items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      unit_id: unitId,
-    };
-
-    setFormData((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
-
-    // Clear unit error if any
-    if (errors[`items[${index}].unit_id`]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[`items[${index}].unit_id`];
         return newErrors;
       });
     }
@@ -426,11 +403,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     }
 
     // Recalculate totals for numeric fields
-    if (
-      name === "shipping_cost" ||
-      name === "discount" ||
-      name === "vat"
-    ) {
+    if (name === "shipping_cost" || name === "discount") {
       setTimeout(() => calculateTotals(), 0);
     }
   };
@@ -444,7 +417,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
         items: updatedItems,
       }));
 
-      calculateTotals();
+      setTimeout(() => calculateTotals(), 0);
     }
   };
 
@@ -454,11 +427,11 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     updatedItems[index] = {
       product_id: "",
       quantity: "",
-      unit_id: "",
-      rate: "",
-      discount: 0,
-      tax: 0,
-      total: 0,
+      price_before_tax: 0,
+      gst_rate: 0,
+      gst_amount: 0,
+      selling_total: 0,
+      final_total: 0,
       product_name: "",
       product_code: "",
     };
@@ -468,7 +441,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       items: updatedItems,
     }));
 
-    calculateTotals();
+    setTimeout(() => calculateTotals(), 0);
   };
 
   // Add new empty item row
@@ -480,11 +453,11 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
         {
           product_id: "",
           quantity: "",
-          unit_id: "",
-          rate: "",
-          discount: 0,
-          tax: 0,
-          total: 0,
+          price_before_tax: 0,
+          gst_rate: 0,
+          gst_amount: 0,
+          selling_total: 0,
+          final_total: 0,
           product_name: "",
           product_code: "",
         },
@@ -494,7 +467,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
 
   useEffect(() => {
     calculateTotals();
-  }, [formData.items, formData.shipping_cost, formData.discount, formData.vat]);
+  }, [formData.items, formData.shipping_cost, formData.discount]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -515,29 +488,28 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     if (!validateForm()) return;
 
     const payload = {
+      _id: sale?._id, // Include the sale ID for update
       customer_id: formData.customer_id,
       sale_date: formData.sale_date,
-      reference_no: formData.reference_no,
       items: formData.items
         .filter((item) => item.product_id)
         .map((item) => ({
           product_id: item.product_id,
-          quantity: parseFloat(item.quantity) || 0,
-          unit_id: item.unit_id,
-          rate: parseFloat(item.rate) || 0,
-          discount: parseFloat(item.discount) || 0,
-          tax: parseFloat(item.tax) || 0,
-          total: parseFloat(item.total) || 0,
+          quantity: parseFloat(item.quantity) || 1,
+          price_before_tax: parseFloat(item.price_before_tax) || 0,
+          gst_rate: parseFloat(item.gst_rate) || 0,
+          gst_amount: parseFloat(item.gst_amount) || 0,
+          selling_total: parseFloat(item.selling_total) || 0,
+          final_total: parseFloat(item.final_total) || 0,
           product_name: item.product_name,
           product_code: item.product_code,
         })),
       sale_note: formData.sale_note,
       shipping_cost: parseFloat(formData.shipping_cost) || 0,
       discount: parseFloat(formData.discount) || 0,
-      vat: parseFloat(formData.vat) || 0,
       subtotal: parseFloat(formData.subtotal) || 0,
+      total_tax: parseFloat(formData.total_tax) || 0,
       total_amount: parseFloat(formData.total_amount) || 0,
-      grand_total: parseFloat(formData.grand_total) || 0,
       branch_id: formData.branch_id,
       status: formData.status,
       payment_status: formData.payment_status,
@@ -548,15 +520,48 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
   };
 
   const handleClose = () => {
+    setFormData({
+      customer_id: "",
+      sale_date: new Date().toISOString().split("T")[0],
+      items: [
+        {
+          product_id: "",
+          quantity: "",
+          price_before_tax: 0,
+          gst_rate: 0,
+          gst_amount: 0,
+          selling_total: 0,
+          final_total: 0,
+          product_name: "",
+          product_code: "",
+        },
+      ],
+      sale_note: "",
+      shipping_cost: 0,
+      discount: 0,
+      subtotal: 0,
+      total_tax: 0,
+      total_amount: 0,
+      branch_id: "",
+      status: "draft",
+      payment_status: "pending",
+    });
+    setSearchQuery("");
+    setSearchResults([]);
+    setErrors({});
     onClose();
   };
 
   const isDisabled =
-    loading ||
-    loadingCustomers ||
-    loadingItems ||
-    loadingUnits ||
-    loadingBranches;
+    loading || loadingCustomers || loadingItems || loadingBranches;
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return `₹${parseFloat(amount || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
   return (
     <div
@@ -592,11 +597,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
               className="modal-body"
               style={{ overflowY: "auto", maxHeight: "calc(90vh - 130px)" }}
             >
-              {/* Similar to AddSaleForm but with existing data */}
-              {/* Copy the form structure from AddSaleForm here */}
-              {/* Make sure to use formData values for all fields */}
-              
-              {/* Example of one section - you need to copy all sections */}
+              {/* Top Row - Date, Customer, Branch, Status */}
               <div className="row mb-4">
                 <div className="col-md-3 mb-3">
                   <label className="form-label fw-medium">
@@ -616,11 +617,538 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                     <div className="invalid-feedback">{errors.sale_date}</div>
                   )}
                 </div>
-                {/* ... rest of the fields similar to AddSaleForm */}
+
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-medium">
+                    Customer <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="customer_id"
+                    className={`form-select ${
+                      errors.customer_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.customer_id}
+                    onChange={handleChange}
+                    disabled={isDisabled || loadingCustomers}
+                  >
+                    <option value="">Select Customer</option>
+                    {loadingCustomers ? (
+                      <option value="" disabled>
+                        Loading customers...
+                      </option>
+                    ) : (
+                      customers?.map((customer) => (
+                        <option key={customer._id} value={customer._id}>
+                          {customer.name || customer.customer_name}
+                          {customer.customer_code
+                            ? ` (${customer.customer_code})`
+                            : ""}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {errors.customer_id && (
+                    <div className="invalid-feedback">{errors.customer_id}</div>
+                  )}
+                </div>
+
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-medium">
+                    Branch <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="branch_id"
+                    className={`form-select ${
+                      errors.branch_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.branch_id}
+                    onChange={handleChange}
+                    disabled={isDisabled || loadingBranches}
+                  >
+                    <option value="">Select Branch</option>
+                    {loadingBranches ? (
+                      <option value="" disabled>
+                        Loading branches...
+                      </option>
+                    ) : (
+                      branches?.map((branch) => (
+                        <option key={branch._id} value={branch.id}>
+                          {branch.branch_name} ({branch.branch_code})
+                          {branch.is_warehouse && " - Warehouse"}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {errors.branch_id && (
+                    <div className="invalid-feedback">{errors.branch_id}</div>
+                  )}
+                </div>
+
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-medium">
+                    Sale Status <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="status"
+                    className={`form-select ${
+                      errors.status ? "is-invalid" : ""
+                    }`}
+                    value={formData.status}
+                    onChange={handleChange}
+                    disabled={isDisabled}
+                  >
+                    {saleStatusOptions.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.status && (
+                    <div className="invalid-feedback">{errors.status}</div>
+                  )}
+                </div>
               </div>
 
-              {/* Include all other sections from AddSaleForm */}
-              {/* Make sure to handle existing data properly */}
+              {/* Second Row - Reference No, Payment Status, Shipping Cost */}
+              <div className="row mb-4">
+              
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-medium">Payment Status</label>
+                  <select
+                    name="payment_status"
+                    className="form-select"
+                    value={formData.payment_status}
+                    onChange={handleChange}
+                    disabled={isDisabled}
+                  >
+                    {paymentStatusOptions.map((status) => (
+                      <option key={status.value} value={status.value}>
+                        {status.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-medium">Shipping Cost</label>
+                  <div className="input-group">
+                    <span className="input-group-text">₹</span>
+                    <input
+                      type="number"
+                      className={`form-control ${
+                        errors.shipping_cost ? "is-invalid" : ""
+                      }`}
+                      name="shipping_cost"
+                      value={formData.shipping_cost}
+                      onChange={handleChange}
+                      disabled={isDisabled}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  {errors.shipping_cost && (
+                    <div className="invalid-feedback">
+                      {errors.shipping_cost}
+                    </div>
+                  )}
+                </div>
+
+                <div className="col-md-3 mb-3">
+                  <label className="form-label fw-medium">
+                    Additional Discount
+                  </label>
+                  <div className="input-group">
+                    <span className="input-group-text">₹</span>
+                    <input
+                      type="number"
+                      className={`form-control ${
+                        errors.discount ? "is-invalid" : ""
+                      }`}
+                      name="discount"
+                      value={formData.discount}
+                      onChange={handleChange}
+                      disabled={isDisabled}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  {errors.discount && (
+                    <div className="invalid-feedback">{errors.discount}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Table Section */}
+              <div className="border rounded-3 p-3 mb-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="fw-bold mb-0">Sale Items</h6>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                    onClick={addNewItemRow}
+                    disabled={isDisabled}
+                  >
+                    <FiPlus size={14} />
+                    Add Item Row
+                  </button>
+                </div>
+
+                {/* Search Bar Section */}
+                <div className="mb-4">
+                  <label className="form-label fw-medium">
+                    Search Products
+                  </label>
+                  <div className="position-relative" ref={searchRef}>
+                    <div className="input-group">
+                      <span className="input-group-text">
+                        <FiSearch size={16} />
+                      </span>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Search by product name or code..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        disabled={isDisabled || loadingItems}
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          className="input-group-text"
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSearchResults([]);
+                            setShowSearchResults(false);
+                          }}
+                        >
+                          <FiX size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Search Results Dropdown */}
+                    {showSearchResults && searchResults.length > 0 && (
+                      <div
+                        className="position-absolute w-100 bg-white border rounded shadow-lg mt-1 z-3"
+                        style={{ maxHeight: "400px", overflowY: "auto" }}
+                      >
+                        {searchResults.map((product) => {
+                          const displayInfo = getProductDisplayInfo(product);
+
+                          return (
+                            <div
+                              key={product._id}
+                              className="p-3 border-bottom hover-bg-light"
+                            >
+                              <div className="d-flex justify-content-between align-items-start">
+                                <div className="flex-grow-1">
+                                  <div className="fw-medium">
+                                    {displayInfo.name}
+                                  </div>
+                                  <div className="small text-muted">
+                                    Code: {displayInfo.code} | Category:{" "}
+                                    {displayInfo.category || "N/A"}
+                                  </div>
+                                  <div className="small text-muted mt-1">
+                                    Price:{" "}
+                                    {formatCurrency(
+                                      displayInfo.price_before_tax
+                                    )}{" "}
+                                    + GST:{" "}
+                                    {formatCurrency(displayInfo.gst_amount)} =
+                                    Total:{" "}
+                                    {formatCurrency(displayInfo.selling_total)}
+                                  </div>
+                                </div>
+                                <div className="d-flex gap-2">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-info"
+                                    onClick={() => {
+                                      showProductDetailModal(product);
+                                    }}
+                                    title="View Details"
+                                  >
+                                    <FiInfo size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => {
+                                      handleProductSelect(product);
+                                    }}
+                                  >
+                                    Select
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {!showSearchResults &&
+                      searchQuery &&
+                      searchResults.length === 0 && (
+                        <div className="text-muted small mt-1">
+                          No products found. Try a different search term.
+                        </div>
+                      )}
+                  </div>
+                </div>
+
+                {/* Sale Items Table */}
+                <div
+                  className="table-responsive"
+                  style={{ maxHeight: "400px", overflowY: "auto" }}
+                >
+                  <table className="table table-bordered align-middle mb-0">
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ minWidth: "250px" }}>Product</th>
+                        <th style={{ minWidth: "100px" }}>Quantity</th>
+                        <th style={{ minWidth: "120px" }}>
+                          Price (before tax)
+                        </th>
+                        <th style={{ minWidth: "100px" }}>GST Amount</th>
+                        <th style={{ minWidth: "120px" }}>Selling Total</th>
+                        <th style={{ minWidth: "120px" }}>Final Total</th>
+                        <th style={{ minWidth: "60px" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {formData.items
+                        .filter((item) => item.product_id)
+                        .map((item, index) => {
+                          const originalIndex = formData.items.findIndex(
+                            (i) => i.product_id === item.product_id
+                          );
+
+                          const perUnitGST = item.gst_amount || 0;
+                          const perUnitSellingTotal = item.selling_total || 0;
+
+                          return (
+                            <tr key={originalIndex}>
+                              <td>
+                                <div className="d-flex align-items-center">
+                                  <div className="flex-grow-1">
+                                    <div className="fw-medium">
+                                      {item.product_name}
+                                    </div>
+                                    <div className="small text-muted">
+                                      {item.product_code}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary ms-2 flex-shrink-0"
+                                    onClick={() => clearItem(originalIndex)}
+                                    disabled={isDisabled}
+                                    title="Clear item"
+                                  >
+                                    <FiX size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className={`form-control ${
+                                    errors[`items[${originalIndex}].quantity`]
+                                      ? "is-invalid"
+                                      : ""
+                                  }`}
+                                  placeholder="Quantity"
+                                  value={item.quantity}
+                                  onChange={(e) =>
+                                    handleQuantityChange(
+                                      originalIndex,
+                                      e.target.value
+                                    )
+                                  }
+                                  disabled={!item.product_id || isDisabled}
+                                  min="1"
+                                  step="1"
+                                  onKeyPress={(e) => {
+                                    if (e.key === "-") {
+                                      e.preventDefault();
+                                    }
+                                  }}
+                                />
+                                {errors[`items[${originalIndex}].quantity`] && (
+                                  <div className="invalid-feedback d-block">
+                                    {errors[`items[${originalIndex}].quantity`]}
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                <div className="input-group">
+                                  <span className="input-group-text">₹</span>
+                                  <input
+                                    type="text"
+                                    className="form-control bg-light"
+                                    value={formatCurrency(
+                                      item.price_before_tax
+                                    )}
+                                    readOnly
+                                    disabled
+                                  />
+                                </div>
+                              </td>
+                              <td>
+                                <div className="input-group">
+                                  <span className="input-group-text">₹</span>
+                                  <input
+                                    type="text"
+                                    className="form-control bg-light"
+                                    value={formatCurrency(perUnitGST)}
+                                    readOnly
+                                    disabled
+                                  />
+                                </div>
+                                <div className="small text-muted text-center">
+                                  (Per unit)
+                                </div>
+                              </td>
+                              <td>
+                                <div className="input-group">
+                                  <span className="input-group-text">₹</span>
+                                  <input
+                                    type="text"
+                                    className="form-control bg-light"
+                                    value={formatCurrency(perUnitSellingTotal)}
+                                    readOnly
+                                    disabled
+                                  />
+                                </div>
+                                <div className="small text-muted text-center">
+                                  Price + GST
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="input-group">
+                                  <span className="input-group-text">₹</span>
+                                  <input
+                                    type="text"
+                                    className="form-control bg-light fw-medium"
+                                    value={formatCurrency(
+                                      item.final_total || 0
+                                    )}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="small text-muted text-center">
+                                  (Selling Total × Qty)
+                                </div>
+                              </td>
+                              <td className="text-center">
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() => removeItem(originalIndex)}
+                                  disabled={
+                                    isDisabled ||
+                                    formData.items.filter((i) => i.product_id)
+                                      .length === 1
+                                  }
+                                  title="Remove item"
+                                >
+                                  <FiTrash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                      {/* Empty state */}
+                      {formData.items.filter((item) => item.product_id)
+                        .length === 0 && (
+                        <tr>
+                          <td
+                            colSpan="8"
+                            className="text-center py-5 text-muted"
+                          >
+                            <div className="d-flex flex-column align-items-center">
+                              <FiSearch className="mb-2" size={32} />
+                              <span className="fs-6">
+                                Search and select products from above to add
+                                them to the sale
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary Section */}
+                <div className="row mt-4">
+                  <div className="col-md-6">
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">Sale Note</label>
+                      <textarea
+                        className="form-control"
+                        rows={2}
+                        placeholder="Any additional notes or instructions..."
+                        value={formData.sale_note}
+                        onChange={handleChange}
+                        name="sale_note"
+                        disabled={isDisabled}
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  <div className="col-md-6">
+                    <div className="bg-light p-3 rounded-3">
+                      <div className="row">
+                        <div className="col-6">
+                          <div className="mb-2">
+                            <span className="text-muted">
+                              Subtotal (Selling Total × Qty):
+                            </span>
+                            <span className="float-end fw-medium">
+                              {formatCurrency(formData.subtotal || 0)}
+                            </span>
+                          </div>
+                          <div className="mb-2">
+                            <span className="text-muted">
+                              Total GST (Per unit × Qty):
+                            </span>
+                            <span className="float-end fw-medium">
+                              {formatCurrency(formData.total_tax || 0)}
+                            </span>
+                          </div>
+                          <div className="mb-2">
+                            <span className="text-muted">Shipping Cost:</span>
+                            <span className="float-end fw-medium">
+                              {formatCurrency(formData.shipping_cost || 0)}
+                            </span>
+                          </div>
+                          <div className="mb-2">
+                            <span className="text-muted">Discount:</span>
+                            <span className="float-end fw-medium text-danger">
+                              -{formatCurrency(formData.discount || 0)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="col-6">
+                          <div className="mb-2">
+                            <span className="fw-bold fs-5">Grand Total:</span>
+                            <span className="float-end fw-bold fs-5 text-primary">
+                              {formatCurrency(formData.total_amount || 0)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="modal-footer border-top pt-3 bg-white">

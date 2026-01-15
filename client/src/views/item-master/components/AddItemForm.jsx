@@ -960,9 +960,9 @@ const AddItemModal = ({
                         </select>
                       ) : (
                         <div className="alert alert-light border p-2 text-center">
-                          <small className="text-muted">
+                          {/* <small className="text-muted">
                             No subcategories available for this category
-                          </small>
+                          </small> */}
                         </div>
                       )}
                     </div>

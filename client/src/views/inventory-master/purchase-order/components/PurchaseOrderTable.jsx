@@ -73,6 +73,8 @@ const PurchaseOrderTable = () => {
     indexOfLastItem
   );
 
+  console.log(currentPurchaseOrders);
+
   // Calculate totals for each purchase order
   const calculateTotal = (items) => {
     if (!items) return 0;
@@ -115,30 +117,23 @@ const PurchaseOrderTable = () => {
 
   // Delete purchase order
   const handleDeletePurchaseOrder = async () => {
-    if (!selectedItem) return;
-
-    console.log("1. Starting delete, selectedItem:", selectedItem._id);
-    console.log("2. showDeleteModal before:", showDeleteModal);
+    if (!selectedItem || actionLoading.type === "delete") return;
 
     setActionLoading({ type: "delete", id: selectedItem._id });
     try {
-      console.log("3. Calling deletePurchaseOrder");
       await deletePurchaseOrder(selectedItem._id);
-      console.log("4. Delete successful");
 
-      console.log("5. Setting showDeleteModal to false");
+      // Success - close modal
       setShowDeleteModal(false);
-
-      console.log("6. Setting selectedItem to null");
       setSelectedItem(null);
     } catch (error) {
-      console.error("7. Delete failed:", error);
+      console.error("Delete failed:", error);
+      // Error - keep modal open but stop loading
     } finally {
-      console.log("8. Finally block - clearing loading state");
       setActionLoading({ type: null, id: null });
-      console.log("9. showDeleteModal after:", showDeleteModal);
     }
   };
+
   // Open view modal
   const handleOpenView = (purchaseOrder) => {
     setSelectedItem(purchaseOrder);
@@ -480,10 +475,10 @@ const PurchaseOrderTable = () => {
                       </td>
                       <td>
                         <div className="fw-medium">
-                          {po.branch?.branch_name || po.branch?.name || "N/A"}
+                          {po.branch?.name || po.branch?.name || "N/A"}
                         </div>
                         <div className="text-muted small">
-                          {po.branch?.branch_code || po.branch?.code || ""}
+                          {po.branch?.code}
                         </div>
                       </td>
 
@@ -730,7 +725,7 @@ const PurchaseOrderTable = () => {
           }
         />
       )}
-      {/* DELETE MODAL */}
+      {/* DELETE MODAL - Single implementation */}
       {showDeleteModal && selectedItem && (
         <div
           className="modal fade show d-block"
@@ -743,14 +738,20 @@ const PurchaseOrderTable = () => {
             bottom: 0,
             zIndex: 1050,
           }}
-          onClick={() => {
-            setShowDeleteModal(false);
-            setSelectedItem(null);
+          onClick={(e) => {
+            // Only close if clicking on the backdrop (not modal content)
+            if (
+              e.target === e.currentTarget &&
+              actionLoading.type !== "delete"
+            ) {
+              setShowDeleteModal(false);
+              setSelectedItem(null);
+            }
           }}
         >
           <div
             className="modal-dialog modal-dialog-centered"
-            onClick={(e) => e.stopPropagation()} // Prevent click from bubbling up
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-content rounded-3">
               <div className="modal-header border-bottom pb-3">
@@ -761,8 +762,10 @@ const PurchaseOrderTable = () => {
                   type="button"
                   className="btn-close"
                   onClick={() => {
-                    setShowDeleteModal(false);
-                    setSelectedItem(null);
+                    if (actionLoading.type !== "delete") {
+                      setShowDeleteModal(false);
+                      setSelectedItem(null);
+                    }
                   }}
                   disabled={actionLoading.type === "delete"}
                   aria-label="Close"
@@ -784,8 +787,10 @@ const PurchaseOrderTable = () => {
                   type="button"
                   className="btn btn-outline-secondary"
                   onClick={() => {
-                    setShowDeleteModal(false);
-                    setSelectedItem(null);
+                    if (actionLoading.type !== "delete") {
+                      setShowDeleteModal(false);
+                      setSelectedItem(null);
+                    }
                   }}
                   disabled={actionLoading.type === "delete"}
                 >

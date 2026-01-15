@@ -229,7 +229,7 @@ const handleItemSelect = (item) => {
         ...prev.items,
         {
           inventory_item_id: "",
-          quantity: "",
+          quantity: "1",
           weight: "",
           unit_id: "",
           rate: "",

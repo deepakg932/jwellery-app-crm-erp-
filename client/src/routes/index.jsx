@@ -92,6 +92,8 @@ const RolesDetail = lazy(() => import('@/views/apps/users/roles-details'));
 
 // sale
 const SaleItemPage = lazy(() => import('@/views/sales-master/sales-items'));
+const SaleReturnPage = lazy(() => import('@/views/sales-master/sales-return'));
+
 const Pricing = lazy(() => import('@/views/pages/pricing'));
 const EmptyPage = lazy(() => import('@/views/pages/empty-page'));
 const Timeline = lazy(() => import('@/views/pages/timeline'));
@@ -556,8 +558,8 @@ const saleRoutes = [{
   path: '/sale/sale-item',
   element: <SaleItemPage />
 }, {
-  path: '/layouts/compact',
-  element: <CompactLayout />
+  path: '/sale-return',
+  element: <SaleReturnPage />
 }, {
   path: '/layouts/boxed',
   element: <BoxedLayout />
