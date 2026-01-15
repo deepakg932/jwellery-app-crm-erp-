@@ -28,7 +28,7 @@ router.post(
   '/createProduct',
   // authenticate,
   // requirePermission("products:create"),
-Productupload.single('image'), // "images" = key in Postman, max 5 files
+Productupload.single('images'), // "images" = key in Postman, max 5 files
   createProduct
 );
 

@@ -45,7 +45,7 @@ import customerRoutes from "./routes/customerRoutes.js";
 import roleRoutes from "./routes/roleRoutes.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
 import salesRoute from "./routes/salesRoute.js";
-
+import invoiceRoutes from "./routes/invoiceRoutes.js";
 
 
 dotenv.config(); 
@@ -101,7 +101,8 @@ app.use("/api/purchase-return",PurchaseReturnRoutes)
 app.use("/api/report",reportRoutes)
 app.use("/api/customers-group",customerGroupRoutes)
 app.use("/api/employees",employeeRoutes)
-app.use("/api/sales",salesRoute)
+app.use("/api/sale-items",salesRoute)
+app.use("/api/sales-invoice",invoiceRoutes)
 // app.use("/api/stock-grn",grn)
 // app.use("/api/stock-ledger",StockLedgerRoute)
 app.use("/api/customers",customerRoutes)

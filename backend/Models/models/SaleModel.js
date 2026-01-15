@@ -73,6 +73,7 @@ const SalesOrderSchema = new mongoose.Schema(
     ],
 
     order_tax: { type: Number, default: 0 },
+    paid_amount: { type: Number, default: 0 },
 
     order_discount_type: {
       type: String,
@@ -86,12 +87,7 @@ const SalesOrderSchema = new mongoose.Schema(
 
     total_amount: Number,
     grand_total: Number,
-
-    payment_status: {
-      type: String,
-      enum: ["pending", "partial", "paid"],
-      default: "pending",
-    },
+    payment_status: { enum: ["pending", "partial", "paid", "overdue"] },
 
     sale_status: {
       type: String,

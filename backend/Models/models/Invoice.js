@@ -1,4 +1,3 @@
-// models/Invoice.js
 import mongoose from "mongoose";
 
 const InvoiceSchema = new mongoose.Schema(
@@ -6,45 +5,53 @@ const InvoiceSchema = new mongoose.Schema(
     invoice_number: {
       type: String,
       unique: true,
-      default: () => `INV-${Date.now()}`
+      required: true,
     },
 
     sale_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "SalesOrder",
-      required: true
+      ref: "Sale",
+      required: true,
+      unique: true, // 1 sale → 1 invoice
     },
 
     customer_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-      required: true
+      required: true,
     },
 
-    items: [
-      {
-        item_id: { type: mongoose.Schema.Types.ObjectId, ref: "InventoryItem" },
-        quantity: Number,
-        rate: Number,
-        tax: Number,
-        total: Number
-      }
-    ],
+    branch_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
+      required: true,
+    },
+
+    invoice_date: {
+      type: Date,
+      default: Date.now,
+    },
+
+    items: Array, // copy from sale (snapshot)
 
     subtotal: Number,
-    tax_amount: Number,
-    grand_total: Number,
+    total_tax: Number,
+    discount: Number,
+    shipping_cost: Number,
+    total_amount: Number,
 
     payment_status: {
       type: String,
       enum: ["pending", "partial", "paid"],
-      default: "pending"
+      default: "pending",
     },
 
-    generated_by: {
+    pdf_url: String, // stored PDF path
+
+    created_by: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
-    }
+      ref: "User",
+    },
   },
   { timestamps: true }
 );

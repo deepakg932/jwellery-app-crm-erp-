@@ -1,45 +1,55 @@
 // controllers/invoiceController.js
-import Invoice from "../models/Invoice.js";
-import Sale from "../models/SalesOrder.js";
+import Invoice from "../Models/models/Invoice.js"
+import Sale from  "../Models/models/SalesOrder.js"
+// import { generateInvoiceNumber } from "../helper/generateInvoiceNumber.js";
 
-export const generateInvoice = async (req, res) => {
+export const generateInvoiceFromSale = async (req, res) => {
   try {
-    const { sale_id } = req.body;
+    const { sale_id } = req.params;
 
     const sale = await Sale.findById(sale_id)
-      .populate("items.item_id");
+      .populate("customer_id")
+      .populate("branch_id");
 
     if (!sale) {
-      return res.status(404).json({ message: "Sale not found" });
+      return res.status(404).json({ success: false, message: "Sale not found" });
     }
 
-    // prevent duplicate invoice
-    const already = await Invoice.findOne({ sale_id });
-    if (already) {
-      return res.status(400).json({ message: "Invoice already generated" });
+    if (sale.sale_status !== "completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Invoice can be generated only for completed sales",
+      });
     }
+
+    const invoiceNumber = await generateInvoiceNumber();
 
     const invoice = await Invoice.create({
+      invoice_number: invoiceNumber,
       sale_id: sale._id,
-      customer_id: sale.customer_id,
+      customer_id: sale.customer_id._id,
+      branch_id: sale.branch_id._id,
       items: sale.items,
-      subtotal: sale.total_amount,
-      tax_amount: sale.items.reduce((a, i) => a + (i.tax || 0), 0),
-      grand_total: sale.total_amount,
-      payment_status: sale.payment_status,
-      generated_by: req.user?._id
+      subtotal: sale.subtotal,
+      total_tax: sale.total_tax,
+      discount: sale.discount,
+      shipping_cost: sale.shipping_cost,
+      total_amount: sale.total_amount,
+      created_by: req.user?._id,
     });
 
     return res.status(201).json({
       success: true,
       message: "Invoice generated successfully",
-      data: invoice
+      data: invoice,
     });
+
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
 export const getInvoices = async (req, res) => {
   try {
     const invoices = await Invoice.find()
