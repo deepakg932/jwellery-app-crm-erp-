@@ -32,6 +32,12 @@ const SalesOrderSchema = new mongoose.Schema(
     //   ref: "Biller",
     // },
 
+    sold_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee",
+      required: true,
+    },
+
     currency: {
       type: String,
       default: "USD",
@@ -40,6 +46,20 @@ const SalesOrderSchema = new mongoose.Schema(
     exchange_rate: {
       type: Number,
       default: 1,
+    },
+
+
+      is_exchange: {
+      type: Boolean,
+      default: false,
+    },
+
+    exchange_details: {
+      old_product_name: String,
+      old_product_weight: Number,
+      old_product_amount: Number,
+      exchange_adjusted_amount: Number,
+      note: String,
     },
 
     items: [

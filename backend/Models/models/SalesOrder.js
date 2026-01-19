@@ -88,6 +88,27 @@ const SalesOrderSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    is_exchange: {
+  type: Boolean,
+  default: false,
+},
+
+exchange_amount: {
+  type: Number,
+  default: 0,
+},
+exchange_note: {
+  type: String,
+},
+
+exchange_details: {
+  type: Object,
+},
+sold_by: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Employee",
+},
+
  balance_amount: {
   type: Number,
   default: 0,

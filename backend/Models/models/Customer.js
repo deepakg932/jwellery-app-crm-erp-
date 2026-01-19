@@ -6,7 +6,7 @@ const customerSchema = new mongoose.Schema(
     customer_group_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CustomerGroup",
-      required: true,
+      // required: true,
     },
 
     // customer_type: {
@@ -17,13 +17,13 @@ const customerSchema = new mongoose.Schema(
 
     name: {
       type: String,
-      required: true,
+      // required: true,
       trim: true,
     },
 
     mobile: {
       type: String,
-      required: true,
+      // required: true,
       unique: true,
     },
 

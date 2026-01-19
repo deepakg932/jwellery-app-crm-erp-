@@ -46,6 +46,11 @@ import roleRoutes from "./routes/roleRoutes.js";
 import employeeRoutes from "./routes/employeeRoutes.js";
 import salesRoute from "./routes/salesRoute.js";
 import invoiceRoutes from "./routes/invoiceRoutes.js";
+import CustomRoutes from "./routes/CustomRoutes.js";
+import quotationRoutes from "./routes/quotationRoutes.js";
+import repairRoutes from "./routes/repairRoutes.js";
+
+
 
 
 dotenv.config(); 
@@ -55,6 +60,15 @@ connectDB();
 
 const app = express();
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -63,9 +77,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors())
 app.use('/uploads', express.static('uploads'));
 
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-app.use(express.json({ limit: "100mb" }));
-app.use(express.urlencoded({ limit: "100mb", extended: true }));
 
 app.use("/api/auth", AuthRoutes);
 app.use("/api/roles", roleRoutes);
@@ -106,7 +120,10 @@ app.use("/api/sales-invoice",invoiceRoutes)
 // app.use("/api/stock-grn",grn)
 // app.use("/api/stock-ledger",StockLedgerRoute)
 app.use("/api/customers",customerRoutes)
+app.use("/api/custom-orders",CustomRoutes)
 app.use("/api/Inventory-stock",InventoryStockRoutes)
+app.use("/api/quotation",quotationRoutes)
+app.use("/api/repairs",repairRoutes)
 // app.use("/api/stock-transfer",stockTransferRoute)
 // app.use("/api/stock-adjustment",stockAdjustmentRoutes)
 

@@ -1,10 +1,16 @@
 
 import express from 'express';
-import { getRepairs, createRepair } from '../controllers/repairController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { listRepairs,createRepair,updateRepair,deleteRepair } from "../Controller/repairController.js";
+// import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
-router.get('/', protect, getRepairs);
-router.post('/', protect, createRepair);
+
+
+router.post('/create-repair', createRepair);
+router.get('/get-repairs', listRepairs);
+router.put('/update-repair/:id', updateRepair);
+router.delete('/delete-repair/:id',deleteRepair);
+// router.get('/', protect, getRepairs);
+// router.post('/', protect, createRepair);
 
 export default router;

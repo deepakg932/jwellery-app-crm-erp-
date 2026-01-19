@@ -5,33 +5,40 @@ const InvoiceSchema = new mongoose.Schema(
     invoice_number: {
       type: String,
       unique: true,
-      required: true,
+      // required: true,
     },
 
     sale_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Sale",
-      required: true,
-      unique: true, // 1 sale → 1 invoice
+      // // required: true,
+      // unique: true, // 1 sale → 1 invoice
     },
 
     customer_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-      required: true,
+  
     },
 
     branch_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
-      required: true,
+    
     },
+    repair_id: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Repair",
+  default: null,
+},
+
 
     invoice_date: {
       type: Date,
       default: Date.now,
     },
 
+    
     items: Array, // copy from sale (snapshot)
 
     subtotal: Number,

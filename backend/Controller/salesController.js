@@ -15,48 +15,73 @@ export const createSale = async (req, res) => {
     const data = req.body;
 
     if (!data.customer_id || !data.branch_id || !data.items?.length) {
-      return res.status(400).json({
-        success: false,
-        message: "Customer, Branch and items are required",
+      return res.status(400).json({success: false,message: "Customer, Branch and items are required",
       });
     }
 
-    // status mapping
+    
     if (data.status) {
       data.sale_status = data.status;
       delete data.status;
     }
 
-    // 🔥 AUTO SALE REFERENCE
+   
     const reference_no = await generateSaleReference();
 
-    // product validation
+   
     for (const item of data.items) {
       const product = await Product.findById(item.product_id);
       if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: "Product not found",
-        });
+        return res.status(404).json({success: false,message: "Product not found",});
       }
 
       item.product_name = product.product_name;
       item.product_code = product.product_code;
     }
 
-    // ✅ 1️⃣ CREATE SALE FIRST
+
+    // // 🔥 BASE TOTAL
+    // let finalTotal = Number(data.total_amount || 0);
+
+    // // 🔥 EXCHANGE ADJUSTMENT
+    // if (data.is_exchange === true) {
+    //   const exchangeAmount = Number(data.exchange_amount || 0);
+
+    //   if (exchangeAmount <= 0) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Exchange amount must be greater than 0",
+    //     });
+    //   }
+
+    //   if (exchangeAmount > finalTotal) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Exchange amount cannot exceed total amount",
+    //     });
+    //   }
+
+    //   finalTotal = finalTotal - exchangeAmount;
+    // }
+
+
     const sale = await Sale.create({
       ...data,
       reference_no,
+      // total_amount: finalTotal,
       created_by: req.user?._id,
     });
 
-    // ✅ 2️⃣ AUTO CREATE INVOICE IMMEDIATELY
+   
     const invoice = await Invoice.create({
       invoice_number: await generateInvoiceNumber(),
       sale_id: sale._id,
       customer_id: sale.customer_id,
       branch_id: sale.branch_id,
+   sold_by: sale.sold_by,
+      is_exchange: sale.is_exchange,
+      exchange_note: sale.exchange_note,
+      exchange_details: sale.is_exchange ? sale.exchange_details : null,
       items: sale.items,
       subtotal: sale.subtotal,
       total_tax: sale.total_tax,
@@ -73,10 +98,8 @@ export const createSale = async (req, res) => {
 
   } catch (error) {
     console.error("Create Sale Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(500).json({success: false,message: error.message,
+});
   }
 };
 
@@ -332,7 +355,10 @@ export const listSales = async (req, res) => {
     const sales = await Sale.find()
       .sort({ createdAt: -1 })
       .populate("customer_id", "name mobile")
-      .populate("branch_id", "branch_name branch_code");
+      .populate("branch_id", "branch_name branch_code")
+            .populate("sold_by", "name employee_code"); 
+
+      
 
     const saleIds = sales.map(s => s._id);
 
@@ -424,7 +450,7 @@ export const updateSalePayment = async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      paid_amount,        // 👈 TOTAL PAID from frontend
+      paid_amount,      
       payment_date,
       payment_method,
       payment_notes,
@@ -432,37 +458,25 @@ export const updateSalePayment = async (req, res) => {
 
     const sale = await Sale.findById(id);
     if (!sale) {
-      return res.status(404).json({
-        success: false,
-        message: "Sale not found",
-      });
+      return res.status(404).json({ success: false,message: "Sale not found",});
     }
 
     if (sale.sale_status === "cancelled") {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot update payment for cancelled sale",
-      });
+      return res.status(400).json({ success: false,message: "Cannot update payment for cancelled sale",});
     }
 
     const totalAmount = Number(sale.total_amount || 0);
     const newTotalPaid = Number(paid_amount || 0);
 
     if (newTotalPaid < 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Paid amount cannot be negative",
-      });
+      return res.status(400).json({success: false,message: "Paid amount cannot be negative", });
     }
 
     if (newTotalPaid > totalAmount) {
-      return res.status(400).json({
-        success: false,
-        message: "Paid amount cannot exceed total amount",
-      });
+      return res.status(400).json({success: false,message: "Paid amount cannot exceed total amount",});
     }
 
-    // 🔥 CALCULATIONS
+
     const balanceAmount = totalAmount - newTotalPaid;
 
     let finalPaymentStatus = "pending";
@@ -474,7 +488,6 @@ export const updateSalePayment = async (req, res) => {
       finalPaymentStatus = "paid";
     }
 
-    // ✅ SAVE EVERYTHING
     sale.paid_amount = newTotalPaid;
     sale.balance_amount = balanceAmount;
     sale.payment_status = finalPaymentStatus;
@@ -484,10 +497,7 @@ export const updateSalePayment = async (req, res) => {
 
     await sale.save();
 
-    return res.status(200).json({
-      success: true,
-      message: "Payment updated successfully",
-      data: {
+    return res.status(200).json({success: true,message: "Payment updated successfully",data: {
         sale_id: sale._id,
         total_amount: totalAmount,
         paid_amount: newTotalPaid,
@@ -498,10 +508,7 @@ export const updateSalePayment = async (req, res) => {
 
   } catch (error) {
     console.error("Update Payment Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(500).json({ success: false, message: error.message,});
   }
 };
 

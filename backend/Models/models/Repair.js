@@ -1,16 +1,116 @@
-// src/models/Repair.js
-import mongoose from 'mongoose';
-const repairSchema = new mongoose.Schema({
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
-  itemName: String,
-  problem: String,
-  expectedDate: Date,
-  repairCharge: Number,
-  status: {
-    type: String,
-    enum: ["RECEIVED", "IN_PROGRESS", "READY", "DELIVERED"]
-  }
-}, { timestamps: true });
 
-export default mongoose.model("Repair", repairSchema);
+import mongoose from "mongoose";
 
+const RepairSchema = new mongoose.Schema(
+  {
+    repair_number: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+
+    
+    customer_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Customer",
+      // required: true,
+    },
+
+    sale_item_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Sale",
+      default: null,
+    },
+
+    product_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      default: null, 
+    },
+
+
+    product_name: {
+      type: String,
+      required: true,
+    },
+
+    product_module: String,
+
+   
+    problem_description: {
+      type: String,
+      required: true,
+    },
+
+    employee_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee",
+      required: true,
+    },
+
+
+    repair_charge: {
+      type: Number,
+      required: true,
+    },
+
+    paid_amount: {
+      type: Number,
+      default: 0,
+    },
+
+    due_amount: {
+      type: Number,
+      default: 0,
+    },
+
+    payment_status: {
+      type: String,
+      enum: ["unpaid", "partial", "paid"],
+      default: "unpaid",
+    },
+
+    account: {
+      type: String,
+      enum: ["cash", "bank", "upi"],
+      default: "cash",
+    },
+
+   
+    receiving_date: {
+      type: Date,
+      required: true,
+    },
+
+    delivery_date: Date,
+
+
+    status: {
+      type: String,
+      enum: ["pending", "in_progress", "ready", "delivered", "cancelled"],
+      default: "pending",
+    },
+
+    note: String,
+
+    created_by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  },
+  { timestamps: true }
+);
+
+
+RepairSchema.virtual("invoice", {
+  ref: "Invoice",
+  localField: "_id",
+  foreignField: "repair_id",
+  justOne: true,
+});
+
+RepairSchema.set("toObject", { virtuals: true });
+RepairSchema.set("toJSON", { virtuals: true });
+
+
+export default mongoose.model("Repair", RepairSchema);
