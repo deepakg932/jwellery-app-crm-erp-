@@ -10,10 +10,68 @@ export default function useSales() {
   const [items, setItems] = useState([]);
   const [units, setUnits] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
+
+  // Fetch all employees
+  const fetchEmployees = async () => {
+    try {
+      setLoadingEmployees(true);
+      const url = API_ENDPOINTS.getEmployees();
+      console.log("Fetching employees from:", url);
+
+      const res = await axios.get(url);
+      console.log("Employees API Response:", res.data);
+
+      let employeesData = [];
+
+      // Handle different response structures
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        employeesData = res.data.data;
+      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        employeesData = res.data.fetched;
+      } else if (Array.isArray(res.data)) {
+        employeesData = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        employeesData = res.data.data;
+      }
+
+      const mappedEmployees = employeesData.map((item) => ({
+        _id: item._id || item.id,
+        name: item.name || item.employee_name || "",
+        email: item.email || "",
+        phone: item.phone || item.mobile || "",
+        pan_number: item.pan_number || "",
+        aadhaar_number: item.aadhaar_number || "",
+        address: item.address || "",
+        city: item.city || "",
+        state: item.state || "",
+        country: item.country || "",
+        pincode: item.pincode || "",
+        role_id: item.role_id?._id || item.role_id || "",
+        role_name: item.role_id?.role_name || item.role_name || "",
+        basic_salary: item.basic_salary || 0,
+        image: item.image || item.profile_image || "",
+        employee_code: item.employee_code || "",
+        status: item.status === "active" || item.status === true,
+        createdAt: item.createdAt || "",
+      }));
+
+      console.log("Fetched employees:", mappedEmployees);
+      setEmployees(mappedEmployees);
+      return mappedEmployees;
+    } catch (err) {
+      console.error("Fetch employees error:", err);
+      setError(err.response?.data?.message || "Failed to load employees");
+      return [];
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
 
   // Fetch customers (for dropdown)
   const fetchCustomers = async () => {
@@ -176,13 +234,16 @@ export default function useSales() {
         const customer = sale.customer_id || sale.customer || {};
         const customerName =
           customer.name || customer.customer_name || "Unknown Customer";
-
         const customerMobile = customer.mobile || customer.phone || "";
 
         // Extract branch information
         const branch = sale.branch_id || sale.branch || {};
         const branchName = branch.branch_name || branch.name || "Main Branch";
         const branchCode = branch.branch_code || branch.code || "";
+
+        // Extract employee/sold_by information
+        const soldBy = sale.sold_by || {};
+        const soldByName = soldBy.name || "";
 
         // Use reference_no as identifier
         const referenceNo =
@@ -193,8 +254,6 @@ export default function useSales() {
 
         // Calculate totals from API response
         const totalAmount = parseFloat(sale.total_amount) || 0;
-        const grandTotal = parseFloat(sale.grand_total) || totalAmount;
-        const finalTotal = parseFloat(sale.final_total) || grandTotal;
         const subtotal = parseFloat(sale.subtotal) || 0;
         const shippingCost = parseFloat(sale.shipping_cost) || 0;
         const discount = parseFloat(sale.discount) || 0;
@@ -204,6 +263,10 @@ export default function useSales() {
         const currentPaid = parseFloat(sale.current_paid) || paidAmount;
         const balanceAmount =
           parseFloat(sale.balance_amount) || totalAmount - currentPaid;
+
+        // Exchange information
+        const isExchange = sale.is_exchange || false;
+        const exchangeAmount = parseFloat(sale.exchange_amount) || 0;
 
         return {
           _id: sale._id,
@@ -217,6 +280,11 @@ export default function useSales() {
           sale_date:
             sale.sale_date || sale.createdAt || new Date().toISOString(),
           items: sale.items || [],
+          // Exchange fields
+          is_exchange: isExchange,
+          exchange_amount: exchangeAmount,
+          exchange_note: sale.exchange_note || "",
+          // Use sale_status from API, fallback to status
           status:
             sale.sale_status?.toLowerCase() ||
             sale.status?.toLowerCase() ||
@@ -225,16 +293,21 @@ export default function useSales() {
           shipping_cost: shippingCost,
           discount: discount,
           tax_amount: parseFloat(sale.gst_amount) || 0,
-          total_tax: parseFloat(sale.total_tax) || 0, // ADD THIS LINE
+          total_tax: parseFloat(sale.total_tax) || 0,
           gst_amount: parseFloat(sale.gst_amount) || 0,
           gst_rate: sale.items?.[0]?.gst_rate || 0,
           subtotal: subtotal,
           total_amount: totalAmount,
-          final_total: finalTotal,
-          grand_total: grandTotal,
+          // Use total_amount as final_total and grand_total since they're not in the response
+          final_total: totalAmount,
+          grand_total: totalAmount,
           branch_id: branch,
           branch_name: branchName,
           branch_code: branchCode,
+          // Sold by information
+          sold_by: soldBy,
+          sold_by_id: soldBy._id || "",
+          sold_by_name: soldByName,
           payment_status: sale.payment_status?.toLowerCase() || "pending",
           paid_amount: currentPaid,
           current_paid: currentPaid,
@@ -245,7 +318,7 @@ export default function useSales() {
           created_at: sale.createdAt || new Date().toISOString(),
           updated_at: sale.updatedAt || new Date().toISOString(),
 
-          // INVOICE FIELDS - ADD THESE:
+          // INVOICE FIELDS
           has_invoice: sale.has_invoice || false,
           invoice_id: sale.invoice_id || null,
           invoice_number: sale.invoice_number || null,
@@ -282,7 +355,7 @@ export default function useSales() {
       setLoading(false);
     }
   };
-  // Add a new sale
+  // Add a new sale - UPDATED VERSION
   const addSale = async (saleData) => {
     try {
       setLoading(true);
@@ -297,6 +370,7 @@ export default function useSales() {
       const transformedData = {
         customer_id: saleData.customer_id,
         sale_date: saleData.sale_date,
+        sold_by: saleData.sold_by || "", // Add sold_by field
         items: Array.isArray(saleData.items)
           ? saleData.items.map((item) => ({
               product_id: item.product_id,
@@ -310,13 +384,23 @@ export default function useSales() {
               product_code: item.product_code,
             }))
           : [],
+        // Add exchange related fields
+        is_exchange: saleData.is_exchange || false,
+        exchange_amount: saleData.is_exchange
+          ? parseFloat(saleData.exchange_amount) || 0
+          : 0,
+        exchange_note: saleData.exchange_note || "",
         sale_note: saleData.sale_note || "",
         shipping_cost: parseFloat(saleData.shipping_cost) || 0,
         discount: parseFloat(saleData.discount) || 0,
         vat: parseFloat(saleData.vat) || 0,
         subtotal: parseFloat(saleData.subtotal) || 0,
+        total_tax: parseFloat(saleData.total_tax) || 0, // Add total_tax
         total_amount: parseFloat(saleData.total_amount) || 0,
-        grand_total: parseFloat(saleData.grand_total) || 0,
+        grand_total:
+          parseFloat(saleData.grand_total) ||
+          parseFloat(saleData.total_amount) ||
+          0,
         branch_id: saleData.branch_id,
         status: saleData.status || "draft",
         payment_status: saleData.payment_status || "pending",
@@ -346,6 +430,10 @@ export default function useSales() {
       const customerName =
         customer?.name || customer?.customer_name || "Unknown Customer";
 
+      // Extract employee info if available
+      const employee = responseData.sold_by || transformedData.sold_by;
+      const employeeName = employee?.name || "";
+
       const newSale = {
         _id: responseData._id || responseData.id || `temp-${Date.now()}`,
         reference_no: responseData.reference_no || tempRefNo, // Use backend ref or temp
@@ -360,13 +448,19 @@ export default function useSales() {
               product: item.product || null,
             }))
           : transformedData.items,
-        status: responseData.status || transformedData.status,
+        // Add exchange fields to the sale object
+        is_exchange: responseData.is_exchange || transformedData.is_exchange,
+        exchange_amount:
+          responseData.exchange_amount || transformedData.exchange_amount,
+        exchange_note:
+          responseData.exchange_note || transformedData.exchange_note,
         sale_note: responseData.sale_note || transformedData.sale_note,
         shipping_cost:
           responseData.shipping_cost || transformedData.shipping_cost,
         discount: responseData.discount || transformedData.discount,
         vat: responseData.vat || transformedData.vat,
         subtotal: responseData.subtotal || transformedData.subtotal,
+        total_tax: responseData.total_tax || transformedData.total_tax, // Add total_tax
         total_amount: responseData.total_amount || transformedData.total_amount,
         grand_total: responseData.grand_total || transformedData.grand_total,
         branch_id: responseData.branch_id || transformedData.branch_id,
@@ -376,6 +470,9 @@ export default function useSales() {
           "Main Branch",
         branch_code:
           responseData.branch?.branch_code || responseData.branch?.code || "",
+        // Add sold_by information
+        sold_by: employee,
+        sold_by_name: employeeName,
         payment_status:
           responseData.payment_status || transformedData.payment_status,
         created_at:
@@ -534,28 +631,75 @@ export default function useSales() {
       const url = API_ENDPOINTS.updateSaleItem(id);
       console.log("Updating sale at:", url, "Data:", saleData);
 
-      const res = await axios.put(url, saleData);
+      // Transform saleData to match API expectations
+      const transformedData = {
+        customer_id: saleData.customer_id,
+        sale_date: saleData.sale_date,
+        sold_by: saleData.sold_by || "",
+        items: Array.isArray(saleData.items)
+          ? saleData.items.map((item) => ({
+              product_id: item.product_id,
+              quantity: parseFloat(item.quantity) || 1,
+              price_before_tax: parseFloat(item.price_before_tax) || 0,
+              gst_rate: parseFloat(item.gst_rate) || 0,
+              gst_amount: parseFloat(item.gst_amount) || 0,
+              selling_total: parseFloat(item.selling_total) || 0,
+              final_total: parseFloat(item.final_total) || 0,
+              product_name: item.product_name,
+              product_code: item.product_code,
+            }))
+          : [],
+        is_exchange: saleData.is_exchange || false,
+        exchange_amount: saleData.is_exchange
+          ? parseFloat(saleData.exchange_amount) || 0
+          : 0,
+        exchange_note: saleData.exchange_note || "",
+        sale_note: saleData.sale_note || "",
+        shipping_cost: parseFloat(saleData.shipping_cost) || 0,
+        discount: parseFloat(saleData.discount) || 0,
+        subtotal: parseFloat(saleData.subtotal) || 0,
+        total_tax: parseFloat(saleData.total_tax) || 0,
+        total_amount: parseFloat(saleData.total_amount) || 0,
+        branch_id: saleData.branch_id,
+        sale_status: saleData.status || "draft", // Map status to sale_status
+        payment_status: saleData.payment_status || "pending",
+      };
+
+      const res = await axios.put(url, transformedData);
       console.log("Update sale response:", res.data);
 
       if (res.data?.success) {
         const responseData = res.data.data || res.data;
         const updatedData = {
           _id: responseData._id || responseData.id || id,
-          sale_number: responseData.sale_number,
-          customer_id: responseData.customer_id || saleData.customer_id,
-          sale_date: responseData.sale_date || saleData.sale_date,
-          items: responseData.items || saleData.items,
-          status: responseData.status || saleData.status || "draft",
-          sale_note: responseData.sale_note || saleData.sale_note,
-          shipping_cost: responseData.shipping_cost || saleData.shipping_cost,
-          discount: responseData.discount || saleData.discount,
-          vat: responseData.vat || saleData.vat,
-          subtotal: responseData.subtotal || saleData.subtotal,
-          total_amount: responseData.total_amount || saleData.total_amount,
-          grand_total: responseData.grand_total || saleData.grand_total,
-          branch_id: responseData.branch_id || saleData.branch_id,
+          reference_no: responseData.reference_no,
+          customer_id: responseData.customer_id || transformedData.customer_id,
+          sale_date: responseData.sale_date || transformedData.sale_date,
+          items: responseData.items || transformedData.items,
+          is_exchange: responseData.is_exchange || transformedData.is_exchange,
+          exchange_amount:
+            responseData.exchange_amount || transformedData.exchange_amount,
+          exchange_note:
+            responseData.exchange_note || transformedData.exchange_note,
+          status:
+            responseData.sale_status || transformedData.sale_status || "draft",
+          sale_note: responseData.sale_note || transformedData.sale_note,
+          shipping_cost:
+            responseData.shipping_cost || transformedData.shipping_cost,
+          discount: responseData.discount || transformedData.discount,
+          subtotal: responseData.subtotal || transformedData.subtotal,
+          total_tax: responseData.total_tax || transformedData.total_tax,
+          total_amount:
+            responseData.total_amount || transformedData.total_amount,
+          final_total:
+            responseData.total_amount || transformedData.total_amount,
+          grand_total:
+            responseData.total_amount || transformedData.total_amount,
+          branch_id: responseData.branch_id || transformedData.branch_id,
+          sold_by: responseData.sold_by || transformedData.sold_by,
+          sold_by_name: responseData.sold_by?.name || "",
           payment_status:
-            responseData.payment_status || saleData.payment_status,
+            responseData.payment_status || transformedData.payment_status,
         };
 
         console.log("Updated sale data:", updatedData);
@@ -580,7 +724,6 @@ export default function useSales() {
       setLoading(false);
     }
   };
-
   // Delete a sale
   const deleteSale = async (id) => {
     try {
@@ -618,6 +761,7 @@ export default function useSales() {
         fetchItems(),
         fetchUnits(),
         fetchBranches(),
+        fetchEmployees(),
       ]);
     };
 
@@ -636,6 +780,7 @@ export default function useSales() {
     items,
     units,
     branches,
+    employees,
 
     // Loading states
     loading,
@@ -643,6 +788,7 @@ export default function useSales() {
     loadingItems,
     loadingUnits,
     loadingBranches,
+    loadingEmployees,
 
     // Error
     error,
@@ -652,6 +798,7 @@ export default function useSales() {
     fetchCustomers,
     fetchItems,
     fetchUnits,
+    fetchEmployees,
     fetchBranches,
     addSale,
     updateSalePayment,

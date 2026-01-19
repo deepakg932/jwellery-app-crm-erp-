@@ -1,11 +1,19 @@
 import React, { useState } from "react";
-import { FiCalendar, FiPackage, FiDollarSign, FiUser, FiMapPin, FiFileText } from "react-icons/fi";
+import {
+  FiCalendar,
+  FiPackage,
+  FiDollarSign,
+  FiUser,
+  FiMapPin,
+  FiFileText,
+  FiRefreshCw,
+} from "react-icons/fi";
 import { AiOutlineFileExcel } from "react-icons/ai";
 import { GrDocumentPdf } from "react-icons/gr";
 
 const ViewSaleModal = ({ sale, onClose }) => {
   const [pdfLoading, setPdfLoading] = useState(false);
-  
+
   if (!sale) return null;
 
   // Format date
@@ -39,6 +47,12 @@ const ViewSaleModal = ({ sale, onClose }) => {
     return branch.branch_name || branch.name || "Unknown Branch";
   };
 
+  // Get employee name
+  const getEmployeeName = (employee) => {
+    if (!employee) return "N/A";
+    return employee.name || employee.employee_name || "Unknown Employee";
+  };
+
   // Get status badge class
   const getStatusBadgeClass = (status) => {
     switch (status?.toLowerCase()) {
@@ -50,10 +64,8 @@ const ViewSaleModal = ({ sale, onClose }) => {
       case "draft":
         return "bg-secondary";
       case "cancelled":
-      case "rejected":
         return "bg-danger";
       case "shipped":
-      case "processing":
         return "bg-info";
       default:
         return "bg-secondary";
@@ -71,8 +83,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
         return "bg-info";
       case "overdue":
         return "bg-danger";
-      case "cancelled":
-        return "bg-secondary";
       default:
         return "bg-secondary";
     }
@@ -80,28 +90,32 @@ const ViewSaleModal = ({ sale, onClose }) => {
 
   // Calculate item totals
   const calculateItemTotals = (items) => {
-    if (!items || !Array.isArray(items)) return { totalQuantity: 0, totalAmount: 0 };
-    
-    return items.reduce((acc, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const finalTotal = parseFloat(item.final_total) || 0;
-      
-      return {
-        totalQuantity: acc.totalQuantity + quantity,
-        totalAmount: acc.totalAmount + finalTotal
-      };
-    }, { totalQuantity: 0, totalAmount: 0 });
+    if (!items || !Array.isArray(items))
+      return { totalQuantity: 0, totalAmount: 0 };
+
+    return items.reduce(
+      (acc, item) => {
+        const quantity = parseFloat(item.quantity) || 0;
+        const finalTotal = parseFloat(item.final_total) || 0;
+
+        return {
+          totalQuantity: acc.totalQuantity + quantity,
+          totalAmount: acc.totalAmount + finalTotal,
+        };
+      },
+      { totalQuantity: 0, totalAmount: 0 }
+    );
   };
 
-  // Handle PDF download using HTML2Canvas and jsPDF
+  // Handle PDF download
   const handleDownloadPDF = () => {
     if (!sale.invoice_number && !sale.reference_no) {
       alert("No invoice available for download");
       return;
     }
-    
+
     setPdfLoading(true);
-    
+
     // Create a printable HTML invoice
     const invoiceHTML = `
       <!DOCTYPE html>
@@ -222,6 +236,13 @@ const ViewSaleModal = ({ sale, onClose }) => {
           .print-button {
             display: none;
           }
+          .exchange-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+          }
         </style>
       </head>
       <body>
@@ -229,40 +250,122 @@ const ViewSaleModal = ({ sale, onClose }) => {
           <div class="header">
             <div class="company-name">SALES MANAGEMENT SYSTEM</div>
             <div class="invoice-title">TAX INVOICE</div>
-            <div class="invoice-number">Invoice: ${sale.invoice_number || sale.reference_no || 'N/A'}</div>
+            <div class="invoice-number">Invoice: ${
+              sale.invoice_number || sale.reference_no || "N/A"
+            }</div>
             <div>Date: ${formatDate(sale.sale_date)}</div>
           </div>
           
           <div class="details-grid">
-           
+            <div class="detail-section">
+              <h3>Sale Details</h3>
+              <div class="detail-item">
+                <span class="detail-label">Reference No:</span> ${
+                  sale.reference_no || "N/A"
+                }
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Sale Date:</span> ${formatDate(
+                  sale.sale_date
+                )}
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Status:</span> ${
+                  sale.status || sale.sale_status || "N/A"
+                }
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Payment Status:</span> ${
+                  sale.payment_status || "Pending"
+                }
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Branch:</span> ${getBranchName(
+                  sale.branch_id
+                )}
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Sold By:</span> ${getEmployeeName(
+                  sale.sold_by
+                )}
+              </div>
             </div>
             
             <div class="detail-section">
               <h3>Customer Details</h3>
               <div class="detail-item">
-                <span class="detail-label">Name:</span> ${getCustomerName(sale.customer_id)}
+                <span class="detail-label">Name:</span> ${getCustomerName(
+                  sale.customer_id
+                )}
               </div>
-              <div class="detail-item">
-                <span class="detail-label">Reference No:</span> ${sale.reference_no || "N/A"}
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Status:</span> ${sale.status || "N/A"}
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Payment:</span> ${sale.payment_status || "Pending"}
-              </div>
-              ${sale.customer_id?.phone ? `
+              ${
+                sale.customer_id?.mobile
+                  ? `
+                <div class="detail-item">
+                  <span class="detail-label">Mobile:</span> ${sale.customer_id.mobile}
+                </div>
+              `
+                  : ""
+              }
+              ${
+                sale.customer_id?.phone
+                  ? `
                 <div class="detail-item">
                   <span class="detail-label">Phone:</span> ${sale.customer_id.phone}
                 </div>
-              ` : ''}
-              ${sale.customer_id?.email ? `
+              `
+                  : ""
+              }
+              ${
+                sale.customer_id?.email
+                  ? `
                 <div class="detail-item">
                   <span class="detail-label">Email:</span> ${sale.customer_id.email}
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
+              ${
+                sale.customer_id?.customer_code
+                  ? `
+                <div class="detail-item">
+                  <span class="detail-label">Customer Code:</span> ${sale.customer_id.customer_code}
+                </div>
+              `
+                  : ""
+              }
             </div>
           </div>
+          
+          ${
+            sale.is_exchange
+              ? `
+            <div class="exchange-info">
+              <h3 style="margin-top: 0; color: #856404;">
+                <FiRefreshCw style="display: inline-block; margin-right: 5px;" />
+                Exchange Sale
+              </h3>
+              <div class="detail-item">
+                <span class="detail-label">Exchange Amount:</span> ₹${parseFloat(
+                  sale.exchange_amount || 0
+                ).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+              ${
+                sale.exchange_note
+                  ? `
+                <div class="detail-item">
+                  <span class="detail-label">Exchange Note:</span> ${sale.exchange_note}
+                </div>
+              `
+                  : ""
+              }
+            </div>
+          `
+              : ""
+          }
           
           <table class="items-table">
             <thead>
@@ -271,23 +374,37 @@ const ViewSaleModal = ({ sale, onClose }) => {
                 <th>Product Name</th>
                 <th>Code</th>
                 <th>Qty</th>
-                <th>Price</th>
-                <th>GST</th>
-                <th>Total</th>
+                <th>Price (before tax)</th>
+                <th>GST Rate</th>
+                <th>GST Amount</th>
+                <th>Selling Total</th>
+                <th>Final Total</th>
               </tr>
             </thead>
             <tbody>
-              ${sale.items?.map((item, index) => `
-                <tr>
+              ${
+                sale.items
+                  ?.map(
+                    (item, index) => `
+                   <tr>
                   <td>${index + 1}</td>
-                  <td>${item.product_name || item.product_id?.name || "N/A"}</td>
+                  <td>${
+                    item.product_name || item.product_id?.name || "N/A"
+                  }</td>
                   <td>${item.product_code || "N/A"}</td>
                   <td>${item.quantity}</td>
                   <td>${formatCurrency(item.price_before_tax)}</td>
                   <td>${item.gst_rate ? `${item.gst_rate}%` : "0%"}</td>
+                  <td>${formatCurrency(item.gst_amount)}</td>
+                   <td>${formatCurrency(item.selling_total)}</td>
                   <td>${formatCurrency(item.final_total)}</td>
                 </tr>
-              `).join('') || '<tr><td colspan="7" style="text-align: center;">No items in this sale</td></tr>'}
+                
+              `
+                  )
+                  .join("") ||
+                '<tr><td colspan="9" style="text-align: center;">No items in this sale</td></tr>'
+              }
             </tbody>
           </table>
           
@@ -306,30 +423,62 @@ const ViewSaleModal = ({ sale, onClose }) => {
             </div>
             <div class="total-row">
               <span class="total-label">Total GST:</span>
-              <span>${formatCurrency(sale.total_tax || sale.gst_amount)}</span>
+              <span>${formatCurrency(sale.total_tax)}</span>
             </div>
+            
+            ${
+              sale.is_exchange
+                ? `
+              <div class="total-row">
+                <span class="total-label">Before Exchange:</span>
+                <span>${formatCurrency(
+                  parseFloat(sale.subtotal || 0) +
+                    parseFloat(sale.shipping_cost || 0) -
+                    parseFloat(sale.discount || 0)
+                )}</span>
+              </div>
+              <div class="total-row">
+                <span class="total-label" style="color: #856404;">Exchange Deduction:</span>
+                <span style="color: #856404;">-${formatCurrency(
+                  sale.exchange_amount
+                )}</span>
+              </div>
+            `
+                : ""
+            }
+            
             <div class="total-row grand-total">
               <span class="total-label">Grand Total:</span>
               <span>${formatCurrency(sale.total_amount)}</span>
             </div>
             <div class="total-row">
               <span class="total-label">Paid Amount:</span>
-              <span>${formatCurrency(sale.paid_amount || 0)}</span>
+              <span>${formatCurrency(
+                sale.paid_amount || sale.current_paid || 0
+              )}</span>
             </div>
             <div class="total-row">
               <span class="total-label">Balance Due:</span>
               <span style="color: #e74c3c; font-weight: bold;">
-                ${formatCurrency(parseFloat(sale.total_amount || 0) - parseFloat(sale.paid_amount || 0))}
+                ${formatCurrency(
+                  sale.balance_amount ||
+                    parseFloat(sale.total_amount || 0) -
+                      parseFloat(sale.paid_amount || 0)
+                )}
               </span>
             </div>
           </div>
           
-          ${sale.sale_note ? `
+          ${
+            sale.sale_note
+              ? `
             <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px;">
-              <h4 style="margin-top: 0; color: #2c3e50;">Notes:</h4>
+              <h4 style="margin-top: 0; color: #2c3e50;">Sale Notes:</h4>
               <p style="margin-bottom: 0;">${sale.sale_note}</p>
             </div>
-          ` : ''}
+          `
+              : ""
+          }
           
           <div class="footer">
             <p>Thank you for your business!</p>
@@ -356,15 +505,15 @@ const ViewSaleModal = ({ sale, onClose }) => {
       </body>
       </html>
     `;
-    
+
     // Open the invoice in a new window and trigger print
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    const printWindow = window.open("", "_blank", "width=800,height=600");
     printWindow.document.write(invoiceHTML);
     printWindow.document.close();
-    
+
     // Focus on the new window
     printWindow.focus();
-    
+
     setPdfLoading(false);
   };
 
@@ -377,57 +526,69 @@ const ViewSaleModal = ({ sale, onClose }) => {
         invoice_number: sale.invoice_number,
         sale_date: formatDate(sale.sale_date),
         customer: getCustomerName(sale.customer_id),
-        customer_mobile: sale.customer_id?.mobile || sale.customer_id?.phone || "",
+        customer_mobile:
+          sale.customer_id?.mobile || sale.customer_id?.phone || "",
         branch: getBranchName(sale.branch_id),
-        status: sale.status,
+        sold_by: getEmployeeName(sale.sold_by),
+        status: sale.status || sale.sale_status,
         payment_status: sale.payment_status,
-        items: sale.items?.map(item => ({
-          product_name: item.product_name,
-          product_code: item.product_code,
-          quantity: item.quantity,
-          price_before_tax: item.price_before_tax,
-          gst_rate: `${item.gst_rate}%`,
-          gst_amount: item.gst_amount,
-          selling_total: item.selling_total,
-          final_total: item.final_total
-        })) || [],
+        is_exchange: sale.is_exchange ? "Yes" : "No",
+        exchange_amount: sale.exchange_amount || 0,
+        exchange_note: sale.exchange_note || "",
+        items:
+          sale.items?.map((item) => ({
+            product_name: item.product_name,
+            product_code: item.product_code,
+            quantity: item.quantity,
+            price_before_tax: item.price_before_tax,
+            gst_rate: `${item.gst_rate}%`,
+            gst_amount: item.gst_amount,
+            selling_total: item.selling_total,
+            final_total: item.final_total,
+          })) || [],
         subtotal: sale.subtotal,
         shipping_cost: sale.shipping_cost,
         discount: sale.discount,
         total_tax: sale.total_tax,
         total_amount: sale.total_amount,
-        paid_amount: sale.paid_amount,
+        paid_amount: sale.paid_amount || sale.current_paid,
         balance_amount: sale.balance_amount,
         sale_note: sale.sale_note,
         created_at: formatDate(sale.created_at),
-        updated_at: formatDate(sale.updated_at)
+        updated_at: formatDate(sale.updated_at),
       };
-      
+
       // Create CSV content
       let csvContent = "data:text/csv;charset=utf-8,";
-      
+
       // Add headers
       csvContent += "SALE DETAILS\r\n\r\n";
       csvContent += "Field,Value\r\n";
       csvContent += `Reference No,${saleData.reference_no}\r\n`;
-      csvContent += `Invoice No,${saleData.invoice_number || 'N/A'}\r\n`;
+      csvContent += `Invoice No,${saleData.invoice_number || "N/A"}\r\n`;
       csvContent += `Sale Date,${saleData.sale_date}\r\n`;
       csvContent += `Customer,${saleData.customer}\r\n`;
       csvContent += `Customer Mobile,${saleData.customer_mobile}\r\n`;
       csvContent += `Branch,${saleData.branch}\r\n`;
+      csvContent += `Sold By,${saleData.sold_by}\r\n`;
       csvContent += `Status,${saleData.status}\r\n`;
       csvContent += `Payment Status,${saleData.payment_status}\r\n`;
+      csvContent += `Exchange Sale,${saleData.is_exchange}\r\n`;
+      if (saleData.is_exchange === "Yes") {
+        csvContent += `Exchange Amount,${saleData.exchange_amount}\r\n`;
+        csvContent += `Exchange Note,${saleData.exchange_note}\r\n`;
+      }
       csvContent += `\r\n`;
-      
+
       // Add items
       csvContent += `ITEMS\r\n`;
       csvContent += `Product Name,Product Code,Quantity,Price Before Tax,GST Rate,GST Amount,Selling Total,Final Total\r\n`;
-      saleData.items.forEach(item => {
+      saleData.items.forEach((item) => {
         csvContent += `${item.product_name},${item.product_code},${item.quantity},${item.price_before_tax},${item.gst_rate},${item.gst_amount},${item.selling_total},${item.final_total}\r\n`;
       });
-      
+
       csvContent += `\r\n`;
-      
+
       // Add totals
       csvContent += `TOTALS\r\n`;
       csvContent += `Subtotal,${saleData.subtotal}\r\n`;
@@ -441,16 +602,21 @@ const ViewSaleModal = ({ sale, onClose }) => {
       csvContent += `Sale Note,${saleData.sale_note}\r\n`;
       csvContent += `Created At,${saleData.created_at}\r\n`;
       csvContent += `Updated At,${saleData.updated_at}\r\n`;
-      
+
       // Create download link
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Sale_${sale.reference_no || 'Details'}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute(
+        "download",
+        `Sale_${sale.reference_no || "Details"}_${
+          new Date().toISOString().split("T")[0]
+        }.csv`
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       console.log("Sale exported to CSV successfully");
     } catch (error) {
       console.error("Error exporting to CSV:", error);
@@ -462,17 +628,19 @@ const ViewSaleModal = ({ sale, onClose }) => {
   const calculatePaymentInfo = () => {
     const totalAmount = sale.total_amount || 0;
     const paidAmount = sale.paid_amount || sale.current_paid || 0;
-    const balanceAmount = sale.balance_amount || (totalAmount - paidAmount);
-    
+    const balanceAmount = sale.balance_amount || totalAmount - paidAmount;
+
     return {
       totalAmount,
       paidAmount,
       balanceAmount,
-      paymentPercentage: totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0
+      paymentPercentage: totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0,
     };
   };
 
-  const { totalQuantity, totalAmount: itemsTotal } = calculateItemTotals(sale.items);
+  const { totalQuantity, totalAmount: itemsTotal } = calculateItemTotals(
+    sale.items
+  );
   const paymentInfo = calculatePaymentInfo();
 
   return (
@@ -502,6 +670,12 @@ const ViewSaleModal = ({ sale, onClose }) => {
                     Invoice: {sale.invoice_number}
                   </span>
                 )}
+                {sale.is_exchange && (
+                  <span className="ms-2 badge bg-warning">
+                    <FiRefreshCw className="me-1" size={14} />
+                    Exchange Sale
+                  </span>
+                )}
               </h5>
               <div className="d-flex gap-2">
                 <button
@@ -513,7 +687,11 @@ const ViewSaleModal = ({ sale, onClose }) => {
                 >
                   {pdfLoading ? (
                     <>
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      <span
+                        className="spinner-border spinner-border-sm"
+                        role="status"
+                        aria-hidden="true"
+                      ></span>
                       <span>Generating...</span>
                     </>
                   ) : (
@@ -548,7 +726,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
           >
             {/* Header Info */}
             <div className="row mb-4">
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-body">
                     <h6 className="card-title fw-bold mb-3 border-bottom pb-2">
@@ -556,46 +734,59 @@ const ViewSaleModal = ({ sale, onClose }) => {
                       Sale Information
                     </h6>
                     <div className="row">
-                      <div className="col-6 mb-2">
+                      <div className="col-12 mb-2">
                         <small className="text-muted">Reference No:</small>
                         <div className="fw-medium text-primary">
                           {sale.reference_no || "N/A"}
                         </div>
                       </div>
-                      <div className="col-6 mb-2">
+                      <div className="col-12 mb-2">
                         <small className="text-muted">Invoice No:</small>
                         <div className="fw-medium">
                           {sale.invoice_number ? (
-                            <span className="text-success">{sale.invoice_number}</span>
+                            <span className="text-success">
+                              {sale.invoice_number}
+                            </span>
                           ) : (
                             <span className="text-muted">Not Generated</span>
                           )}
                         </div>
                       </div>
-                      <div className="col-6 mb-2">
+                      <div className="col-12 mb-2">
                         <small className="text-muted">Sale Date:</small>
                         <div className="fw-medium">
                           <FiCalendar className="me-1" size={14} />
                           {formatDate(sale.sale_date)}
                         </div>
                       </div>
-                      <div className="col-6 mb-2">
+                      <div className="col-12 mb-2">
                         <small className="text-muted">Status:</small>
                         <div>
                           <span
-                            className={`badge ${getStatusBadgeClass(sale.status)} fw-medium`}
+                            className={`badge ${getStatusBadgeClass(
+                              sale.status || sale.sale_status
+                            )} fw-medium`}
                           >
-                            {sale.status
-                              ? sale.status.charAt(0).toUpperCase() +
-                                sale.status.slice(1)
-                              : "Draft"}
+                            {(sale.status || sale.sale_status || "draft")
+                              .charAt(0)
+                              .toUpperCase() +
+                              (
+                                sale.status ||
+                                sale.sale_status ||
+                                "draft"
+                              ).slice(1)}
                           </span>
                         </div>
                       </div>
-                      <div className="col-12 mt-2">
-                        <small className="text-muted">Sale Note:</small>
-                        <div className="fw-medium p-2 bg-light rounded">
-                          {sale.sale_note || "No additional notes"}
+                      <div className="col-12 mb-2">
+                        <small className="text-muted">Sold By:</small>
+                        <div className="fw-medium">
+                          {getEmployeeName(sale.sold_by)}
+                          {sale.sold_by?.employee_code && (
+                            <small className="text-muted ms-2">
+                              ({sale.sold_by.employee_code})
+                            </small>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -603,15 +794,15 @@ const ViewSaleModal = ({ sale, onClose }) => {
                 </div>
               </div>
 
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <div className="card border-0 shadow-sm h-100">
                   <div className="card-body">
                     <h6 className="card-title fw-bold mb-3 border-bottom pb-2">
                       <FiUser className="me-2" />
-                      Customer & Branch
+                      Customer Details
                     </h6>
                     <div className="row">
-                      <div className="col-12 mb-3">
+                      <div className="col-12 mb-2">
                         <div className="d-flex align-items-center mb-2">
                           <div className="rounded-circle bg-primary bg-opacity-10 p-2 me-2">
                             <FiUser className="text-primary" size={18} />
@@ -627,6 +818,11 @@ const ViewSaleModal = ({ sale, onClose }) => {
                             )}
                           </div>
                         </div>
+                        {sale.customer_id?.mobile && (
+                          <div className="text-muted small">
+                            <strong>Mobile:</strong> {sale.customer_id.mobile}
+                          </div>
+                        )}
                         {sale.customer_id?.phone && (
                           <div className="text-muted small">
                             <strong>Phone:</strong> {sale.customer_id.phone}
@@ -638,8 +834,21 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           </div>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-md-4">
+                <div className="card border-0 shadow-sm h-100">
+                  <div className="card-body">
+                    <h6 className="card-title fw-bold mb-3 border-bottom pb-2">
+                      <FiMapPin className="me-2" />
+                      Branch Details
+                    </h6>
+                    <div className="row">
                       <div className="col-12">
-                        <div className="d-flex align-items-center">
+                        <div className="d-flex align-items-center mb-2">
                           <div className="rounded-circle bg-info bg-opacity-10 p-2 me-2">
                             <FiMapPin className="text-info" size={18} />
                           </div>
@@ -655,7 +864,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           </div>
                         </div>
                         {sale.branch_id?.address && (
-                          <div className="text-muted small mt-2">
+                          <div className="text-muted small">
                             <strong>Address:</strong> {sale.branch_id.address}
                           </div>
                         )}
@@ -665,6 +874,50 @@ const ViewSaleModal = ({ sale, onClose }) => {
                 </div>
               </div>
             </div>
+
+            {/* Exchange Information */}
+            {sale.is_exchange && (
+              <div className="row mb-4">
+                <div className="col-md-12">
+                  <div className="card border-warning border-2">
+                    <div className="card-body bg-warning bg-opacity-10">
+                      <h6 className="card-title fw-bold mb-3 text-warning">
+                        <FiRefreshCw className="me-2" />
+                        Exchange Sale Details
+                      </h6>
+                      <div className="row">
+                        <div className="col-md-4 mb-3">
+                          <small className="text-muted">Exchange Amount:</small>
+                          <div className="fw-bold fs-5 text-warning">
+                            {formatCurrency(sale.exchange_amount || 0)}
+                          </div>
+                        </div>
+                        <div className="col-md-8">
+                          <small className="text-muted">Exchange Note:</small>
+                          <div className="fw-medium p-2 bg-white rounded border">
+                            {sale.exchange_note || "No exchange notes provided"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="alert alert-info mt-3 mb-0">
+                        <div className="d-flex align-items-center">
+                          <FiRefreshCw className="me-2" size={18} />
+                          <div>
+                            <strong>Calculation:</strong> Grand Total = (Item
+                            Total + Shipping - Discount) - Exchange Amount
+                            <br />
+                            <small>
+                              Exchange amount has been deducted from the final
+                              total.
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Payment Information */}
             <div className="row mb-4">
@@ -678,7 +931,9 @@ const ViewSaleModal = ({ sale, onClose }) => {
                     <div className="row">
                       <div className="col-md-4 mb-3">
                         <div className="text-center">
-                          <small className="text-muted d-block">Payment Status</small>
+                          <small className="text-muted d-block">
+                            Payment Status
+                          </small>
                           <span
                             className={`badge ${getPaymentStatusBadgeClass(
                               sale.payment_status
@@ -696,12 +951,14 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="col-md-8">
                         <div className="row">
                           <div className="col-4 text-center">
                             <div className="border rounded p-3">
-                              <small className="text-muted d-block">Total Amount</small>
+                              <small className="text-muted d-block">
+                                Total Amount
+                              </small>
                               <div className="fw-bold fs-5">
                                 {formatCurrency(paymentInfo.totalAmount)}
                               </div>
@@ -709,23 +966,32 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           </div>
                           <div className="col-4 text-center">
                             <div className="border rounded p-3">
-                              <small className="text-muted d-block">Paid Amount</small>
+                              <small className="text-muted d-block">
+                                Paid Amount
+                              </small>
                               <div className="fw-bold fs-5 text-success">
                                 {formatCurrency(paymentInfo.paidAmount)}
                               </div>
                               {paymentInfo.paymentPercentage > 0 && (
                                 <small className="text-success">
-                                  ({(paymentInfo.paymentPercentage).toFixed(1)}% paid)
+                                  ({paymentInfo.paymentPercentage.toFixed(1)}%
+                                  paid)
                                 </small>
                               )}
                             </div>
                           </div>
                           <div className="col-4 text-center">
                             <div className="border rounded p-3">
-                              <small className="text-muted d-block">Balance Due</small>
-                              <div className={`fw-bold fs-5 ${
-                                paymentInfo.balanceAmount === 0 ? 'text-success' : 'text-danger'
-                              }`}>
+                              <small className="text-muted d-block">
+                                Balance Due
+                              </small>
+                              <div
+                                className={`fw-bold fs-5 ${
+                                  paymentInfo.balanceAmount === 0
+                                    ? "text-success"
+                                    : "text-danger"
+                                }`}
+                              >
                                 {formatCurrency(paymentInfo.balanceAmount)}
                               </div>
                               {sale.payment_date && (
@@ -760,7 +1026,10 @@ const ViewSaleModal = ({ sale, onClose }) => {
                     Sale Items ({totalQuantity} items)
                   </h6>
                   <div className="text-muted">
-                    Items Total: <span className="fw-bold">{formatCurrency(itemsTotal)}</span>
+                    Items Total:{" "}
+                    <span className="fw-bold">
+                      {formatCurrency(itemsTotal)}
+                    </span>
                   </div>
                 </div>
                 <div className="table-responsive">
@@ -785,7 +1054,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
                             <td>{index + 1}</td>
                             <td>
                               <div className="fw-medium">
-                                {item.product_name || item.product_id?.name || "N/A"}
+                                {item.product_name || "N/A"}
                               </div>
                             </td>
                             <td>
@@ -811,7 +1080,10 @@ const ViewSaleModal = ({ sale, onClose }) => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="9" className="text-center py-4 text-muted">
+                          <td
+                            colSpan="9"
+                            className="text-center py-4 text-muted"
+                          >
                             No items in this sale
                           </td>
                         </tr>
@@ -819,7 +1091,9 @@ const ViewSaleModal = ({ sale, onClose }) => {
                     </tbody>
                     <tfoot className="table-light">
                       <tr>
-                        <td colSpan="8" className="text-end fw-bold">Items Total:</td>
+                        <td colSpan="8" className="text-end fw-bold">
+                          Items Total:
+                        </td>
                         <td className="text-end fw-bold">
                           {formatCurrency(itemsTotal)}
                         </td>
@@ -863,9 +1137,36 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           <div className="d-flex justify-content-between mb-2">
                             <span className="text-muted">Total GST:</span>
                             <span className="fw-medium">
-                              {formatCurrency(sale.total_tax || sale.gst_amount)}
+                              {formatCurrency(sale.total_tax)}
                             </span>
                           </div>
+
+                          {sale.is_exchange && (
+                            <>
+                              <div className="d-flex justify-content-between mb-2 border-top pt-2 mt-2">
+                                <span className="text-muted">
+                                  Before Exchange:
+                                </span>
+                                <span className="fw-medium">
+                                  {formatCurrency(
+                                    parseFloat(sale.subtotal || 0) +
+                                      parseFloat(sale.shipping_cost || 0) -
+                                      parseFloat(sale.discount || 0)
+                                  )}
+                                </span>
+                              </div>
+                              <div className="d-flex justify-content-between mb-2">
+                                <span className="text-muted text-warning">
+                                  <FiRefreshCw className="me-1" size={14} />
+                                  Exchange Deduction:
+                                </span>
+                                <span className="fw-medium text-warning">
+                                  -{formatCurrency(sale.exchange_amount)}
+                                </span>
+                              </div>
+                            </>
+                          )}
+
                           <hr />
                           <div className="d-flex justify-content-between">
                             <span className="fw-bold fs-5">Grand Total:</span>
@@ -874,8 +1175,17 @@ const ViewSaleModal = ({ sale, onClose }) => {
                             </span>
                           </div>
                         </div>
+
+                        {sale.sale_note && (
+                          <div className="mt-3">
+                            <h6 className="fw-bold mb-2">Sale Notes</h6>
+                            <div className="p-3 bg-light rounded border">
+                              {sale.sale_note}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      
+
                       <div className="col-md-6">
                         <div className="bg-light p-3 rounded h-100">
                           <h6 className="fw-bold mb-3">Export Options</h6>
@@ -895,9 +1205,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
                             <div className="mb-2">
                               <strong>Excel Export:</strong>
                             </div>
-                            <div className="mb-1">
-                              • Downloads as CSV file
-                            </div>
+                            <div className="mb-1">• Downloads as CSV file</div>
                             <div className="mb-1">
                               • Opens in Excel or any spreadsheet software
                             </div>
@@ -931,7 +1239,11 @@ const ViewSaleModal = ({ sale, onClose }) => {
               >
                 {pdfLoading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Opening Print View...
                   </>
                 ) : (

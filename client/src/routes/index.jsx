@@ -7,7 +7,6 @@ import PurityPage from '../views/product-section/purity/components/PurityTable';
 // ProtectedRoute
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AddItemModal from '../views/item-master/components/AddItemForm';
-import ViewItemModal from '../views/item-master/components/ViewItemModal';
 
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
@@ -93,21 +92,20 @@ const RolesDetail = lazy(() => import('@/views/apps/users/roles-details'));
 // sale
 const SaleItemPage = lazy(() => import('@/views/sales-master/sales-items'));
 const SaleReturnPage = lazy(() => import('@/views/sales-master/sales-return'));
-
-const Pricing = lazy(() => import('@/views/pages/pricing'));
-const EmptyPage = lazy(() => import('@/views/pages/empty-page'));
-const Timeline = lazy(() => import('@/views/pages/timeline'));
-const SearchResults = lazy(() => import('@/views/pages/search-results'));
 const ComingSoon = lazy(() => import('@/views/other-pages/coming-soon'));
-const TermsConditions = lazy(() => import('@/views/pages/terms-conditions'));
-const Sitemap = lazy(() => import('@/views/pages/sitemap'));
 
-// Miscellaneous
-const NestableList = lazy(() => import('@/views/miscellaneous/nestable-list'));
-const PdfViewer = lazy(() => import('@/views/miscellaneous/pdf-viewer'));
-const SweetAlert = lazy(() => import('@/views/miscellaneous/sweet-alert'));
-const PasswordMeter = lazy(() => import('@/views/miscellaneous/password-meter'));
-const Clipboard = lazy(() => import('@/views/miscellaneous/clipboard'));
+
+// manufacturing
+
+const CustomOrderPage = lazy(() => import('@/views/manufacturing/custom-order'));
+const QuotationsPage = lazy(() => import('@/views/manufacturing/quotations'));
+const RepairPage = lazy(() => import('@/views/manufacturing/repair'));
+
+
+
+
+
+
 const TreeView = lazy(() => import('@/views/miscellaneous/tree-view'));
 const Tour = lazy(() => import('@/views/miscellaneous/tour'));
 
@@ -140,54 +138,6 @@ const Error408 = lazy(() => import('@/views/error/408'));
 const Error500 = lazy(() => import('@/views/error/500'));
 const Maintenance = lazy(() => import('@/views/other-pages/maintenance'));
 
-// Layouts
-const ScrollableLayout = lazy(() => import('@/views/layouts/scrollable'));
-const CompactLayout = lazy(() => import('@/views/layouts/compact'));
-const BoxedLayout = lazy(() => import('@/views/layouts/boxed'));
-const HorizontalLayout = lazy(() => import('@/views/layouts/horizontal'));
-const SidebarCompact = lazy(() => import('@/views/layouts/sidebars/compact'));
-const SidebarIconView = lazy(() => import('@/views/layouts/sidebars/icon-view'));
-const SidebarOnHover = lazy(() => import('@/views/layouts/sidebars/on-hover'));
-const SidebarOnHoverActive = lazy(() => import('@/views/layouts/sidebars/on-hover-active'));
-const SidebarOffcanvas = lazy(() => import('@/views/layouts/sidebars/offcanvas'));
-const SidebarNoIconsLines = lazy(() => import('@/views/layouts/sidebars/no-icons-with-lines'));
-const SidebarWithLines = lazy(() => import('@/views/layouts/sidebars/with-lines'));
-const SidebarLight = lazy(() => import('@/views/layouts/sidebars/light'));
-const SidebarGradient = lazy(() => import('@/views/layouts/sidebars/gradient'));
-const SidebarGray = lazy(() => import('@/views/layouts/sidebars/gray'));
-const SidebarImage = lazy(() => import('@/views/layouts/sidebars/image'));
-const TopbarDark = lazy(() => import('@/views/layouts/topbars/dark'));
-const TopbarGray = lazy(() => import('@/views/layouts/topbars/gray'));
-const TopbarGradient = lazy(() => import('@/views/layouts/topbars/gradient'));
-
-// UI
-const Accordions = lazy(() => import('@/views/ui/accordions'));
-const Alerts = lazy(() => import('@/views/ui/alerts'));
-const Images = lazy(() => import('@/views/ui/images'));
-const Badges = lazy(() => import('@/views/ui/badges'));
-const Breadcrumb = lazy(() => import('@/views/ui/breadcrumb'));
-const Buttons = lazy(() => import('@/views/ui/buttons'));
-const Cards = lazy(() => import('@/views/ui/cards'));
-const Carousel = lazy(() => import('@/views/ui/carousel'));
-const Collapse = lazy(() => import('@/views/ui/collapse'));
-const Colors = lazy(() => import('@/views/ui/colors'));
-const Dropdowns = lazy(() => import('@/views/ui/dropdowns'));
-const Videos = lazy(() => import('@/views/ui/videos'));
-const Grid = lazy(() => import('@/views/ui/grid'));
-const Links = lazy(() => import('@/views/ui/links'));
-const ListGroup = lazy(() => import('@/views/ui/list-group'));
-const Modals = lazy(() => import('@/views/ui/modals'));
-const Notifications = lazy(() => import('@/views/ui/notifications'));
-const Offcanvas = lazy(() => import('@/views/ui/offcanvas'));
-const Placeholders = lazy(() => import('@/views/ui/placeholders'));
-const Pagination = lazy(() => import('@/views/ui/pagination'));
-const Popovers = lazy(() => import('@/views/ui/popovers'));
-const Progress = lazy(() => import('@/views/ui/progress'));
-const Spinners = lazy(() => import('@/views/ui/spinners'));
-const Tabs = lazy(() => import('@/views/ui/tabs'));
-const Tooltips = lazy(() => import('@/views/ui/tooltips'));
-const Typography = lazy(() => import('@/views/ui/typography'));
-const Utilities = lazy(() => import('@/views/ui/utilities'));
 
 // Components
 const Widgets = lazy(() => import('@/views/widgets'));
@@ -560,141 +510,25 @@ const saleRoutes = [{
 }, {
   path: '/sale-return',
   element: <SaleReturnPage />
-}, {
-  path: '/layouts/boxed',
-  element: <BoxedLayout />
-}, {
-  path: '/layouts/horizontal',
-  element: <HorizontalLayout />
-}, {
-  path: '/layouts/sidebars/compact',
-  element: <SidebarCompact />
-}, {
-  path: '/layouts/sidebars/icon-view',
-  element: <SidebarIconView />
-}, {
-  path: '/layouts/sidebars/on-hover',
-  element: <SidebarOnHover />
-}, {
-  path: '/layouts/sidebars/on-hover-active',
-  element: <SidebarOnHoverActive />
-}, {
-  path: '/layouts/sidebars/offcanvas',
-  element: <SidebarOffcanvas />
-}, {
-  path: '/layouts/sidebars/no-icons-with-lines',
-  element: <SidebarNoIconsLines />
-}, {
-  path: '/layouts/sidebars/with-lines',
-  element: <SidebarWithLines />
-}, {
-  path: '/layouts/sidebars/light',
-  element: <SidebarLight />
-}, {
-  path: '/layouts/sidebars/gradient',
-  element: <SidebarGradient />
-}, {
-  path: '/layouts/sidebars/gray',
-  element: <SidebarGray />
-}, {
-  path: '/layouts/sidebars/image',
-  element: <SidebarImage />
-}, {
-  path: '/layouts/topbars/dark',
-  element: <TopbarDark />
-}, {
-  path: '/layouts/topbars/gray',
-  element: <TopbarGray />
-}, {
-  path: '/layouts/topbars/gradient',
-  element: <TopbarGradient />
-}];
-const uiRoutes = [{
-  path: '/ui/accordions',
-  element: <Accordions />
-}, {
-  path: '/ui/alerts',
-  element: <Alerts />
-}, {
-  path: '/ui/images',
-  element: <Images />
-}, {
-  path: '/ui/badges',
-  element: <Badges />
-}, {
-  path: '/ui/breadcrumb',
-  element: <Breadcrumb />
-}, {
-  path: '/ui/buttons',
-  element: <Buttons />
-}, {
-  path: '/ui/cards',
-  element: <Cards />
-}, {
-  path: '/ui/carousel',
-  element: <Carousel />
-}, {
-  path: '/ui/collapse',
-  element: <Collapse />
-}, {
-  path: '/ui/colors',
-  element: <Colors />
-}, {
-  path: '/ui/dropdowns',
-  element: <Dropdowns />
-}, {
-  path: '/ui/videos',
-  element: <Videos />
-}, {
-  path: '/ui/grid',
-  element: <Grid />
-}, {
-  path: '/ui/links',
-  element: <Links />
-}, {
-  path: '/ui/list-group',
-  element: <ListGroup />
-}, {
-  path: '/ui/modals',
-  element: <Modals />
-}, {
-  path: '/ui/notifications',
-  element: <Notifications />
-}, {
-  path: '/ui/offcanvas',
-  element: <Offcanvas />
-}, {
-  path: '/ui/placeholders',
-  element: <Placeholders />
-}, {
-  path: '/ui/pagination',
-  element: <Pagination />
-}, {
-  path: '/ui/popovers',
-  element: <Popovers />
-}, {
-  path: '/ui/progress',
-  element: <Progress />
-}, {
-  path: '/ui/spinners',
-  element: <Spinners />
-}, {
-  path: '/ui/tabs',
-  element: <Tabs />
-}, {
-  path: '/ui/tooltips',
-  element: <Tooltips />
-}, {
-  path: '/ui/typography',
-  element: <Typography />
-}, {
-  path: '/ui/utilities',
-  element: <Utilities />
-}];
-const componentRoutes = [{
-  path: '/widgets',
-  element: <Widgets />
-}];
+},
+
+];
+const manufacturingRoutes = [
+  
+  {
+  path: '/custom-order',
+  element: <CustomOrderPage/>
+},
+  {
+  path: '/quotations',
+  element: <QuotationsPage/>
+},
+  {
+  path: '/repair',
+  element: <RepairPage/>
+}
+
+];
 const graphRoutes = [{
   path: '/charts/apex/area',
   element: <ApexArea />
@@ -874,7 +708,7 @@ const allRoutes = [{
   children: [{
     path: '/',
     element: <Navigate to="/dashboard" replace />
-  }, ...dashboardRoutes, ...pruducSectionRoutes, ...itemsRoutes, ...inventoryRoutes, ...userRoutes, ...saleRoutes, ...uiRoutes, ...componentRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
+  }, ...dashboardRoutes, ...pruducSectionRoutes, ...itemsRoutes, ...inventoryRoutes, ...userRoutes, ...saleRoutes, ...manufacturingRoutes, ...graphRoutes, ...formRoutes, ...tableRoutes, ...iconRoutes, ...mapRoutes]
 }];
 const otherRoutes = [...authRoutes, ...errorRoutes, ...landingRoute, ...otherPagesRoutes];
 export const routes = [...allRoutes, ...otherRoutes];

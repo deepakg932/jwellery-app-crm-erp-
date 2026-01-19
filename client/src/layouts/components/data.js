@@ -131,7 +131,7 @@ export const menuItems = [
         label: "Metal Types",
         url: "/metal-types",
       },
-     
+
       {
         key: "purity",
         label: "Metal Purity",
@@ -227,7 +227,7 @@ export const menuItems = [
     label: "Item",
     icon: LuShoppingBag,
     children: [
-       {
+      {
         key: "item-categories",
         label: "Item Categories",
         url: "/item-categories",
@@ -255,11 +255,11 @@ export const menuItems = [
     label: "Inventory",
     icon: LuShoppingBag,
     children: [
-      {
-        key: "dashboard",
-        label: "Dashboard",
-        url: "/inventory/dashboard",
-      },
+      // {
+      //   key: "dashboard",
+      //   label: "Dashboard",
+      //   url: "/inventory/dashboard",
+      // },
       {
         key: "inventory-categories",
         label: "Inventory Categories",
@@ -306,32 +306,12 @@ export const menuItems = [
         label: "Purchase Received",
         url: "/inventory/purchase-received",
       },
-      {
-        key: "sales",
-        label: "Sales",
-        children: [
-          {
-            key: "sale-issue",
-            label: "Sale / Issue",
-            url: "/inventory/sale-issue",
-          },
-          {
-            key: "repair",
-            label: "Repair",
-            url: "/inventory/stock-transfer",
-          },
-          {
-            key: "old-gold",
-            label: "Old Gold",
-            url: "/inventory/old-gold",
-          },
-        ],
-      },
-      {
-        key: "inventory-movements",
-        label: "Inventory Movements",
-        url: "/inventory/movements",
-      },
+
+      // {
+      //   key: "inventory-movements",
+      //   label: "Inventory Movements",
+      //   url: "/inventory/movements",
+      // },
     ],
   },
   // {
@@ -496,7 +476,6 @@ export const menuItems = [
         label: "Employees",
         url: "/users/employee",
       },
-    
     ],
   },
   {
@@ -514,46 +493,64 @@ export const menuItems = [
         label: "Sale Return",
         url: "/sale-return",
       },
-      {
-        key: "add-invoice",
-        label: "New Invoice",
-        url: "/add-invoice",
-      },
     ],
   },
+
+  // {
+  //   key: "social-feed",
+  //   label: "Social Feed",
+  //   icon: LuRss,
+  //   url: "/social-feed",
+  // },
+  // {
+  //   key: "support-center",
+  //   label: "Support Center",
+  //   icon: LuLifeBuoy,
+  //   children: [
+  //     {
+  //       key: "tickets-list",
+  //       label: "Tickets List",
+  //       url: "/tickets-list",
+  //     },
+  //     {
+  //       key: "ticket-details",
+  //       label: "Ticket Details",
+  //       url: "/ticket-details",
+  //     },
+  //     {
+  //       key: "ticket-create",
+  //       label: "Ticket Create",
+  //       url: "/ticket-create",
+  //     },
+  //   ],
+  // },
+  // {
+  //   key: "api-key",
+  //   label: "API Keys",
+  //   url: "/api-key",
+  //   icon: LuKey,
+  // },
   {
-    key: "social-feed",
-    label: "Social Feed",
-    icon: LuRss,
-    url: "/social-feed",
-  },
-  {
-    key: "support-center",
-    label: "Support Center",
-    icon: LuLifeBuoy,
+    key: "custom-repair ",
+    label: "Custom/Repair ",
+    icon: LuNotebookText,
     children: [
       {
-        key: "tickets-list",
-        label: "Tickets List",
-        url: "/tickets-list",
+        key: "custom-order",
+        label: "Custom Order",
+        url: "/custom-order",
       },
-      {
-        key: "ticket-details",
-        label: "Ticket Details",
-        url: "/ticket-details",
+       {
+        key: "quotations",
+        label: "Quotations",
+        url: "/quotations",
       },
-      {
-        key: "ticket-create",
-        label: "Ticket Create",
-        url: "/ticket-create",
+       {
+        key: "repair",
+        label: "Repair",
+        url: "/repair",
       },
     ],
-  },
-  {
-    key: "api-key",
-    label: "API Keys",
-    url: "/api-key",
-    icon: LuKey,
   },
   {
     key: "custom",

@@ -100,6 +100,18 @@ export const PATHS = {
   //SALE_ITEMS
 
   SALE_ITEMS: "/api/sale-items",
+
+  // custom order
+
+  CUSTOM_ORDER: "/api/custom-orders",
+
+  //Quotation
+
+  QUOTATION: "/api/quotation",
+
+  //REPAIRS
+
+  REPAIRS: "/api/repairs",
 };
 
 // Route names for all your endpoints
@@ -319,6 +331,28 @@ export const ROUTES = {
   UPDATE_SALE_RETURN: "update-sale-return",
   DELETE_SALE_RETURN: "delete-sale-return",
   GET_SALE_RETURN_BY_SALE_ID: "get-return-by-sale",
+
+  // CREATE_CUSTOM_ORDER
+
+  GET_CUSTOM_ORDERS: "get-custom-orders",
+  CREATE_CUSTOM_ORDER: "custom-order",
+  UPDATE_CUSTOM_ORDER: "update-custom-order",
+  DELETE_CUSTOM_ORDER: "delete-custom-order",
+
+  //createQuotation
+
+  CREATE_QUOTATION: "create-quotation",
+  GET_QUOTATION: "get-quotations",
+  UPDATE_QUOTATION: "update-quotation",
+  DELETE_QUOTATION: "delete-quotation",
+
+  // Repair routes
+  GET_REPAIRS: "get-repairs",
+  CREATE_REPAIR: "create-repair",
+  UPDATE_REPAIR: "update-repair",
+  DELETE_REPAIR: "delete-repair",
+  GET_REPAIR_BY_ID: "get-repair",
+  UPDATE_REPAIR_PAYMENT: "update-repair-payment",
 };
 
 // Dynamic endpoint generator
@@ -660,7 +694,8 @@ export const API_ENDPOINTS = {
 
   updateSalePayment: (id) =>
     endpoint(PATHS.SALE_ITEMS, ROUTES.UPDATE_SAlE_PAYMENT, id),
-  pdfDownload: (invoice_id) => endpoint(PATHS.SALE_ITEMS, ROUTES.PDF_DOWNLOAD, invoice_id),
+  pdfDownload: (invoice_id) =>
+    endpoint(PATHS.SALE_ITEMS, ROUTES.PDF_DOWNLOAD, invoice_id),
 
   // ========== SALE RETURN OPERATIONS ==========
   getSaleReturns: () => endpoint(PATHS.SALE_ITEMS, ROUTES.GET_SALE_RETURNS),
@@ -676,6 +711,34 @@ export const API_ENDPOINTS = {
       PATHS.SALE_RETURNS,
       `${ROUTES.GET_SALE_RETURN_BY_SALE_ID}/${saleId}`
     ),
+
+  // custom orders
+
+  createCustomOrder: () =>
+    endpoint(PATHS.CUSTOM_ORDER, ROUTES.CREATE_CUSTOM_ORDER),
+  getCustomOrders: () => endpoint(PATHS.CUSTOM_ORDER, ROUTES.GET_CUSTOM_ORDERS),
+  updateCustomOrder: (id) =>
+    endpoint(PATHS.CUSTOM_ORDER, ROUTES.UPDATE_CUSTOM_ORDER, id),
+  deleteCustomOrder: (id) =>
+    endpoint(PATHS.CUSTOM_ORDER, ROUTES.DELETE_CUSTOM_ORDER, id),
+
+  //Quotation Items
+
+  createQuotation: () => endpoint(PATHS.QUOTATION, ROUTES.CREATE_QUOTATION),
+  getQuotations: () => endpoint(PATHS.QUOTATION, ROUTES.GET_QUOTATION),
+  updateQuotation: (id) =>
+    endpoint(PATHS.QUOTATION, ROUTES.UPDATE_QUOTATION, id),
+  deleteQuotation: (id) =>
+    endpoint(PATHS.QUOTATION, ROUTES.DELETE_QUOTATION, id),
+
+  // ========== REPAIR OPERATIONS ==========
+  getRepairs: () => endpoint(PATHS.REPAIRS, ROUTES.GET_REPAIRS),
+  createRepair: () => endpoint(PATHS.REPAIRS, ROUTES.CREATE_REPAIR),
+  updateRepair: (id) => endpoint(PATHS.REPAIRS, ROUTES.UPDATE_REPAIR, id),
+  deleteRepair: (id) => endpoint(PATHS.REPAIRS, ROUTES.DELETE_REPAIR, id),
+  getRepairById: (id) => endpoint(PATHS.REPAIRS, ROUTES.GET_REPAIR_BY_ID, id),
+  updateRepairPayment: (id) =>
+    endpoint(PATHS.REPAIRS, ROUTES.UPDATE_REPAIR_PAYMENT, id),
 
   // ========== PRODUCT OPERATIONS ==========
   // Get all products

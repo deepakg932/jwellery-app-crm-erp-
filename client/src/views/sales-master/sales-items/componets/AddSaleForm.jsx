@@ -6,6 +6,7 @@ import {
   FiX,
   FiPlus,
   FiInfo,
+  FiRefreshCw,
 } from "react-icons/fi";
 import useSales from "@/hooks/useSales";
 
@@ -14,14 +15,17 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     customers,
     items,
     branches,
+    employees,
     loadingCustomers,
     loadingItems,
     loadingBranches,
+    loadingEmployees,
   } = useSales();
 
   const [formData, setFormData] = useState({
     customer_id: "",
     sale_date: new Date().toISOString().split("T")[0],
+    sold_by: "",
     items: [
       {
         product_id: "",
@@ -35,6 +39,9 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
         product_code: "",
       },
     ],
+    is_exchange: false,
+    exchange_amount: 0, // New field for exchange amount
+    exchange_note: "",
     sale_note: "",
     shipping_cost: 0,
     discount: 0,
@@ -153,6 +160,14 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
       newErrors.discount = "Discount cannot be negative";
     }
 
+    // Validate exchange amount if exchange is enabled
+    if (formData.is_exchange) {
+      const exchangeAmount = parseFloat(formData.exchange_amount) || 0;
+      if (exchangeAmount < 0) {
+        newErrors.exchange_amount = "Exchange amount cannot be negative";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -199,10 +214,14 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     // Calculate additional charges/discounts
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
     const additionalDiscount = parseFloat(formData.discount) || 0;
+    const exchangeAmount = formData.is_exchange ? parseFloat(formData.exchange_amount) || 0 : 0;
 
     const subtotal = itemSubtotal;
     const totalTax = itemGstTotal;
-    const grandTotal = itemTotal + shippingCost - additionalDiscount;
+    
+    // Calculate: Grand Total = (Item Total + Shipping Cost - Discount) - Exchange Amount
+    const beforeExchangeTotal = itemTotal + shippingCost - additionalDiscount;
+    const grandTotal = beforeExchangeTotal - exchangeAmount;
 
     // Update form data with calculated totals
     setFormData((prev) => ({
@@ -219,7 +238,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     }));
   };
 
-  // Handle search input
+  // Handle search for main products
   const handleSearch = (query) => {
     setSearchQuery(query);
 
@@ -251,6 +270,16 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
 
     setSearchResults(results.slice(0, 10));
     setShowSearchResults(true);
+  };
+
+  // Toggle exchange checkbox
+  const toggleExchange = () => {
+    setFormData((prev) => ({
+      ...prev,
+      is_exchange: !prev.is_exchange,
+      exchange_amount: !prev.is_exchange ? 0 : prev.exchange_amount, // Reset amount when disabling
+      exchange_note: !prev.is_exchange ? "" : prev.exchange_note, // Clear note when disabling
+    }));
   };
 
   // Show product details modal
@@ -343,18 +372,26 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    const { name, value, type, checked } = e.target;
+    
+    if (type === "checkbox") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: checked,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
 
     // Recalculate totals for numeric fields
-    if (name === "shipping_cost" || name === "discount") {
+    if (name === "shipping_cost" || name === "discount" || name === "exchange_amount") {
       setTimeout(() => calculateTotals(), 0);
     }
   };
@@ -419,7 +456,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
   // Calculate totals whenever items or other fields change
   useEffect(() => {
     calculateTotals();
-  }, [formData.items, formData.shipping_cost, formData.discount]);
+  }, [formData.items, formData.shipping_cost, formData.discount, formData.exchange_amount, formData.is_exchange]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -442,6 +479,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     const payload = {
       customer_id: formData.customer_id,
       sale_date: formData.sale_date,
+      sold_by: formData.sold_by,
       items: formData.items
         .filter((item) => item.product_id)
         .map((item) => ({
@@ -455,6 +493,9 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
           product_name: item.product_name,
           product_code: item.product_code,
         })),
+      is_exchange: formData.is_exchange,
+      exchange_amount: parseFloat(formData.exchange_amount) || 0, // Include exchange amount
+      exchange_note: formData.exchange_note || "",
       sale_note: formData.sale_note,
       shipping_cost: parseFloat(formData.shipping_cost) || 0,
       discount: parseFloat(formData.discount) || 0,
@@ -474,6 +515,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     setFormData({
       customer_id: "",
       sale_date: new Date().toISOString().split("T")[0],
+      sold_by: "",
       items: [
         {
           product_id: "",
@@ -487,6 +529,9 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
           product_code: "",
         },
       ],
+      is_exchange: false,
+      exchange_amount: 0,
+      exchange_note: "",
       sale_note: "",
       shipping_cost: 0,
       discount: 0,
@@ -504,7 +549,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
   };
 
   const isDisabled =
-    loading || loadingCustomers || loadingItems || loadingBranches;
+    loading || loadingCustomers || loadingItems || loadingBranches || loadingEmployees;
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -512,6 +557,18 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
+  };
+
+  // Calculate the total before exchange for display
+  const calculateBeforeExchangeTotal = () => {
+    const itemTotal = formData.items
+      .filter((item) => item.product_id)
+      .reduce((total, item) => total + (item.final_total || 0), 0);
+    
+    const shippingCost = parseFloat(formData.shipping_cost) || 0;
+    const discount = parseFloat(formData.discount) || 0;
+    
+    return itemTotal + shippingCost - discount;
   };
 
   return (
@@ -548,7 +605,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
               className="modal-body"
               style={{ overflowY: "auto", maxHeight: "calc(90vh - 130px)" }}
             >
-              {/* Top Row - Date, Customer, Branch, Status */}
+              {/* Top Row - Date, Customer, Branch, Status, Sold By */}
               <div className="row mb-4">
                 <div className="col-md-3 mb-3">
                   <label className="form-label fw-medium">
@@ -603,7 +660,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                   )}
                 </div>
 
-                <div className="col-md-3 mb-3">
+                <div className="col-md-2 mb-3">
                   <label className="form-label fw-medium">
                     Branch <span className="text-danger">*</span>
                   </label>
@@ -635,7 +692,36 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                   )}
                 </div>
 
-                <div className="col-md-3 mb-3">
+                <div className="col-md-2 mb-3">
+                  <label className="form-label fw-medium">
+                    Sold By
+                  </label>
+                  <select
+                    name="sold_by"
+                    className="form-select"
+                    value={formData.sold_by}
+                    onChange={handleChange}
+                    disabled={isDisabled || loadingEmployees}
+                  >
+                    <option value="">Select Employee</option>
+                    {loadingEmployees ? (
+                      <option value="" disabled>
+                        Loading employees...
+                      </option>
+                    ) : (
+                      employees?.map((employee) => (
+                        <option key={employee._id} value={employee._id}>
+                          {employee.name}
+                          {employee.employee_code
+                            ? ` (${employee.employee_code})`
+                            : ""}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                <div className="col-md-2 mb-3">
                   <label className="form-label fw-medium">
                     Sale Status <span className="text-danger">*</span>
                   </label>
@@ -660,7 +746,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                 </div>
               </div>
 
-              {/* Second Row - Payment Status, Shipping Cost, Discount */}
+              {/* Second Row - Payment Status, Shipping Cost, Discount, Exchange Checkbox */}
               <div className="row mb-4">
                 <div className="col-md-3 mb-3">
                   <label className="form-label fw-medium">Payment Status</label>
@@ -728,7 +814,95 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                     <div className="invalid-feedback">{errors.discount}</div>
                   )}
                 </div>
+
+                <div className="col-md-3 mb-3 d-flex align-items-end">
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      role="switch"
+                      id="is_exchange"
+                      name="is_exchange"
+                      checked={formData.is_exchange}
+                      onChange={toggleExchange}
+                      disabled={isDisabled}
+                      style={{ width: "3em", height: "1.5em" }}
+                    />
+                    <label className="form-check-label fw-medium ms-2" htmlFor="is_exchange">
+                      <FiRefreshCw className="me-1" />
+                      Exchange Sale
+                    </label>
+                  </div>
+                </div>
               </div>
+
+              {/* Exchange Amount Section - Conditional */}
+              {formData.is_exchange && (
+                <div className="border rounded-3 p-3 mb-4 bg-warning bg-opacity-10">
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="fw-bold mb-0 text-warning">
+                      <FiRefreshCw className="me-2" />
+                      Exchange Details
+                    </h6>
+                  </div>
+                  
+                  <div className="row">
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label fw-medium">
+                        Exchange Amount <span className="text-danger">*</span>
+                      </label>
+                      <div className="input-group">
+                        <span className="input-group-text">₹</span>
+                        <input
+                          type="number"
+                          className={`form-control ${
+                            errors.exchange_amount ? "is-invalid" : ""
+                          }`}
+                          name="exchange_amount"
+                          value={formData.exchange_amount}
+                          onChange={handleChange}
+                          disabled={isDisabled}
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      {errors.exchange_amount && (
+                        <div className="invalid-feedback">{errors.exchange_amount}</div>
+                      )}
+                      <div className="form-text">
+                        Amount to be deducted for customer's old item
+                      </div>
+                    </div>
+                    
+                    <div className="col-md-6 mb-3">
+                      <label className="form-label fw-medium">
+                        Exchange Note (Optional)
+                      </label>
+                      <textarea
+                        className="form-control"
+                        rows={2}
+                        placeholder="Add notes about the exchange (e.g., old item details, condition, etc.)..."
+                        value={formData.exchange_note}
+                        onChange={handleChange}
+                        name="exchange_note"
+                        disabled={isDisabled}
+                      ></textarea>
+                    </div>
+                  </div>
+                  
+                  <div className="alert alert-info mb-0">
+                    <div className="d-flex align-items-center">
+                      <FiInfo className="me-2" size={18} />
+                      <div>
+                        <strong>Calculation:</strong> Grand Total = (Item Total + Shipping - Discount) - Exchange Amount
+                        <br />
+                        <small>Exchange amount will be deducted from the final total.</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Order Table Section */}
               <div className="border rounded-3 p-3 mb-4">
@@ -1088,6 +1262,16 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                               -{formatCurrency(formData.discount || 0)}
                             </span>
                           </div>
+                          
+                          {/* Exchange Amount Line - Only show if exchange is enabled */}
+                          {formData.is_exchange && (
+                            <div className="mb-2">
+                              <span className="text-muted">Exchange Amount:</span>
+                              <span className="float-end fw-medium text-warning">
+                                -{formatCurrency(formData.exchange_amount || 0)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="col-6">
                           <div className="mb-2">
@@ -1096,6 +1280,24 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                               {formatCurrency(formData.total_amount || 0)}
                             </span>
                           </div>
+                          
+                          {/* Show breakdown if exchange is enabled */}
+                          {formData.is_exchange && (
+                            <div className="mt-3 pt-2 border-top">
+                              <div className="small text-muted mb-1">
+                                <span>Before Exchange:</span>
+                                <span className="float-end">
+                                  {formatCurrency(calculateBeforeExchangeTotal())}
+                                </span>
+                              </div>
+                              <div className="small text-muted">
+                                <span>Less Exchange:</span>
+                                <span className="float-end text-warning">
+                                  -{formatCurrency(formData.exchange_amount || 0)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
