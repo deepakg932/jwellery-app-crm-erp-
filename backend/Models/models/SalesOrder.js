@@ -75,6 +75,9 @@ const SalesOrderSchema = new mongoose.Schema(
       type: String,
       enum: [
         "draft",
+        "partial",
+        "confirmed",
+        "completed",
         "pending",
         "approved",
         "completed",

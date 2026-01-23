@@ -1,4 +1,4 @@
-// src/models/Karigar.js
+
 import mongoose from "mongoose";
 const KarigarSchema = new mongoose.Schema(
   {
@@ -12,7 +12,7 @@ const KarigarSchema = new mongoose.Schema(
 
     skills: [
       {
-        type: String, // Ring Making, Polishing, Stone Setting
+        type: String, 
       },
     ],
 

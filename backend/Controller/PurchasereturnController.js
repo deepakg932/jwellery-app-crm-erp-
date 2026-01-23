@@ -14,13 +14,9 @@ export const createPurchaseReturn = async (req, res) => {
     const data = req.body;
 
     if (!data.purchase_received_id || !data.items?.length) {
-      return res.status(400).json({
-        success: false,
-        message: "Purchase receive & items required",
-      });
+      return res.status(400).json({success: false,message: "Purchase receive & items required"});
     }
 
-    // 🔥 CREATE RETURN
     const purchaseReturn = await PurchaseReturn.create({
       purchase_received_id: data.purchase_received_id,
       supplier_id: data.supplier_id,
@@ -34,12 +30,12 @@ export const createPurchaseReturn = async (req, res) => {
       created_by: req.user?._id || null,
     });
 
-    // 🔥 INVENTORY & STOCKIN UPDATE
+
     for (const item of data.items) {
       const returned =
         Number(item.return_quantity) || Number(item.return_weight) || 0;
 
-      // Inventory
+ 
       await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
         $inc: {
           current_stock: -returned,
@@ -47,7 +43,6 @@ export const createPurchaseReturn = async (req, res) => {
         },
       });
 
-      // StockIn
       await StockIn.findByIdAndUpdate(
         data.purchase_received_id,
         {
@@ -64,10 +59,10 @@ export const createPurchaseReturn = async (req, res) => {
       );
     }
 
-    // 🔥 MARK STOCKIN HIDDEN
+    
     await markStockInIfFullyReturned(data.purchase_received_id);
 
-    // 🔥 UPDATE PO STATUS AFTER RETURN
+
 const stockIn = await StockIn.findById(data.purchase_received_id);
 
 if (stockIn?.po_id) {
@@ -77,14 +72,11 @@ if (stockIn?.po_id) {
   await recalculatePOStatus(stockIn.po_id);
 }
 
-    res.status(201).json({
-      success: true,
-      message: "Purchase return processed successfully",
-      data: purchaseReturn,
+   return res.status(201).json({ success: true, message: "Purchase return processed successfully", data: purchaseReturn,
     });
   } catch (err) {
     console.error("Purchase Return Error:", err);
-    res.status(500).json({ success: false, message: err.message });
+  return  res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -103,11 +95,12 @@ export const getStockInWithAvailableQty = async (req, res) => {
     const result = [];
 
     for (const stockIn of stockIns) {
-      // get all returns against this stockIn
+   
       const returns = await PurchaseReturn.find({
         purchase_received_id: stockIn._id,
         status: { $ne: "rejected" },
       });
+      console.log("Returns for StockIn", stockIn._id, ":", returns)
 
       const returnMap = {};
 
@@ -200,138 +193,126 @@ export const getPurchaseReturnById = async (req, res) => {
 
 
 
-export const updatePurchaseReturn = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const data = req.body;
+// export const updatePurchaseReturn = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const data = req.body;
 
-    const existingReturn = await PurchaseReturn.findById(id);
-    if (!existingReturn) {
-      return res.status(404).json({
-        success: false,
-        message: "Purchase Return not found",
-      });
-    }
+//     const existingReturn = await PurchaseReturn.findById(id);
+//     if (!existingReturn) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Purchase Return not found",
+//       });
+//     }
 
-    const stockIn = await StockIn.findById(existingReturn.purchase_received_id);
-    if (!stockIn) {
-      return res.status(400).json({
-        success: false,
-        message: "Linked StockIn not found",
-      });
-    }
+//     const stockIn = await StockIn.findById(existingReturn.purchase_received_id);
+//     if (!stockIn) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Linked StockIn not found",
+//       });
+//     }
 
-    /* ======================================================
-       🔁 STEP 1: REVERSE OLD RETURN
-    ====================================================== */
-    for (const item of existingReturn.items) {
-      const reversed =
-        Number(item.return_quantity) || Number(item.return_weight) || 0;
+ 
+//     for (const item of existingReturn.items) {
+//       const reversed =
+//         Number(item.return_quantity) || Number(item.return_weight) || 0;
 
-      // Inventory back
-      await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
-        $inc: {
-          current_stock: reversed,
-          stock_out: -reversed,
-        },
-      });
+    
+//       await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
+//         $inc: {
+//           current_stock: reversed,
+//           stock_out: -reversed,
+//         },
+//       });
 
-      // StockIn back
-      await StockIn.findByIdAndUpdate(
-        existingReturn.purchase_received_id,
-        {
-          $inc: {
-            "items.$[elem].received_quantity": Number(item.return_quantity || 0),
-            "items.$[elem].received_weight": Number(item.return_weight || 0),
-          },
-        },
-        {
-          arrayFilters: [
-            { "elem.inventory_item_id": item.inventory_item_id },
-          ],
-        }
-      );
-    }
+     
+//       await StockIn.findByIdAndUpdate(
+//         existingReturn.purchase_received_id,
+//         {
+//           $inc: {
+//             "items.$[elem].received_quantity": Number(item.return_quantity || 0),
+//             "items.$[elem].received_weight": Number(item.return_weight || 0),
+//           },
+//         },
+//         {
+//           arrayFilters: [
+//             { "elem.inventory_item_id": item.inventory_item_id },
+//           ],
+//         }
+//       );
+//     }
 
-    // PO received back
-    if (stockIn.po_id) {
-     await updatePOReceivedAfterReturn(
-  stockIn.po_id,
-  existingReturn.items.map(i => ({
-    inventory_item_id: i.inventory_item_id,
-    return_quantity: -Number(i.return_quantity || 0),
-    return_weight: -Number(i.return_weight || 0),
-  }))
-);
-    }
+//     if (stockIn.po_id) {
+//      await updatePOReceivedAfterReturn(
+//   stockIn.po_id,
+//   existingReturn.items.map(i => ({
+//     inventory_item_id: i.inventory_item_id,
+//     return_quantity: -Number(i.return_quantity || 0),
+//     return_weight: -Number(i.return_weight || 0),
+//   }))
+// );
+//     }
 
-    /* ======================================================
-       🔥 STEP 2: APPLY NEW RETURN
-    ====================================================== */
-    for (const item of data.items) {
-      const returned =
-        Number(item.return_quantity) || Number(item.return_weight) || 0;
+//     for (const item of data.items) {
+//       const returned =
+//         Number(item.return_quantity) || Number(item.return_weight) || 0;
 
-      // Inventory
-      await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
-        $inc: {
-          current_stock: -returned,
-          stock_out: returned,
-        },
-      });
+    
+//       await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
+//         $inc: {
+//           current_stock: -returned,
+//           stock_out: returned,
+//         },
+//       });
 
-      // StockIn
-      await StockIn.findByIdAndUpdate(
-        existingReturn.purchase_received_id,
-        {
-          $inc: {
-            "items.$[elem].received_quantity": -Number(item.return_quantity || 0),
-            "items.$[elem].received_weight": -Number(item.return_weight || 0),
-          },
-        },
-        {
-          arrayFilters: [
-            { "elem.inventory_item_id": item.inventory_item_id },
-          ],
-        }
-      );
-    }
+ 
+//       await StockIn.findByIdAndUpdate(
+//         existingReturn.purchase_received_id,
+//         {
+//           $inc: {
+//             "items.$[elem].received_quantity": -Number(item.return_quantity || 0),
+//             "items.$[elem].received_weight": -Number(item.return_weight || 0),
+//           },
+//         },
+//         {
+//           arrayFilters: [
+//             { "elem.inventory_item_id": item.inventory_item_id },
+//           ],
+//         }
+//       );
+//     }
 
-    // PO received minus
-    if (stockIn.po_id) {
-      await updatePOReceivedAfterReturn(stockIn.po_id, data.items);
-      await recalculatePOStatus(stockIn.po_id);
-    }
+   
+//     if (stockIn.po_id) {
+//       await updatePOReceivedAfterReturn(stockIn.po_id, data.items);
+//       await recalculatePOStatus(stockIn.po_id);
+//     }
 
-    /* ======================================================
-       📝 STEP 3: UPDATE RETURN DOCUMENT
-    ====================================================== */
-    existingReturn.items = data.items;
-    existingReturn.return_date = data.return_date;
-    existingReturn.return_reason = data.return_reason;
-    existingReturn.remarks = data.remarks || "";
-    existingReturn.total_cost = data.total_cost || 0;
+//     existingReturn.items = data.items;
+//     existingReturn.return_date = data.return_date;
+//     existingReturn.return_reason = data.return_reason;
+//     existingReturn.remarks = data.remarks || "";
+//     existingReturn.total_cost = data.total_cost || 0;
 
-    await existingReturn.save();
+//     await existingReturn.save();
 
-    /* ======================================================
-       🟢 STEP 4: STOCKIN FINAL CHECK
-    ====================================================== */
-    await markStockInIfFullyReturned(existingReturn.purchase_received_id);
+//     await markStockInIfFullyReturned(existingReturn.purchase_received_id);
 
-    res.json({
-      success: true,
-      message: "Purchase return updated successfully",
-      data: existingReturn,
-    });
-  } catch (error) {
-    console.error("Update Purchase Return Error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+//     res.json({
+//       success: true,
+//       message: "Purchase return updated successfully",
+//       data: existingReturn,
+//     });
+//   } catch (error) {
+//     console.error("Update Purchase Return Error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 
 
 
@@ -339,7 +320,7 @@ export const deletePurchaseReturn = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 🔍 1. FIND RETURN
+
     const existingReturn = await PurchaseReturn.findById(id);
     if (!existingReturn) {
       return res.status(404).json({
@@ -348,7 +329,7 @@ export const deletePurchaseReturn = async (req, res) => {
       });
     }
 
-    // 🔍 2. FIND STOCKIN
+   
     const stockIn = await StockIn.findById(
       existingReturn.purchase_received_id
     );
@@ -359,15 +340,11 @@ export const deletePurchaseReturn = async (req, res) => {
       });
     }
 
-    /* ======================================================
-       🔁 3. REVERSE INVENTORY + STOCKIN
-    ====================================================== */
     for (const item of existingReturn.items) {
       const qty = Number(item.return_quantity || 0);
       const wt = Number(item.return_weight || 0);
       const total = qty > 0 ? qty : wt;
 
-      // 🟢 INVENTORY BACK
       await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
         $inc: {
           current_stock: total,
@@ -375,7 +352,6 @@ export const deletePurchaseReturn = async (req, res) => {
         },
       });
 
-      // 🟢 STOCKIN BACK
       await StockIn.findByIdAndUpdate(
         existingReturn.purchase_received_id,
         {
@@ -392,9 +368,6 @@ export const deletePurchaseReturn = async (req, res) => {
       );
     }
 
-    /* ======================================================
-       🔁 4. REVERSE PO RECEIVED QTY
-    ====================================================== */
     if (stockIn.po_id) {
       await updatePOReceivedAfterReturn(
         stockIn.po_id,
@@ -408,26 +381,129 @@ export const deletePurchaseReturn = async (req, res) => {
       await recalculatePOStatus(stockIn.po_id);
     }
 
-    /* ======================================================
-       🗑️ 5. DELETE RETURN DOCUMENT
-    ====================================================== */
+   
     await PurchaseReturn.findByIdAndDelete(id);
 
-    /* ======================================================
-       🔄 6. RECHECK STOCKIN STATUS
-    ====================================================== */
     await markStockInIfFullyReturned(existingReturn.purchase_received_id);
 
-    res.json({
-      success: true,
-      message: "Purchase return deleted successfully",
-    });
+    return res.json({success: true,success: true,message: "Purchase return deleted successfully"});
   } catch (error) {
     console.error("Delete Purchase Return Error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(500).json({success: false,message: error.message, });
   }
 };
 
+
+
+
+export const updatePurchaseReturn = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const existingReturn = await PurchaseReturn.findById(id);
+    if (!existingReturn) {
+      return res.status(404).json({success: false,message: "Purchase Return not found"});
+    }
+
+    const stockIn = await StockIn.findById(existingReturn.purchase_received_id);
+    if (!stockIn) {
+      return res.status(400).json({ success: false, message: "Linked StockIn not found"});
+    }
+
+    for (const item of existingReturn.items) {
+      const qty = Number(item.return_quantity || 0);
+      const wt = Number(item.return_weight || 0);
+      const value = qty || wt;
+
+     
+      await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
+        $inc: {
+          current_stock: value,
+          stock_out: -value,
+        },
+      });
+
+      
+      await StockIn.findByIdAndUpdate(
+        existingReturn.purchase_received_id,
+        {
+          $inc: {
+            "items.$[elem].received_quantity": qty,
+            "items.$[elem].received_weight": wt,
+          },
+        },
+        {
+          arrayFilters: [
+            { "elem.inventory_item_id": item.inventory_item_id },
+          ],
+        }
+      );
+    }
+
+    if (stockIn.po_id) {
+      await updatePOReceivedAfterReturn(
+        stockIn.po_id,
+        existingReturn.items.map(i => ({
+          inventory_item_id: i.inventory_item_id,
+          return_quantity: -Number(i.return_quantity || 0),
+          return_weight: -Number(i.return_weight || 0),
+        }))
+      );
+    }
+
+
+    for (const item of data.items) {
+      const qty = Number(item.return_quantity || 0);
+      const wt = Number(item.return_weight || 0);
+      const value = qty || wt;
+
+    
+      await InventoryItem.findByIdAndUpdate(item.inventory_item_id, {
+        $inc: {
+          current_stock: -value,
+          stock_out: value,
+        },
+      });
+
+  
+      await StockIn.findByIdAndUpdate(
+        existingReturn.purchase_received_id,
+        {
+          $inc: {
+            "items.$[elem].received_quantity": -qty,
+            "items.$[elem].received_weight": -wt,
+          },
+        },
+        {
+          arrayFilters: [
+            { "elem.inventory_item_id": item.inventory_item_id },
+          ],
+        }
+      );
+    }
+
+   
+    if (stockIn.po_id) {
+      await updatePOReceivedAfterReturn(stockIn.po_id, data.items);
+      await recalculatePOStatus(stockIn.po_id);
+    }
+
+    existingReturn.items = data.items;
+    existingReturn.return_date = data.return_date;
+    existingReturn.return_reason = data.return_reason;
+    existingReturn.remarks = data.remarks || "";
+    existingReturn.total_cost = data.total_cost || 0;
+
+    await existingReturn.save();
+
+    await markStockInIfFullyReturned(existingReturn.purchase_received_id);
+
+    return res.json({success: true,message: "Purchase return updated successfully",data: existingReturn,
+    });
+
+  } catch (error) {
+    console.error("Update Purchase Return Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

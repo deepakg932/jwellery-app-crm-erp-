@@ -20,7 +20,7 @@ import Hallmark from "../Models/models/Hallmark.js";
 import {calculateMetalSubtotal, calculateStoneSubtotal, generateProductCode,calculateMaterialCost} from "../helper/generateProductCode.js"
 
 
-
+import { round3 } from "../utils/round3.js";
 
 
 
@@ -203,6 +203,11 @@ export const getProducts = async (req, res) => {
 
 
 
+
+
+
+
+
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -268,24 +273,6 @@ export const deleteProductImage = async (req, res) => {
   }
 };
 
-// export const unitCreate = async (req, res) => {
-//   try {
-//     let { name } = req.body;
-//     let a = await Unit.create({ name });
-//     console.log(name, "unit name");
-
-//     console.log(a, "create unit");
-
-//     return res
-//       .status(200)
-//       .json({ success: true, message: "Unit created successfully", data: a });
-//   } catch (err) {
-//     console.error(err);
-//     return res
-//       .status(500)
-//       .json({ success: false, message: "Server error", error: err.message });
-//   }
-// };
 
 export const getUnits = async (req, res) => {
   try {
@@ -545,7 +532,7 @@ export const createProduct = async (req, res) => {
   try {
     let {
       product_name,
-      product_code,
+      article_no,
       hallmark_id,
       product_brand, 
       product_category, 
@@ -565,7 +552,7 @@ export const createProduct = async (req, res) => {
     console.log("req.files:", req.files);
     console.log("req.body:", req.body);
 
-    let finalProductCode = product_code;
+    let finalProductCode = article_no;
     if (!finalProductCode || finalProductCode.trim() === "") {
       finalProductCode = await generateProductCode();
     }
@@ -867,7 +854,11 @@ console.log(JSON.stringify(calculatedPriceMakingCosts, null, 2));
     console.log("Grand Total (with price making):", grand_total);
 
     const markup = parseFloat(markup_percentage) || 0;
-    const selling_price_before_tax = grand_total * (1 + markup / 100);
+
+    const selling_price_before_tax = round3(
+  grand_total * (1 + markup / 100)
+);
+    // const selling_price_before_tax = grand_total * (1 + markup / 100);
 
     const gstRateValueNum = extractPercentage(gst_rate);
     const cgstRateValueNum = extractPercentage(cgst_rate);
@@ -875,13 +866,42 @@ console.log(JSON.stringify(calculatedPriceMakingCosts, null, 2));
     const igstRateValueNum = extractPercentage(igst_rate);
     const utgstRateValueNum = extractPercentage(utgst_rate);
 
-    const gst_amount = (selling_price_before_tax * gstRateValueNum) / 100;
-    const cgst_amount = (selling_price_before_tax * cgstRateValueNum) / 100;
-    const sgst_amount = (selling_price_before_tax * sgstRateValueNum) / 100;
-    const igst_amount = (selling_price_before_tax * igstRateValueNum) / 100;
-    const utgst_amount = (selling_price_before_tax * utgstRateValueNum) / 100;
+    // const gst_amount = (selling_price_before_tax * gstRateValueNum) / 100;
+    // const cgst_amount = (selling_price_before_tax * cgstRateValueNum) / 100;
+    // const sgst_amount = (selling_price_before_tax * sgstRateValueNum) / 100;
+    // const igst_amount = (selling_price_before_tax * igstRateValueNum) / 100;
+    // const utgst_amount = (selling_price_before_tax * utgstRateValueNum) / 100;
 
-    const selling_price_with_gst = selling_price_before_tax + cgst_amount + sgst_amount + igst_amount + utgst_amount;
+    // const selling_price_with_gst = selling_price_before_tax + cgst_amount + sgst_amount + igst_amount + utgst_amount;
+
+
+
+
+    const cgst_amount = round3(
+  (selling_price_before_tax * cgstRateValueNum) / 100
+);
+
+const sgst_amount = round3(
+  (selling_price_before_tax * sgstRateValueNum) / 100
+);
+
+const igst_amount = round3(
+  (selling_price_before_tax * igstRateValueNum) / 100
+);
+
+const utgst_amount = round3(
+  (selling_price_before_tax * utgstRateValueNum) / 100
+);
+
+const gst_amount = round3(
+  cgst_amount + sgst_amount + igst_amount + utgst_amount
+
+);
+
+// ---- FINAL SELLING PRICE
+const selling_price_with_gst = round3(
+  selling_price_before_tax + gst_amount
+);
     
     console.log("Selling Price with GST:", selling_price_with_gst);
 
@@ -897,7 +917,7 @@ console.log(JSON.stringify(calculatedPriceMakingCosts, null, 2));
     // Create product
     const product = await Product.create({
       product_name,
-      product_code: finalProductCode,
+      article_no: finalProductCode,
       // hallmark_id: hallmark_id || null,
       product_brand_id: product_brand,
       product_category_id: product_category,
@@ -955,17 +975,10 @@ console.log(JSON.stringify(calculatedPriceMakingCosts, null, 2));
     
     console.log("Product created successfully:", populatedProduct._id);
 
-    return res.status(200).json({ 
-      success: true,  
-      message: "Product created successfully",  
-      data: populatedProduct,
-    });
+    return res.status(200).json({ success: true,  message: "Product created successfully",  data: populatedProduct,});
   } catch (err) {
     console.error("Error creating product:", err);
-    return res.status(500).json({   
-      success: false,   
-      message: err.message || "Internal server error", 
-    });
+    return res.status(500).json({   success: false,   message: err.message || "Internal server error",});
   }
 };
 
@@ -974,105 +987,164 @@ console.log(JSON.stringify(calculatedPriceMakingCosts, null, 2));
 export const updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    let updateFields = req.body;
+    let payload = req.body;
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ success: false, message: "Invalid product id" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product id",
+      });
     }
 
     const existingProduct = await Product.findById(id);
     if (!existingProduct) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    // Handle images
-    if (req.files?.images) {
-      updateFields.images = req.files.images.map(f => `/uploads/products/images/${f.filename}`);
+    /* =========================
+       1️⃣ PARSE JSON FIELDS
+    ========================= */
+    const parseIfString = (val) =>
+      typeof val === "string" ? JSON.parse(val) : val;
+
+    const metalsData = payload.metals
+      ? parseIfString(payload.metals)
+      : existingProduct.metals;
+
+    const stonesData = payload.stones
+      ? parseIfString(payload.stones)
+      : existingProduct.stones;
+
+    const materialsData = payload.materials
+      ? parseIfString(payload.materials)
+      : existingProduct.materials;
+
+    const priceMakingCostsData = payload.price_making_costs
+      ? parseIfString(payload.price_making_costs)
+      : existingProduct.price_making_costs;
+
+    /* =========================
+       2️⃣ RECALCULATE TOTALS
+    ========================= */
+    const total_metals_cost = metalsData.reduce(
+      (s, m) => s + (m.subtotal || 0),
+      0
+    );
+
+    const total_stones_cost = stonesData.reduce(
+      (s, st) => s + (st.subtotal || 0),
+      0
+    );
+
+    const total_materials_cost = materialsData.reduce(
+      (s, m) => s + (m.cost || 0),
+      0
+    );
+
+    const total_price_making_costs = priceMakingCostsData.reduce(
+      (s, c) => s + (c.cost_amount || 0),
+      0
+    );
+
+    const base_total =
+      total_metals_cost + total_stones_cost + total_materials_cost;
+
+    const grand_total = base_total + total_price_making_costs;
+
+    const markup =
+      payload.markup_percentage ?? existingProduct.markup_percentage ?? 0;
+
+    const selling_price_before_tax = round3(
+      grand_total * (1 + markup / 100)
+    );
+
+    const cgstRate = extractPercentage(
+      payload.cgst_rate || existingProduct.cgst_rate
+    );
+    const sgstRate = extractPercentage(
+      payload.sgst_rate || existingProduct.sgst_rate
+    );
+    const igstRate = extractPercentage(
+      payload.igst_rate || existingProduct.igst_rate
+    );
+    const utgstRate = extractPercentage(
+      payload.utgst_rate || existingProduct.utgst_rate
+    );
+
+    const cgst_amount = round3((selling_price_before_tax * cgstRate) / 100);
+    const sgst_amount = round3((selling_price_before_tax * sgstRate) / 100);
+    const igst_amount = round3((selling_price_before_tax * igstRate) / 100);
+    const utgst_amount = round3((selling_price_before_tax * utgstRate) / 100);
+
+    const gst_amount = round3(
+      cgst_amount + sgst_amount + igst_amount + utgst_amount
+    );
+
+    const selling_price_with_gst = round3(
+      selling_price_before_tax + gst_amount
+    );
+
+    /* =========================
+       3️⃣ HANDLE IMAGES
+    ========================= */
+    let imagePaths = existingProduct.images || [];
+    if (req.files?.length) {
+      imagePaths = req.files.map(
+        (f) => `/uploads/products/images/${f.filename}`
+      );
     }
 
-    // Parse JSON fields
-    const jsonFields = ["metals", "stones", "materials", "price_making_costs"];
-    jsonFields.forEach(field => {
-      if (updateFields[field] && typeof updateFields[field] === "string") {
-        try {
-          updateFields[field] = JSON.parse(updateFields[field]);
-        } catch (err) {
-          console.error(`Error parsing ${field}:`, err);
-        }
-      }
-    });
+    /* =========================
+       4️⃣ UPDATE PRODUCT
+    ========================= */
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      {
+        ...payload,
 
-    // Recalculate totals if needed
-    const shouldRecalculate =
-      updateFields.metals ||
-      updateFields.stones ||
-      updateFields.materials ||
-      updateFields.price_making_costs ||
-      updateFields.markup_percentage ||
-      updateFields.gst_rate;
+        metals: metalsData,
+        stones: stonesData,
+        materials: materialsData,
+        price_making_costs: priceMakingCostsData,
 
-    if (shouldRecalculate) {
-      const metalsData = updateFields.metals || existingProduct.metals;
-      const stonesData = updateFields.stones || existingProduct.stones;
-      const materialsData = updateFields.materials || existingProduct.materials;
-      const priceMakingCostsData = updateFields.price_making_costs || existingProduct.price_making_costs;
-      const markup = updateFields.markup_percentage || existingProduct.markup_percentage;
+        total_metals_cost,
+        total_stones_cost,
+        total_materials_cost,
+        total_price_making_costs,
+        base_total,
+        grand_total,
 
-      // ✅ Use same calculation logic as createProduct (simplified here)
-      const total_metals_cost = Array.isArray(metalsData)
-        ? metalsData.reduce((sum, m) => sum + (m.subtotal || 0), 0)
-        : existingProduct.total_metals_cost;
+        gst_amount,
+        cgst_amount,
+        sgst_amount,
+        igst_amount,
+        utgst_amount,
 
-      const total_stones_cost = Array.isArray(stonesData)
-        ? stonesData.reduce((sum, s) => sum + (s.subtotal || 0), 0)
-        : existingProduct.total_stones_cost;
+        selling_price_before_tax,
+        selling_price_with_gst,
 
-      const total_materials_cost = Array.isArray(materialsData)
-        ? materialsData.reduce((sum, mat) => sum + (mat.cost || 0), 0)
-        : existingProduct.total_materials_cost;
-
-      const total_price_making_costs = Array.isArray(priceMakingCostsData)
-        ? priceMakingCostsData.reduce((sum, c) => sum + (c.cost_amount || 0), 0)
-        : existingProduct.total_price_making_costs;
-
-      const base_total = total_metals_cost + total_stones_cost + total_materials_cost;
-      const grand_total = base_total + total_price_making_costs;
-      const selling_price_before_tax = grand_total * (1 + (markup || 0) / 100);
-
-      updateFields.total_metals_cost = total_metals_cost;
-      updateFields.total_stones_cost = total_stones_cost;
-      updateFields.total_materials_cost = total_materials_cost;
-      updateFields.total_price_making_costs = total_price_making_costs;
-      updateFields.base_total = base_total;
-      updateFields.grand_total = grand_total;
-      updateFields.selling_price_before_tax = selling_price_before_tax;
-
-      // ✅ GST calculation with updated gst_rate if provided
-      const gstRateValueNum = extractPercentage(updateFields.gst_rate || existingProduct.gst_rate);
-      updateFields.gst_amount = (selling_price_before_tax * gstRateValueNum) / 100;
-      updateFields.selling_price_with_gst = selling_price_before_tax + updateFields.gst_amount;
-    }
-
-    const updatedProduct = await Product.findByIdAndUpdate(id, updateFields, { new: true, runValidators: true })
+        images: imagePaths,
+      },
+      { new: true, runValidators: true }
+    )
       .populate("product_brand_id", "brand_name name")
       .populate("product_category_id", "category_name name")
-      .populate("product_subcategory_id", "sub_category_name name")
-      .populate("metals.metal_id", "metal_name name")
-      .populate("metals.purity_id", "purity_name")
-      .populate("metals.hallmark_id", "name metal_type metal_type_name description image")
-      .populate("stones.stone_id", "stone_type name")
-      .populate("materials.wastage_id", "wastage_type")
-      .populate("materials.material_id", "material_type")
-      .populate({
-        path: "price_making_costs.price_making_id",
-        select: "stage_name sub_stage_name cost_type unit_name",
-        model: "PriceMaking"
-      });
+      .populate("product_subcategory_id", "sub_category_name name");
 
-    return res.status(200).json({ success: true, message: "Product updated successfully", data: updatedProduct });
+    return res.json({
+      success: true,
+      message: "Product updated successfully",
+      data: updatedProduct,
+    });
   } catch (err) {
-    console.error("Update product error:", err);
-    return res.status(500).json({ success: false, message: err.message || "Internal server error" });
+    console.error("Update Product Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
@@ -1082,7 +1154,6 @@ export const updateProduct = async (req, res) => {
 
 
 
-// export const getProducts = async (req, res) => {
 //   try {
 //     const { status, search, page = 1, limit = 10 } = req.query;
 

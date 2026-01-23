@@ -17,8 +17,8 @@ export const generateProductCode = async () => {
   const lastProduct = await Product.findOne().sort({ createdAt: -1 });
   let sequence = 1;
  
-  if (lastProduct && lastProduct.product_code) {
-    const lastCode = lastProduct.product_code;
+  if (lastProduct && lastProduct.article_no) {
+    const lastCode = lastProduct.article_no;
     const match = lastCode.match(/(\d+)$/);
     if (match) {
       sequence = parseInt(match[1]) + 1;

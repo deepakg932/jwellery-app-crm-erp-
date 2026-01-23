@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const ProductSchema = new mongoose.Schema(
   {
     product_name: { type: String, unique: true },
-    product_code: { type: String, sparse: true },
+    article_no: { type: String, sparse: true },
 
     hallmark_id: { type: mongoose.Schema.Types.ObjectId, ref: "Hallmark" },
     hallmark_name: { type: String },
@@ -120,12 +120,22 @@ const ProductSchema = new mongoose.Schema(
     selling_price_with_gst: { type: Number, default: 0 },
 
     images: [String],
+//  unit_price: { type: Number, default: 0 },
+    // stock_quantity: { type: Number, default: 0 },
 
+
+
+
+    // selling_price: { type: Number, default: 0 },
     status: {
       type: String,
       enum: ["draft", "active", "inactive", "out_of_stock", "discontinued"],
       default: "draft",
     },
+
+    //  is_custom: { type: Boolean, default: false },
+
+     
   },
   { timestamps: true }
 );

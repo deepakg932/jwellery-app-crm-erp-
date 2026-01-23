@@ -280,7 +280,7 @@ export const updateSale = async (req, res) => {
       { new: true }
     );
 
-    // 🔥🔥 AUTO INVOICE CREATE (ONLY HERE)
+    
     if (updatedSale.sale_status === "completed") {
       const invoiceExists = await Invoice.findOne({
         sale_id: updatedSale._id,

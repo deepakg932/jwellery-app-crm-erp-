@@ -19,12 +19,13 @@ router.delete("/delete-sale-item/:id",deleteSale);
 // router.put("/sales/:id/deliver", deliverSale);
 router.post("/sale-return",createSaleReturn);
 router.get("/get-sale-returns",getSaleReturns);
+router.delete("/delete-sale-item/:id",deleteSale);
 
 router.put("/update-sale-payment/:id", updateSalePayment);
 
 router.put("/sale-return/approve/:id", approveSaleReturn);
 router.put("/sale-return/:id", updateSaleReturn);
-router.delete("/sale-return/:id", deleteSaleReturn);
+router.delete("/delete-sale-return/:id", deleteSaleReturn);
 
 
 

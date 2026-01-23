@@ -62,11 +62,18 @@ const saleReturnSchema = new mongoose.Schema(
       default: "partial",
     },
 
+    // status: {
+    //   type: String,
+    //   enum: ["pending", "approved", "rejected", "completed"],
+    //   default: "pending",
+    // },
+
     status: {
-      type: String,
-      enum: ["pending", "approved", "rejected", "completed"],
-      default: "pending",
-    },
+  type: String,
+  enum: ["returned","partial", "approved", "completed", "rejected"],
+  default: "returned",
+},
+
 
     refund_amount: Number,
     total_amount: Number,

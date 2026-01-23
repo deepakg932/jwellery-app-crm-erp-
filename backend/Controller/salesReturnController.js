@@ -62,6 +62,13 @@ export const createSaleReturn = async (req, res) => {
       }
     }
 
+    const saleReturnStatus =
+  return_type === "full" ? "returned" : "partial";
+
+const saleStatus =
+  return_type === "full" ? "returned" : "partial";
+
+
    
     const saleReturn = await SaleReturn.create({
       return_number: await generateReturnNumber(),
@@ -81,13 +88,24 @@ export const createSaleReturn = async (req, res) => {
       total_amount,
       notes,
       created_by: req.user?._id,
+    // status: return_type === "full" ? "returned" : "partial",
 
-      status: "pending", 
+status: saleReturnStatus,
+      // status: "returned", // 🔥 YAHI FIX HAI
+
+    // status: return_type === "full" ? "completed" : "pending",
+
     });
 
-    await Sale.findByIdAndUpdate(sale._id, {
-      sale_status: "returned",
-    });
+ // 🔥 SALE STATUS IMMEDIATELY MARK AS RETURNED
+await Sale.findByIdAndUpdate(
+  sale._id,
+  {
+    sale_status: "returned",
+  },
+  { new: true }
+);
+
 
     return res.status(201).json({
       success: true,
@@ -274,32 +292,26 @@ export const updateSaleReturn = async (req, res) => {
     });
   }
 };
+
+
+
 export const deleteSaleReturn = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("Delete Sale Return ID:", id);
     const saleReturn = await SaleReturn.findById(id);
+    console.log("Found Sale Return:", saleReturn);
     if (!saleReturn) {
-      return res.status(404).json({
-        success: false,
-        message: "Sale return not found",
-      });
+      return res.status(404).json({success: false,message: "Sale return not found"});
     }
     if (saleReturn.status === "completed") {
-      return res.status(400).json({
-        success: false,
-        message: "Completed return cannot be deleted",
-      });
+      return res.status(400).json({success: false,message: "Completed return cannot be deleted"});
     }
-    await SaleReturn.findByIdAndDelete(id);
-    return res.status(200).json({
-      success: true,
-      message: "Sale return deleted successfully",
-    });
+    let a = await SaleReturn.findByIdAndDelete(id);
+    console.log("Deleted Sale Return:", a)
+    return res.status(200).json({success: true,message: "Sale return deleted successfully"});
   } catch (error) {
     console.error("Delete Sale Return Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(500).json({success: false,message: error.message});
   }
 };

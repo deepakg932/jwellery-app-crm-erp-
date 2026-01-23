@@ -49,6 +49,9 @@ import invoiceRoutes from "./routes/invoiceRoutes.js";
 import CustomRoutes from "./routes/CustomRoutes.js";
 import quotationRoutes from "./routes/quotationRoutes.js";
 import repairRoutes from "./routes/repairRoutes.js";
+import jobRoutes from "./routes/jobRoutes.js";
+import designStageRoutes from "./routes/designStageRoutes.js"
+import jobCardStageRoutes from "./routes/jobCardStageRoutes.js"
 
 
 
@@ -124,6 +127,14 @@ app.use("/api/custom-orders",CustomRoutes)
 app.use("/api/Inventory-stock",InventoryStockRoutes)
 app.use("/api/quotation",quotationRoutes)
 app.use("/api/repairs",repairRoutes)
+
+
+app.use("/api/job-card",jobRoutes)
+
+
+app.use("/api/design-stage",designStageRoutes)
+
+app.use("/api/design-stage",jobCardStageRoutes)
 // app.use("/api/stock-transfer",stockTransferRoute)
 // app.use("/api/stock-adjustment",stockAdjustmentRoutes)
 
