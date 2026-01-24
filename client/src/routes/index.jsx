@@ -132,7 +132,7 @@ const ComingSoon = lazy(() => import("@/views/other-pages/coming-soon"));
 const CustomOrderPage = lazy(() =>
   import("@/views/manufacturing/custom-order")
 );
-const QuotationsPage = lazy(() => import("@/views/manufacturing/quotations/index.jsx"));
+const QuotationsPage = lazy(() => import("@/views/manufacturing/quotations"));
 const RepairPage = lazy(() => import("@/views/manufacturing/repair"));
 
 // manufacturing
