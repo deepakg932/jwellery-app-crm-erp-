@@ -246,10 +246,7 @@ console.log(quotations)
 
   // Open edit modal
   const handleOpenEdit = (quotation) => {
-    if (quotation.status === "converted") {
-      alert("Cannot edit a converted quotation");
-      return;
-    }
+   
     setSelectedItem(quotation);
     setShowEditModal(true);
   };
@@ -768,8 +765,7 @@ console.log(quotations)
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                           onClick={() => handleOpenEdit(quotation)}
                           disabled={
-                            actionLoading.type && actionLoading.id === quotation._id ||
-                            quotation.status === "converted"
+                            actionLoading.type && actionLoading.id === quotation._id
                           }
                           title="Edit"
                         >
