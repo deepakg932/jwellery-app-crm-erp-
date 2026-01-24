@@ -90,22 +90,22 @@ console.log(designStage)
 
         // Handle reference images from job card
         const referenceImages = jobCard.images || [];
-        const referenceFiles = Array.isArray(referenceImages)
-          ? referenceImages.map((image, fileIndex) => ({
-              id: `ref-${index}-${fileIndex}`,
-              name: `reference-${fileIndex + 1}`,
-              url: image.startsWith("http")
-                ? image
-                : `http://localhost:5000${image}`,
-              size: 0,
-              type: "image/jpeg",
-              uploaded_at: jobCard.job_card_date || new Date(),
-              isReference: true,
-            }))
-          : [];
+        // const referenceFiles = Array.isArray(referenceImages)
+        //   ? referenceImages.map((image, fileIndex) => ({
+        //       id: `ref-${index}-${fileIndex}`,
+        //       name: `reference-${fileIndex + 1}`,
+        //       url: image.startsWith("http")
+        //         ? image
+        //         : `http://localhost:5000${image}`,
+        //       size: 0,
+        //       type: "image/jpeg",
+        //       uploaded_at: jobCard.job_card_date || new Date(),
+        //       isReference: true,
+        //     }))
+        //   : [];
 
         // Combine all files
-        const allFiles = [...formattedFiles, ...referenceFiles];
+        const allFiles = [...formattedFiles,];
 
     
 
