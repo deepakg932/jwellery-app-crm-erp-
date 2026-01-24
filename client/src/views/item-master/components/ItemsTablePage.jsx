@@ -71,6 +71,7 @@ export default function ItemsTablePage() {
     loadItems();
   }, [fetchItems]);
 
+
   // Safe filtering
   const filteredItems = React.useMemo(() => {
     const itemsArray = Array.isArray(items) ? items : [];
@@ -84,6 +85,7 @@ export default function ItemsTablePage() {
       );
     });
   }, [items, search]);
+  console.log(filteredItems)
 
   // Handle product selection
   const handleProductSelect = (productId) => {
@@ -643,7 +645,7 @@ export default function ItemsTablePage() {
                       <td>
                         <div className="d-flex flex-column">
                           <span className="fw-medium">
-                            {item.product_code || "N/A"}
+                            {item.article_no || "N/A"}
                           </span>
                           {item._id && (
                             <small

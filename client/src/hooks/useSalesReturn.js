@@ -1,4 +1,3 @@
-// hooks/useSalesReturn.js
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
@@ -15,9 +14,9 @@ export default function useSalesReturn() {
       setError("");
 
       const res = await axios.get(API_ENDPOINTS.getSaleReturns());
-      
+
       let returnsData = [];
-      console.log(res)
+      console.log("Sale returns response:", res);
 
       // Handle different response structures
       if (res.data?.success && Array.isArray(res.data.data)) {
@@ -26,17 +25,25 @@ export default function useSalesReturn() {
         returnsData = res.data;
       } else if (res.data?.data?.returns) {
         returnsData = res.data.data.returns;
+      } else if (res.data?.data) {
+        returnsData = Array.isArray(res.data.data)
+          ? res.data.data
+          : [res.data.data];
       }
 
       // Map to consistent format
       const mappedReturns = returnsData.map((returnItem) => ({
-        _id: returnItem._id,
+        _id: returnItem._id || returnItem.id,
         return_number: returnItem.return_number || `RET-${Date.now()}`,
         sale_id: returnItem.sale_id || returnItem.sale,
-        reference_no: returnItem.reference_no,
+        sale_number: returnItem.sale_number || returnItem.sale_id?.sale_number,
+        reference_no: returnItem.reference_no || "",
         return_date: returnItem.return_date || new Date().toISOString(),
         customer_id: returnItem.customer_id,
-        customer_name: returnItem.customer_name || returnItem.customer_id?.name,
+        customer_name:
+          returnItem.customer_name ||
+          returnItem.customer_id?.name ||
+          "Unknown Customer",
         items: returnItem.items || [],
         reason: returnItem.reason || "",
         return_type: returnItem.return_type || "full",
@@ -52,7 +59,7 @@ export default function useSalesReturn() {
       return mappedReturns;
     } catch (err) {
       console.error("Fetch sale returns error:", err);
-      setError("Failed to load sale returns");
+      setError(err.response?.data?.message || "Failed to load sale returns");
       return [];
     } finally {
       setLoading(false);
@@ -70,9 +77,9 @@ export default function useSalesReturn() {
         sale_id: returnData.sale_id,
         return_date: returnData.return_date,
         reference_no: returnData.reference_no,
-        items: returnData.items.map(item => ({
+        items: returnData.items.map((item) => ({
           product_id: item.product_id,
-          quantity: parseFloat(item.quantity) || 0, // Original quantity from sale
+          quantity: parseFloat(item.quantity) || 0,
           return_quantity: parseFloat(item.return_quantity) || 0,
           price_before_tax: parseFloat(item.price_before_tax) || 0,
           gst_rate: parseFloat(item.gst_rate) || 0,
@@ -91,11 +98,14 @@ export default function useSalesReturn() {
 
       console.log("Sending sale return data:", transformedData);
 
-      const res = await axios.post(API_ENDPOINTS.createSaleReturn(), transformedData);
-      
+      const res = await axios.post(
+        API_ENDPOINTS.createSaleReturn(),
+        transformedData
+      );
+
       if (res.data?.success) {
         const newReturn = res.data.data || res.data;
-        setSaleReturns(prev => [newReturn, ...prev]);
+        setSaleReturns((prev) => [newReturn, ...prev]);
         return newReturn;
       } else {
         throw new Error(res.data?.message || "Failed to create sale return");
@@ -115,13 +125,13 @@ export default function useSalesReturn() {
       setLoading(true);
       setError("");
 
-      const res = await axios.put(API_ENDPOINTS.updateSaleReturn(id), { status });
-      
+      const res = await axios.put(API_ENDPOINTS.updateSaleReturn(id), {
+        status,
+      });
+
       if (res.data?.success) {
-        setSaleReturns(prev => 
-          prev.map(item => 
-            item._id === id ? { ...item, status } : item
-          )
+        setSaleReturns((prev) =>
+          prev.map((item) => (item._id === id ? { ...item, status } : item))
         );
         return res.data.data;
       } else {
@@ -136,33 +146,49 @@ export default function useSalesReturn() {
     }
   };
 
-  // Get return by sale ID
-  const getReturnBySaleId = async (saleId) => {
-    try {
-      setLoading(true);
-      const res = await axios.get(API_ENDPOINTS.getSaleReturnBySaleId(saleId));
-      
-      if (res.data?.success) {
-        return res.data.data || res.data;
-      }
-      return null;
-    } catch (err) {
-      console.error("Get return by sale error:", err);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
-  console.log(saleReturns)
+  // Delete sale return
+const deleteSaleReturn = async (id) => {
+  try {
+    setLoading(true);
+    setError("");
 
-    useEffect(() => {
-      // Fetch customer groups first, then customers
-      const fetchData = async () => {
-        await fetchSaleReturns();
-      };
-      
-      fetchData();
-    }, []);
+    console.log("Deleting return with ID:", id);
+    
+    const res = await axios.delete(API_ENDPOINTS.deleteSaleReturn(id));
+    console.log("Delete response:", res.data);
+
+    // Check if deletion was successful
+    if (res.data?.success) {
+      // Remove the deleted item from state
+      setSaleReturns((prev) => prev.filter((item) => item._id !== id));
+      console.log("Item removed from state");
+      return { success: true, data: res.data };
+    } else {
+      throw new Error(res.data?.message || "Failed to delete sale return");
+    }
+  } catch (err) {
+    console.error("Delete sale return error:", err);
+    console.error("Error details:", {
+      message: err.message,
+      response: err.response?.data,
+      status: err.response?.status
+    });
+    
+    // Set a more specific error message
+    const errorMsg = err.response?.data?.message || 
+                     err.response?.data?.error || 
+                     err.message || 
+                     "Failed to delete sale return";
+    setError(errorMsg);
+    throw new Error(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  useEffect(() => {
+    fetchSaleReturns();
+  }, []);
 
   return {
     saleReturns,
@@ -171,6 +197,6 @@ export default function useSalesReturn() {
     fetchSaleReturns,
     createSaleReturn,
     updateSaleReturnStatus,
-    getReturnBySaleId,
+    deleteSaleReturn,
   };
 }

@@ -69,10 +69,10 @@ const AddItemModal = ({
   // Form State
   const [formState, setFormState] = useState({
     product_name: "",
-    product_code: generateProductCode ? generateProductCode() : "",
+    article_no: generateProductCode ? generateProductCode() : "",
     product_brand: "",
     product_category: "",
-    product_subcategory: "",
+    product_subcategory_name: "",
     selected_price_makings: [],
     markup_percentage: 15,
     gst_rate: "",
@@ -91,7 +91,7 @@ const AddItemModal = ({
   const [dragActive, setDragActive] = useState(false);
   const [currentSubcategories, setCurrentSubcategories] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  
+
   // NEW: State for hallmarks by metal
   const [hallmarksByMetal, setHallmarksByMetal] = useState({});
   const [loadingHallmarks, setLoadingHallmarks] = useState({});
@@ -127,10 +127,10 @@ const AddItemModal = ({
     }
 
     // Set product code only
-    if (generateProductCode && !formState.product_code) {
+    if (generateProductCode && !formState.article_no) {
       setFormState((prev) => ({
         ...prev,
-        product_code: generateProductCode(),
+        article_no: generateProductCode(),
       }));
     }
 
@@ -153,7 +153,7 @@ const AddItemModal = ({
     generateProductCode,
     isInitialized,
   ]);
-  
+
   console.log(wastageTypes, "wastageTypes");
 
   // Fetch subcategories when category changes
@@ -276,7 +276,7 @@ const AddItemModal = ({
   const removeMetal = (id) => {
     setMetalsData(metalsData.filter((metal) => metal.id !== id));
     // Remove hallmarks for this metal
-    setHallmarksByMetal(prev => {
+    setHallmarksByMetal((prev) => {
       const newHallmarks = { ...prev };
       delete newHallmarks[id];
       return newHallmarks;
@@ -334,36 +334,36 @@ const AddItemModal = ({
     setMetalsData(
       metalsData.map((metal) => {
         if (metal.id !== id) return metal;
-        
+
         const updatedMetal = { ...metal, [field]: value };
-        
+
         // If metal_type changed, fetch hallmarks
         if (field === "metal_type" && value && fetchHallmarksByMetal) {
           // Clear existing hallmark when metal changes
           updatedMetal.hallmark = "";
-          
+
           // Fetch hallmarks for this metal
-          setLoadingHallmarks(prev => ({ ...prev, [id]: true }));
-          
+          setLoadingHallmarks((prev) => ({ ...prev, [id]: true }));
+
           fetchHallmarksByMetal(value)
-            .then(hallmarks => {
-              setHallmarksByMetal(prev => ({
+            .then((hallmarks) => {
+              setHallmarksByMetal((prev) => ({
                 ...prev,
-                [id]: hallmarks
+                [id]: hallmarks,
               }));
             })
-            .catch(err => {
+            .catch((err) => {
               console.error("Error fetching hallmarks:", err);
-              setHallmarksByMetal(prev => ({
+              setHallmarksByMetal((prev) => ({
                 ...prev,
-                [id]: []
+                [id]: [],
               }));
             })
             .finally(() => {
-              setLoadingHallmarks(prev => ({ ...prev, [id]: false }));
+              setLoadingHallmarks((prev) => ({ ...prev, [id]: false }));
             });
         }
-        
+
         return updatedMetal;
       })
     );
@@ -465,8 +465,8 @@ const AddItemModal = ({
     const newErrors = {};
     if (!formState.product_name.trim())
       newErrors.product_name = "Product name is required";
-    if (!formState.product_code.trim())
-      newErrors.product_code = "Product code is required";
+    if (!formState.article_no.trim())
+      newErrors.article_no = "article no is required";
     if (!formState.product_category)
       newErrors.product_category = "Category is required";
     if (!formState.gst_rate) newErrors.gst_rate = "GST rate is required";
@@ -600,16 +600,26 @@ const AddItemModal = ({
     // Get selected GST object
     const selectedGST = getSelectedGSTObject();
 
+    // DEBUG: Log subcategory before submission
+    console.log("Subcategory before submission:", {
+      subcategoryId: formState.product_subcategory,
+      subcategoryDisplay:
+        formState.product_subcategory_name || "No display name",
+    });
+
     // Prepare final data
     const finalData = {
       // Basic info
       product_name: formState.product_name,
-      product_code: formState.product_code,
+      article_no: formState.article_no,
 
-      // IDs
-      product_brand: formState.product_brand,
-      product_category: formState.product_category,
-      product_subcategory: formState.product_subcategory,
+      // IDs - MAKE SURE THESE ARE SET
+      product_brand: formState.product_brand || "",
+      product_category: formState.product_category || "",
+      product_subcategory: formState.product_subcategory || "", // This should be the ID
+
+      // DEBUG: Add subcategory name too
+      product_subcategory_name: formState.product_subcategory_name || "",
 
       // Multiple making charges
       making_charges: formState.selected_price_makings.map((pm) => ({
@@ -622,7 +632,7 @@ const AddItemModal = ({
       })),
 
       total_making_charge_amount: makingChargeAmount,
-      
+
       // Markup
       markup_percentage: parseFloat(formState.markup_percentage) || 15,
 
@@ -669,18 +679,18 @@ const AddItemModal = ({
     console.log("Submitting data to backend:", {
       basicInfo: {
         name: finalData.product_name,
-        code: finalData.product_code,
+        code: finalData.article_no,
         brandId: finalData.product_brand,
         categoryId: finalData.product_category,
         subcategoryId: finalData.product_subcategory,
+        subcategoryName: finalData.product_subcategory_name,
       },
       metalsCount: finalData.metals.length,
-      metalsWithHallmark: finalData.metals.filter(m => m.hallmark).length,
+      metalsWithHallmark: finalData.metals.filter((m) => m.hallmark).length,
       stonesCount: finalData.stones.length,
       materialsCount: finalData.materials.length,
     });
-    console.log("Metals data with hallmarks:", finalData.metals);
-    
+
     if (onSave) {
       await onSave(finalData);
     }
@@ -797,17 +807,17 @@ const AddItemModal = ({
                     <input
                       type="text"
                       className={`form-control ${
-                        errors.product_code ? "is-invalid" : ""
+                        errors.article_no ? "is-invalid" : ""
                       }`}
-                      value={formState.product_code}
+                      value={formState.article_no}
                       onChange={(e) =>
-                        handleInputChange("product_code", e.target.value)
+                        handleInputChange("article_no", e.target.value)
                       }
                       disabled={loading || dropdownLoading}
                     />
-                    {errors.product_code && (
+                    {errors.article_no && (
                       <div className="invalid-feedback">
-                        {errors.product_code}
+                        {errors.article_no}
                       </div>
                     )}
                   </div>
@@ -961,8 +971,8 @@ const AddItemModal = ({
                       ) : (
                         <div className="alert alert-light border p-2 text-center">
                           {/* <small className="text-muted">
-                            No subcategories available for this category
-                          </small> */}
+          No subcategories available for this category
+        </small> */}
                         </div>
                       )}
                     </div>
@@ -1233,7 +1243,8 @@ const AddItemModal = ({
                               <td>
                                 <select
                                   className={`form-select form-select-sm ${
-                                    dropdownLoading || loadingHallmarks[metal.id]
+                                    dropdownLoading ||
+                                    loadingHallmarks[metal.id]
                                       ? "opacity-50"
                                       : ""
                                   }`}
@@ -1250,7 +1261,8 @@ const AddItemModal = ({
                                     dropdownLoading ||
                                     loadingHallmarks[metal.id] ||
                                     !metal.metal_type ||
-                                    (hallmarksByMetal[metal.id] || []).length === 0
+                                    (hallmarksByMetal[metal.id] || [])
+                                      .length === 0
                                   }
                                 >
                                   <option value="">
@@ -1258,23 +1270,28 @@ const AddItemModal = ({
                                       ? "Loading hallmarks..."
                                       : !metal.metal_type
                                       ? "Select metal first"
-                                      : (hallmarksByMetal[metal.id] || []).length === 0
+                                      : (hallmarksByMetal[metal.id] || [])
+                                          .length === 0
                                       ? "No hallmarks available"
                                       : "Select Hallmark"}
                                   </option>
-                                  {(hallmarksByMetal[metal.id] || []).map((hallmark) => (
-                                    <option key={hallmark._id} value={hallmark._id}>
-                                      {hallmark.name}
-                                    </option>
-                                  ))}
+                                  {(hallmarksByMetal[metal.id] || []).map(
+                                    (hallmark) => (
+                                      <option
+                                        key={hallmark._id}
+                                        value={hallmark._id}
+                                      >
+                                        {hallmark.name}
+                                      </option>
+                                    )
+                                  )}
                                 </select>
                                 {metal.hallmark && (
                                   <small className="text-muted d-block mt-1">
-                                    Selected: {
-                                      (hallmarksByMetal[metal.id] || []).find(
-                                        h => h._id === metal.hallmark
-                                      )?.name || "Unknown"
-                                    }
+                                    Selected:{" "}
+                                    {(hallmarksByMetal[metal.id] || []).find(
+                                      (h) => h._id === metal.hallmark
+                                    )?.name || "Unknown"}
                                   </small>
                                 )}
                               </td>
@@ -1839,7 +1856,6 @@ const AddItemModal = ({
                                     <tr key={getId(pm) || index}>
                                       <td className="ps-3">
                                         • {pm.cost_type || "Charge"}
-                                  
                                       </td>
                                       <td className="text-end">
                                         ₹

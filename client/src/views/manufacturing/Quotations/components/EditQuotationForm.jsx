@@ -31,7 +31,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
   const [formData, setFormData] = useState({
     customer_id: "",
     quotation_date: new Date().toISOString().split("T")[0],
-    expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0],
     items: [
       {
         product_id: "",
@@ -81,54 +83,62 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
   useEffect(() => {
     if (quotation && !isInitialized) {
       console.log("Initializing form with quotation:", quotation);
-      
+
       // Extract customer ID (it might be an object with _id)
-      const customerId = quotation.customer_id?._id || quotation.customer_id || "";
-      
+      const customerId =
+        quotation.customer_id?._id || quotation.customer_id || "";
+
       // Extract branch ID (it might be an object with _id)
       const branchId = quotation.branch_id?._id || quotation.branch_id || "";
-      
+
       // Format dates from API response
       const formatDateForInput = (dateString) => {
         if (!dateString) return "";
         const date = new Date(dateString);
         return date.toISOString().split("T")[0];
       };
-      
+
       const quotationDate = formatDateForInput(quotation.quotation_date);
       const expiryDate = formatDateForInput(quotation.expiry_date);
-      
+
       // Process items
-      const processedItems = quotation.items && quotation.items.length > 0
-        ? quotation.items.map(item => ({
-            product_id: item.product_id || "",
-            product_code: item.product_code || "",
-            product_name: item.product_name || "",
-            quantity: item.quantity?.toString() || "1",
-            unit_price: item.unit_price || 0,
-            discount: item.discount || 0,
-            tax_rate: item.tax_rate || 18,
-            tax_amount: item.tax_amount || 0,
-            net_price: item.net_price || 0,
-            subtotal: item.subtotal || 0,
-          }))
-        : [{
-            product_id: "",
-            product_code: "",
-            product_name: "",
-            quantity: "1",
-            unit_price: 0,
-            discount: 0,
-            tax_rate: 18,
-            tax_amount: 0,
-            net_price: 0,
-            subtotal: 0,
-          }];
-      
+      const processedItems =
+        quotation.items && quotation.items.length > 0
+          ? quotation.items.map((item) => ({
+              product_id: item.product_id || "",
+              product_code: item.product_code || "",
+              product_name: item.product_name || "",
+              quantity: item.quantity?.toString() || "1",
+              unit_price: item.unit_price || 0,
+              discount: item.discount || 0,
+              tax_rate: item.tax_rate || 18,
+              tax_amount: item.tax_amount || 0,
+              net_price: item.net_price || 0,
+              subtotal: item.subtotal || 0,
+            }))
+          : [
+              {
+                product_id: "",
+                product_code: "",
+                product_name: "",
+                quantity: "1",
+                unit_price: 0,
+                discount: 0,
+                tax_rate: 18,
+                tax_amount: 0,
+                net_price: 0,
+                subtotal: 0,
+              },
+            ];
+
       const initialFormData = {
         customer_id: customerId,
         quotation_date: quotationDate || new Date().toISOString().split("T")[0],
-        expiry_date: expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        expiry_date:
+          expiryDate ||
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
         items: processedItems,
         note: quotation.note || "",
         terms_conditions: quotation.terms_conditions || "",
@@ -142,11 +152,11 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
         status: quotation.status || "draft",
         valid_days: quotation.valid_days || 30,
       };
-      
+
       console.log("Initial form data:", initialFormData);
       setFormData(initialFormData);
       setIsInitialized(true);
-      
+
       // Trigger calculation after data is loaded
       setTimeout(() => setNeedsRecalculation(true), 100);
     }
@@ -183,7 +193,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
 
     if (!formData.expiry_date) {
       newErrors.expiry_date = "Expiry date is required";
-    } else if (new Date(formData.expiry_date) < new Date(formData.quotation_date)) {
+    } else if (
+      new Date(formData.expiry_date) < new Date(formData.quotation_date)
+    ) {
       newErrors.expiry_date = "Expiry date must be after quotation date";
     }
 
@@ -359,7 +371,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
     setSearchQuery("");
     setShowSearchResults(false);
     setSearchResults([]);
-    
+
     // Recalculate after product selection
     setTimeout(calculateTotals, 0);
   };
@@ -367,7 +379,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
   // Simple handleChange for form fields
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -379,7 +391,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
     }
 
     // Mark for recalculation if it's a field that affects totals
-    if (name === 'shipping_cost' || name === 'discount') {
+    if (name === "shipping_cost" || name === "discount") {
       setNeedsRecalculation(true);
     }
   };
@@ -403,34 +415,31 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
 
   // Handle item changes with immediate calculation for better UX
   const handleItemChangeWithCalculation = (index, field, value) => {
-    handleItemChange(index, field, value);
-    
-    // For quantity, unit_price, discount, tax_rate - calculate item total immediately
-    if (['quantity', 'unit_price', 'discount', 'tax_rate'].includes(field)) {
-      setTimeout(() => {
-        const updatedItems = [...formData.items];
-        const item = updatedItems[index];
-        
-        if (item.product_id) {
-          const calculated = calculateItemTotal({
-            ...item,
-            [field]: value
-          });
-          
-          updatedItems[index] = {
-            ...updatedItems[index],
-            subtotal: calculated.subtotal,
-            tax_amount: calculated.tax_amount,
-            net_price: calculated.net_price,
-          };
+    const updatedItems = [...formData.items];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value,
+    };
 
-          setFormData((prev) => ({
-            ...prev,
-            items: updatedItems,
-          }));
-        }
-      }, 100);
+    if (["quantity", "unit_price", "discount", "tax_rate"].includes(field)) {
+      const item = updatedItems[index];
+
+      if (item.product_id) {
+        const calculated = calculateItemTotal(item);
+
+        updatedItems[index] = {
+          ...updatedItems[index],
+          subtotal: calculated.subtotal,
+          tax_amount: calculated.tax_amount,
+          net_price: calculated.net_price,
+        };
+      }
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      items: updatedItems,
+    }));
   };
 
   // Remove item row
@@ -441,7 +450,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
         ...prev,
         items: updatedItems,
       }));
-      
+
       setNeedsRecalculation(true);
     }
   };
@@ -466,7 +475,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
       ...prev,
       items: updatedItems,
     }));
-    
+
     setNeedsRecalculation(true);
   };
 
@@ -563,7 +572,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
     setFormData({
       customer_id: "",
       quotation_date: new Date().toISOString().split("T")[0],
-      expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
       items: [
         {
           product_id: "",
@@ -599,7 +610,11 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
   };
 
   const isDisabled =
-    loading || loadingCustomers || loadingItems || loadingBranches || !isInitialized;
+    loading ||
+    loadingCustomers ||
+    loadingItems ||
+    loadingBranches ||
+    !isInitialized;
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -613,39 +628,40 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   // Check if quotation is editable
-  const isEditable = quotation?.status === 'draft' || quotation?.status === 'sent';
+  const isEditable =
+    quotation?.status === "draft" || quotation?.status === "sent";
 
   // Get customer name for display
   const getCustomerName = () => {
     if (!quotation?.customer_id) return "Select Customer";
-    
-    if (typeof quotation.customer_id === 'object') {
+
+    if (typeof quotation.customer_id === "object") {
       return quotation.customer_id.name || "Unknown Customer";
     }
-    
+
     // Find customer from customers list
-    const customer = customers?.find(c => c._id === quotation.customer_id);
+    const customer = customers?.find((c) => c._id === quotation.customer_id);
     return customer?.name || customer?.customer_name || "Unknown Customer";
   };
 
   // Get branch name for display
   const getBranchName = () => {
     if (!quotation?.branch_id) return "Select Branch";
-    
-    if (typeof quotation.branch_id === 'object') {
+
+    if (typeof quotation.branch_id === "object") {
       return quotation.branch_id.branch_name || "Unknown Branch";
     }
-    
+
     // Find branch from branches list
-    const branch = branches?.find(b => b._id === quotation.branch_id);
+    const branch = branches?.find((b) => b._id === quotation.branch_id);
     return branch?.branch_name || "Unknown Branch";
   };
 
@@ -712,12 +728,23 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                 <div className="small text-muted">
                   Quotation #: {quotation.quotation_number}
                   {quotation.status && (
-                    <span className={`badge ms-2 ${quotation.status === 'draft' ? 'bg-secondary' : 
-                      quotation.status === 'sent' ? 'bg-info' : 
-                      quotation.status === 'accepted' ? 'bg-success' :
-                      quotation.status === 'rejected' ? 'bg-danger' :
-                      quotation.status === 'converted' ? 'bg-primary' : 'bg-warning'}`}>
-                      {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
+                    <span
+                      className={`badge ms-2 ${
+                        quotation.status === "draft"
+                          ? "bg-secondary"
+                          : quotation.status === "sent"
+                          ? "bg-info"
+                          : quotation.status === "accepted"
+                          ? "bg-success"
+                          : quotation.status === "rejected"
+                          ? "bg-danger"
+                          : quotation.status === "converted"
+                          ? "bg-primary"
+                          : "bg-warning"
+                      }`}
+                    >
+                      {quotation.status.charAt(0).toUpperCase() +
+                        quotation.status.slice(1)}
                     </span>
                   )}
                 </div>
@@ -741,7 +768,8 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
               {!isEditable && (
                 <div className="alert alert-warning mb-4">
                   <FiInfo className="me-2" />
-                  This quotation is <strong>{quotation?.status}</strong> and can only be viewed, not edited.
+                  This quotation is <strong>{quotation?.status}</strong> and can
+                  only be viewed, not edited.
                 </div>
               )}
 
@@ -749,7 +777,8 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
               <div className="alert alert-info mb-4">
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <strong>Quotation Number:</strong> {quotation.quotation_number}
+                    <strong>Quotation Number:</strong>{" "}
+                    {quotation.quotation_number}
                   </div>
                   <div>
                     <strong>Created:</strong> {formatDate(quotation.createdAt)}
@@ -779,7 +808,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                     />
                   </div>
                   {errors.quotation_date && (
-                    <div className="invalid-feedback">{errors.quotation_date}</div>
+                    <div className="invalid-feedback">
+                      {errors.quotation_date}
+                    </div>
                   )}
                 </div>
 
@@ -838,9 +869,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                       ))
                     )}
                   </select>
-                  <div className="form-text">
-                    Current: {getCustomerName()}
-                  </div>
+                  <div className="form-text">Current: {getCustomerName()}</div>
                   {errors.customer_id && (
                     <div className="invalid-feedback">{errors.customer_id}</div>
                   )}
@@ -872,9 +901,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                       ))
                     )}
                   </select>
-                  <div className="form-text">
-                    Current: {getBranchName()}
-                  </div>
+                  <div className="form-text">Current: {getBranchName()}</div>
                   {errors.branch_id && (
                     <div className="invalid-feedback">{errors.branch_id}</div>
                   )}
@@ -917,7 +944,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                 </div>
 
                 <div className="col-md-3 mb-3">
-                  <label className="form-label fw-medium">Shipping Cost (₹)</label>
+                  <label className="form-label fw-medium">
+                    Shipping Cost (₹)
+                  </label>
                   <div className="input-group">
                     <span className="input-group-text">
                       <FiDollarSign size={14} />
@@ -1041,10 +1070,12 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                                       {displayInfo.name}
                                     </div>
                                     <div className="small text-muted">
-                                      Code: {displayInfo.code} | Stock: {displayInfo.stock}
+                                      Code: {displayInfo.code} | Stock:{" "}
+                                      {displayInfo.stock}
                                     </div>
                                     <div className="small text-muted mt-1">
-                                      Price: {formatCurrency(displayInfo.unit_price)} | 
+                                      Price:{" "}
+                                      {formatCurrency(displayInfo.unit_price)} |
                                       Tax: {displayInfo.tax_rate}%
                                     </div>
                                   </div>
@@ -1146,7 +1177,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                                   <input
                                     type="number"
                                     className={`form-control ${
-                                      errors[`items[${originalIndex}].unit_price`]
+                                      errors[
+                                        `items[${originalIndex}].unit_price`
+                                      ]
                                         ? "is-invalid"
                                         : ""
                                     }`}
@@ -1250,10 +1283,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                             <div className="d-flex flex-column align-items-center">
                               <FiSearch className="mb-2" size={32} />
                               <span className="fs-6">
-                                {isEditable 
+                                {isEditable
                                   ? "Search and select products from above to add them to the quotation"
-                                  : "No items in this quotation"
-                                }
+                                  : "No items in this quotation"}
                               </span>
                             </div>
                           </td>
@@ -1279,7 +1311,9 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
                       ></textarea>
                     </div>
                     <div className="mb-3">
-                      <label className="form-label fw-medium">Terms & Conditions</label>
+                      <label className="form-label fw-medium">
+                        Terms & Conditions
+                      </label>
                       <textarea
                         className="form-control"
                         rows={3}

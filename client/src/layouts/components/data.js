@@ -540,37 +540,44 @@ export const menuItems = [
         label: "Custom Order",
         url: "/custom-order",
       },
-       {
+      {
         key: "quotations",
         label: "Quotations",
         url: "/quotations",
       },
-       {
+      {
         key: "repair",
         label: "Repair",
         url: "/repair",
       },
     ],
   },
+
   {
-    key: "custom",
-    label: "Custom Pages",
-    isTitle: true,
-  },
-  {
-    key: "pages",
-    label: "Pages",
+    key: "manufacturing",
+    label: "Manufacturing",
     icon: LuNotebookText,
     children: [
       {
-        key: "faq",
-        label: "FAQ",
-        url: "/pages/faq",
+        key: "job-card",
+        label: "Job Card",
+        url: "/job-card",
       },
       {
-        key: "pricing",
-        label: "Pricing",
-        url: "/pages/pricing",
+        key: "stages",
+        label: "Stages",
+        children: [
+          {
+            key: "design-stage",
+            label: "Design Stage",
+            url: "/design-stage",
+          },
+          {
+            key: "cad-creation-stage",
+            label: "Cad Creation Stage",
+            url: "/cad-creation-stage",
+          },
+        ],
       },
       {
         key: "empty-page",

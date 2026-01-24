@@ -327,7 +327,7 @@ const useItems = () => {
 
         // Extract product codes
         const productCodes = itemsData.map((item) => ({
-          code: item.product_code,
+          code: item.article_no,
           name: item.product_name,
           id: item._id || item.id,
         }));
@@ -407,7 +407,7 @@ const useItems = () => {
 
       // Basic information
       formData.append("product_name", itemData.product_name || "");
-      formData.append("product_code", itemData.product_code || "");
+      formData.append("article_no", itemData.article_no || "");
 
       // Send IDs
       if (itemData.product_brand) {
@@ -542,7 +542,7 @@ const useItems = () => {
 
       // Basic information
       formData.append("product_name", itemData.product_name || "");
-      formData.append("product_code", itemData.product_code || "");
+      formData.append("article_no", itemData.article_no || "");
 
       // Send IDs
       if (itemData.product_brand) {
@@ -993,7 +993,7 @@ const useItems = () => {
     if (dropdownData.productCodes.length > 0) {
       const codeNumbers = dropdownData.productCodes
         .map((pc) => {
-          const code = pc.code || pc.product_code || "";
+          const code = pc.code || pc.article_no || "";
           const match = code.match(/(\d+)$/);
           return match ? parseInt(match[1]) : 0;
         })

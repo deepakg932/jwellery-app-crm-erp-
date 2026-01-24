@@ -1,4 +1,3 @@
-// components/quotations/QuotationsTable.jsx
 import React, { useState, useEffect } from "react";
 import {
   FiEdit2,
@@ -9,35 +8,38 @@ import {
   FiChevronsLeft,
   FiChevronsRight,
   FiEye,
-  FiFileText,
   FiCheckCircle,
   FiPrinter,
-  FiMail,
-  FiCopy,
+  FiUser,
+  FiAlertCircle,
+  FiPackage,
+  FiShoppingCart,
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
-import AddQuotationForm from "./AddQuotationForm";
-import EditQuotationForm from "./EditQuotationForm";
-import useQuotations from "@/hooks/useQuotations";
+import AddJobCardForm from "./AddJobCardForm";
+import EditJobCardForm from "./EditJobCardForm";
+import useJobCards from "@/hooks/useJobCards";
 
-const QuotationsTable = () => {
+const JobCardTable = () => {
   const {
-    quotations,
-    customers,
-    items,
-    branches,
+    jobCards,
+    employees,
     loading,
     error,
-    addQuotation,
-    updateQuotation,
-    deleteQuotation,
-    fetchQuotations,
+    addJobCard,
+    updateJobCard,
+    deleteJobCard,
+    updateJobCardStatus,
     convertToSale,
-  } = useQuotations();
-console.log(quotations)
+    fetchJobCards,
+    loadingQuotations,
+  } = useJobCards();
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [showAddJobCard, setShowAddJobCard] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -51,47 +53,60 @@ console.log(quotations)
   // Status options
   const statusOptions = [
     { value: "all", label: "All Status" },
-    { value: "draft", label: "Draft" },
-    { value: "sent", label: "Sent" },
-    { value: "accepted", label: "Accepted" },
-    { value: "rejected", label: "Rejected" },
-    { value: "expired", label: "Expired" },
-    { value: "converted", label: "Converted" },
+    { value: "pending", label: "Pending", color: "warning" },
+    { value: "in_progress", label: "In Progress", color: "info" },
+    { value: "completed", label: "Completed", color: "success" },
+    { value: "delivered", label: "Delivered", color: "primary" },
+    { value: "cancelled", label: "Cancelled", color: "danger" },
   ];
 
-  // Filter quotations
-  const filteredQuotations = quotations.filter((quotation) => {
+  // Priority options
+  const priorityOptions = [
+    { value: "all", label: "All Priority" },
+    { value: "low", label: "Low", color: "success" },
+    { value: "medium", label: "Medium", color: "warning" },
+    { value: "high", label: "High", color: "danger" },
+    { value: "urgent", label: "Urgent", color: "danger" },
+  ];
+
+  // Filter job cards
+  const filteredJobCards = jobCards.filter((jobCard) => {
     // Search filter
     const matchesSearch =
       search === "" ||
-      quotation.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-      quotation.customer_mobile?.includes(search) ||
-      quotation.branch_name?.toLowerCase().includes(search.toLowerCase());
+      jobCard.job_card_number?.toLowerCase().includes(search.toLowerCase()) ||
+      jobCard.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      jobCard.customer_mobile?.includes(search) ||
+      jobCard.assigned_name?.toLowerCase().includes(search.toLowerCase());
 
     // Status filter
-    const isExpired = quotation.expiry_date && new Date(quotation.expiry_date) < new Date();
     const matchesStatus =
-      statusFilter === "all" ||
-      quotation.status === statusFilter ||
-      (statusFilter === "expired" && isExpired && quotation.status !== "converted");
+      statusFilter === "all" || jobCard.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    // Priority filter
+    const matchesPriority =
+      priorityFilter === "all" || jobCard.priority === priorityFilter;
+
+    return matchesSearch && matchesStatus && matchesPriority;
   });
 
   // Reset to first page when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, priorityFilter]);
 
   // Calculate pagination
-  const totalItems = filteredQuotations.length;
+  const totalItems = filteredJobCards.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Get current items for the page
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentQuotations = filteredQuotations.slice(indexOfFirstItem, indexOfLastItem);
-
+  const currentJobCards = filteredJobCards.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+console.log(jobCards)
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -103,44 +118,45 @@ console.log(quotations)
     });
   };
 
-  // Format expiry date with status
-  const formatExpiryDate = (expiryDate, status) => {
-    if (!expiryDate) return "N/A";
-    
-    const date = new Date(expiryDate);
+  // Format delivery date with status
+  const formatDeliveryDate = (expectedDate, actualDate, status) => {
+    if (!expectedDate) return "N/A";
+
+    const expected = new Date(expectedDate);
+    const actual = actualDate ? new Date(actualDate) : null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const expiry = new Date(date);
-    expiry.setHours(0, 0, 0, 0);
-    
-    const diffTime = expiry - today;
+    const expectedDateOnly = new Date(expected);
+    expectedDateOnly.setHours(0, 0, 0, 0);
+
+    const diffTime = expectedDateOnly - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (status === "converted") {
+    if (actual) {
       return (
         <div>
-          <div>{date.toLocaleDateString("en-IN")}</div>
-          <small className="text-success">Converted to Sale</small>
+          <div>{formatDate(actual)}</div>
+          <small className="text-success">Delivered</small>
         </div>
       );
     }
 
     return (
       <div>
-        <div>{date.toLocaleDateString("en-IN")}</div>
+        <div>{formatDate(expected)}</div>
         <small
           className={
             diffDays < 0
               ? "text-danger"
-              : diffDays <= 3
+              : diffDays === 0
               ? "text-warning"
               : "text-success"
           }
         >
           {diffDays < 0
-            ? "Expired"
+            ? `${Math.abs(diffDays)} days overdue`
             : diffDays === 0
-            ? "Expires Today"
+            ? "Due Today"
             : `${diffDays} days left`}
         </small>
       </div>
@@ -156,26 +172,19 @@ console.log(quotations)
   };
 
   // Get status badge
-  const getStatusBadge = (status, expiryDate) => {
-    const isExpired = expiryDate && new Date(expiryDate) < new Date();
-    
+  const getStatusBadge = (status) => {
     const statusConfig = {
-      draft: { color: "secondary", label: "Draft" },
-      sent: { color: "info", label: "Sent" },
-      accepted: { color: "success", label: "Accepted" },
-      rejected: { color: "danger", label: "Rejected" },
-      expired: { color: "warning", label: "Expired" },
-      converted: { color: "primary", label: "Converted" },
+      pending: { color: "warning", label: "Pending" },
+      in_progress: { color: "info", label: "In Progress" },
+      completed: { color: "success", label: "Completed" },
+      delivered: { color: "primary", label: "Delivered" },
+      cancelled: { color: "danger", label: "Cancelled" },
     };
 
-    let config;
-    if (status === "converted") {
-      config = statusConfig.converted;
-    } else if (isExpired) {
-      config = statusConfig.expired;
-    } else {
-      config = statusConfig[status] || { color: "secondary", label: status };
-    }
+    const config = statusConfig[status] || {
+      color: "secondary",
+      label: status,
+    };
 
     return (
       <span className={`badge bg-${config.color} text-white fw-semibold`}>
@@ -184,12 +193,34 @@ console.log(quotations)
     );
   };
 
-  // Add new quotation
-  const handleAddQuotation = async (quotationData) => {
+  // Get priority badge
+  const getPriorityBadge = (priority) => {
+    const priorityConfig = {
+      low: { color: "success", label: "Low" },
+      medium: { color: "warning", label: "Medium" },
+      high: { color: "danger", label: "High" },
+      urgent: { color: "danger", label: "Urgent" },
+    };
+
+    const config = priorityConfig[priority] || {
+      color: "secondary",
+      label: priority,
+    };
+
+    return (
+      <span className={`badge bg-${config.color} text-white`}>
+        {config.label}
+      </span>
+    );
+  };
+
+  // Add new job card
+  const handleAddJobCard = async (jobCardData) => {
     setActionLoading({ type: "add", id: null });
     try {
-      await addQuotation(quotationData);
-      setShowAddModal(false);
+      await addJobCard(jobCardData);
+      setShowAddJobCard(false);
+      setSelectedQuotation(null);
     } catch (error) {
       console.error("Add failed:", error);
     } finally {
@@ -197,13 +228,13 @@ console.log(quotations)
     }
   };
 
-  // Edit quotation
-  const handleEditQuotation = async (updatedQuotation) => {
+  // Edit job card
+  const handleEditJobCard = async (updatedJobCard) => {
     if (!selectedItem) return;
 
     setActionLoading({ type: "update", id: selectedItem._id });
     try {
-      await updateQuotation(selectedItem._id, updatedQuotation);
+      await updateJobCard(selectedItem._id, updatedJobCard);
       setShowEditModal(false);
       setSelectedItem(null);
     } catch (error) {
@@ -213,17 +244,29 @@ console.log(quotations)
     }
   };
 
-  // Delete quotation
-  const handleDeleteQuotation = async () => {
+  // Delete job card
+  const handleDeleteJobCard = async () => {
     if (!selectedItem) return;
 
     setActionLoading({ type: "delete", id: selectedItem._id });
     try {
-      await deleteQuotation(selectedItem._id);
+      await deleteJobCard(selectedItem._id);
       setShowDeleteModal(false);
       setSelectedItem(null);
     } catch (error) {
       console.error("Delete failed:", error);
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
+  };
+
+  // Update status
+  const handleUpdateStatus = async (jobCardId, status) => {
+    setActionLoading({ type: "status", id: jobCardId });
+    try {
+      await updateJobCardStatus(jobCardId, status);
+    } catch (error) {
+      console.error("Status update failed:", error);
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -245,30 +288,36 @@ console.log(quotations)
   };
 
   // Open edit modal
-  const handleOpenEdit = (quotation) => {
-    if (quotation.status === "converted") {
-      alert("Cannot edit a converted quotation");
+  const handleOpenEdit = (jobCard) => {
+    if (jobCard.status === "completed" || jobCard.status === "delivered") {
+      alert("Cannot edit a completed or delivered job card");
       return;
     }
-    setSelectedItem(quotation);
+    setSelectedItem(jobCard);
     setShowEditModal(true);
   };
 
   // Open view modal
-  const handleOpenView = (quotation) => {
-    setSelectedItem(quotation);
+  const handleOpenView = (jobCard) => {
+    setSelectedItem(jobCard);
     setShowViewModal(true);
   };
 
   // Open delete modal
-  const handleOpenDelete = (quotation) => {
-    setSelectedItem(quotation);
+  const handleOpenDelete = (jobCard) => {
+    setSelectedItem(jobCard);
     setShowDeleteModal(true);
   };
 
   // Handle refresh
   const handleRefresh = () => {
-    fetchQuotations();
+    fetchJobCards();
+  };
+
+  // When creating from quotation
+  const handleCreateFromQuotation = () => {
+    setSelectedQuotation(null);
+    setShowAddJobCard(true);
   };
 
   // Pagination handlers
@@ -310,20 +359,27 @@ console.log(quotations)
     return pageNumbers;
   };
 
-  // View Quotation Modal
-  const ViewQuotationModal = () => {
+  // View Job Card Modal
+  const ViewJobCardModal = () => {
     if (!selectedItem) return null;
 
     return (
       <div
         className="modal fade show d-block"
-        style={{ backgroundColor: "rgba(0,0,0,0.5)", overflowY: "auto", maxHeight: "100vh" }}
+        style={{
+          backgroundColor: "rgba(0,0,0,0.5)",
+          overflowY: "auto",
+          maxHeight: "100vh",
+        }}
         tabIndex="-1"
       >
         <div className="modal-dialog modal-dialog-centered modal-lg">
-          <div className="modal-content rounded-3" style={{ maxHeight: "90vh" }}>
+          <div
+            className="modal-content rounded-3"
+            style={{ maxHeight: "90vh" }}
+          >
             <div className="modal-header border-bottom pb-3 sticky-top bg-white">
-              <h5 className="modal-title fw-bold fs-5">Quotation Details</h5>
+              <h5 className="modal-title fw-bold fs-5">Job Card Details</h5>
               <button
                 type="button"
                 className="btn-close"
@@ -339,37 +395,72 @@ console.log(quotations)
               {/* Header Info */}
               <div className="row mb-4">
                 <div className="col-md-6">
-                  <h6 className="fw-bold">Quotation #{selectedItem.reference_no}</h6>
+                  <h6 className="fw-bold">
+                    Job Card #{selectedItem.job_card_number}
+                  </h6>
                   <div className="small text-muted">
                     Created: {formatDate(selectedItem.created_at)}
                   </div>
                 </div>
                 <div className="col-md-6 text-end">
-                  {getStatusBadge(selectedItem.status, selectedItem.expiry_date)}
+                  <div className="d-flex flex-column align-items-end gap-1">
+                    {getStatusBadge(selectedItem.status)}
+                    {getPriorityBadge(selectedItem.priority)}
+                  </div>
                 </div>
               </div>
 
               {/* Customer Info */}
               <div className="card border mb-4">
                 <div className="card-body">
-                  <h6 className="fw-bold mb-3">Customer Information</h6>
+                  <h6 className="fw-bold mb-3">
+                    {selectedItem.quotation_number
+                      ? "Customer Information"
+                      : "Order Information"}
+                  </h6>
                   <div className="row">
-                    <div className="col-md-6">
-                      <div className="mb-2">
-                        <span className="text-muted">Name:</span>
-                        <span className="fw-medium ms-2">{selectedItem.customer_name}</span>
+                    {selectedItem.quotation_number ? (
+                      // Quotation job card
+                      <>
+                        <div className="col-md-6">
+                          <div className="mb-2">
+                            <span className="text-muted">Name:</span>
+                            <span className="fw-medium ms-2">
+                              {selectedItem.customer_name}
+                            </span>
+                          </div>
+                          <div className="mb-2">
+                            <span className="text-muted">Mobile:</span>
+                            <span className="fw-medium ms-2">
+                              {selectedItem.customer_mobile}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="col-md-6">
+                          <div className="mb-2">
+                            <span className="text-muted">Quotation:</span>
+                            <span className="fw-medium ms-2">
+                              {selectedItem.quotation_number}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      // Product job card
+                      <div className="col-md-12">
+                        <div className="alert alert-info mb-0">
+                          <div className="d-flex align-items-center">
+                            <FiPackage className="me-2" />
+                            <div>
+                              <strong>Direct Product Order</strong>
+                              <div className="small">
+                                Created without customer/quotation
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="mb-2">
-                        <span className="text-muted">Mobile:</span>
-                        <span className="fw-medium ms-2">{selectedItem.customer_mobile}</span>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="mb-2">
-                        <span className="text-muted">Code:</span>
-                        <span className="fw-medium ms-2">{selectedItem.customer_code || "N/A"}</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -377,12 +468,13 @@ console.log(quotations)
               {/* Items Table */}
               <div className="card border mb-4">
                 <div className="card-body">
-                  <h6 className="fw-bold mb-3">Quotation Items</h6>
+                  <h6 className="fw-bold mb-3">Job Items</h6>
                   <div className="table-responsive">
                     <table className="table table-sm">
                       <thead>
                         <tr>
                           <th>Item</th>
+                          <th>Description</th>
                           <th className="text-end">Qty</th>
                           <th className="text-end">Price</th>
                           <th className="text-end">Total</th>
@@ -393,13 +485,26 @@ console.log(quotations)
                           <tr key={index}>
                             <td>
                               <div>
-                                <div className="fw-medium">{item.product_name}</div>
-                                <div className="small text-muted">{item.product_code}</div>
+                                <div className="fw-medium">
+                                  {item.product_name}
+                                </div>
+                                <div className="small text-muted">
+                                  {item.product_code}
+                                </div>
                               </div>
                             </td>
+                            <td>
+                              <small className="text-muted">
+                                {item.description || "No description"}
+                              </small>
+                            </td>
                             <td className="text-end">{item.quantity}</td>
-                            <td className="text-end">{formatCurrency(item.unit_price || item.price)}</td>
-                            <td className="text-end fw-medium">{formatCurrency(item.subtotal || item.net_price)}</td>
+                            <td className="text-end">
+                              {formatCurrency(item.unit_price)}
+                            </td>
+                            <td className="text-end fw-medium">
+                              {formatCurrency(item.total_amount)}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -413,23 +518,47 @@ console.log(quotations)
                 <div className="col-md-6">
                   <div className="card border">
                     <div className="card-body">
-                      <h6 className="fw-bold mb-3">Quotation Details</h6>
+                      <h6 className="fw-bold mb-3">Job Details</h6>
                       <div className="mb-2">
-                        <span className="text-muted">Quotation Date:</span>
-                        <span className="fw-medium ms-2">{formatDate(selectedItem.quotation_date)}</span>
+                        <span className="text-muted">Job Card Date:</span>
+                        <span className="fw-medium ms-2">
+                          {formatDate(selectedItem.job_card_date)}
+                        </span>
                       </div>
                       <div className="mb-2">
-                        <span className="text-muted">Expiry Date:</span>
-                        <span className="fw-medium ms-2">{formatDate(selectedItem.expiry_date)}</span>
+                        <span className="text-muted">Expected Delivery:</span>
+                        <span className="fw-medium ms-2">
+                          {formatDate(selectedItem.expected_delivery_date)}
+                        </span>
                       </div>
                       <div className="mb-2">
-                        <span className="text-muted">Branch:</span>
-                        <span className="fw-medium ms-2">{selectedItem.branch_name}</span>
+                        <span className="text-muted">Actual Delivery:</span>
+                        <span className="fw-medium ms-2">
+                          {selectedItem.delivery_date
+                            ? formatDate(selectedItem.delivery_date)
+                            : "Not delivered"}
+                        </span>
                       </div>
+                      <div className="mb-2">
+                        <span className="text-muted">Assigned To:</span>
+                        <span className="fw-medium ms-2">
+                          {selectedItem.assigned_name}
+                        </span>
+                      </div>
+                      {selectedItem.instructions && (
+                        <div className="mb-2">
+                          <span className="text-muted">Instructions:</span>
+                          <span className="fw-medium ms-2">
+                            {selectedItem.instructions}
+                          </span>
+                        </div>
+                      )}
                       {selectedItem.note && (
                         <div className="mb-2">
                           <span className="text-muted">Notes:</span>
-                          <span className="fw-medium ms-2">{selectedItem.note}</span>
+                          <span className="fw-medium ms-2">
+                            {selectedItem.note}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -440,25 +569,23 @@ console.log(quotations)
                     <div className="card-body">
                       <h6 className="fw-bold mb-3">Amount Summary</h6>
                       <div className="d-flex justify-content-between mb-2">
-                        <span className="text-muted">Subtotal:</span>
-                        <span className="fw-medium">{formatCurrency(selectedItem.subtotal)}</span>
+                        <span className="text-muted">Total Amount:</span>
+                        <span className="fw-medium">
+                          {formatCurrency(selectedItem.total_amount)}
+                        </span>
                       </div>
                       <div className="d-flex justify-content-between mb-2">
-                        <span className="text-muted">Tax:</span>
-                        <span className="fw-medium">{formatCurrency(selectedItem.tax_amount)}</span>
-                      </div>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span className="text-muted">Shipping:</span>
-                        <span className="fw-medium">{formatCurrency(selectedItem.shipping_cost)}</span>
-                      </div>
-                      <div className="d-flex justify-content-between mb-2">
-                        <span className="text-muted">Discount:</span>
-                        <span className="fw-medium text-danger">-{formatCurrency(selectedItem.discount)}</span>
+                        <span className="text-muted">Advance Amount:</span>
+                        <span className="fw-medium">
+                          {formatCurrency(selectedItem.advance_amount)}
+                        </span>
                       </div>
                       <hr />
                       <div className="d-flex justify-content-between">
-                        <span className="fw-bold">Grand Total:</span>
-                        <span className="fw-bold fs-5 text-primary">{formatCurrency(selectedItem.grand_total)}</span>
+                        <span className="fw-bold">Balance Amount:</span>
+                        <span className="fw-bold fs-5 text-primary">
+                          {formatCurrency(selectedItem.balance_amount)}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -485,7 +612,30 @@ console.log(quotations)
                 <FiPrinter className="me-2" />
                 Print
               </button>
-             
+              {selectedItem.status === "completed" && (
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  onClick={handleConvertToSale}
+                  disabled={
+                    actionLoading.type === "convert" &&
+                    actionLoading.id === selectedItem._id
+                  }
+                >
+                  {actionLoading.type === "convert" &&
+                  actionLoading.id === selectedItem._id ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" />
+                      Converting...
+                    </>
+                  ) : (
+                    <>
+                      <FiCheckCircle className="me-2" />
+                      Convert to Sale
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -503,7 +653,7 @@ console.log(quotations)
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Delete Quotation</h5>
+            <h5 className="modal-title fw-bold fs-5">Delete Job Card</h5>
             <button
               type="button"
               className="btn-close"
@@ -518,15 +668,15 @@ console.log(quotations)
 
           <div className="modal-body">
             <p>
-              Are you sure you want to delete quotation{" "}
-              <strong>{selectedItem?.reference_no}</strong>?
+              Are you sure you want to delete job card{" "}
+              <strong>{selectedItem?.job_card_number}</strong>?
             </p>
             <p className="text-muted small">
               Customer: <strong>{selectedItem?.customer_name || "N/A"}</strong>
               <br />
-              Amount: <strong>{formatCurrency(selectedItem?.grand_total)}</strong>
-              <br />
               Status: <strong>{selectedItem?.status}</strong>
+              <br />
+              Priority: <strong>{selectedItem?.priority}</strong>
             </p>
             <p className="text-muted small">This action cannot be undone.</p>
           </div>
@@ -546,7 +696,7 @@ console.log(quotations)
             <button
               type="button"
               className="btn btn-danger"
-              onClick={handleDeleteQuotation}
+              onClick={handleDeleteJobCard}
               disabled={actionLoading.type === "delete"}
             >
               {actionLoading.type === "delete" ? (
@@ -586,9 +736,9 @@ console.log(quotations)
         <div className="card-body">
           <div className="row align-items-center mb-4">
             <div className="col-md-6">
-              <h1 className="h3 fw-bold mb-2">Quotations</h1>
+              <h1 className="h3 fw-bold mb-2">Job Cards</h1>
               <p className="text-muted mb-0">
-                Create and manage price quotations for customers
+                Create and manage job cards for customer orders
               </p>
             </div>
 
@@ -602,11 +752,13 @@ console.log(quotations)
               </button>
               <button
                 className="btn btn-primary d-flex align-items-center gap-2"
-                onClick={() => setShowAddModal(true)}
-                disabled={loading || actionLoading.type === "add"}
+                onClick={handleCreateFromQuotation}
+                disabled={
+                  loading || actionLoading.type === "add" || loadingQuotations
+                }
               >
                 <FiPlus size={18} />
-                New Quotation
+                New Job Card
               </button>
             </div>
           </div>
@@ -621,7 +773,7 @@ console.log(quotations)
                 <input
                   type="text"
                   className="form-control border-start-0"
-                  placeholder="Search by quotation #, customer, branch..."
+                  placeholder="Search by job card #, customer, assigned..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   disabled={loading}
@@ -629,7 +781,7 @@ console.log(quotations)
               </div>
             </div>
 
-            <div className="col-md-3">
+            <div className="col-md-2">
               <select
                 className="form-select"
                 value={statusFilter}
@@ -644,8 +796,23 @@ console.log(quotations)
               </select>
             </div>
 
+            <div className="col-md-2">
+              <select
+                className="form-select"
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                disabled={loading}
+              >
+                {priorityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Items per page selector */}
-            <div className="col-md-3 ms-auto">
+            <div className="col-md-4 ms-auto">
               <div className="d-flex align-items-center justify-content-end">
                 <label className="me-2 text-muted small">Show:</label>
                 <select
@@ -676,21 +843,22 @@ console.log(quotations)
             <thead>
               <tr>
                 <th>#</th>
-                <th>Quotation #</th>
-                <th>Customer</th>
-                <th>Branch</th>
-                <th>Date</th>
-                <th>Expiry Date</th>
+                <th>Job Card #</th>
+                <th>Customer / Order Type</th>
+                <th>Stage Type</th>
+                <th>Delivery Date</th>
+                <th>Priority</th>
                 <th>Status</th>
+                <th>Assigned To</th>
                 <th className="text-end">Amount</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
 
             <tbody>
-              {loading && quotations.length === 0 ? (
+              {loading && jobCards.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4">
+                  <td colSpan="10" className="text-center py-4">
                     <div className="d-flex justify-content-center">
                       <div
                         className="spinner-border text-primary"
@@ -701,53 +869,99 @@ console.log(quotations)
                     </div>
                   </td>
                 </tr>
-              ) : filteredQuotations.length === 0 ? (
+              ) : filteredJobCards.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="text-center py-4 text-muted">
-                    {search || statusFilter !== "all"
-                      ? "No quotations found for your search criteria"
-                      : "No quotations available"}
+                  <td colSpan="10" className="text-center py-4 text-muted">
+                    {search ||
+                    statusFilter !== "all" ||
+                    priorityFilter !== "all"
+                      ? "No job cards found for your search criteria"
+                      : "No job cards available"}
                   </td>
                 </tr>
               ) : (
-                currentQuotations.map((quotation, index) => (
-                  <tr 
-                    key={quotation._id || index}
-                    className={quotation.status === "converted" ? "table-success" : ""}
+                currentJobCards.map((jobCard, index) => (
+                  <tr
+                    key={jobCard._id || index}
+                    className={
+                      jobCard.status === "completed" ||
+                      jobCard.status === "delivered"
+                        ? "table-success"
+                        : jobCard.quotation_number
+                        ? ""
+                        : "table-light"
+                    }
                   >
                     <td>{indexOfFirstItem + index + 1}</td>
-                    <td className="fw-bold text-primary">
-                      {quotation.quotation_number}
+                    
+                    <td className="fw-bold">
+                      <span className={jobCard.quotation_number ? "text-primary" : "text-secondary"}>
+                        {jobCard.job_card_number}
+                      </span>
+                      {!jobCard.quotation_number && (
+                        <span className="badge bg-light text-dark ms-2 small">Product</span>
+                      )}
                     </td>
+                    
+                    {/* CUSTOMER COLUMN - UPDATED */}
                     <td>
-                      <div>
-                        <div className="fw-semibold">
-                          {quotation.customer_name || "N/A"}
+                      {jobCard.quotation_number ? (
+                        // Quotation job card - show customer details
+                        <div>
+                          <div className="fw-semibold d-flex align-items-center">
+                            <FiUser size={14} className="me-1 text-success" />
+                            {jobCard.customer_name || "N/A"}
+                          </div>
+                          {jobCard.customer_mobile && (
+                            <small className="text-muted d-block">
+                              📱 {jobCard.customer_mobile}
+                            </small>
+                          )}
+                          <div className="small text-info mt-1 d-flex align-items-center">
+                            <FiShoppingCart size={12} className="me-1" />
+                            QT-{jobCard.quotation_number?.split("-").pop() || ""}
+                          </div>
                         </div>
-                        <small className="text-muted">
-                          {quotation.customer_mobile}
-                          {quotation.customer_code && ` (${quotation.customer_code})`}
-                        </small>
-                      </div>
+                      ) : (
+                        // Product job card - show product order info
+                        <div className="text-center">
+                          <div className="text-muted fst-italic d-flex align-items-center justify-content-center">
+                            <FiPackage size={14} className="me-1" />
+                            Product Order
+                          </div>
+                          <small className="text-muted">
+                            {jobCard.items?.length || 0} item(s)
+                          </small>
+                        </div>
+                      )}
                     </td>
+                    
                     <td>
-                      <span className="badge bg-light text-dark fw-semibold">
-                        {quotation.branch_name || "N/A"}
+                      <span className="fw-semibold ">
+                        {jobCard.stage}
                       </span>
                     </td>
+                    
                     <td>
-                      <span className="text-muted small">
-                        {formatDate(quotation.quotation_date)}
-                      </span>
+                      {formatDeliveryDate(
+                        jobCard.expected_delivery_date,
+                        jobCard.delivery_date,
+                        jobCard.status
+                      )}
                     </td>
+                    
+                    <td>{getPriorityBadge(jobCard.priority)}</td>
+                    
+                    <td>{getStatusBadge(jobCard.status)}</td>
+                    
                     <td>
-                      {formatExpiryDate(quotation.expiry_date, quotation.status)}
+                      <small className="text-muted">
+                        {jobCard.assigned_name || "Unassigned"}
+                      </small>
                     </td>
-                    <td>
-                      {getStatusBadge(quotation.status, quotation.expiry_date)}
-                    </td>
+                    
                     <td className="text-end fw-bold">
-                      {formatCurrency(quotation.grand_total)}
+                      {formatCurrency(jobCard.total_amount)}
                     </td>
 
                     {/* ACTION BUTTONS */}
@@ -755,9 +969,10 @@ console.log(quotations)
                       <div className="d-flex justify-content-end gap-2">
                         <button
                           className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
-                          onClick={() => handleOpenView(quotation)}
+                          onClick={() => handleOpenView(jobCard)}
                           disabled={
-                            actionLoading.type && actionLoading.id === quotation._id
+                            actionLoading.type &&
+                            actionLoading.id === jobCard._id
                           }
                           title="View Details"
                         >
@@ -766,15 +981,17 @@ console.log(quotations)
 
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                          onClick={() => handleOpenEdit(quotation)}
+                          onClick={() => handleOpenEdit(jobCard)}
                           disabled={
-                            actionLoading.type && actionLoading.id === quotation._id ||
-                            quotation.status === "converted"
+                            (actionLoading.type &&
+                              actionLoading.id === jobCard._id) ||
+                            jobCard.status === "completed" ||
+                            jobCard.status === "delivered"
                           }
                           title="Edit"
                         >
                           {actionLoading.type === "update" &&
-                          actionLoading.id === quotation._id ? (
+                          actionLoading.id === jobCard._id ? (
                             <>
                               <span
                                 className="spinner-border spinner-border-sm me-1"
@@ -790,48 +1007,51 @@ console.log(quotations)
                             </>
                           )}
                         </button>
-
-                        {/* <button
+{/* 
+                        <button
                           className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
                           onClick={() => {
-                            setSelectedItem(quotation);
-                            handleConvertToSale();
+                            if (jobCard.status !== "completed") {
+                              handleUpdateStatus(jobCard._id, "completed");
+                            } else {
+                              handleConvertToSale(jobCard._id);
+                            }
                           }}
                           disabled={
-                            actionLoading.type && actionLoading.id === quotation._id ||
-                            quotation.status === "converted" ||
-                            (quotation.expiry_date && new Date(quotation.expiry_date) < new Date())
+                            actionLoading.type &&
+                            actionLoading.id === jobCard._id
                           }
-                          title="Convert to Sale"
+                          title={
+                            jobCard.status === "completed"
+                              ? "Convert to Sale"
+                              : "Mark as Completed"
+                          }
                         >
-                          {actionLoading.type === "convert" &&
-                          actionLoading.id === quotation._id ? (
+                          {actionLoading.type === "status" &&
+                          actionLoading.id === jobCard._id ? (
                             <>
                               <span
                                 className="spinner-border spinner-border-sm me-1"
                                 role="status"
                                 aria-hidden="true"
                               ></span>
-                              Converting...
+                              Updating...
                             </>
-                          ) : (
-                            <>
-                              <FiCheckCircle size={16} />
-                              Convert
-                            </>
-                          )}
+                          )
+                          }
                         </button> */}
 
                         <button
                           className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                          onClick={() => handleOpenDelete(quotation)}
+                          onClick={() => handleOpenDelete(jobCard)}
                           disabled={
-                            actionLoading.type && actionLoading.id === quotation._id
+                            actionLoading.type &&
+                            actionLoading.id === jobCard._id
                           }
                           title="Delete"
                         >
                           {actionLoading.type === "delete" &&
-                          actionLoading.id === quotation._id ? (
+                          actionLoading.id === jobCard._id ? (
                             <>
                               <span
                                 className="spinner-border spinner-border-sm me-1"
@@ -856,7 +1076,7 @@ console.log(quotations)
           </table>
 
           {/* PAGINATION */}
-          {filteredQuotations.length > 0 && (
+          {filteredJobCards.length > 0 && (
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-center border-top pt-3 mt-3">
               <div className="mb-2 mb-md-0">
                 <p className="text-muted mb-0">
@@ -940,28 +1160,27 @@ console.log(quotations)
       </div>
 
       {/* MODALS */}
-      {showAddModal && (
-        <AddQuotationForm
-          onClose={() => setShowAddModal(false)}
-          onSave={handleAddQuotation}
+      {showAddJobCard && (
+        <AddJobCardForm
+          onClose={() => {
+            setShowAddJobCard(false);
+            setSelectedQuotation(null);
+          }}
+          onSave={handleAddJobCard}
           loading={actionLoading.type === "add"}
-          customers={customers}
-          items={items}
-          branches={branches}
+          quotationData={selectedQuotation}
         />
       )}
 
       {showEditModal && selectedItem && (
-        <EditQuotationForm
+        <EditJobCardForm
           onClose={() => {
             setShowEditModal(false);
             setSelectedItem(null);
           }}
-          onSave={handleEditQuotation}
-          quotation={selectedItem}
-          customers={customers}
-          items={items}
-          branches={branches}
+          onSave={handleEditJobCard}
+          jobCardData={selectedItem}
+          employees={employees}
           loading={
             actionLoading.type === "update" &&
             actionLoading.id === selectedItem._id
@@ -970,7 +1189,7 @@ console.log(quotations)
       )}
 
       {/* VIEW MODAL */}
-      {showViewModal && selectedItem && <ViewQuotationModal />}
+      {showViewModal && selectedItem && <ViewJobCardModal />}
 
       {/* DELETE MODAL */}
       {showDeleteModal && selectedItem && <DeleteConfirmationModal />}
@@ -978,4 +1197,4 @@ console.log(quotations)
   );
 };
 
-export default QuotationsTable;
+export default JobCardTable;

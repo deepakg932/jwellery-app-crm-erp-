@@ -112,6 +112,17 @@ export const PATHS = {
   //REPAIRS
 
   REPAIRS: "/api/repairs",
+
+  //JOB_CARDS
+
+  JOB_CARDS: "/api/job-card",
+
+  // DesignStages
+
+  DESIGN_STAGES: "/api/design-stage",
+
+  // CAD_STAGES
+  CAD_STAGES: "",
 };
 
 // Route names for all your endpoints
@@ -326,11 +337,9 @@ export const ROUTES = {
 
   // Sale Return routes
   GET_SALE_RETURNS: "get-sale-returns",
-  GET_SALE_RETURN_BY_ID: "get-sale-return",
   SALE_RETURN: "sale-return",
   UPDATE_SALE_RETURN: "update-sale-return",
   DELETE_SALE_RETURN: "delete-sale-return",
-  GET_SALE_RETURN_BY_SALE_ID: "get-return-by-sale",
 
   // CREATE_CUSTOM_ORDER
 
@@ -353,6 +362,26 @@ export const ROUTES = {
   DELETE_REPAIR: "delete-repair",
   GET_REPAIR_BY_ID: "get-repair",
   UPDATE_REPAIR_PAYMENT: "update-repair-payment",
+
+  //job card route
+
+  GET_JOB_CARDS: "get-job-cards",
+  CREATE_JOB_CARD: "create-job-card",
+  UPDATE_JOB_CARD: "update-job-card",
+  DELETE_JOB_CARD: "delete-job-card",
+  GET_JOB_CARD_BY_ID: "get-job-card",
+  UPDATE_JOB_CARD_STATUS: "update-job-card-status",
+  CONVERT_JOB_CARD_TO_SALE: "convert-to-sale",
+
+  // DESIGN_STAGES Route
+
+  GET_DESIGN_STAGES: "design-stage/jobs",
+  UPDATE_DESIGN_STAGES: "job-card-stages",
+
+  // CadStages route
+
+  GET_CAD_STAGES: "cad-stage/jobs",
+  UPDATE_CAD_STAGE: "cad-stage-update",
 };
 
 // Dynamic endpoint generator
@@ -699,18 +728,11 @@ export const API_ENDPOINTS = {
 
   // ========== SALE RETURN OPERATIONS ==========
   getSaleReturns: () => endpoint(PATHS.SALE_ITEMS, ROUTES.GET_SALE_RETURNS),
-  getSaleReturnById: (id) =>
-    endpoint(PATHS.SALE_RETURNS, ROUTES.GET_SALE_RETURN_BY_ID, id),
   createSaleReturn: () => endpoint(PATHS.SALE_ITEMS, ROUTES.SALE_RETURN),
   updateSaleReturn: (id) =>
-    endpoint(PATHS.SALE_RETURNS, ROUTES.UPDATE_SALE_RETURN, id),
+    endpoint(PATHS.SALE_ITEMS, ROUTES.UPDATE_SALE_RETURN, id),
   deleteSaleReturn: (id) =>
-    endpoint(PATHS.SALE_RETURNS, ROUTES.DELETE_SALE_RETURN, id),
-  getSaleReturnBySaleId: (saleId) =>
-    endpoint(
-      PATHS.SALE_RETURNS,
-      `${ROUTES.GET_SALE_RETURN_BY_SALE_ID}/${saleId}`
-    ),
+    endpoint(PATHS.SALE_ITEMS, ROUTES.DELETE_SALE_RETURN, id),
 
   // custom orders
 
@@ -739,6 +761,32 @@ export const API_ENDPOINTS = {
   getRepairById: (id) => endpoint(PATHS.REPAIRS, ROUTES.GET_REPAIR_BY_ID, id),
   updateRepairPayment: (id) =>
     endpoint(PATHS.REPAIRS, ROUTES.UPDATE_REPAIR_PAYMENT, id),
+
+  // ========== JOB CARD OPERATIONS ==========
+  getJobCards: () => endpoint(PATHS.JOB_CARDS, ROUTES.GET_JOB_CARDS),
+  getJobCardById: (id) =>
+    endpoint(PATHS.JOB_CARDS, ROUTES.GET_JOB_CARD_BY_ID, id),
+  createJobCard: () => endpoint(PATHS.JOB_CARDS, ROUTES.CREATE_JOB_CARD),
+  updateJobCard: (id) => endpoint(PATHS.JOB_CARDS, ROUTES.UPDATE_JOB_CARD, id),
+  deleteJobCard: (id) => endpoint(PATHS.JOB_CARDS, ROUTES.DELETE_JOB_CARD, id),
+  updateJobCardStatus: (id) =>
+    endpoint(PATHS.JOB_CARDS, ROUTES.UPDATE_JOB_CARD_STATUS, id),
+  convertJobCardToSale: (id) =>
+    endpoint(PATHS.JOB_CARDS, ROUTES.CONVERT_JOB_CARD_TO_SALE, id),
+
+  //====================DESIGN_STAGES=================\\
+
+  getDesignStages: () => endpoint(PATHS.JOB_CARDS, ROUTES.GET_DESIGN_STAGES),
+  updateDesignStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_DESIGN_STAGES, id),
+
+
+   //====================CAD_STAGES=================\\
+
+
+   getCadStages:()=>endpoint(PATHS.JOB_CARDS,ROUTES.GET_CAD_STAGES),
+   updateCadStage:(id)=>endpoint(PATHS.DESIGN_STAGES,ROUTES.UPDATE_CAD_STAGE,id),
+
 
   // ========== PRODUCT OPERATIONS ==========
   // Get all products

@@ -41,12 +41,8 @@ const AddQuotationForm = ({
         product_id: "",
         product_code: "",
         product_name: "",
-        quantity: "1",
+        quantity: "0",
         unit_price: 0,
-        discount: 0,
-        tax_rate: 18,
-        tax_amount: 0,
-        net_price: 0,
         subtotal: 0,
       },
     ],
@@ -76,20 +72,52 @@ const AddQuotationForm = ({
     { value: "sent", label: "Sent" },
   ];
 
-  // Helper function to extract product display info
+  // Helper function to extract product display info - FIXED
   const getProductDisplayInfo = (product) => {
-    if (!product) return { name: "", code: "", unit_price: 0, tax_rate: 18 };
+    if (!product) return { 
+      name: "", 
+      code: "", 
+      unit_price: 0,
+    };
+
+    // DEBUG: Log the product structure
+    console.log("Product data in getProductDisplayInfo:", product);
+
+    // Extract selling price - FIXED
+    const sellingPrice = parseFloat(product.selling_price_with_gst) || 
+                        parseFloat(product.selling_price_before_tax) || 
+                        0;
+
+    // Extract product code - FIXED
+    const productCode = product.article_no || 
+                       product.product_code || 
+                       product.code || 
+                       "";
+
+    // Extract product name - FIXED
+    const productName = product.product_name || 
+                       product.name || 
+                       "Unnamed Product";
 
     return {
-      name: product.product_name || product.name || "Unnamed Product",
-      code: product.product_code || product.code || "",
-      unit_price: product.selling_price || product.unit_price || 0,
-      tax_rate: product.tax_rate || product.gst_rate || 18,
+      name: productName,
+      code: productCode,
+      unit_price: sellingPrice, // Use selling_price_with_gst
       description: product.description || "",
-      category: product.product_category || product.category?.name,
-      brand: product.product_brand || product.brand?.name,
+      category: product.product_category || product.category?.name || "",
+      brand: product.product_brand || product.brand?.name || "",
       stock: product.quantity || product.stock_quantity || 0,
       image: product.images?.[0] || null,
+      // Additional info for display
+      metal_cost: product.total_metals_cost || 0,
+      stone_cost: product.total_stones_cost || 0,
+      material_cost: product.total_materials_cost || 0,
+      making_cost: product.total_price_making_costs || 0,
+      gst_amount: product.gst_amount || 0,
+      base_total: product.base_total || 0,
+      grand_total: product.grand_total || 0,
+      gst_rate: product.gst_rate || "0%",
+      _id: product._id || product.id,
     };
   };
 
@@ -145,23 +173,18 @@ const AddQuotationForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Calculate item totals
+  // Calculate item totals - simplified since unit_price already includes tax
   const calculateItemTotal = (item) => {
     const quantity = parseFloat(item.quantity) || 0;
     const unitPrice = parseFloat(item.unit_price) || 0;
-    const itemDiscount = parseFloat(item.discount) || 0;
-    const taxRate = parseFloat(item.tax_rate) || 0;
-
-    const subtotalBeforeDiscount = unitPrice * quantity;
-    const discountAmount = itemDiscount;
-    const subtotalAfterDiscount = subtotalBeforeDiscount - discountAmount;
-    const taxAmount = (subtotalAfterDiscount * taxRate) / 100;
-    const netPrice = subtotalAfterDiscount + taxAmount;
+    
+    // Since unit_price is selling_price_with_gst (already includes GST),
+    // we just multiply quantity * unit_price
+    const subtotal = unitPrice * quantity;
 
     return {
-      subtotal: netPrice,
-      tax_amount: taxAmount,
-      net_price: netPrice,
+      subtotal: subtotal,
+      // No separate tax calculation since it's already in the price
     };
   };
 
@@ -174,21 +197,18 @@ const AddQuotationForm = ({
         return { ...item, ...calculated };
       });
 
+    // Sum of all item subtotals
     const itemSubtotal = itemsCalculated.reduce(
       (total, item) => total + (item.subtotal || 0),
       0
     );
 
-    const itemTaxTotal = itemsCalculated.reduce(
-      (total, item) => total + (item.tax_amount || 0),
-      0
-    );
-
+    // Shipping and discount
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
     const additionalDiscount = parseFloat(formData.discount) || 0;
 
+    // Calculate totals
     const subtotal = itemSubtotal;
-    const totalTax = itemTaxTotal;
     const grandTotal = subtotal + shippingCost - additionalDiscount;
 
     setFormData((prev) => ({
@@ -200,13 +220,13 @@ const AddQuotationForm = ({
         return calculatedItem ? calculatedItem : item;
       }),
       subtotal: subtotal,
-      tax_amount: totalTax,
+      tax_amount: 0, // Tax is already included in item prices
       total_amount: grandTotal > 0 ? grandTotal : 0,
       grand_total: grandTotal > 0 ? grandTotal : 0,
     }));
   };
 
-  // Handle search input
+  // Handle search input - FIXED
   const handleSearch = (query) => {
     setSearchQuery(query);
 
@@ -220,27 +240,50 @@ const AddQuotationForm = ({
       .filter((item) => item.product_id)
       .map((item) => item.product_id);
 
+    // DEBUG: Log items array
+    console.log("Items array in search:", items);
+    console.log("Items length:", items.length);
+
+    if (!items || items.length === 0) {
+      console.log("No items available for search");
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
     const results = items.filter((product) => {
+      if (!product) return false;
+      
       const displayInfo = getProductDisplayInfo(product);
-      return (
-        ((displayInfo.name &&
-          displayInfo.name.toLowerCase().includes(query.toLowerCase())) ||
-          (displayInfo.code &&
-            displayInfo.code.toLowerCase().includes(query.toLowerCase())) ||
-          (product.product_code &&
-            product.product_code
-              .toLowerCase()
-              .includes(query.toLowerCase()))) &&
-        !selectedProductIds.includes(product._id)
-      );
+      
+      // Check if already selected
+      if (selectedProductIds.includes(product._id)) {
+        return false;
+      }
+
+      // Search in name and code
+      const searchLower = query.toLowerCase();
+      const nameMatch = displayInfo.name && 
+                       displayInfo.name.toLowerCase().includes(searchLower);
+      
+      const codeMatch = displayInfo.code && 
+                       displayInfo.code.toLowerCase().includes(searchLower);
+      
+      const articleNoMatch = product.article_no && 
+                           product.article_no.toLowerCase().includes(searchLower);
+
+      return nameMatch || codeMatch || articleNoMatch;
     });
 
+    console.log("Search results:", results);
     setSearchResults(results.slice(0, 10));
-    setShowSearchResults(true);
+    setShowSearchResults(results.length > 0);
   };
 
-  // Handle product selection
+  // Handle product selection - FIXED
   const handleProductSelect = (product) => {
+    console.log("Selected product:", product);
+    
     let itemIndex = formData.items.findIndex((item) => !item.product_id);
 
     if (itemIndex === -1) {
@@ -255,10 +298,6 @@ const AddQuotationForm = ({
             product_name: "",
             quantity: "1",
             unit_price: 0,
-            discount: 0,
-            tax_rate: 18,
-            tax_amount: 0,
-            net_price: 0,
             subtotal: 0,
           },
         ],
@@ -266,6 +305,7 @@ const AddQuotationForm = ({
     }
 
     const displayInfo = getProductDisplayInfo(product);
+    console.log("Display info for selected product:", displayInfo);
 
     const updatedItems = [...formData.items];
     updatedItems[itemIndex] = {
@@ -274,8 +314,10 @@ const AddQuotationForm = ({
       product_code: displayInfo.code,
       product_name: displayInfo.name,
       unit_price: displayInfo.unit_price,
-      tax_rate: displayInfo.tax_rate,
+      // No tax_rate since it's included in the price
     };
+
+    console.log("Updated item at index", itemIndex, ":", updatedItems[itemIndex]);
 
     setFormData((prev) => ({
       ...prev,
@@ -326,8 +368,6 @@ const AddQuotationForm = ({
       updatedItems[index] = {
         ...item,
         subtotal: calculated.subtotal,
-        tax_amount: calculated.tax_amount,
-        net_price: calculated.net_price,
       };
     }
 
@@ -336,38 +376,32 @@ const AddQuotationForm = ({
       items: updatedItems,
     }));
   };
-  // Remove handleItemChangeWithCalculation - just use handleItemChange
 
   // Handle item changes with immediate calculation for better UX
   const handleItemChangeWithCalculation = (index, field, value) => {
-    handleItemChange(index, field, value);
+    const updatedItems = [...formData.items];
+    updatedItems[index] = {
+      ...updatedItems[index],
+      [field]: value,
+    };
 
-    // For quantity, unit_price, discount, tax_rate - calculate item total immediately
-    if (["quantity", "unit_price", "discount", "tax_rate"].includes(field)) {
-      setTimeout(() => {
-        const updatedItems = [...formData.items];
-        const item = updatedItems[index];
+    if (["quantity", "unit_price"].includes(field)) {
+      const item = updatedItems[index];
 
-        if (item.product_id) {
-          const calculated = calculateItemTotal({
-            ...item,
-            [field]: value,
-          });
+      if (item.product_id) {
+        const calculated = calculateItemTotal(item);
 
-          updatedItems[index] = {
-            ...updatedItems[index],
-            subtotal: calculated.subtotal,
-            tax_amount: calculated.tax_amount,
-            net_price: calculated.net_price,
-          };
-
-          setFormData((prev) => ({
-            ...prev,
-            items: updatedItems,
-          }));
-        }
-      }, 100);
+        updatedItems[index] = {
+          ...updatedItems[index],
+          subtotal: calculated.subtotal,
+        };
+      }
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      items: updatedItems,
+    }));
   };
 
   // Remove item row
@@ -392,10 +426,6 @@ const AddQuotationForm = ({
       product_name: "",
       quantity: "1",
       unit_price: 0,
-      discount: 0,
-      tax_rate: 18,
-      tax_amount: 0,
-      net_price: 0,
       subtotal: 0,
     };
 
@@ -419,10 +449,6 @@ const AddQuotationForm = ({
           product_name: "",
           quantity: "1",
           unit_price: 0,
-          discount: 0,
-          tax_rate: 18,
-          tax_amount: 0,
-          net_price: 0,
           subtotal: 0,
         },
       ],
@@ -471,10 +497,7 @@ const AddQuotationForm = ({
           product_name: item.product_name,
           quantity: parseFloat(item.quantity) || 1,
           unit_price: parseFloat(item.unit_price) || 0,
-          discount: parseFloat(item.discount) || 0,
-          tax_rate: parseFloat(item.tax_rate) || 0,
-          tax_amount: parseFloat(item.tax_amount) || 0,
-          net_price: parseFloat(item.net_price) || 0,
+          // No discount or tax_rate at item level since included in price
           subtotal: parseFloat(item.subtotal) || 0,
         })),
       note: formData.note,
@@ -508,10 +531,6 @@ const AddQuotationForm = ({
           product_name: "",
           quantity: "1",
           unit_price: 0,
-          discount: 0,
-          tax_rate: 18,
-          tax_amount: 0,
-          net_price: 0,
           subtotal: 0,
         },
       ],
@@ -834,7 +853,7 @@ const AddQuotationForm = ({
                       )}
                     </div>
 
-                    {/* Search Results Dropdown */}
+                    {/* Search Results Dropdown - FIXED */}
                     {showSearchResults && searchResults.length > 0 && (
                       <div
                         className="position-absolute w-100 bg-white border rounded shadow-lg mt-1 z-3"
@@ -842,27 +861,40 @@ const AddQuotationForm = ({
                       >
                         {searchResults.map((product) => {
                           const displayInfo = getProductDisplayInfo(product);
+                          console.log("Rendering product:", displayInfo);
 
                           return (
                             <div
-                              key={product._id}
+                              key={product._id || Math.random()}
                               className="p-3 border-bottom hover-bg-light cursor-pointer"
                               onClick={() => handleProductSelect(product)}
+                              style={{ cursor: 'pointer' }}
                             >
                               <div className="d-flex justify-content-between align-items-start">
                                 <div className="flex-grow-1">
                                   <div className="fw-medium">
-                                    {displayInfo.name}
+                                    {displayInfo.name || "No Name"}
                                   </div>
                                   <div className="small text-muted">
-                                    Code: {displayInfo.code} | Stock:{" "}
-                                    {displayInfo.stock}
+                                    Code: {displayInfo.code || "No Code"}
+                                    {displayInfo.stock > 0 && (
+                                      <> | Stock: {displayInfo.stock}</>
+                                    )}
                                   </div>
                                   <div className="small text-muted mt-1">
-                                    Price:{" "}
-                                    {formatCurrency(displayInfo.unit_price)} |
-                                    Tax: {displayInfo.tax_rate}%
+                                    Price (incl. GST):{" "}
+                                    {formatCurrency(displayInfo.unit_price || 0)}
                                   </div>
+                                  {displayInfo.gst_rate && (
+                                    <div className="small text-success">
+                                      GST Rate: {displayInfo.gst_rate}
+                                    </div>
+                                  )}
+                                  {displayInfo.category && (
+                                    <div className="small text-muted">
+                                      Category: {displayInfo.category}
+                                    </div>
+                                  )}
                                 </div>
                                 <button
                                   type="button"
@@ -876,10 +908,31 @@ const AddQuotationForm = ({
                         })}
                       </div>
                     )}
+
+                    {/* Show loading or no results message */}
+                    {loadingItems && (
+                      <div className="position-absolute w-100 bg-white border rounded shadow-lg mt-1 z-3 p-3">
+                        <div className="text-center">
+                          <div className="spinner-border spinner-border-sm me-2"></div>
+                          Loading products...
+                        </div>
+                      </div>
+                    )}
+
+                    {!loadingItems && searchQuery && searchResults.length === 0 && (
+                      <div className="position-absolute w-100 bg-white border rounded shadow-lg mt-1 z-3 p-3">
+                        <div className="text-center text-muted">
+                          No products found for "{searchQuery}"
+                        </div>
+                        <div className="small text-center mt-2">
+                          Try searching by product name or article number
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Items Table */}
+                {/* Items Table - Simplified without tax rate and discount columns */}
                 <div
                   className="table-responsive"
                   style={{ maxHeight: "400px", overflowY: "auto" }}
@@ -887,12 +940,10 @@ const AddQuotationForm = ({
                   <table className="table table-bordered align-middle mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th style={{ width: "30%" }}>Product</th>
-                        <th style={{ width: "10%" }}>Quantity</th>
-                        <th style={{ width: "15%" }}>Unit Price</th>
-                        <th style={{ width: "10%" }}>Discount</th>
-                        <th style={{ width: "10%" }}>Tax Rate %</th>
-                        <th style={{ width: "15%" }}>Subtotal</th>
+                        <th style={{ width: "35%" }}>Product</th>
+                        <th style={{ width: "15%" }}>Quantity</th>
+                        <th style={{ width: "20%" }}>Unit Price (incl. GST)</th>
+                        <th style={{ width: "20%" }}>Subtotal</th>
                         <th style={{ width: "10%" }}>Action</th>
                       </tr>
                     </thead>
@@ -910,10 +961,13 @@ const AddQuotationForm = ({
                                 <div className="d-flex align-items-center">
                                   <div className="flex-grow-1">
                                     <div className="fw-medium">
-                                      {item.product_name}
+                                      {item.product_name || "Unnamed Product"}
                                     </div>
                                     <div className="small text-muted">
-                                      {item.product_code}
+                                      {item.product_code || "No Code"}
+                                    </div>
+                                    <div className="small text-success">
+                                      Price includes GST
                                     </div>
                                   </div>
                                   <button
@@ -976,47 +1030,11 @@ const AddQuotationForm = ({
                                     disabled={isDisabled}
                                     min="0"
                                     step="0.01"
+                                    readOnly // Price is fixed from product
                                   />
                                 </div>
-                              </td>
-                              <td>
-                                <div className="input-group">
-                                  <span className="input-group-text">₹</span>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={item.discount}
-                                    onChange={(e) =>
-                                      handleItemChangeWithCalculation(
-                                        originalIndex,
-                                        "discount",
-                                        e.target.value
-                                      )
-                                    }
-                                    disabled={isDisabled}
-                                    min="0"
-                                    step="0.01"
-                                  />
-                                </div>
-                              </td>
-                              <td>
-                                <div className="input-group">
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={item.tax_rate}
-                                    onChange={(e) =>
-                                      handleItemChangeWithCalculation(
-                                        originalIndex,
-                                        "tax_rate",
-                                        e.target.value
-                                      )
-                                    }
-                                    disabled={isDisabled}
-                                    min="0"
-                                    step="0.1"
-                                  />
-                                  <span className="input-group-text">%</span>
+                                <div className="small text-success mt-1">
+                                  GST included
                                 </div>
                               </td>
                               <td>
@@ -1028,9 +1046,6 @@ const AddQuotationForm = ({
                                     value={formatCurrency(item.subtotal || 0)}
                                     readOnly
                                   />
-                                </div>
-                                <div className="small text-muted">
-                                  Tax: {formatCurrency(item.tax_amount || 0)}
                                 </div>
                               </td>
                               <td className="text-center">
@@ -1057,7 +1072,7 @@ const AddQuotationForm = ({
                         .length === 0 && (
                         <tr>
                           <td
-                            colSpan="7"
+                            colSpan="5"
                             className="text-center py-5 text-muted"
                           >
                             <div className="d-flex flex-column align-items-center">
@@ -1110,15 +1125,9 @@ const AddQuotationForm = ({
                       <h6 className="fw-bold mb-3">Summary</h6>
                       <div className="mb-3">
                         <div className="d-flex justify-content-between mb-2">
-                          <span className="text-muted">Items Subtotal:</span>
+                          <span className="text-muted">Items Subtotal (incl. GST):</span>
                           <span className="fw-medium">
                             {formatCurrency(formData.subtotal || 0)}
-                          </span>
-                        </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span className="text-muted">Total Tax:</span>
-                          <span className="fw-medium">
-                            {formatCurrency(formData.tax_amount || 0)}
                           </span>
                         </div>
                         <div className="d-flex justify-content-between mb-2">
@@ -1128,7 +1137,7 @@ const AddQuotationForm = ({
                           </span>
                         </div>
                         <div className="d-flex justify-content-between mb-2">
-                          <span className="text-muted">Discount:</span>
+                          <span className="text-muted">Additional Discount:</span>
                           <span className="fw-medium text-danger">
                             -{formatCurrency(formData.discount || 0)}
                           </span>
@@ -1141,6 +1150,9 @@ const AddQuotationForm = ({
                           </span>
                         </div>
                         <div className="small text-muted mt-2">
+                          All prices include GST
+                        </div>
+                        <div className="small text-muted">
                           Valid until: {formData.expiry_date}
                         </div>
                       </div>
