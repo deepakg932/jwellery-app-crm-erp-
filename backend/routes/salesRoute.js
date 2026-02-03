@@ -5,10 +5,11 @@ import { createSaleReturn ,getSaleReturns,approveSaleReturn,updateSaleReturn,del
 // import { authMiddleware } from "../middleware/auth.js";
 
 const router = express.Router();
+import uploadExchangeImage from "../middleware/uploadExchangeImage.js"
 
 
 
-router.post("/create-sale-item",createSale);
+router.post("/create-sale-item",   uploadExchangeImage.single("exchange_item_image"),createSale);
 router.get("/get-sale-items",listSales);
 router.get("/get-by-id/:id",getSaleById);
 

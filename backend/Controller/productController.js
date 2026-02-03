@@ -21,6 +21,10 @@ import {calculateMetalSubtotal, calculateStoneSubtotal, generateProductCode,calc
 
 
 import { round3 } from "../utils/round3.js";
+import SalesOrder from "../Models/models/SalesOrder.js";
+import PurchaseOrder from "../Models/models/PurchaseOrder.js";
+import GoldRate from "../Models/models/GoldRate.js"
+
 
 
 
@@ -1154,88 +1158,64 @@ export const updateProduct = async (req, res) => {
 
 
 
-//   try {
-//     const { status, search, page = 1, limit = 10 } = req.query;
 
-//     // Build filter object
-//     const filter = {};
 
-//     // Status filter
-//     if (status && (status === "active" || status === "inactive")) {
-//       filter.status = status;
-//     }
 
-//     // Search filter (product name or code)
-//     if (search) {
-//       filter.$or = [
-//         { product_name: { $regex: search, $options: "i" } },
-//         { product_code: { $regex: search, $options: "i" } },
-//       ];
-//     }
 
-//     // Calculate pagination
-//     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-//     // Fetch products with filters and pagination
-//     const [products, totalProducts] = await Promise.all([
-//       Product.find(filter)
-//         .populate("product_brand_id", "brand_name")
-//         .populate("product_category_id", "category_name")
-//         .populate("product_subcategory_id", "sub_category_name")
-//         .populate({
-//           path: "metals.metal_id",
-//           select: "metal_name name"
-//         })
-//         .populate({
-//           path: "metals.purity_id",
-//           select: "purity_name name"
-//         })
-//         .populate({
-//           path: "metals.hallmark_id",
-//           select: "name metal_type metal_type_name description image"
-//         })
-//         // Stones populate
-//         .populate({
-//           path: "stones.stone_id",
-//           select: "stone_type name"
-//         })
-//         .populate({
-//           path: "stones.stone_purity_id",
-//           select: "stone_purity purity_name name"
-//         })
-//         // Materials populate
-//         .populate({
-//           path: "materials.wastage_id",
-//           select: "wastage_type"
-//         })
-//         .populate({
-//           path: "materials.material_id",
-//           select: "material_type"
-//         })
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(parseInt(limit)),
-//       Product.countDocuments(filter),
-//     ]);
 
-//     console.log("Products fetched:", products.length);
 
-//     return res.json({
-//       success: true,
-//       products,
-//       pagination: {
-//         currentPage: parseInt(page),
-//         totalPages: Math.ceil(totalProducts / parseInt(limit)),
-//         totalProducts,
-//         limit: parseInt(limit),
-//       },
-//     });
-//   } catch (err) {
-//     console.error(err);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server error",
-//       error: err.message,
-//     });
-//   }
-// };
+
+
+
+
+
+
+
+
+
+
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const totalProducts = await Product.countDocuments({ status: "active" });
+
+    const saleAgg = await SalesOrder.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: null,
+          totalQty: { $sum: "$items.quantity" },
+        },
+      },
+    ]);
+
+    const totalSoldProducts = saleAgg[0]?.totalQty || 0;
+
+    const totalPurchaseOrders = await PurchaseOrder.countDocuments({
+      status: { $in: ["approved", "received", "partially_received"] },
+    });
+
+    const latestGoldRates = await GoldRate.findOne()
+      .sort({ createdAt: -1 })
+      // .lean();
+.limit(4);
+    return res.json({
+      success: true,
+      data: {
+        totalProducts,
+        totalSoldProducts,
+        totalPurchaseOrders,
+         goldRates: latestGoldRates,
+        // goldRate: latestGoldRates
+        //   ? latestGoldRates.rate
+        //   : null,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

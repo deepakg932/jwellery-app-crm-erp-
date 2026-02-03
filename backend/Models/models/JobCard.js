@@ -39,12 +39,12 @@ const JobCardSchema = new mongoose.Schema(
       },
     ],
 
-// JobCard.js
-stage: {
-  type: mongoose.Schema.Types.ObjectId,
-  ref: "DesignStage",
-  default: null,
-},
+// // JobCard.js
+// stage: {
+//   type: mongoose.Schema.Types.ObjectId,
+//   ref: "DesignStage",
+//   default: null,
+// },
 
     
     note: String,
@@ -60,23 +60,30 @@ stage: {
       default: [],
     },
 
+//   stage: {
+//   type: String,
+//   enum: [
+//     "not started",
+//     "design stage",
+//     "design in progress",
+//     "design completed"
+//   ],
+//   default: "not started",
+// },
+
+
   stage: {
-  type: String,
-  enum: [
-    "not started",
-    "design stage",
-    "design in progress",
-    "design completed"
-  ],
-  default: "not started",
-},
+    type: String,
+    default: "not started", // design, cad, casting
+  },
+
 
 
 status: {
   type: String,
   enum: [
     "pending",
-    "approved",      // ✅ NEW
+    "approved",      
     "in_progress",
     "completed",
     "delivered",
@@ -84,6 +91,10 @@ status: {
   ],
   default: "pending",
 },
+current_department: {
+  type: String,
+},
+
 
     total_amount: Number,
     advance_amount: Number,

@@ -10,98 +10,98 @@ import PDFDocument from "pdfkit";
 
 
 
-export const createSale = async (req, res) => {
-  try {
-    const data = req.body;
+// export const createSale = async (req, res) => {
+//   try {
+//     const data = req.body;
 
-    if (!data.customer_id || !data.branch_id || !data.items?.length) {
-      return res.status(400).json({success: false,message: "Customer, Branch and items are required",
-      });
-    }
+//     if (!data.customer_id || !data.branch_id || !data.items?.length) {
+//       return res.status(400).json({success: false,message: "Customer, Branch and items are required",
+//       });
+//     }
 
     
-    if (data.status) {
-      data.sale_status = data.status;
-      delete data.status;
-    }
+//     if (data.status) {
+//       data.sale_status = data.status;
+//       delete data.status;
+//     }
 
    
-    const reference_no = await generateSaleReference();
+//     const reference_no = await generateSaleReference();
 
    
-    for (const item of data.items) {
-      const product = await Product.findById(item.product_id);
-      if (!product) {
-        return res.status(404).json({success: false,message: "Product not found",});
-      }
+//     for (const item of data.items) {
+//       const product = await Product.findById(item.product_id);
+//       if (!product) {
+//         return res.status(404).json({success: false,message: "Product not found",});
+//       }
 
-      item.product_name = product.product_name;
-      item.product_code = product.product_code;
-    }
-
-
-    // // 🔥 BASE TOTAL
-    // let finalTotal = Number(data.total_amount || 0);
-
-    // // 🔥 EXCHANGE ADJUSTMENT
-    // if (data.is_exchange === true) {
-    //   const exchangeAmount = Number(data.exchange_amount || 0);
-
-    //   if (exchangeAmount <= 0) {
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: "Exchange amount must be greater than 0",
-    //     });
-    //   }
-
-    //   if (exchangeAmount > finalTotal) {
-    //     return res.status(400).json({
-    //       success: false,
-    //       message: "Exchange amount cannot exceed total amount",
-    //     });
-    //   }
-
-    //   finalTotal = finalTotal - exchangeAmount;
-    // }
+//       item.product_name = product.product_name;
+//       item.product_code = product.product_code;
+//     }
 
 
-    const sale = await Sale.create({
-      ...data,
-      reference_no,
-      // total_amount: finalTotal,
-      created_by: req.user?._id,
-    });
+//     // // 🔥 BASE TOTAL
+//     // let finalTotal = Number(data.total_amount || 0);
+
+//     // // 🔥 EXCHANGE ADJUSTMENT
+//     // if (data.is_exchange === true) {
+//     //   const exchangeAmount = Number(data.exchange_amount || 0);
+
+//     //   if (exchangeAmount <= 0) {
+//     //     return res.status(400).json({
+//     //       success: false,
+//     //       message: "Exchange amount must be greater than 0",
+//     //     });
+//     //   }
+
+//     //   if (exchangeAmount > finalTotal) {
+//     //     return res.status(400).json({
+//     //       success: false,
+//     //       message: "Exchange amount cannot exceed total amount",
+//     //     });
+//     //   }
+
+//     //   finalTotal = finalTotal - exchangeAmount;
+//     // }
+
+
+//     const sale = await Sale.create({
+//       ...data,
+//       reference_no,
+//       // total_amount: finalTotal,
+//       created_by: req.user?._id,
+//     });
 
    
-    const invoice = await Invoice.create({
-      invoice_number: await generateInvoiceNumber(),
-      sale_id: sale._id,
-      customer_id: sale.customer_id,
-      branch_id: sale.branch_id,
-   sold_by: sale.sold_by,
-      is_exchange: sale.is_exchange,
-      exchange_note: sale.exchange_note,
-      exchange_details: sale.is_exchange ? sale.exchange_details : null,
-      items: sale.items,
-      subtotal: sale.subtotal,
-      total_tax: sale.total_tax,
-      discount: sale.discount,
-      shipping_cost: sale.shipping_cost,
-      total_amount: sale.total_amount,
-      payment_status: sale.payment_status,
-      created_by: req.user?._id,
-    });
+//     const invoice = await Invoice.create({
+//       invoice_number: await generateInvoiceNumber(),
+//       sale_id: sale._id,
+//       customer_id: sale.customer_id,
+//       branch_id: sale.branch_id,
+//    sold_by: sale.sold_by,
+//       is_exchange: sale.is_exchange,
+//       exchange_note: sale.exchange_note,
+//       exchange_details: sale.is_exchange ? sale.exchange_details : null,
+//       items: sale.items,
+//       subtotal: sale.subtotal,
+//       total_tax: sale.total_tax,
+//       discount: sale.discount,
+//       shipping_cost: sale.shipping_cost,
+//       total_amount: sale.total_amount,
+//       payment_status: sale.payment_status,
+//       created_by: req.user?._id,
+//     });
 
-    return res.status(201).json({success: true,success: true,message: "Sale created successfully",data: {sale,invoice_number: invoice.invoice_number, invoice_id: invoice._id,
-      },
-    });
+//     return res.status(201).json({success: true,success: true,message: "Sale created successfully",data: {sale,invoice_number: invoice.invoice_number, invoice_id: invoice._id,
+//       },
+//     });
 
-  } catch (error) {
-    console.error("Create Sale Error:", error);
-    return res.status(500).json({success: false,message: error.message,
-});
-  }
-};
+//   } catch (error) {
+//     console.error("Create Sale Error:", error);
+//     return res.status(500).json({success: false,message: error.message,
+// });
+//   }
+// };
 
 
 export const generateInvoicePDF = async (req, res) => {
@@ -509,6 +509,165 @@ export const updateSalePayment = async (req, res) => {
   } catch (error) {
     console.error("Update Payment Error:", error);
     return res.status(500).json({ success: false, message: error.message,});
+  }
+};
+
+
+
+
+export const createSale = async (req, res) => {
+  try {
+    const data = req.body;
+    data.is_exchange = data.is_exchange === true || data.is_exchange === "true";
+
+
+    // if (!data.customer_id || !data.branch_id || !data.items?.length) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Customer, Branch and items are required",
+    //   });
+    // }
+
+    if (data.status) {
+      data.sale_status = data.status;
+      delete data.status;
+    }
+
+    const reference_no = await generateSaleReference();
+
+    // ================= ITEMS VALIDATION =================
+    let subtotal = 0;
+    let totalTax = 0;
+
+    for (const item of data.items) {
+      const product = await Product.findById(item.product_id);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found",
+        });
+      }
+
+      item.product_name = product.product_name;
+      item.product_code = product.product_code;
+
+      subtotal += Number(item.final_total || 0);
+      totalTax += Number(item.gst_amount || 0) * Number(item.quantity || 1);
+    }
+
+   const toNumber = (val) => {
+  const num = Number(val);
+  return Number.isFinite(num) ? num : 0;
+};
+
+    let exchangeDetails = null;
+    let exchangeAmount = 0;
+
+    if (data.is_exchange === true) {
+
+
+      
+
+ const itemName = data.exchange_item_name?.trim();
+ const rawUnit = data.exchange_item_unit?.toLowerCase() || "g";
+  const rawWeight = toNumber(data.exchange_item_weight);
+  const rawRate = toNumber(data.exchange_item_actual_rate);
+
+
+  if (!itemName || rawWeight <= 0 || rawRate <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid exchange item weight or rate",
+    });
+  }
+
+
+
+
+    
+
+    let weightInGram = rawWeight;
+
+if (rawUnit === "kg") {
+  weightInGram = rawWeight * 1000;
+}
+
+
+
+
+if (data.exchange_item_unit?.toLowerCase() === "kg") {
+    weightInGram = rawWeight * 1000;
+  }
+
+        const calculatedValue = weightInGram * rawRate;
+
+      exchangeAmount = toNumber(data.exchange_amount) || calculatedValue;
+
+      let imageUrl = null;
+  if (req.file) {
+    imageUrl = `${process.env.APP_URL}/uploads/exchange/${req.file.filename}`;
+  }
+
+      exchangeDetails = {
+        item_name: itemName,
+
+         weight: rawWeight,
+  unit: rawUnit,
+       weight_in_gram: weightInGram,
+
+  actual_rate: rawRate,
+  calculated_value: calculatedValue,
+    image: imageUrl,
+      };
+    }
+
+    const shippingCost = toNumber(data.shipping_cost);
+const discount = toNumber(data.discount);
+
+let totalAmount =
+  subtotal + shippingCost - discount - exchangeAmount;
+
+if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+  totalAmount = 0;
+}
+
+    const sale = await Sale.create({
+      reference_no,
+      customer_id: data.customer_id,
+      branch_id: data.branch_id,
+      sale_date: data.sale_date,
+      sold_by: data.sold_by,
+
+      items: data.items,
+
+      is_exchange: data.is_exchange,
+      exchange_amount: exchangeAmount,
+      exchange_note: data.exchange_note,
+      exchange_details: exchangeDetails,
+
+      shipping_cost: shippingCost,
+      discount,
+      subtotal,
+      total_tax: totalTax,
+      total_amount: Math.round(totalAmount),
+
+      payment_status: data.payment_status,
+      sale_status: data.sale_status,
+
+      created_by: req.user?._id,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Sale created successfully",
+      data: sale,
+    });
+  } catch (error) {
+    console.error("Create Sale Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

@@ -50,13 +50,13 @@ import CustomRoutes from "./routes/CustomRoutes.js";
 import quotationRoutes from "./routes/quotationRoutes.js";
 import repairRoutes from "./routes/repairRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
-import designStageRoutes from "./routes/designStageRoutes.js"
 import jobCardStageRoutes from "./routes/jobCardStageRoutes.js"
+import { fetchLiveGoldRate } from "./services/goldRateService.js"
 
-
-
-
+import cron from "node-cron";
 dotenv.config(); 
+
+
 
 
 connectDB();
@@ -132,7 +132,7 @@ app.use("/api/repairs",repairRoutes)
 app.use("/api/job-card",jobRoutes)
 
 
-app.use("/api/design-stage",designStageRoutes)
+// app.use("/api/design-stage",designStageRoutes)
 
 app.use("/api/design-stage",jobCardStageRoutes)
 // app.use("/api/stock-transfer",stockTransferRoute)
@@ -153,6 +153,27 @@ app.use((req, res, next) => {
   next();
 });
 
+
+
+
+// cron.schedule("0 9 * * *", async () => {
+//   console.log("Fetching daily gold rate...");
+//   await fetchLiveGoldRate();
+// });
+
+
+
+// // 🔥 TEMP TEST — server start hote hi chalega
+// (async () => {
+//   console.log("MANUAL GOLD RATE FETCH START");
+//   await fetchLiveGoldRate();
+// })();
+
+
+cron.schedule("*/1 * * * *", async () => {
+  console.log("Fetching gold rate every minute...");
+  await fetchLiveGoldRate();
+});
 
 
 

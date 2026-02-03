@@ -2,130 +2,13 @@ import PurchaseOrder from "../Models/models/PurchaseOrder.js";
 import InventoryItem from "../Models/models/InventoryModel.js"
 import Suppliers from "../Models/models/SuppliersModel.js";
 import mongoose from "mongoose";
-import Branch from "../Models/models/Branch.js"
-
-
-export const getAllPurchaseOrders = async (req, res) => {
-  try {
-    const { status, supplier_id, startDate, endDate, search } = req.query;
-
-    const filter = {};
-    if (status) filter.status = status;
-    if (supplier_id) filter.supplier_id = supplier_id;
-
-    if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
-    }
-
-    if (search) {
-      filter.$or = [
-        { po_number: { $regex: search, $options: "i" } },
-        { reference_no: { $regex: search, $options: "i" } },
-        { notes: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const purchaseOrders = await PurchaseOrder.find(filter)
-      .populate("branch", "branch_name branch_code")
-      .populate("supplier_id", "supplier_name supplier_code phone email")
-      .populate("items.inventory_item_id", "name item_code")
-      .populate("items.unit_id", "name code")
-      .populate("created_by", "full_name email")
-      .sort({ createdAt: -1 });
-
-    const response = purchaseOrders.map(po => ({
-      _id: po._id,
-      po_number: po.po_number,
-      reference_no: po.reference_no,
-
-      branch: po.branch ? {
-        _id: po.branch._id,
-        name: po.branch.branch_name,
-        code: po.branch.branch_code,
-      } : null,
-
-      supplier: po.supplier_id ? {
-        _id: po.supplier_id._id,
-        name: po.supplier_id.supplier_name,
-        code: po.supplier_id.supplier_code,
-        phone: po.supplier_id.phone,
-        email: po.supplier_id.email,
-      } : null,
-
-      order_date: po.order_date,
-      currency: po.currency,
-      exchange_rate: po.exchange_rate,
-
-      vat: po.vat,
-      discount: po.discount,
-      shipping_cost: po.shipping_cost,
-
-      subtotal: po.subtotal,
-      total_amount: po.total_amount,
-      grand_total: po.grand_total,
-
-      payment_status: po.payment_status,
-      status: po.status,
-      notes: po.notes,
-
-      items: po.items.map(item => ({
-        _id: item._id,
-
-        inventory_item: item.inventory_item_id ? {
-          _id: item.inventory_item_id._id,
-          name: item.inventory_item_id.name,
-          item_code: item.inventory_item_id.item_code,
-        } : null,
-
-        quantity: item.quantity,
-        weight: item.weight,
-
-        unit: item.unit_id ? {
-          _id: item.unit_id._id,
-          name: item.unit_id.name,
-          code: item.unit_id.code,
-        } : null,
-
-        rate: item.rate,          // ✅ supplier quoted rate
-        discount: item.discount,
-        tax: item.tax,
-        total: item.total,
-      })),
-
-      created_by: po.created_by ? {
-        _id: po.created_by._id,
-        name: po.created_by.full_name,
-        email: po.created_by.email,
-      } : null,
-
-      createdAt: po.createdAt,
-      updatedAt: po.updatedAt,
-    }));
-
-    return res.status(200).json({
-      success: true,
-      count: response.length,
-      data: response,
-    });
-
-  } catch (error) {
-    console.error("Get All Purchase Orders Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
-  }
-};
-
-
+import Branch from "../Models/models/Branch.js";
+import Unit from "../Models/models/unitModel.js"
 
 
 // export const getAllPurchaseOrders = async (req, res) => {
 //   try {
 //     const { status, supplier_id, startDate, endDate, search } = req.query;
-//     console.log(req.query,"req.query")
 
 //     const filter = {};
 //     if (status) filter.status = status;
@@ -140,20 +23,25 @@ export const getAllPurchaseOrders = async (req, res) => {
 //     if (search) {
 //       filter.$or = [
 //         { po_number: { $regex: search, $options: "i" } },
+//         { reference_no: { $regex: search, $options: "i" } },
 //         { notes: { $regex: search, $options: "i" } },
-//          { notes: { $regex: search, $options: "i" } },
 //       ];
 //     }
 
 //     const purchaseOrders = await PurchaseOrder.find(filter)
-//        .populate("branch", "branch_name branch_code")
+//       .populate("branch", "branch_name branch_code")
 //       .populate("supplier_id", "supplier_name supplier_code phone email")
-//       .populate("items.inventory_item_id", "name item_code")
+//       .populate(
+//   "items.inventory_item_id",
+//   "name item_code purity"
+// )
+
+//       // .populate("items.inventory_item_id", "name item_code")
 //       .populate("items.unit_id", "name code")
 //       .populate("created_by", "full_name email")
 //       .sort({ createdAt: -1 });
-// console.log(purchaseOrders,"purchaseOrders")
-//  const response = purchaseOrders.map(po => ({
+
+//     const response = purchaseOrders.map(po => ({
 //       _id: po._id,
 //       po_number: po.po_number,
 //       reference_no: po.reference_no,
@@ -161,7 +49,7 @@ export const getAllPurchaseOrders = async (req, res) => {
 //       branch: po.branch ? {
 //         _id: po.branch._id,
 //         name: po.branch.branch_name,
-//         code: po.branch.branch_code
+//         code: po.branch.branch_code,
 //       } : null,
 
 //       supplier: po.supplier_id ? {
@@ -169,7 +57,7 @@ export const getAllPurchaseOrders = async (req, res) => {
 //         name: po.supplier_id.supplier_name,
 //         code: po.supplier_id.supplier_code,
 //         phone: po.supplier_id.phone,
-//         email: po.supplier_id.email
+//         email: po.supplier_id.email,
 //       } : null,
 
 //       order_date: po.order_date,
@@ -188,56 +76,88 @@ export const getAllPurchaseOrders = async (req, res) => {
 //       status: po.status,
 //       notes: po.notes,
 
+//       // items: po.items.map(item => ({
+//       //   _id: item._id,
+
+//       //   inventory_item: item.inventory_item_id ? {
+//       //     _id: item.inventory_item_id._id,
+//       //     name: item.inventory_item_id.name,
+//       //     item_code: item.inventory_item_id.item_code,
+//       //         purity: item.inventory_item_id.purity, // ✅ NOW IT WILL COME
+//       //   } : null,
+
+//       //   quantity: item.quantity,
+//       //   weight: item.weight,
+
+//       //   unit: item.unit_id ? {
+//       //     _id: item.unit_id._id,
+//       //     name: item.unit_id.name,
+//       //     code: item.unit_id.code,
+//       //   } : null,
+
+//       //   rate: item.rate,          // ✅ supplier quoted rate
+//       //   discount: item.discount,
+//       //   tax: item.tax,
+//       //   total: item.total,
+//       // })),
+
+
+
 //       items: po.items.map(item => ({
-//         _id: item._id,
+//   _id: item._id,
+// //  purity: item.purity,   // ✅ direct
+//   inventory_item: item.inventory_item_id ? {
+//     _id: item.inventory_item_id._id,
+//     name: item.inventory_item_id.name,
+//     item_code: item.inventory_item_id.item_code,
+//     purity: item.inventory_item_id.purity, // ✅ NOW COMES
+//   } : null,
 
-//         inventory_item: item.inventory_item_id ? {
-//           _id: item.inventory_item_id._id,
-//           name: item.inventory_item_id.name,
-//           item_code: item.inventory_item_id.item_code
-//         } : null,
+//   quantity: item.quantity,
+//   weight: item.weight,
 
-//         quantity: item.quantity,
-//         weight: item.weight,
+//   received_quantity: item.received_quantity,
+//   received_weight: item.received_weight,
 
-//         unit: item.unit_id ? {
-//           _id: item.unit_id._id,
-//           name: item.unit_id.name,
-//           code: item.unit_id.code
-//         } : null,
+//   unit: item.unit_id ? {
+//     _id: item.unit_id._id,
+//     name: item.unit_id.name,
+//     code: item.unit_id.code,
+//   } : null,
 
-//         net_unit_cost: item.net_unit_cost,
-//         rate: item.rate,
-//         purchase_price: item.purchase_price,
-//         profit_margin: item.profit_margin,
-
-//         discount: item.discount,
-//         tax: item.tax,
-//         total: item.total
-//       })),
+//   rate: item.rate,
+//   discount: item.discount,
+//   tax: item.tax,
+//   total: item.total,
+// })),
 
 //       created_by: po.created_by ? {
 //         _id: po.created_by._id,
 //         name: po.created_by.full_name,
-//         email: po.created_by.email
+//         email: po.created_by.email,
 //       } : null,
 
 //       createdAt: po.createdAt,
-//       updatedAt: po.updatedAt
+//       updatedAt: po.updatedAt,
 //     }));
 
 //     return res.status(200).json({
 //       success: true,
 //       count: response.length,
-//       data: response
+//       data: response,
 //     });
-
 
 //   } catch (error) {
 //     console.error("Get All Purchase Orders Error:", error);
-//     return res.status(500).json({success: false,message: "Internal server error",});
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//     });
 //   }
 // };
+
+
+
 
 
 export const getPurchaseOrderById = async (req, res) => {
@@ -601,155 +521,7 @@ return res.status(500).json({success: false,message: "Internal server error"});
 }
 
 
-// export const updatePurchaseOrder = async (req, res) => {
-//   try {
-//     const { id } = req.params;
 
-//     const {
-//       supplier_id,
-//       branch_id,
-//       reference_no,
-//       order_date,
-//       currency,
-//       exchange_rate,
-
-//       vat,
-//       discount,
-//       shipping_cost,
-//       subtotal,
-//       total_amount,
-//       grand_total,
-
-//       payment_status,
-//       status,
-//       notes,
-//       items,
-//     } = req.body;
-
-//    console.log(req.body,"req.body")
-//     const existingPO = await PurchaseOrder.findById(id);
-//     console.log(existingPO,"exitingPOO")
-//     if (!existingPO) {
-//       return res.status(404).json({ success: false, message: "Purchase Order not found", });
-//     }
-
-   
-//     if (branch_id) {
-//       if (!mongoose.Types.ObjectId.isValid(branch_id)) {
-//         return res.status(400).json({ success: false, message: "Invalid branch ID" });
-//       }
-
-//       const branch = await Branch.findById(branch_id);
-//       console.log(branch,"branch")
-//       if (!branch) {
-//         return res.status(404).json({ success: false, message: "Branch not found" });
-//       }
-//     }
-
-//     if (supplier_id) {
-//       if (!mongoose.Types.ObjectId.isValid(supplier_id)) {
-//         return res.status(400).json({ success: false, message: "Invalid supplier ID" });
-//       }
-
-//       const supplier = await Suppliers.findById(supplier_id);
-//       if (!supplier) {
-//         return res.status(404).json({ success: false, message: "Supplier not found" });
-//       }
-//     }
-
-   
-//     let validatedItems = existingPO.items;
-
-//     if (items && items.length > 0) {
-//       validatedItems = [];
-
-//       for (const item of items) {
-//         const {
-//           inventory_item_id,
-//           quantity = 0,
-//           weight = 0,
-//           unit_id,
-//           rate,
-//           net_unit_cost,
-//           purchase_price,
-//           profite_margin,
-//           discount = 0,
-//           tax = 0,
-//           total,
-//         } = item;
-
-//         if (!inventory_item_id || !unit_id || !rate) {
-//           return res.status(400).json({success: false,message: "Inventory item, unit and rate are required",});
-//         }
-
-//         if (quantity <= 0 && weight <= 0) {
-//           return res.status(400).json({success: false,message: "Either quantity or weight is required",});
-//         }
-
-//         const inventory = await InventoryItem.findById(inventory_item_id);
-//         console.log(inventory,"inventoryy")
-//         if (!inventory) {
-//           return res.status(404).json({ success: false, message: "Inventory item not found"});
-//         }
-
-//         validatedItems.push({
-//           inventory_item_id,
-//           quantity,
-//           weight,
-//           unit_id,
-//           rate,
-//           net_unit_cost: net_unit_cost ?? rate,
-//           purchase_price: purchase_price ?? rate,
-//           profite_margin: profite_margin ?? 0,
-//           discount,
-//           tax,
-//           total,
-//         });
-//       }
-//     }
-
-
-//     const updateData = {
-//       supplier_id: supplier_id ?? existingPO.supplier_id,
-//       branch: branch_id ?? existingPO.branch,
-//       reference_no: reference_no ?? existingPO.reference_no,
-//       order_date: order_date ? new Date(order_date) : existingPO.order_date,
-//       currency: currency ?? existingPO.currency,
-//       exchange_rate: exchange_rate ?? existingPO.exchange_rate,
-
-//       items: validatedItems,
-
-//       vat: vat ?? existingPO.vat,
-//       discount: discount ?? existingPO.discount,
-//       shipping_cost: shipping_cost ?? existingPO.shipping_cost,
-//       subtotal: subtotal ?? existingPO.subtotal,
-//       total_amount: total_amount ?? existingPO.total_amount,
-//       grand_total: grand_total ?? existingPO.grand_total,
-
-//       payment_status: payment_status ?? existingPO.payment_status,
-//       status: status ?? existingPO.status,
-//       notes: notes ?? existingPO.notes,
-//     };
-
-//  console.log(updateData,"updateddata")
-//     const updatedPO = await PurchaseOrder.findByIdAndUpdate(
-//       id,
-//       updateData,
-//       { new: true, runValidators: true }
-//     )
-//       .populate("branch", "branch_name branch_code")
-//       .populate("supplier_id", "supplier_name supplier_code phone email")
-//       .populate("items.inventory_item_id", "name item_code")
-//       .populate("items.unit_id", "name code")
-//       .populate("created_by", "full_name email");
-
-//     return res.status(200).json({success: true,message: "Purchase Order updated successfully",data: updatedPO,});
-
-//   } catch (error) {
-//     console.error("Update Purchase Order Error:", error);
-//     return res.status(500).json({ success: false, message: error.message || "Internal server error",});
-//   }
-// };
 
 
 
@@ -784,6 +556,52 @@ export const generatePOPDF = async (req, res) => {
 };
 
 
+
+
+
+
+
+
+export const searchInventoryItems = async (req, res) => {
+  try {
+    const { q } = req.query;
+
+    if (!q) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+
+    const items = await InventoryItem.find({
+      $or: [
+        { item_code: { $regex: q, $options: "i" } },
+        { name: { $regex: q, $options: "i" } }
+      ],
+      status: "active"
+    })
+      .select("_id item_code name purchase_price")
+      .limit(20);
+
+    return res.status(200).json({
+      success: true,
+      data: items.map(item => ({
+        _id: item._id,
+        label: `${item.item_code} - ${item.name}`, // 👈 UI dropdown
+        item_code: item.item_code,
+        name: item.name,
+        price: item.purchase_price
+      }))
+    });
+
+  } catch (err) {
+    console.error("Inventory Search Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
 
 // export const createPurchaseOrder = async (req, res) => {
 //   try {
@@ -825,6 +643,7 @@ export const generatePOPDF = async (req, res) => {
 //     for (const item of items) {
 //       const {
 //         inventory_item_id,
+        
 //         quantity = 0,
 //         weight = 0,
 //         unit_id,
@@ -840,6 +659,10 @@ export const generatePOPDF = async (req, res) => {
 //           message: "Inventory item and unit are required",
 //         });
 //       }
+
+
+
+
 
 //       if (quantity <= 0 && weight <= 0) {
 //         return res.status(400).json({
@@ -860,6 +683,7 @@ export const generatePOPDF = async (req, res) => {
 
 //       validatedItems.push({
 //         inventory_item_id,
+//         purity: inventory.purity, // ✅ snapshot
 //         quantity,
 //         weight,
 //         unit_id,
@@ -922,543 +746,6 @@ export const generatePOPDF = async (req, res) => {
 
 
 
-export const searchInventoryItems = async (req, res) => {
-  try {
-    const { q } = req.query;
-
-    if (!q) {
-      return res.status(200).json({
-        success: true,
-        data: []
-      });
-    }
-
-    const items = await InventoryItem.find({
-      $or: [
-        { item_code: { $regex: q, $options: "i" } },
-        { name: { $regex: q, $options: "i" } }
-      ],
-      status: "active"
-    })
-      .select("_id item_code name purchase_price")
-      .limit(20);
-
-    return res.status(200).json({
-      success: true,
-      data: items.map(item => ({
-        _id: item._id,
-        label: `${item.item_code} - ${item.name}`, // 👈 UI dropdown
-        item_code: item.item_code,
-        name: item.name,
-        price: item.purchase_price
-      }))
-    });
-
-  } catch (err) {
-    console.error("Inventory Search Error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error"
-    });
-  }
-};
-
-export const createPurchaseOrder = async (req, res) => {
-  try {
-    const {
-      supplier_id,
-      branch_id,
-      reference_no,
-      order_date,
-      currency = "USD",
-      exchange_rate = 1,
-
-      vat = 0,
-      discount = 0,
-      shipping_cost = 0,
-      subtotal = 0,
-      total_amount = 0,
-      grand_total = 0,
-
-      payment_status = "pending",
-      notes,
-      items = [],
-    } = req.body;
-
-    if (!branch_id || !supplier_id || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Branch, supplier and items are required",
-      });
-    }
-
-    const branch = await Branch.findById(branch_id);
-    if (!branch) return res.status(404).json({ success: false, message: "Branch not found" });
-
-    const supplier = await Suppliers.findById(supplier_id);
-    if (!supplier) return res.status(404).json({ success: false, message: "Supplier not found" });
-
-    const validatedItems = [];
-
-    for (const item of items) {
-      const {
-        inventory_item_id,
-        quantity = 0,
-        weight = 0,
-        unit_id,
-        rate,
-        discount = 0,
-        tax = 0,
-        total = 0,
-      } = item;
-
-      if (!inventory_item_id || !unit_id) {
-        return res.status(400).json({
-          success: false,
-          message: "Inventory item and unit are required",
-        });
-      }
-
-      if (quantity <= 0 && weight <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Either quantity or weight is required",
-        });
-      }
-
-      const inventory = await InventoryItem.findById(inventory_item_id);
-      if (!inventory) {
-        return res.status(404).json({
-          success: false,
-          message: "Inventory item not found",
-        });
-      }
-
-      const finalRate = rate ?? inventory.purchase_price;
-
-      validatedItems.push({
-        inventory_item_id,
-        quantity,
-        weight,
-        unit_id,
-
-        rate: finalRate,
-        purchase_price: finalRate,
-        net_unit_cost: finalRate,
-
-        discount,
-        tax,
-        total,
-      });
-    }
-
-    const po = await PurchaseOrder.create({
-      supplier_id,
-      branch: branch_id,
-      reference_no,
-      order_date: order_date ? new Date(order_date) : new Date(),
-      currency,
-      exchange_rate,
-
-      items: validatedItems,
-
-      vat,
-      discount,
-      shipping_cost,
-      subtotal,
-      total_amount,
-      grand_total,
-
-      payment_status,
-      notes,
-      created_by: req.user?._id || null,
-    });
-
-    const populatedPO = await PurchaseOrder.findById(po._id)
-      .populate("branch", "branch_name branch_code")
-      .populate("supplier_id", "supplier_name supplier_code phone email")
-      .populate("items.inventory_item_id", "name item_code")
-      .populate("items.unit_id", "name code")
-      .populate("created_by", "full_name email");
-
-    return res.status(201).json({
-      success: true,
-      message: "Purchase Order created successfully",
-      data: populatedPO,
-    });
-
-  } catch (error) {
-    console.error("Create Purchase Order Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
-  }
-};
-
-
-
-// export const updatePurchaseOrder = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-
-//     const {
-//       supplier_id,
-//       branch_id,
-//       reference_no,
-//       order_date,
-//       currency,
-//       exchange_rate,
-
-//       vat,
-//       discount,
-//       shipping_cost,
-//       subtotal,
-//       total_amount,
-//       grand_total,
-
-//       payment_status,
-//       status,
-//       notes,
-//       items,
-//     } = req.body;
-
-//     const existingPO = await PurchaseOrder.findById(id);
-//     if (!existingPO) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Purchase Order not found",
-//       });
-//     }
-
-    
-//     if (branch_id) {
-//       if (!mongoose.Types.ObjectId.isValid(branch_id)) {
-//         return res.status(400).json({ success: false, message: "Invalid branch ID" });
-//       }
-//       const branch = await Branch.findById(branch_id);
-//       if (!branch) {
-//         return res.status(404).json({ success: false, message: "Branch not found" });
-//       }
-//     }
-
-//     if (supplier_id) {
-//       if (!mongoose.Types.ObjectId.isValid(supplier_id)) {
-//         return res.status(400).json({ success: false, message: "Invalid supplier ID" });
-//       }
-//       const supplier = await Suppliers.findById(supplier_id);
-//       if (!supplier) {
-//         return res.status(404).json({ success: false, message: "Supplier not found" });
-//       }
-//     }
-
-//     let validatedItems = existingPO.items;
-
-//     if (items && items.length > 0) {
-//       validatedItems = [];
-
-//       for (const item of items) {
-//         const {
-//           inventory_item_id,
-//           quantity = 0,
-//           weight = 0,
-//           unit_id,
-//           rate,
-//           discount = 0,
-//           tax = 0,
-//           total = 0,
-//         } = item;
-
-//         if (!inventory_item_id || !unit_id || rate === undefined) {
-//           return res.status(400).json({
-//             success: false,
-//             message: "Inventory item, unit and rate are required",
-//           });
-//         }
-
-//         if (quantity <= 0 && weight <= 0) {
-//           return res.status(400).json({
-//             success: false,
-//             message: "Either quantity or weight is required",
-//           });
-//         }
-
-//         const inventory = await InventoryItem.findById(inventory_item_id);
-//         if (!inventory) {
-//           return res.status(404).json({
-//             success: false,
-//             message: "Inventory item not found",
-//           });
-//         }
-
-//         validatedItems.push({
-//           inventory_item_id,
-//           quantity,
-//           weight,
-//           unit_id,
-//           rate,
-//           discount,
-//           tax,
-//           total,
-//         });
-//       }
-//     }
-
-
-//     const updateData = {
-//       supplier_id: supplier_id ?? existingPO.supplier_id,
-//       branch: branch_id ?? existingPO.branch,
-//       reference_no: reference_no ?? existingPO.reference_no,
-//       order_date: order_date ? new Date(order_date) : existingPO.order_date,
-//       currency: currency ?? existingPO.currency,
-//       exchange_rate: exchange_rate ?? existingPO.exchange_rate,
-
-//       items: validatedItems,
-
-//       vat: vat ?? existingPO.vat,
-//       discount: discount ?? existingPO.discount,
-//       shipping_cost: shipping_cost ?? existingPO.shipping_cost,
-//       subtotal: subtotal ?? existingPO.subtotal,
-//       total_amount: total_amount ?? existingPO.total_amount,
-//       grand_total: grand_total ?? existingPO.grand_total,
-
-//       payment_status: payment_status ?? existingPO.payment_status,
-//       status: status ?? existingPO.status,
-//       notes: notes ?? existingPO.notes,
-//     };
-
-//     const updatedPO = await PurchaseOrder.findByIdAndUpdate(
-//       id,
-//       updateData,
-//       { new: true, runValidators: true }
-//     )
-//       .populate("branch", "branch_name branch_code")
-//       .populate("supplier_id", "supplier_name supplier_code phone email")
-//       .populate("items.inventory_item_id", "name item_code")
-//       .populate("items.unit_id", "name code")
-//       .populate("created_by", "full_name email");
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Purchase Order updated successfully",
-//       data: updatedPO,
-//     });
-
-//   } catch (error) {
-//     console.error("Update Purchase Order Error:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: error.message || "Internal server error",
-//     });
-//   }
-// };
-
-
-export const updatePurchaseOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const {
-      supplier_id,
-      branch_id,
-      reference_no,
-      order_date,
-      currency,
-      exchange_rate,
-
-      vat,
-      discount,
-      shipping_cost,
-      subtotal,
-      total_amount,
-      grand_total,
-
-      payment_status,
-      status,
-      notes,
-      items,
-    } = req.body;
-
-    const existingPO = await PurchaseOrder.findById(id);
-    if (!existingPO) {
-      return res.status(404).json({
-        success: false,
-        message: "Purchase Order not found",
-      });
-    }
-
-    // Validate branch
-    if (branch_id) {
-      if (!mongoose.Types.ObjectId.isValid(branch_id)) {
-        return res.status(400).json({ success: false, message: "Invalid branch ID" });
-      }
-      const branch = await Branch.findById(branch_id);
-      if (!branch) {
-        return res.status(404).json({ success: false, message: "Branch not found" });
-      }
-    }
-
-    // Validate supplier
-    if (supplier_id) {
-      if (!mongoose.Types.ObjectId.isValid(supplier_id)) {
-        return res.status(400).json({ success: false, message: "Invalid supplier ID" });
-      }
-      const supplier = await Suppliers.findById(supplier_id);
-      if (!supplier) {
-        return res.status(404).json({ success: false, message: "Supplier not found" });
-      }
-    }
-
-    let validatedItems = existingPO.items;
-
-    if (items && items.length > 0) {
-      validatedItems = [];
-
-      for (const item of items) {
-        const {
-          inventory_item_id,
-          quantity = 0,
-          weight = 0,
-          received_quantity = 0,
-          received_weight = 0,
-          unit_id,
-          rate,
-          discount = 0,
-          tax = 0,
-          total = 0,
-        } = item;
-
-        // Validation
-        if (!inventory_item_id || !unit_id || rate === undefined) {
-          return res.status(400).json({
-            success: false,
-            message: "Inventory item, unit and rate are required",
-          });
-        }
-
-        if (quantity <= 0 && weight <= 0) {
-          return res.status(400).json({
-            success: false,
-            message: "Either quantity or weight is required",
-          });
-        }
-
-        // ✅ Validate received quantities don't exceed ordered quantities
-        if (received_quantity > quantity) {
-          return res.status(400).json({
-            success: false,
-            message: "Received quantity cannot exceed ordered quantity",
-          });
-        }
-
-        if (received_weight > weight) {
-          return res.status(400).json({
-            success: false,
-            message: "Received weight cannot exceed ordered weight",
-          });
-        }
-
-        const inventory = await InventoryItem.findById(inventory_item_id);
-        if (!inventory) {
-          return res.status(404).json({
-            success: false,
-            message: "Inventory item not found",
-          });
-        }
-
-        validatedItems.push({
-          inventory_item_id,
-          quantity,
-          weight,
-          received_quantity,
-          received_weight,
-          unit_id,
-          rate,
-          discount,
-          tax,
-          total,
-        });
-      }
-    }
-
-    // ✅ Calculate overall PO status based on received quantities
-    let finalStatus = status || existingPO.status;
-    
-    if (items && items.length > 0) {
-      let totalOrderedQty = 0;
-      let totalReceivedQty = 0;
-      let totalOrderedWeight = 0;
-      let totalReceivedWeight = 0;
-
-      for (const item of validatedItems) {
-        totalOrderedQty += item.quantity || 0;
-        totalReceivedQty += item.received_quantity || 0;
-        totalOrderedWeight += item.weight || 0;
-        totalReceivedWeight += item.received_weight || 0;
-      }
-
-      // Auto-update status based on received quantities
-      if (totalReceivedQty === 0 && totalReceivedWeight === 0) {
-        finalStatus = "approved"; // Nothing received yet
-      } else if ((totalReceivedQty > 0 && totalReceivedQty < totalOrderedQty) || 
-                 (totalReceivedWeight > 0 && totalReceivedWeight < totalOrderedWeight)) {
-        finalStatus = "partially_received";
-      } else if ((totalReceivedQty >= totalOrderedQty) && 
-                 (totalReceivedWeight >= totalOrderedWeight)) {
-        finalStatus = "completed";
-      }
-    }
-
-    const updateData = {
-      supplier_id: supplier_id ?? existingPO.supplier_id,
-      branch: branch_id ?? existingPO.branch,
-      reference_no: reference_no ?? existingPO.reference_no,
-      order_date: order_date ? new Date(order_date) : existingPO.order_date,
-      currency: currency ?? existingPO.currency,
-      exchange_rate: exchange_rate ?? existingPO.exchange_rate,
-
-      items: validatedItems,
-
-      vat: vat ?? existingPO.vat,
-      discount: discount ?? existingPO.discount,
-      shipping_cost: shipping_cost ?? existingPO.shipping_cost,
-      subtotal: subtotal ?? existingPO.subtotal,
-      total_amount: total_amount ?? existingPO.total_amount,
-      grand_total: grand_total ?? existingPO.grand_total,
-
-      payment_status: payment_status ?? existingPO.payment_status,
-      status: finalStatus, // ✅ Updated status
-      notes: notes ?? existingPO.notes,
-    };
-
-    const updatedPO = await PurchaseOrder.findByIdAndUpdate(
-      id,
-      updateData,
-      { new: true, runValidators: true }
-    )
-      .populate("branch", "branch_name branch_code")
-      .populate("supplier_id", "supplier_name supplier_code phone email")
-      .populate("items.inventory_item_id", "name item_code")
-      .populate("items.unit_id", "name code")
-      .populate("created_by", "full_name email");
-
-    return res.status(200).json({
-      success: true,
-      message: "Purchase Order updated successfully",
-      data: updatedPO,
-    });
-
-  } catch (error) {
-    console.error("Update Purchase Order Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
-  }
-};
-
-
-
 
 
 export const getPOReceivedStatus = async (req, res) => {
@@ -1466,8 +753,8 @@ export const getPOReceivedStatus = async (req, res) => {
     const { id } = req.params;
 
     const purchaseOrder = await PurchaseOrder.findById(id)
-      .populate({
-        path: "items.inventory_item_id",
+    .populate({
+      path: "items.inventory_item_id",
         select: "name item_code unit_type category"
       })
       .populate({
@@ -1483,20 +770,20 @@ export const getPOReceivedStatus = async (req, res) => {
         select: "branch_name"
       });
 
-    if (!purchaseOrder) {
-      return res.status(404).json({
-        success: false,
-        message: "Purchase Order not found"
-      });
+      if (!purchaseOrder) {
+        return res.status(404).json({
+          success: false,
+          message: "Purchase Order not found"
+        });
     }
-
+    
     // ---------------- ITEM STATUS CALCULATION ----------------
     const itemWiseStatus = purchaseOrder.items.map(item => {
       const orderedQty = item.quantity || 0;
       const orderedWeight = item.weight || 0;
       const receivedQty = item.received_quantity || 0;
       const receivedWeight = item.received_weight || 0;
-
+      
       const qtyPercentage =
         orderedQty > 0 ? (receivedQty / orderedQty) * 100 : 0;
       const weightPercentage =
@@ -1535,7 +822,7 @@ export const getPOReceivedStatus = async (req, res) => {
 
         balance_quantity: orderedQty - receivedQty,
         balance_weight: orderedWeight - receivedWeight,
-
+        
         qty_percentage: Math.round(qtyPercentage),
         weight_percentage: Math.round(weightPercentage),
 
@@ -1553,7 +840,7 @@ export const getPOReceivedStatus = async (req, res) => {
     const receivedItems = itemWiseStatus.filter(
       item =>
         item.item_status === "received" ||
-        item.item_status === "partially_received"
+      item.item_status === "partially_received"
     );
 
     const pendingItems = itemWiseStatus.filter(
@@ -1565,9 +852,9 @@ export const getPOReceivedStatus = async (req, res) => {
       (acc, item) => ({
         total_items: acc.total_items + 1,
         completed_items:
-          acc.completed_items +
+        acc.completed_items +
           (item.item_status === "received" ? 1 : 0),
-        partial_items:
+          partial_items:
           acc.partial_items +
           (item.item_status === "partially_received" ? 1 : 0),
         pending_items:
@@ -1578,8 +865,8 @@ export const getPOReceivedStatus = async (req, res) => {
           acc.total_ordered_qty + item.ordered_quantity,
         total_received_qty:
           acc.total_received_qty + item.received_quantity,
-
-        total_ordered_value:
+          
+          total_ordered_value:
           acc.total_ordered_value + item.total_ordered_value,
         total_received_value:
           acc.total_received_value + item.total_received_value
@@ -1659,3 +946,1176 @@ export const getPOReceivedStatus = async (req, res) => {
     });
   }
 };
+
+
+
+export const createPurchaseOrder = async (req, res) => {
+  try {
+    const {
+      supplier_id,
+      branch_id,
+      reference_no,
+      order_date,
+      currency = "USD",
+      exchange_rate = 1,
+
+      vat = 0,
+      discount = 0,
+      shipping_cost = 0,
+
+      payment_status = "pending",
+      notes,
+      items = [],
+    } = req.body;
+
+    if (!branch_id || !supplier_id || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch, supplier and items are required",
+      });
+    }
+
+    const branch = await Branch.findById(branch_id);
+    if (!branch)
+      return res.status(404).json({ success: false, message: "Branch not found" });
+
+    const supplier = await Suppliers.findById(supplier_id);
+    if (!supplier)
+      return res.status(404).json({ success: false, message: "Supplier not found" });
+
+    const validatedItems = [];
+    let subtotal = 0;
+
+    for (const item of items) {
+      const {
+        inventory_item_id,
+        quantity = 0,
+        weight = 0,
+        unit_id,
+        rate,
+        discount = 0,
+        tax = 0,
+      } = item;
+
+      if (!inventory_item_id || !unit_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Inventory item and unit are required",
+        });
+      }
+
+      const inventory = await InventoryItem.findById(inventory_item_id);
+      if (!inventory) {
+        return res.status(404).json({
+          success: false,
+          message: "Inventory item not found",
+        });
+      }
+
+      const unit = await Unit.findById(unit_id);
+      if (!unit) {
+        return res.status(404).json({
+          success: false,
+          message: "Unit not found",
+        });
+      }
+
+      const finalRate = Number(rate ?? inventory.purchase_price);
+      let itemTotal = 0;
+
+      // // 🔥 UNIT BASED LOGIC
+      // if (unit.code === "GRAM" || unit.code === "KG") {
+      //   if (weight <= 0) {
+      //     return res.status(400).json({
+      //       success: false,
+      //       message: `Weight required for unit ${unit.code}`,
+      //     });
+      //   }
+      //   itemTotal = weight * finalRate;
+      // } else {
+      //   if (quantity >= 0) {
+      //     return res.status(400).json({
+      //       success: false,
+      //       message: `Quantity required for unit ${unit.code}`,
+      //     });
+      //   }
+      //   itemTotal = quantity * finalRate;
+      // }
+
+      // subtotal += itemTotal;
+
+        if (Number(weight) > 0) {
+    // weight GRAM me hai → KG me convert
+    const weightInKg = Number(weight) / 1000;
+    itemTotal = weightInKg * finalRate;
+  } else if (Number(quantity) > 0) {
+    itemTotal = Number(quantity) * finalRate;
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: "Either quantity or weight must be greater than zero",
+    });
+  }
+ if (finalRate <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Rate must be greater than zero",
+    });
+  }
+
+  subtotal += itemTotal;
+
+    validatedItems.push({
+    inventory_item_id,
+    purity: inventory.purity,
+    quantity,
+    weight,
+    unit_id,
+    rate: finalRate,
+    discount,
+    tax,
+    total: itemTotal,
+  });
+}
+
+    // const total_amount = subtotal - discount + vat + shipping_cost;
+    // const grand_total = total_amount;
+    const total_amount =
+  Number(subtotal) -
+  Number(discount || 0) +
+  Number(vat || 0) +
+  Number(shipping_cost || 0);
+
+const grand_total = total_amount;
+
+    const po = await PurchaseOrder.create({
+      supplier_id,
+      branch: branch_id,
+      reference_no,
+      order_date: order_date ? new Date(order_date) : new Date(),
+      currency,
+      exchange_rate,
+
+      items: validatedItems,
+
+      vat,
+      discount,
+      shipping_cost,
+      subtotal,
+      total_amount,
+      grand_total,
+
+      payment_status,
+      notes,
+      created_by: req.user?._id || null,
+    });
+
+    const populatedPO = await PurchaseOrder.findById(po._id)
+      .populate("branch", "branch_name branch_code")
+      .populate("supplier_id", "supplier_name supplier_code phone email")
+      .populate("items.inventory_item_id", "name item_code")
+      .populate("items.unit_id", "name code")
+      .populate("created_by", "full_name email");
+
+    return res.status(201).json({
+      success: true,
+      message: "Purchase Order created successfully",
+      data: populatedPO,
+    });
+  } catch (error) {
+    console.error("Create Purchase Order Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+
+
+
+// export const getAllPurchaseOrders = async (req, res) => {
+//   try {
+//     const { status, supplier_id, startDate, endDate, search } = req.query;
+
+//     const filter = {};
+//     if (status) filter.status = status;
+//     if (supplier_id) filter.supplier_id = supplier_id;
+
+//     if (startDate || endDate) {
+//       filter.createdAt = {};
+//       if (startDate) filter.createdAt.$gte = new Date(startDate);
+//       if (endDate) filter.createdAt.$lte = new Date(endDate);
+//     }
+
+//     if (search) {
+//       filter.$or = [
+//         { po_number: { $regex: search, $options: "i" } },
+//         { reference_no: { $regex: search, $options: "i" } },
+//         { notes: { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     const purchaseOrders = await PurchaseOrder.find(filter)
+//       .populate("branch", "branch_name branch_code")
+//       .populate("supplier_id", "supplier_name supplier_code phone email")
+//       .populate("items.inventory_item_id", "name item_code purity")
+//       .populate("items.unit_id", "name code")
+//       .populate("created_by", "full_name email")
+//       .sort({ createdAt: -1 });
+
+//     const response = purchaseOrders.map(po => {
+//       let subtotal = 0;
+
+//       const items = po.items.map(item => {
+//         const unitCode = item.unit_id?.code;
+//         let calculatedTotal = 0;
+
+//         // 🔥 UNIT BASED CALCULATION
+//         if (unitCode === "GRAM" || unitCode === "KG") {
+//           calculatedTotal = (item.weight || 0) * (item.rate || 0);
+//         } else {
+//           calculatedTotal = (item.quantity || 0) * (item.rate || 0);
+//         }
+
+//         subtotal += calculatedTotal;
+
+//         return {
+//           _id: item._id,
+
+//           inventory_item: item.inventory_item_id ? {
+//             _id: item.inventory_item_id._id,
+//             name: item.inventory_item_id.name,
+//             item_code: item.inventory_item_id.item_code,
+//             purity: item.inventory_item_id.purity,
+//           } : null,
+
+//           quantity: item.quantity,
+//           weight: item.weight,
+
+//           received_quantity: item.received_quantity,
+//           received_weight: item.received_weight,
+
+//           unit: item.unit_id ? {
+//             _id: item.unit_id._id,
+//             name: item.unit_id.name,
+//             code: item.unit_id.code,
+//           } : null,
+
+//           rate: item.rate,
+//           calculated_total: calculatedTotal, // ✅ IMPORTANT
+//           discount: item.discount,
+//           tax: item.tax,
+//         };
+//       });
+
+//       const total_amount =
+//         subtotal -
+//         (po.discount || 0) +
+//         (po.vat || 0) +
+//         (po.shipping_cost || 0);
+
+//       return {
+//         _id: po._id,
+//         po_number: po.po_number,
+//         reference_no: po.reference_no,
+
+//         branch: po.branch ? {
+//           _id: po.branch._id,
+//           name: po.branch.branch_name,
+//           code: po.branch.branch_code,
+//         } : null,
+
+//         supplier: po.supplier_id ? {
+//           _id: po.supplier_id._id,
+//           name: po.supplier_id.supplier_name,
+//           code: po.supplier_id.supplier_code,
+//           phone: po.supplier_id.phone,
+//           email: po.supplier_id.email,
+//         } : null,
+
+//         order_date: po.order_date,
+//         currency: po.currency,
+//         exchange_rate: po.exchange_rate,
+
+//         vat: po.vat,
+//         discount: po.discount,
+//         shipping_cost: po.shipping_cost,
+
+//         subtotal,
+//         total_amount,
+//         grand_total: total_amount,
+
+//         payment_status: po.payment_status,
+//         status: po.status,
+//         notes: po.notes,
+
+//         items,
+
+//         created_by: po.created_by ? {
+//           _id: po.created_by._id,
+//           name: po.created_by.full_name,
+//           email: po.created_by.email,
+//         } : null,
+
+//         createdAt: po.createdAt,
+//         updatedAt: po.updatedAt,
+//       };
+//     });
+
+//     return res.status(200).json({
+//       success: true,
+//       count: response.length,
+//       data: response,
+//     });
+
+//   } catch (error) {
+//     console.error("Get Purchase Orders Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//     });
+//   }
+// };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
+      // export const updatePurchaseOrder = async (req, res) => {
+      //   try {
+      //     const { id } = req.params;
+      
+      //     const {
+      //       supplier_id,
+      //       branch_id,
+      //       reference_no,
+      //       order_date,
+      //       currency,
+      //       exchange_rate,
+      
+      //       vat,
+      //       discount,
+      //       shipping_cost,
+      //       subtotal,
+      //       total_amount,
+      //       grand_total,
+      
+      //       payment_status,
+      //       status,
+      //       notes,
+      //       items,
+      //     } = req.body;
+      
+      //     const existingPO = await PurchaseOrder.findById(id);
+      //     if (!existingPO) {
+      //       return res.status(404).json({
+      //         success: false,
+      //         message: "Purchase Order not found",
+      //       });
+      //     }
+      
+      //     // Validate branch
+      //     if (branch_id) {
+      //       if (!mongoose.Types.ObjectId.isValid(branch_id)) {
+      //         return res.status(400).json({ success: false, message: "Invalid branch ID" });
+      //       }
+      //       const branch = await Branch.findById(branch_id);
+      //       if (!branch) {
+      //         return res.status(404).json({ success: false, message: "Branch not found" });
+      //       }
+      //     }
+      
+      //     // Validate supplier
+      //     if (supplier_id) {
+      //       if (!mongoose.Types.ObjectId.isValid(supplier_id)) {
+      //         return res.status(400).json({ success: false, message: "Invalid supplier ID" });
+      //       }
+      //       const supplier = await Suppliers.findById(supplier_id);
+      //       if (!supplier) {
+      //         return res.status(404).json({ success: false, message: "Supplier not found" });
+      //       }
+      //     }
+      
+      //     let validatedItems = existingPO.items;
+      
+      //     if (items && items.length > 0) {
+      //       validatedItems = [];
+      
+      //       for (const item of items) {
+      //         const {
+      //           inventory_item_id,
+      //           quantity = 0,
+      //           weight = 0,
+      //           received_quantity = 0,
+      //           received_weight = 0,
+      //           unit_id,
+      //           rate,
+      //           discount = 0,
+      //           tax = 0,
+      //           total = 0,
+      //         } = item;
+      
+      //         // Validation
+      //         if (!inventory_item_id || !unit_id || rate === undefined) {
+      //           return res.status(400).json({
+      //             success: false,
+      //             message: "Inventory item, unit and rate are required",
+      //           });
+      //         }
+      
+      //         if (quantity <= 0 && weight <= 0) {
+      //           return res.status(400).json({
+      //             success: false,
+      //             message: "Either quantity or weight is required",
+      //           });
+      //         }
+      
+      //         // ✅ Validate received quantities don't exceed ordered quantities
+      //         if (received_quantity > quantity) {
+      //           return res.status(400).json({
+      //             success: false,
+      //             message: "Received quantity cannot exceed ordered quantity",
+      //           });
+      //         }
+      
+      //         if (received_weight > weight) {
+      //           return res.status(400).json({
+      //             success: false,
+      //             message: "Received weight cannot exceed ordered weight",
+      //           });
+      //         }
+      
+      //         const inventory = await InventoryItem.findById(inventory_item_id);
+      //         if (!inventory) {
+      //           return res.status(404).json({
+      //             success: false,
+      //             message: "Inventory item not found",
+      //           });
+      //         }
+      
+      //         validatedItems.push({
+      //           inventory_item_id,
+      //           quantity,
+      //           weight,
+      //           received_quantity,
+      //           received_weight,
+      //           unit_id,
+      //           rate,
+      //           discount,
+      //           tax,
+      //           total,
+      //         });
+      //       }
+      //     }
+      
+      //     // ✅ Calculate overall PO status based on received quantities
+      //     let finalStatus = status || existingPO.status;
+          
+      //     if (items && items.length > 0) {
+      //       let totalOrderedQty = 0;
+      //       let totalReceivedQty = 0;
+      //       let totalOrderedWeight = 0;
+      //       let totalReceivedWeight = 0;
+      
+      //       for (const item of validatedItems) {
+      //         totalOrderedQty += item.quantity || 0;
+      //         totalReceivedQty += item.received_quantity || 0;
+      //         totalOrderedWeight += item.weight || 0;
+      //         totalReceivedWeight += item.received_weight || 0;
+      //       }
+      
+      //       // Auto-update status based on received quantities
+      //       if (totalReceivedQty === 0 && totalReceivedWeight === 0) {
+      //         finalStatus = "approved"; // Nothing received yet
+      //       } else if ((totalReceivedQty > 0 && totalReceivedQty < totalOrderedQty) || 
+      //                  (totalReceivedWeight > 0 && totalReceivedWeight < totalOrderedWeight)) {
+      //         finalStatus = "partially_received";
+      //       } else if ((totalReceivedQty >= totalOrderedQty) && 
+      //                  (totalReceivedWeight >= totalOrderedWeight)) {
+      //         finalStatus = "completed";
+      //       }
+      //     }
+      
+      //     const updateData = {
+      //       supplier_id: supplier_id ?? existingPO.supplier_id,
+      //       branch: branch_id ?? existingPO.branch,
+      //       reference_no: reference_no ?? existingPO.reference_no,
+      //       order_date: order_date ? new Date(order_date) : existingPO.order_date,
+      //       currency: currency ?? existingPO.currency,
+      //       exchange_rate: exchange_rate ?? existingPO.exchange_rate,
+      
+      //       items: validatedItems,
+      
+      //       vat: vat ?? existingPO.vat,
+      //       discount: discount ?? existingPO.discount,
+      //       shipping_cost: shipping_cost ?? existingPO.shipping_cost,
+      //       subtotal: subtotal ?? existingPO.subtotal,
+      //       total_amount: total_amount ?? existingPO.total_amount,
+      //       grand_total: grand_total ?? existingPO.grand_total,
+      
+      //       payment_status: payment_status ?? existingPO.payment_status,
+      //       status: finalStatus, // ✅ Updated status
+      //       notes: notes ?? existingPO.notes,
+      //     };
+      
+      //     const updatedPO = await PurchaseOrder.findByIdAndUpdate(
+      //       id,
+      //       updateData,
+      //       { new: true, runValidators: true }
+      //     )
+      //       .populate("branch", "branch_name branch_code")
+      //       .populate("supplier_id", "supplier_name supplier_code phone email")
+      //       .populate("items.inventory_item_id", "name item_code")
+      //       .populate("items.unit_id", "name code")
+      //       .populate("created_by", "full_name email");
+      
+      //     return res.status(200).json({
+      //       success: true,
+      //       message: "Purchase Order updated successfully",
+      //       data: updatedPO,
+      //     });
+      
+      //   } catch (error) {
+      //     console.error("Update Purchase Order Error:", error);
+      //     return res.status(500).json({
+      //       success: false,
+      //       message: error.message || "Internal server error",
+      //     });
+      //   }
+      // };
+
+
+
+
+//       export const updatePurchaseOrder = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const existingPO = await PurchaseOrder.findById(id);
+//     if (!existingPO) {
+//       return res.status(404).json({ success: false, message: "Purchase Order not found" });
+//     }
+
+//     const {
+//       supplier_id,
+//       branch_id,
+//       reference_no,
+//       order_date,
+//       currency,
+//       exchange_rate,
+//       vat = 0,
+//       discount = 0,
+//       shipping_cost = 0,
+//       payment_status,
+//       status,
+//       notes,
+//       items = [],
+      
+//     } = req.body;
+
+//     let validatedItems = [];
+//     let subtotal = 0;
+
+//     if (items.length > 0) {
+//       for (const item of items) {
+//         const {
+//           inventory_item_id,
+//           quantity = 0,
+//           weight = 0,
+//           received_quantity = 0,
+//           received_weight = 0,
+//           unit_id,
+//           rate,
+//           discount: itemDiscount = 0,
+//           tax = 0,
+//         } = item;
+
+//         if (!inventory_item_id || !unit_id || rate === undefined) {
+//           return res.status(400).json({
+//             success: false,
+//             message: "Inventory item, unit and rate are required",
+//           });
+//         }
+
+//         if (quantity <= 0 && weight <= 0) {
+//           return res.status(400).json({
+//             success: false,
+//             message: "Either quantity or weight is required",
+//           });
+//         }
+
+//         const unit = await Unit.findById(unit_id);
+//         if (!unit) {
+//           return res.status(404).json({ success: false, message: "Unit not found" });
+//         }
+
+//         // 🔥 UNIT BASED TOTAL CALC
+//         let itemTotal = 0;
+//         if (["GRAM", "KG"].includes(unit.code)) {
+//           itemTotal = weight * rate;
+//         } else {
+//           itemTotal = quantity * rate;
+//         }
+
+//         subtotal += itemTotal;
+
+//         validatedItems.push({
+//           inventory_item_id,
+//           quantity,
+//           weight,
+//           received_quantity,
+//           received_weight,
+//           unit_id,
+//           rate,
+//           discount: itemDiscount,
+//           tax,
+//           total: itemTotal,
+//         });
+//       }
+//     } else {
+//       validatedItems = existingPO.items;
+//       subtotal = existingPO.subtotal;
+//     }
+
+//     const total_amount =
+//       subtotal -
+//       discount +
+//       vat +
+//       shipping_cost;
+
+//     const finalStatus = status || existingPO.status;
+
+//     const updatedPO = await PurchaseOrder.findByIdAndUpdate(
+//       id,
+//       {
+//         supplier_id: supplier_id ?? existingPO.supplier_id,
+//         branch: branch_id ?? existingPO.branch,
+//         reference_no: reference_no ?? existingPO.reference_no,
+//         order_date: order_date ? new Date(order_date) : existingPO.order_date,
+//         currency: currency ?? existingPO.currency,
+//         exchange_rate: exchange_rate ?? existingPO.exchange_rate,
+
+//         items: validatedItems,
+
+//         vat,
+//         discount,
+//         shipping_cost,
+//         subtotal,
+//         total_amount,
+//         grand_total: total_amount,
+
+//         payment_status: payment_status ?? existingPO.payment_status,
+//         status: finalStatus,
+//         notes: notes ?? existingPO.notes,
+//       },
+//       { new: true, runValidators: true }
+//     )
+//       .populate("branch", "branch_name branch_code")
+//       .populate("supplier_id", "supplier_name supplier_code phone email")
+//       .populate("items.inventory_item_id", "name item_code purity")
+//       .populate("items.unit_id", "name code")
+//       .populate("created_by", "full_name email");
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Purchase Order updated successfully",
+//       data: updatedPO,
+//     });
+
+//   } catch (error) {
+//     console.error("Update Purchase Order Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Internal server error",
+//     });
+//   }
+// };
+
+
+export const getAllPurchaseOrders = async (req, res) => {
+  try {
+    const purchaseOrders = await PurchaseOrder.find()
+      .populate("branch", "branch_name branch_code")
+      .populate("supplier_id", "supplier_name supplier_code phone email")
+      .populate("items.inventory_item_id", "name item_code purity")
+      .populate("items.unit_id", "name code")
+      .populate("created_by", "full_name email")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      message: "Purchase Order fetched successfully",
+      data: purchaseOrders,
+    });
+  } catch (error) {
+    console.error("Get Purchase Orders Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+
+
+
+
+// export const updatePurchaseOrder = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const existingPO = await PurchaseOrder.findById(id);
+
+//     if (!existingPO) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Purchase Order not found",
+//       });
+//     }
+
+//     const {
+//       supplier_id,
+//       branch_id,
+//       reference_no,
+//       order_date,
+//       currency,
+//       exchange_rate,
+
+//       vat = 0,
+//       discount = 0,
+//       shipping_cost = 0,
+//       status,
+//       notes,
+//       items = [],
+
+//       // 🔥 PAYMENT
+//       additional_payment = 0,
+//       payment_date,
+//       payment_method,
+//       payment_notes,
+//     } = req.body;
+
+//     let validatedItems = [];
+//     let subtotal = 0;
+
+//     // ================= ITEMS CALCULATION =================
+//     if (items.length > 0) {
+//       for (const item of items) {
+//         const {
+//           inventory_item_id,
+//           quantity = 0,
+//           weight = 0, // 👈 GRAM
+//           received_quantity = 0,
+//           received_weight = 0,
+//           unit_id,
+//           rate,
+//           discount: itemDiscount = 0,
+//           tax = 0,
+//         } = item;
+
+//         if (!inventory_item_id || !unit_id || rate === undefined) {
+//           return res.status(400).json({
+//             success: false,
+//             message: "Inventory item, unit and rate are required",
+//           });
+//         }
+
+//         const inventory = await InventoryItem.findById(inventory_item_id);
+//         if (!inventory) {
+//           return res.status(404).json({
+//             success: false,
+//             message: "Inventory item not found",
+//           });
+//         }
+
+//         const finalRate = Number(rate ?? inventory.purchase_price);
+//         let itemTotal = 0;
+
+//         // 🔥 SAME LOGIC AS CREATE
+//         if (Number(weight) > 0) {
+//           // gram → kg
+//           const weightInKg = Number(weight) / 1000;
+//           itemTotal = weightInKg * finalRate;
+//         } else if (Number(quantity) > 0) {
+//           itemTotal = Number(quantity) * finalRate;
+//         } else {
+//           return res.status(400).json({
+//             success: false,
+//             message: "Either quantity or weight must be greater than zero",
+//           });
+//         }
+
+//         if (finalRate <= 0) {
+//           return res.status(400).json({
+//             success: false,
+//             message: "Rate must be greater than zero",
+//           });
+//         }
+
+//         subtotal += itemTotal;
+
+//         validatedItems.push({
+//           inventory_item_id,
+//           purity: inventory.purity,
+//           quantity,
+//           weight,
+//           received_quantity,
+//           received_weight,
+//           unit_id,
+//           rate: finalRate,
+//           discount: itemDiscount,
+//           tax,
+//           total: itemTotal,
+//         });
+//       }
+//     } else {
+//       // agar items nahi bheje → existing use karo
+//       validatedItems = existingPO.items;
+//       subtotal = existingPO.subtotal;
+//     }
+
+//     // 🔥 ROUND ONLY FINAL VALUES
+//     subtotal = Math.round(subtotal);
+
+//     const total_amount = Math.round(
+//       subtotal -
+//       Number(discount || 0) +
+//       Number(vat || 0) +
+//       Number(shipping_cost || 0)
+//     );
+
+//     // ================= PAYMENT CALC =================
+//     const prevPaid = Number(existingPO.paid_amount || 0);
+//     const addPay = Number(additional_payment || 0);
+
+//     if (addPay < 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Additional payment cannot be negative",
+//       });
+//     }
+
+//     const newPaidAmount = prevPaid + addPay;
+//     const balance_amount = total_amount - newPaidAmount;
+
+//     let payment_status = "pending";
+//     if (newPaidAmount === 0) payment_status = "pending";
+//     else if (balance_amount > 0) payment_status = "partial";
+//     else payment_status = "paid";
+
+//     // ================= UPDATE =================
+//     const updatedPO = await PurchaseOrder.findByIdAndUpdate(
+//       id,
+//       {
+//         supplier_id: supplier_id ?? existingPO.supplier_id,
+//         branch: branch_id ?? existingPO.branch,
+//         reference_no: reference_no ?? existingPO.reference_no,
+//         order_date: order_date ? new Date(order_date) : existingPO.order_date,
+//         currency: currency ?? existingPO.currency,
+//         exchange_rate: exchange_rate ?? existingPO.exchange_rate,
+
+//         items: validatedItems,
+
+//         vat,
+//         discount,
+//         shipping_cost,
+//         subtotal,
+//         total_amount,
+//         grand_total: total_amount,
+
+//         // 🔥 PAYMENT SAVE
+//         additional_payment: addPay,
+//         paid_amount: newPaidAmount,
+//         balance_amount,
+//         payment_status,
+//         payment_date,
+//         payment_method,
+//         payment_notes,
+
+//         status: status ?? existingPO.status,
+//         notes: notes ?? existingPO.notes,
+//       },
+//       { new: true, runValidators: true }
+//     );
+
+//     return res.status(200).json({
+//       success: true,
+//       message: "Purchase Order updated successfully",
+//       data: updatedPO,
+//     });
+//   } catch (error) {
+//     console.error("Update Purchase Order Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Internal server error",
+//     });
+//   }
+// };
+
+
+export const updatePurchaseOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingPO = await PurchaseOrder.findById(id);
+    if (!existingPO) {
+      return res.status(404).json({
+        success: false,
+        message: "Purchase Order not found",
+      });
+    }
+
+    const {
+      supplier_id,
+      branch_id,
+      reference_no,
+      order_date,
+      currency,
+      exchange_rate,
+
+      vat = 0,
+      discount = 0,
+      shipping_cost = 0,
+      status,
+      notes,
+      items = [],
+
+      additional_payment = 0,
+      payment_date,
+      payment_method,
+      payment_notes,
+    } = req.body;
+
+    let validatedItems = [];
+    let subtotal = 0;
+
+    // ================= ITEMS =================
+    if (items.length > 0) {
+      for (const item of items) {
+        const {
+          inventory_item_id,
+          quantity = 0,
+          weight = 0, // ✅ GRAM ONLY
+          received_quantity = 0,
+          received_weight = 0,
+          unit_id,
+          rate,
+          discount: itemDiscount = 0,
+          tax = 0,
+        } = item;
+
+        if (!inventory_item_id || !unit_id || rate === undefined) {
+          return res.status(400).json({
+            success: false,
+            message: "Inventory item, unit and rate are required",
+          });
+        }
+
+          const unit = await Unit.findById(unit_id);
+    if (!unit) {
+      return res.status(404).json({
+        success: false,
+        message: "Unit not found",
+      });
+    }
+
+        const finalRate = Number(rate);
+        if (finalRate <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Rate must be greater than zero",
+          });
+        }
+
+        const qty = Number(quantity);
+        const wtGram = Number(weight);
+
+        let itemTotal = 0;
+            const unitName =
+      unit.code?.toLowerCase() || unit.name?.toLowerCase() || "";
+
+
+    //     // 🔥 FINAL CORRECT LOGIC
+    //     if (wtGram > 0) {
+    //       // GRAM → KG (FLOAT SAFE)
+    //       itemTotal = (wtGram / 1000) * finalRate;
+    //     } else if (qty > 0) {
+    //       itemTotal = qty * finalRate;
+    //     } else {
+    //       return res.status(400).json({
+    //         success: false,
+    //         message: "Either quantity or weight must be greater than zero",
+    //       });
+    //     }
+
+    //     // ❌ NO ROUND HERE
+    //     subtotal += itemTotal;
+
+    //     validatedItems.push({
+    //       inventory_item_id,
+    //       quantity: qty,
+    //       weight: wtGram,
+    //       received_quantity,
+    //       received_weight,
+    //       unit_id,
+    //       rate: finalRate,
+    //       discount: itemDiscount,
+    //       tax,
+    //       total: itemTotal, // decimal ok
+    //     });
+    //   }
+    // } else {
+    //   validatedItems = existingPO.items;
+    //   subtotal = Number(existingPO.subtotal || 0);
+    // }
+
+
+
+
+     if (wtGram > 0) {
+      if (unitName.includes("kg")) {
+        // weight already in KG
+        itemTotal = wtGram * finalRate;
+      } else if (unitName.includes("g")) {
+        // GRAM → KG
+        itemTotal = (wtGram / 1000) * finalRate;
+      } else {
+        // unknown weight unit → assume gram (safe)
+        itemTotal = (wtGram / 1000) * finalRate;
+      }
+    } else if (qty > 0) {
+      itemTotal = qty * finalRate;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Either quantity or weight must be greater than zero",
+      });
+    }
+
+    subtotal += itemTotal;
+
+    validatedItems.push({
+      inventory_item_id,
+      quantity: qty,
+      weight: wtGram,
+      received_quantity,
+      received_weight,
+      unit_id,
+      rate: finalRate,
+      discount: itemDiscount,
+      tax,
+      total: itemTotal, // decimal ok internally
+    });
+  }
+} else {
+  validatedItems = existingPO.items;
+  subtotal = Number(existingPO.subtotal || 0);
+}
+
+    // ================= FINAL TOTAL =================
+    const roundedSubtotal = Math.round(subtotal);
+
+    const total_amount = Math.round(
+      roundedSubtotal -
+        Number(discount || 0) +
+        Number(vat || 0) +
+        Number(shipping_cost || 0)
+    );
+
+    // ================= PAYMENT =================
+    const prevPaid = Number(existingPO.paid_amount || 0);
+    const addPay = Number(additional_payment || 0);
+
+    const newPaidAmount = prevPaid + addPay;
+    const balance_amount = total_amount - newPaidAmount;
+
+    let payment_status = "pending";
+    if (newPaidAmount === 0) payment_status = "pending";
+    else if (balance_amount > 0) payment_status = "partial";
+    else payment_status = "paid";
+
+    const updatedPO = await PurchaseOrder.findByIdAndUpdate(
+      id,
+      {
+        supplier_id: supplier_id ?? existingPO.supplier_id,
+        branch: branch_id ?? existingPO.branch,
+        reference_no: reference_no ?? existingPO.reference_no,
+        order_date: order_date ? new Date(order_date) : existingPO.order_date,
+        currency: currency ?? existingPO.currency,
+        exchange_rate: exchange_rate ?? existingPO.exchange_rate,
+
+        items: validatedItems,
+
+        vat,
+        discount,
+        shipping_cost,
+        subtotal: roundedSubtotal,
+        total_amount,
+        grand_total: total_amount,
+
+        additional_payment: addPay,
+        paid_amount: newPaidAmount,
+        balance_amount,
+        payment_status,
+        payment_date,
+        payment_method,
+        payment_notes,
+
+        status: status ?? existingPO.status,
+        notes: notes ?? existingPO.notes,
+      },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Purchase Order updated successfully",
+      data: updatedPO,
+    });
+  } catch (error) {
+    console.error("Update Purchase Order Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+};
+

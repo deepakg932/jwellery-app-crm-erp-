@@ -1,5 +1,3 @@
-
-
 import mongoose from "mongoose";
 
 const PurchaseOrderSchema = new mongoose.Schema(
@@ -37,12 +35,15 @@ const PurchaseOrderSchema = new mongoose.Schema(
           required: true,
         },
 
+        purity: {
+          type: String,
+        },
+
         quantity: { type: Number, default: 0 },
         weight: { type: Number, default: 0 },
 
         received_quantity: { type: Number, default: 0 },
         received_weight: { type: Number, default: 0 },
-
 
         unit_id: {
           type: mongoose.Schema.Types.ObjectId,
@@ -50,7 +51,7 @@ const PurchaseOrderSchema = new mongoose.Schema(
           required: true,
         },
 
-        rate: { type: Number, required: true },              
+        rate: { type: Number, required: true },
         // purchase_price: { type: Number, required: true },   // snapshot
         // net_unit_cost: { type: Number, required: true },    // landed cost
 
@@ -68,6 +69,29 @@ const PurchaseOrderSchema = new mongoose.Schema(
     total_amount: { type: Number, default: 0 },
     grand_total: { type: Number, default: 0 },
 
+
+
+
+
+
+
+ // 🔥 PAYMENT FIELDS (NEW)
+    paid_amount: { type: Number, default: 0 },
+    balance_amount: { type: Number, default: 0 },
+    additional_payment: { type: Number, default: 0 },
+
+    payment_date: { type: Date },
+    payment_method: { type: String },
+    payment_notes: { type: String },
+    
+
+
+
+
+
+
+
+
     payment_status: {
       type: String,
       enum: ["pending", "paid", "partial"],
@@ -76,7 +100,14 @@ const PurchaseOrderSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "approved", "partially_received", "received", "returned", "cancelled"],
+      enum: [
+        "draft",
+        "approved",
+        "partially_received",
+        "received",
+        "returned",
+        "cancelled",
+      ],
       default: "draft",
     },
 
@@ -88,8 +119,7 @@ const PurchaseOrderSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("PurchaseOrder", PurchaseOrderSchema);
-

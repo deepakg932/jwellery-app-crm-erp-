@@ -12,4 +12,4 @@ const storage = multer.diskStorage({
 
 
 
-export const jobStageUpload = multer({ storage });
+export const jobStageUpload = multer({ storage })

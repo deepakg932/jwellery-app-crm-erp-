@@ -4,6 +4,9 @@ import InventoryCategory from "../Models/models/InventoryCategory.js";
 import InventorySubCategory from "../Models/models/inventorySubCategory.js";
 import Supplier from "../Models/models/SuppliersModel.js";
 import Branch from "../Models/models/Branch.js";
+import { generateBarcodeBuffer } from "../utils/barcode.js";
+import fs from "fs";
+import path from "path";
 
 
 
@@ -33,6 +36,7 @@ export const createInventoryItem = async (req, res) => {
     const {
       name,
       category,
+      branch,
       sub_category,
       purity,
       description,
@@ -43,6 +47,9 @@ export const createInventoryItem = async (req, res) => {
       supplier,
       status = "active",
     } = req.body;
+
+    const BASE_URL = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+
 
     if (!name || !category || !purchase_price) {
       return res.status(400).json({
@@ -80,7 +87,9 @@ export const createInventoryItem = async (req, res) => {
 
     let imageUrl = null;
     if (req.file) {
-      imageUrl = `${req.protocol}://${req.get("host")}/uploads/inventory/${req.file.filename}`;
+      imageUrl = `${BASE_URL}/uploads/inventory/${req.file.filename}`;
+
+      // imageUrl = `${req.protocol}://${req.get("host")}/uploads/inventory/${req.file.filename}`;
     }
 
     // ================= PRICE CALCULATION =================
@@ -95,9 +104,41 @@ export const createInventoryItem = async (req, res) => {
     const tax_amount = priceAfterDiscount * (tax / 100);
     const final_price = priceAfterDiscount + tax_amount;
 
+
+
+
+// BARCODE GENERATION
+const barcodeBuffer = await generateBarcodeBuffer(item_code);
+console.log(barcodeBuffer,"barcodeBuffer")
+
+const barcodeDir = "uploads/barcodes";
+console.log(barcodeDir,"barcodeDir")
+if (!fs.existsSync(barcodeDir)) {
+  fs.mkdirSync(barcodeDir, { recursive: true });
+}
+
+const barcodeFileName = `${item_code}.png`;
+console.log(barcodeFileName,"barcodeFileName")
+const barcodePath = path.join(barcodeDir, barcodeFileName);
+
+fs.writeFileSync(barcodePath, barcodeBuffer);
+
+// const barcodeUrl = `${req.protocol}://${req.get("host")}/uploads/barcodes/${barcodeFileName}`;
+
+const barcodeUrl = `${BASE_URL}/uploads/barcodes/${barcodeFileName}`;
+
+console.log(barcodeUrl,"barcodeUrl")
+
+
+
+
+
+
+
     const item = await InventoryItem.create({
       item_code,
       name: name.trim(),
+      branch,
       category,
       sub_category: sub_category || null,
       purity,
@@ -111,14 +152,30 @@ export const createInventoryItem = async (req, res) => {
       final_price,
       supplier: supplier || null,
       images: imageUrl ? [imageUrl] : [],
+      barcode:barcodeUrl,
       status,
       created_by: req.user?._id || null,
     });
 
+    console.log(item,"item")
+
+
+
+
+
+
+
+
+
+
+
+
+
     const populatedItem = await InventoryItem.findById(item._id)
       .populate("supplier", "supplier_name phone email address")
       .populate("category", "name")
-      .populate("sub_category", "name");
+      .populate("sub_category", "name")
+      .populate("branch","branch_name")
 
     return res.status(201).json({
       success: true,
@@ -169,6 +226,10 @@ export const getInventoryItems = async (req, res) => {
       .populate({
         path: "sub_category",
         select: "name"
+      })
+      .populate({
+        path:"branch",
+        select:"branch_name"
       })
   //       .populate({
   //   path:"created_by",
@@ -290,6 +351,7 @@ export const updateInventoryItem = async (req, res) => {
       name,
       category,
       sub_category,
+      branch,
       purity,
       description,
       purchase_price,
@@ -310,6 +372,38 @@ export const updateInventoryItem = async (req, res) => {
       return res.status(404).json({success: false,message: "Inventory item not found"});
     }
 
+
+
+let barcodeUrl = itemExists.barcode;
+
+
+const regenerateBarcode = req.body.regenerate_barcode === "true";
+
+if (!barcodeUrl || regenerateBarcode) {
+  const barcodeBuffer = await generateBarcodeBuffer(itemExists.item_code);
+
+  const barcodeDir = "uploads/barcodes";
+  if (!fs.existsSync(barcodeDir)) {
+    fs.mkdirSync(barcodeDir, { recursive: true });
+  }
+
+  const barcodeFileName = `${itemExists.item_code}.png`;
+  const barcodePath = path.join(barcodeDir, barcodeFileName);
+
+  fs.writeFileSync(barcodePath, barcodeBuffer);
+
+  // barcodeUrl = `${req.protocol}://${req.get("host")}/uploads/barcodes/${barcodeFileName}`;
+  const barcodeUrl = `${BASE_URL}/uploads/barcodes/${barcodeFileName}`;
+}
+
+
+
+
+
+
+
+
+
     if (category && !mongoose.Types.ObjectId.isValid(category)) {
       return res.status(400).json({success: false,message: "Invalid category ID"});
     }
@@ -317,6 +411,25 @@ export const updateInventoryItem = async (req, res) => {
     if (sub_category && !mongoose.Types.ObjectId.isValid(sub_category)) {
       return res.status(400).json({success: false,message: "Invalid sub category ID"});
     }
+
+
+    if (branch && !mongoose.Types.ObjectId.isValid(branch)) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid branch ID"
+  });
+}
+
+
+if (branch) {
+  const branchExists = await Branch.findById(branch);
+  if (!branchExists) {
+    return res.status(404).json({
+      success: false,
+      message: "Branch not found"
+    });
+  }
+}
 
 
     if (category) {
@@ -344,7 +457,8 @@ export const updateInventoryItem = async (req, res) => {
     let imageUrl = null;
     console.log(imageUrl,"imageUrl")
     if (req.file) {
-      imageUrl = `${req.protocol}://${req.get("host")}/uploads/inventory/${req.file.filename}`;
+      // imageUrl = `${req.protocol}://${req.get("host")}/uploads/inventory/${req.file.filename}`;
+      imageUrl = `${BASE_URL}/uploads/inventory/${req.file.filename}`;
     }
 
  
@@ -367,6 +481,9 @@ export const updateInventoryItem = async (req, res) => {
       ...(name && { name: name.trim() }),
       ...(category && { category }),
       ...(sub_category !== undefined && { sub_category: sub_category || null }),
+
+      
+  ...(branch !== undefined && { branch: branch || null }),
       ...(purity !== undefined && { purity }),
       ...(description !== undefined && { description }),
       ...(purchase_price !== undefined && { purchase_price: Number(purchase_price) }),
@@ -378,7 +495,8 @@ export const updateInventoryItem = async (req, res) => {
       ...(tax_amount !== undefined && { tax_amount }),
       ...(final_price !== undefined && { final_price }),
       ...(supplier !== undefined && { supplier: supplier || null }),
-      ...(status && { status })
+      ...(status && { status }),
+      ...(barcodeUrl && { barcode: barcodeUrl }),
     };
 
    
@@ -403,7 +521,11 @@ export const updateInventoryItem = async (req, res) => {
       .populate({
         path: "sub_category",
         select: "name"
-      });
+      })
+      .populate({
+        path:"branch",
+        select:"branc_name"
+      })
 
     return res.status(200).json({success: true,message: "Inventory item updated successfully",data: updatedItem});
 

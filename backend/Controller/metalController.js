@@ -1,75 +1,84 @@
 import { MetalType } from "../Models/models/shared.js";
 import Metal from "../Models/models/MetalTypeModel.js"
 
-export const createMetal = async (req, res) => {
-  try {
-    const { name } = req.body;
-    console.log(name,"name")
-
-    if (!name) {
-      return res.status(400).json({ success: false, message: "Metal name is required" });
-    }
-// const baseUrl = `${req.protocol}://${req.headers.host}`;
-    const baseUrl = `${req.protocol}://${req.get("host")}`; 
-    console.log(baseUrl,"baseUrl")
-
-   const metal = new Metal({
-    name,
-  image: req.file ? `/uploads/metals/${req.file.filename}` : null,
-  imageType: "metal"
-
-});
-
-
-    const saved = await metal.save();
-
-    const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
-
-    return res.json({  success: true,  metal: {...saved._doc,fullImageUrl}
-    });
-
-  } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
-  }
-};
-
-
 // export const createMetal = async (req, res) => {
 //   try {
 //     const { name } = req.body;
+//     console.log(name,"name")
 
 //     if (!name) {
 //       return res.status(400).json({ success: false, message: "Metal name is required" });
 //     }
+// // const baseUrl = `${req.protocol}://${req.headers.host}`;
+//     // const baseUrl = `${req.protocol}://${req.get("host")}`; 
+//        const baseUrl = process.env.APP_URL; // ✅ ENV URL
+//     console.log(baseUrl,"baseUrl")
 
-//     // AFTER adding app.set("trust proxy", true)
-//     const baseUrl = `${req.protocol}://${req.headers.host}`;
-//     console.log("PROTOCOL =", req.protocol);
-// console.log("HOST =", req.headers.host);
+//    const metal = new Metal({
+//     name,
+//   image: req.file ? `/uploads/metals/${req.file.filename}` : null,
+//   imageType: "metal"
 
+// });
 
-//     const metal = new Metal({
-//       name,
-//       image: req.file ? `/uploads/metals/${req.file.filename}` : null,
-//       imageType: "metal"
-//     });
 
 //     const saved = await metal.save();
 
 //     const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
 
-//     return res.json({
+
+//      return res.json({
 //       success: true,
 //       metal: {
 //         ...saved._doc,
-//         fullImageUrl
-//       }
+//         fullImageUrl: saved.image ? `${baseUrl}${saved.image}` : null,
+//       },
+  
+
+//     // return res.json({  success: true,  metal: {...saved._doc,fullImageUrl}
 //     });
 
 //   } catch (err) {
 //     return res.status(500).json({ success: false, message: err.message });
 //   }
 // };
+
+export const createMetal = async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Metal name is required",
+      });
+    }
+
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+
+    const metal = new Metal({
+      name,
+      image: req.file ? `/uploads/metals/${req.file.filename}` : null,
+      imageType: "metal",
+    });
+
+    const saved = await metal.save();
+
+    return res.json({
+      success: true,
+      metal: {
+        ...saved._doc,
+        fullImageUrl: saved.image ? `${baseUrl}${saved.image}` : null,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
 
 
 
@@ -83,7 +92,6 @@ export const getMetalTypes = async (req, res) => {
 };
 
 
-// export const getMetals = async (req, res) => {
 //   try {
 //     const metals = await Metal.find().sort({ createdAt: -1 });
 //     return res.json({ success: true, metals });
@@ -155,34 +163,6 @@ export const getMetalsWithPagination = async (req, res) => {
   }
 };
 
-
-// export const updateMetal = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     console.log(id,"id")
-//     const { name } = req.body;
-//     console.log(name,"jajja")
-
-//     let metal = await Metal.findById(id);
-//     if (!metal) {
-//       return res.status(404).json({ success: false, message: "Metal not found" });
-//     }
-
-//     if (name) metal.name = name;
-
-    
-//     if (req.file) {
-//       metal.image = "/metalUpload/metal/" + req.file.filename;
-//     }
-
-//     const updatedMetal = await metal.save();
-
-//     return res.json({success: true,message: "Metal updated successfully",metal: updatedMetal});
-
-//   } catch (err) {
-//     return res.status(500).json({ success: false, message: err.message });
-//   }
-// };
 
 
 

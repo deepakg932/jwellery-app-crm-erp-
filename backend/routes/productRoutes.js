@@ -2,11 +2,14 @@
 import express from 'express';
 import {
   getProducts,
+  getDashboardStats,
+  
 
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
+  
 
   getProductImages,
   deleteProductImage,unitCreate,getUnits,unitUpdate,unitDelete,
@@ -84,4 +87,8 @@ router.post('/create-unit',unitCreate);
 router.get('/get-units',getUnits);
 router.put('/update-unit/:id',unitUpdate);
 router.delete('/delete-unit/:id',unitDelete);
+
+
+
+router.get("/dashboard", getDashboardStats);
 export default router;

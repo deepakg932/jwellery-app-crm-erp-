@@ -148,17 +148,22 @@ export const createStockIn = async (req, res) => {
 };
 
 
-export const getAllStockIn = async (req, res) => {
- const data = await StockIn.find({ is_fully_returned: false })
-    .populate("supplier_id", "name supplier_name")
-    .populate("branch_id", "branch_name")
-    .populate("po_id", "po_number")
-    .populate("items.inventory_item_id", "name item_code")
-    .populate("items.unit_id", "name code")
-    .sort({ createdAt: -1 });
+// export const getAllStockIn = async (req, res) => {
+//  const data = await StockIn.find({ is_fully_returned: false })
+//     .populate("supplier_id", "name supplier_name")
+//     .populate("branch_id", "branch_name")
+//     .populate("po_id", "po_number")
+//     .populate(
+//   "items.inventory_item_id",
+//   "name item_code purity"
+// )
 
-  res.json({ success: true, data });
-};
+//     // .populate("items.inventory_item_id", "name item_code")
+//     .populate("items.unit_id", "name code")
+//     .sort({ createdAt: -1 });
+
+//   return res.json({ success: true, data });
+// };
 
 
 export const getStockInById = async (req, res) => {
@@ -276,5 +281,46 @@ export const updateStockIn = async (req, res) => {
   } catch (error) {
     console.error("Update StockIn error:", error);
     res.status(500).json({success: false,message: error.message,});
+  }
+};
+
+
+
+export const getAllStockIn = async (req, res) => {
+  try {
+    const stockIns = await StockIn.find({ is_fully_returned: false })
+      .populate("supplier_id", "supplier_name")
+      .populate("branch_id", "branch_name")
+      .populate("po_id", "po_number")
+      .populate("items.inventory_item_id", "name item_code purity")
+      .populate("items.unit_id", "name code")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    
+    const formattedData = stockIns.map((stock) => {
+      const remainingItems = stock.items.filter((item) => {
+        return (
+          (item.received_weight && item.received_weight > 0) ||
+          (item.received_quantity && item.received_quantity > 0)
+        );
+      });
+
+      return {
+        ...stock,
+        items: remainingItems,
+      };
+    }).filter(stock => stock.items.length > 0); 
+
+    return res.json({
+      success: true,
+      data: formattedData,
+    });
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };

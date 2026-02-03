@@ -4,6 +4,8 @@ export const createSupplier = async (req, res) => {
   try {
     const {
       supplier_name,
+      company_name,
+      contact_person_number,
       supplier_code,
       contact_person,
       tax_number,
@@ -30,10 +32,10 @@ export const createSupplier = async (req, res) => {
       return res.status(400).json({status: false,message: "Please provide a valid email address",});
     }
 
-    const existingSupplier = await Suppliers.findOne({ supplier_name });
-    if (existingSupplier) {
-      return res.status(409).json({status: false,message:"Supplier with this name already exists. Please use a different name.",});
-    }
+    // const existingSupplier = await Suppliers.findOne({ supplier_name });
+    // if (existingSupplier) {
+    //   return res.status(409).json({status: false,message:"Supplier with this name already exists. Please use a different name.",});
+    // }
 
     const existingCode = await Suppliers.findOne({ supplier_code });
     console.log(existingCode, "exiting");
@@ -47,6 +49,8 @@ export const createSupplier = async (req, res) => {
 
     const newSupplier = await Suppliers.create({
       supplier_name,
+      company_name,
+      contact_person_number,
       supplier_code,
       contact_person,
       email,
@@ -87,6 +91,8 @@ export const updateSupplier = async (req, res) => {
     const { id } = req.params;
     const {
       supplier_name,
+      company_name,
+      contact_person_number,
       city,
       country,
       pincode,
@@ -149,7 +155,9 @@ export const updateSupplier = async (req, res) => {
       id,
       {
         supplier_name,
+        contact_person_number,
         supplier_code,
+        company_name,
         contact_person,
         email,
         phone,
