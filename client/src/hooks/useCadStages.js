@@ -107,6 +107,7 @@ const updateCadStageWithFiles = async (
     const requestData = {
       // Basic Information
       assigned_to: updateData.assigned_to || "",
+      stage:updateData.stage,
       status: updateData.status || "pending",
       start_date: updateData.start_date || "",
       end_date: updateData.end_date || "",

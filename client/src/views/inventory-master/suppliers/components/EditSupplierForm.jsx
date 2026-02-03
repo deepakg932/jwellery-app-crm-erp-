@@ -10,8 +10,9 @@ const EditSupplierForm = ({
 }) => {
   const [formData, setFormData] = useState({
     supplier_name: "",
-    supplier_code: "",
+    company_name: "",
     contact_person: "",
+    contact_person_number: "", // Add this field
     payment_terms: "Net 30 days",
     payment_type: "bank_transfer",
     tax_number: "",
@@ -30,6 +31,8 @@ const EditSupplierForm = ({
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
+
+  console.log(supplier)
 
   // Initialize countries on component mount
   useEffect(() => {
@@ -51,8 +54,9 @@ const EditSupplierForm = ({
       
       setFormData({
         supplier_name: supplier.supplier_name || "",
-        supplier_code: supplier.supplier_code || "",
+        company_name: supplier.company_name || "",
         contact_person: supplier.contact_person || "",
+        contact_person_number: supplier.contact_person_number || "", // Add this
         payment_terms: supplier.payment_terms || "Net 30 days",
         payment_type: supplier.payment_type || "bank_transfer",
         tax_number: supplier.tax_number || "",
@@ -133,12 +137,19 @@ const EditSupplierForm = ({
       newErrors.supplier_name = "Supplier name is required";
     }
 
-    if (!formData.supplier_code.trim()) {
-      newErrors.supplier_code = "Supplier code is required";
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = "Company Name is required";
     }
 
     if (!formData.contact_person.trim()) {
       newErrors.contact_person = "Contact person is required";
+    }
+
+    // Add validation for contact_person_number
+    if (!formData.contact_person_number.trim()) {
+      newErrors.contact_person_number = "Contact Person Number is required";
+    } else if (!/^\d{10}$/.test(formData.contact_person_number.trim())) {
+      newErrors.contact_person_number = "Contact Person Number must be 10 digits";
     }
 
     if (!formData.phone.trim()) {
@@ -190,8 +201,9 @@ const EditSupplierForm = ({
     const payload = {
       id: supplier?.id, // Include the supplier ID for updating
       supplier_name: formData.supplier_name.trim(),
-      supplier_code: formData.supplier_code.trim(),
+      company_name: formData.company_name.trim(),
       contact_person: formData.contact_person.trim(),
+      contact_person_number: formData.contact_person_number.trim(), // Add this
       payment_terms: formData.payment_terms,
       payment_type: formData.payment_type,
       tax_number: formData.tax_number.trim(),
@@ -274,30 +286,27 @@ const EditSupplierForm = ({
                   )}
                 </div>
 
-                {/* Supplier Code */}
+                {/* Company Name */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
-                    Supplier Code <span className="text-danger">*</span>
+                    Company Name <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
-                    name="supplier_code"
+                    name="company_name"
                     className={`form-control form-control-lg ${
-                      errors.supplier_code ? "is-invalid" : ""
+                      errors.company_name ? "is-invalid" : ""
                     }`}
-                    placeholder="e.g., SUP0001"
-                    value={formData.supplier_code}
+                    placeholder="Enter company name"
+                    value={formData.company_name}
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  {errors.supplier_code && (
+                  {errors.company_name && (
                     <div className="invalid-feedback">
-                      {errors.supplier_code}
+                      {errors.company_name}
                     </div>
                   )}
-                  <div className="form-text">
-                    Unique code for the supplier
-                  </div>
                 </div>
 
                 {/* Contact Person */}
@@ -319,6 +328,29 @@ const EditSupplierForm = ({
                   {errors.contact_person && (
                     <div className="invalid-feedback">
                       {errors.contact_person}
+                    </div>
+                  )}
+                </div>
+
+                {/* Contact Person Number - NEW FIELD */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">
+                    Contact Person Number <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="contact_person_number"
+                    className={`form-control form-control-lg ${
+                      errors.contact_person_number ? "is-invalid" : ""
+                    }`}
+                    placeholder="Enter contact person number"
+                    value={formData.contact_person_number}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                  {errors.contact_person_number && (
+                    <div className="invalid-feedback">
+                      {errors.contact_person_number}
                     </div>
                   )}
                 </div>

@@ -59,6 +59,43 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     { code: "GBP", name: "British Pound", symbol: "£" },
   ];
 
+  // Add this function after other helper functions
+const isWeightUnit = (unitId) => {
+  if (!unitId) return false;
+  const unit = units.find((u) => u._id === unitId);
+  if (!unit) return false;
+
+  // Check unit property first, then fall back to name
+  if (unit.is_weight !== undefined) return unit.is_weight;
+  
+  const unitName = unit.name?.toLowerCase() || unit.code?.toLowerCase() || "";
+  const weightIndicators = [
+    "KG", "kg", "g", "gram", "kilo gram", "pound", "lb", "ton", "mg",
+    "milligram", "ounce", "oz", "tonne"
+  ];
+  return weightIndicators.some((indicator) => unitName.includes(indicator));
+};
+
+  const isQuantityUnit = (unitId) => {
+    if (!unitId) return false;
+    const unit = units.find((u) => u._id === unitId);
+    if (!unit) return false;
+
+    // Check if unit name/code contains quantity indicators
+    const unitName = unit.name?.toLowerCase() || unit.code?.toLowerCase() || "";
+    const quantityIndicators = [
+      "",
+      "piece",
+      "unit",
+      "box",
+      "pack",
+      "set",
+      "nos",
+      "number",
+    ];
+    return quantityIndicators.some((indicator) => unitName.includes(indicator));
+  };
+
   // Helper function to get selected item details
   const getSelectedItemDetails = (itemId) => {
     if (!itemId) return null;
@@ -90,30 +127,68 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
 
     // Filter only items that have inventory_item_id (selected items)
     const selectedItems = formData.items.filter(
-      (item) => item.inventory_item_id
+      (item) => item.inventory_item_id,
     );
 
     if (selectedItems.length === 0) {
       newErrors.items = "At least one item is required";
     }
 
+    // selectedItems.forEach((item, index) => {
+    //   const originalIndex = formData.items.findIndex(
+    //     (i) => i.inventory_item_id === item.inventory_item_id,
+    //   );
+
+    //   // Check for either quantity or weight field
+    //   const hasQuantity = item.quantity && parseFloat(item.quantity) > 0;
+    //   const hasWeight = item.weight && parseFloat(item.weight) > 0;
+    //   const hasUnit = item.unit_id;
+
+    //   if (!hasQuantity && !hasWeight) {
+    //     newErrors[`items[${originalIndex}].quantity_weight`] =
+    //       "Quantity or Weight is required";
+    //   }
+
+    //   if (!hasUnit) {
+    //     newErrors[`items[${originalIndex}].unit_id`] = "Unit is required";
+    //   }
+
+    //   if (!item.rate || parseFloat(item.rate) <= 0) {
+    //     newErrors[`items[${originalIndex}].rate`] = "Valid rate is required";
+    //   }
+    // });
+
+    // In validateForm function, update the item validation part:
     selectedItems.forEach((item, index) => {
       const originalIndex = formData.items.findIndex(
-        (i) => i.inventory_item_id === item.inventory_item_id
+        (i) => i.inventory_item_id === item.inventory_item_id,
       );
 
-      // Check for either quantity or weight field
-      const hasQuantity = item.quantity && parseFloat(item.quantity) > 0;
-      const hasWeight = item.weight && parseFloat(item.weight) > 0;
       const hasUnit = item.unit_id;
-
-      if (!hasQuantity && !hasWeight) {
-        newErrors[`items[${originalIndex}].quantity_weight`] =
-          "Quantity or Weight is required";
-      }
 
       if (!hasUnit) {
         newErrors[`items[${originalIndex}].unit_id`] = "Unit is required";
+      } else if (isWeightUnit(item.unit_id)) {
+        // Validate weight for weight-based units
+        if (!item.weight || parseFloat(item.weight) <= 0) {
+          newErrors[`items[${originalIndex}].quantity_weight`] =
+            "Valid weight is required";
+        }
+      } else if (isQuantityUnit(item.unit_id)) {
+        // Validate quantity for quantity-based units
+        if (!item.quantity || parseFloat(item.quantity) <= 0) {
+          newErrors[`items[${originalIndex}].quantity_weight`] =
+            "Valid quantity is required";
+        }
+      } else {
+        // For unknown unit types, check either field
+        const hasQuantity = item.quantity && parseFloat(item.quantity) > 0;
+        const hasWeight = item.weight && parseFloat(item.weight) > 0;
+
+        if (!hasQuantity && !hasWeight) {
+          newErrors[`items[${originalIndex}].quantity_weight`] =
+            "Quantity or Weight is required";
+        }
       }
 
       if (!item.rate || parseFloat(item.rate) <= 0) {
@@ -136,24 +211,69 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     return unit?.conversion_factor || 1;
   };
 
+  // const calculateItemTotal = (quantity, weight, rate, unitId) => {
+  //   const qty = parseFloat(quantity) || 0;
+  //   const wt = parseFloat(weight) || 0;
+  //   const rt = parseFloat(rate) || 0;
+  //   const conversionFactor = getUnitConversionFactor(unitId);
+
+  //   // Return 0 if no quantity/weight OR no unit selected
+  //   if ((qty <= 0 && wt <= 0) || !unitId) {
+  //     return 0;
+  //   }
+
+  //   // Use whichever has value: quantity or weight
+  //   let amount = qty > 0 ? qty : wt;
+
+  //   // Apply unit conversion factor
+  //   amount = amount * conversionFactor;
+
+  //   return amount * rt;
+  // };
+
   const calculateItemTotal = (quantity, weight, rate, unitId) => {
     const qty = parseFloat(quantity) || 0;
     const wt = parseFloat(weight) || 0;
     const rt = parseFloat(rate) || 0;
-    const conversionFactor = getUnitConversionFactor(unitId);
 
-    // Return 0 if no quantity/weight OR no unit selected
-    if ((qty <= 0 && wt <= 0) || !unitId) {
-      return 0;
+    if (!unitId || rt <= 0) return 0;
+
+    const unit = units.find((u) => u._id === unitId);
+    if (!unit) return 0;
+
+    let amount = 0;
+
+    if (isWeightUnit(unitId)) {
+      amount = wt;
+    } else if (isQuantityUnit(unitId)) {
+      amount = qty;
+    } else {
+      amount = qty > 0 ? qty : wt;
     }
 
-    // Use whichever has value: quantity or weight
-    let amount = qty > 0 ? qty : wt;
+    if (amount <= 0) return 0;
 
-    // Apply unit conversion factor
-    amount = amount * conversionFactor;
+    // Check if this is a weight unit that needs conversion
+    const unitName = unit.name?.toLowerCase() || unit.code?.toLowerCase() || "";
 
-    return amount * rt;
+    // Handle different weight units
+    if (unitName.includes("kilo gram")) {
+      // If rate is per kg and amount is in kg, no conversion needed
+      return amount * rt;
+    } else if (unitName.includes("g") || unitName.includes("gram")) {
+      // If rate is per kg but amount is in grams, convert grams to kg
+      const amountInKg = amount / 1000;
+      return amountInKg * rt;
+    } else if (unitName.includes("mg")) {
+      // If rate is per kg but amount is in mg, convert mg to kg
+      const amountInKg = amount / 1000000;
+      return amountInKg * rt;
+    } else {
+      // For non-weight units, use conversion factor
+      const conversionFactor = unit.conversion_factor || 1;
+      const amountInBaseUnit = amount / conversionFactor;
+      return amountInBaseUnit * rt;
+    }
   };
 
   const calculateTotals = () => {
@@ -167,7 +287,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
             item.quantity,
             item.weight,
             item.rate,
-            item.unit_id
+            item.unit_id,
           )
         );
       }, 0);
@@ -208,114 +328,237 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
         ((item.name && item.name.toLowerCase().includes(query.toLowerCase())) ||
           (item.item_code &&
             item.item_code.toLowerCase().includes(query.toLowerCase()))) &&
-        !selectedItemIds.includes(item._id)
+        !selectedItemIds.includes(item._id),
     );
 
     setSearchResults(results);
     setShowSearchResults(true);
   };
 
-// Handle item selection from search results
-const handleItemSelect = (item) => {
-  // Find the first empty item slot or add a new one
-  let itemIndex = formData.items.findIndex((item) => !item.inventory_item_id);
+  // Handle item selection from search results
+  // const handleItemSelect = (item) => {
+  //   // Find the first empty item slot or add a new one
+  //   let itemIndex = formData.items.findIndex((item) => !item.inventory_item_id);
 
-  if (itemIndex === -1) {
-    // Add new item row
-    itemIndex = formData.items.length;
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          inventory_item_id: "",
-          quantity: "1",
-          weight: "",
-          unit_id: "",
-          rate: "",
-          total: 0,
-          item_code: "",
-          item_name: "",
-          discount: 0,
-          tax: 0,
-        },
-      ],
-    }));
-  }
+  //   if (itemIndex === -1) {
+  //     // Add new item row
+  //     itemIndex = formData.items.length;
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       items: [
+  //         ...prev.items,
+  //         {
+  //           inventory_item_id: "",
+  //           quantity: "1",
+  //           weight: "",
+  //           unit_id: "",
+  //           rate: "",
+  //           total: 0,
+  //           item_code: "",
+  //           item_name: "",
+  //           discount: 0,
+  //           tax: 0,
+  //         },
+  //       ],
+  //     }));
+  //   }
 
-  // Safely extract values with null checks
-  const inventoryData = {
-    discount_amount: parseFloat(item.discount_amount) || 0,
-    tax_amount: parseFloat(item.tax_amount) || 0,
-    final_price: parseFloat(item.final_price) || 0,
-  };
+  //   // Safely extract values with null checks
+  //   const inventoryData = {
+  //     discount_amount: parseFloat(item.discount_amount) || 0,
+  //     tax_amount: parseFloat(item.tax_amount) || 0,
+  //     final_price: parseFloat(item.final_price) || 0,
+  //   };
 
-  // Update the item with data from the selected inventory item
-  const updatedItems = [...formData.items]; // MOVE THIS LINE HERE - it was missing
-  
-  updatedItems[itemIndex] = {
-    ...updatedItems[itemIndex],
-    inventory_item_id: item._id,
-    item_code: item.item_code || "",
-    item_name: item.name || "",
-    discount_amount: inventoryData.discount_amount,
-    tax_amount: inventoryData.tax_amount,
-    rate: inventoryData.final_price,
-    quantity: "",
-    weight: "",
-    unit_id: "",
-    total: 0,
-  };
+  //   // Update the item with data from the selected inventory item
+  //   const updatedItems = [...formData.items]; // MOVE THIS LINE HERE - it was missing
 
-  setFormData((prev) => ({
-    ...prev,
-    items: updatedItems,
-  }));
+  //   updatedItems[itemIndex] = {
+  //     ...updatedItems[itemIndex],
+  //     inventory_item_id: item._id,
+  //     item_code: item.item_code || "",
+  //     item_name: item.name || "",
+  //     discount_amount: inventoryData.discount_amount,
+  //     tax_amount: inventoryData.tax_amount,
+  //     rate: inventoryData.final_price,
+  //     quantity: "",
+  //     weight: "",
+  //     unit_id: "",
+  //     total: 0,
+  //   };
 
-  setSearchQuery("");
-  setShowSearchResults(false);
-  setSearchResults([]);
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     items: updatedItems,
+  //   }));
 
-  // Recalculate totals
-  calculateTotals();
-};
+  //   setSearchQuery("");
+  //   setShowSearchResults(false);
+  //   setSearchResults([]);
 
-  const handleUnitChange = (index, unitId) => {
-    const updatedItems = [...formData.items];
-    const currentItem = updatedItems[index];
+  //   // Recalculate totals
+  //   calculateTotals();
+  // };
 
-    // Only calculate if quantity/weight is entered
-    const hasQuantity = parseFloat(currentItem.quantity) > 0;
-    const hasWeight = parseFloat(currentItem.weight) > 0;
+  // Handle item selection from search results - UPDATED VERSION
+  const handleItemSelect = (item) => {
+    // Find the first empty item slot or add a new one
+    let itemIndex = formData.items.findIndex((item) => !item.inventory_item_id);
 
-    updatedItems[index] = {
-      ...currentItem,
-      unit_id: unitId,
+    if (itemIndex === -1) {
+      // Add new item row
+      itemIndex = formData.items.length;
+      setFormData((prev) => ({
+        ...prev,
+        items: [
+          ...prev.items,
+          {
+            inventory_item_id: "",
+            quantity: "",
+            weight: "",
+            unit_id: "",
+            rate: "",
+            total: 0,
+            item_code: "",
+            item_name: "",
+            discount: 0,
+            tax: 0,
+          },
+        ],
+      }));
+    }
+
+    // Safely extract values with null checks
+    const inventoryData = {
+      discount_amount: parseFloat(item.discount_amount) || 0,
+      tax_amount: parseFloat(item.tax_amount) || 0,
+      final_price: parseFloat(item.final_price) || 0,
     };
 
-    // Recalculate total for this item only if quantity/weight exists
-    if (
-      (hasQuantity || hasWeight) &&
-      unitId &&
-      parseFloat(currentItem.rate) > 0
-    ) {
-      updatedItems[index].total = calculateItemTotal(
-        currentItem.quantity,
-        currentItem.weight,
-        currentItem.rate,
-        unitId
-      );
-    } else {
-      updatedItems[index].total = 0;
+    const updatedItems = [...formData.items];
+
+    // Set initial quantity/weight based on item's default unit if available
+    let initialQuantity = "";
+    let initialWeight = "";
+
+    // If item has a default unit, check its type
+    if (item.default_unit_id) {
+      const defaultUnit = units.find((u) => u._id === item.default_unit_id);
+      if (defaultUnit) {
+        const unitName =
+          defaultUnit.name?.toLowerCase() ||
+          defaultUnit.code?.toLowerCase() ||
+          "";
+
+        if (
+          unitName.includes("kg") ||
+          unitName.includes("g") ||
+          unitName.includes("gram")
+        ) {
+          initialWeight = "1"; // Default 1 kg/gram
+        } else if (
+          unitName.includes("pcs") ||
+          unitName.includes("piece") ||
+          unitName.includes("unit")
+        ) {
+          initialQuantity = "1"; // Default 1 piece
+        }
+      }
     }
+
+    updatedItems[itemIndex] = {
+      ...updatedItems[itemIndex],
+      inventory_item_id: item._id,
+      item_code: item.item_code || "",
+      item_name: item.name || "",
+      discount_amount: inventoryData.discount_amount,
+      tax_amount: inventoryData.tax_amount,
+      rate: inventoryData.final_price,
+      quantity: initialQuantity, // Will be used for quantity-based units
+      weight: initialWeight, // Will be used for weight-based units
+      unit_id: item.default_unit_id || "",
+      total: 0,
+    };
 
     setFormData((prev) => ({
       ...prev,
       items: updatedItems,
     }));
 
-    // Recalculate all totals
-    calculateTotals();
+    setSearchQuery("");
+    setShowSearchResults(false);
+    setSearchResults([]);
+
+    // Recalculate totals if unit is selected
+    if (item.default_unit_id) {
+      setTimeout(() => calculateTotals(), 0);
+    }
+  };
+
+  // const handleUnitChange = (index, unitId) => {
+  //   const updatedItems = [...formData.items];
+  //   const currentItem = updatedItems[index];
+
+  //   // Only calculate if quantity/weight is entered
+  //   const hasQuantity = parseFloat(currentItem.quantity) > 0;
+  //   const hasWeight = parseFloat(currentItem.weight) > 0;
+
+  //   updatedItems[index] = {
+  //     ...currentItem,
+  //     unit_id: unitId,
+  //   };
+
+  //   // Recalculate total for this item only if quantity/weight exists
+  //   if (
+  //     (hasQuantity || hasWeight) &&
+  //     unitId &&
+  //     parseFloat(currentItem.rate) > 0
+  //   ) {
+  //     updatedItems[index].total = calculateItemTotal(
+  //       currentItem.quantity,
+  //       currentItem.weight,
+  //       currentItem.rate,
+  //       unitId,
+  //     );
+  //   } else {
+  //     updatedItems[index].total = 0;
+  //   }
+
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     items: updatedItems,
+  //   }));
+
+  //   // Recalculate all totals
+  //   calculateTotals();
+
+  //   // Clear unit error if any
+  //   if (errors[`items[${index}].unit_id`]) {
+  //     setErrors((prev) => {
+  //       const newErrors = { ...prev };
+  //       delete newErrors[`items[${index}].unit_id`];
+  //       return newErrors;
+  //     });
+  //   }
+  // };
+
+  const handleUnitChange = (index, unitId) => {
+    const updatedItems = [...formData.items];
+    const currentItem = updatedItems[index];
+
+    // Clear both quantity and weight when unit changes
+    updatedItems[index] = {
+      ...currentItem,
+      unit_id: unitId,
+      quantity: "",
+      weight: "",
+      total: 0,
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      items: updatedItems,
+    }));
 
     // Clear unit error if any
     if (errors[`items[${index}].unit_id`]) {
@@ -325,26 +568,85 @@ const handleItemSelect = (item) => {
         return newErrors;
       });
     }
+
+    // Clear quantity/weight error
+    if (errors[`items[${index}].quantity_weight`]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`items[${index}].quantity_weight`];
+        return newErrors;
+      });
+    }
   };
 
-  const handleQuantityWeightChange = (index, value) => {
+  // const handleQuantityWeightChange = (index, value) => {
+  //   const item = formData.items[index];
+
+  //   // Update quantity field (we'll use quantity as the single input)
+  //   const updatedItems = [...formData.items];
+  //   updatedItems[index] = {
+  //     ...item,
+  //     quantity: value,
+  //     weight: "", // Clear weight field when using quantity
+  //   };
+
+  //   // Only calculate total if unit is selected
+  //   if (value && item.unit_id && parseFloat(item.rate) > 0) {
+  //     updatedItems[index].total = calculateItemTotal(
+  //       value,
+  //       "",
+  //       item.rate,
+  //       item.unit_id,
+  //     );
+  //   } else {
+  //     updatedItems[index].total = 0;
+  //   }
+
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     items: updatedItems,
+  //   }));
+
+  //   calculateTotals();
+
+  //   // Clear quantity/weight error if any
+  //   if (errors[`items[${index}].quantity_weight`]) {
+  //     setErrors((prev) => {
+  //       const newErrors = { ...prev };
+  //       delete newErrors[`items[${index}].quantity_weight`];
+  //       return newErrors;
+  //     });
+  //   }
+  // };
+
+  // Replace the existing handleQuantityWeightChange with this
+  const handleQuantityWeightChange = (index, field, value) => {
     const item = formData.items[index];
 
-    // Update quantity field (we'll use quantity as the single input)
+    // Clear the opposite field based on unit type
     const updatedItems = [...formData.items];
-    updatedItems[index] = {
-      ...item,
-      quantity: value,
-      weight: "", // Clear weight field when using quantity
-    };
 
-    // Only calculate total if unit is selected
+    if (field === "quantity") {
+      updatedItems[index] = {
+        ...item,
+        quantity: value,
+        weight: "", // Clear weight when entering quantity
+      };
+    } else if (field === "weight") {
+      updatedItems[index] = {
+        ...item,
+        weight: value,
+        quantity: "", // Clear quantity when entering weight
+      };
+    }
+
+    // Only calculate total if unit is selected and value exists
     if (value && item.unit_id && parseFloat(item.rate) > 0) {
       updatedItems[index].total = calculateItemTotal(
-        value,
-        "",
+        field === "quantity" ? value : "",
+        field === "weight" ? value : "",
         item.rate,
-        item.unit_id
+        item.unit_id,
       );
     } else {
       updatedItems[index].total = 0;
@@ -394,7 +696,7 @@ const handleItemSelect = (item) => {
           currentItem.quantity,
           currentItem.weight,
           value,
-          currentItem.unit_id
+          currentItem.unit_id,
         );
       } else {
         updatedItems[index].total = 0;
@@ -446,8 +748,6 @@ const handleItemSelect = (item) => {
       setTimeout(() => calculateTotals(), 0);
     }
   };
-
-
 
   // Remove item row
   const removeItem = (index) => {
@@ -893,7 +1193,7 @@ const handleItemSelect = (item) => {
                     <span className="input-group-text bg-light">
                       ≈ ₹
                       {(formData.grand_total * formData.exchange_rate).toFixed(
-                        2
+                        2,
                       )}
                     </span>
                   </div>
@@ -920,7 +1220,6 @@ const handleItemSelect = (item) => {
               <div className="border rounded-3 p-3 mb-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h6 className="fw-bold mb-0">Order Table</h6>
-                 
                 </div>
 
                 {/* Search Bar Section */}
@@ -972,7 +1271,6 @@ const handleItemSelect = (item) => {
                               Code: {item.item_code} | Category:{" "}
                               {item.category?.name || "N/A"}
                             </div>
-                           
                           </div>
                         ))}
                       </div>
@@ -997,10 +1295,15 @@ const handleItemSelect = (item) => {
                     <thead className="table-light">
                       <tr>
                         <th style={{ minWidth: "250px" }}>Product</th>
-                        <th style={{ minWidth: "100px" }}>Qty/Weight</th>
+                        <th style={{ minWidth: "150px" }}>
+                          Quantity/Weight
+                          <br />
+                          {/* <small className="text-muted">
+                            Auto-detected by unit
+                          </small> */}
+                        </th>
                         <th style={{ minWidth: "120px" }}>Unit</th>
                         <th style={{ minWidth: "120px" }}>Rate</th>
-                   
                         <th style={{ minWidth: "100px" }}>Discount</th>
                         <th style={{ minWidth: "100px" }}>Tax</th>
                         <th style={{ minWidth: "120px" }}>Subtotal</th>
@@ -1013,7 +1316,7 @@ const handleItemSelect = (item) => {
                         .map((item, index) => {
                           const originalIndex = formData.items.findIndex(
                             (i) =>
-                              i.inventory_item_id === item.inventory_item_id
+                              i.inventory_item_id === item.inventory_item_id,
                           );
 
                           return (
@@ -1039,7 +1342,7 @@ const handleItemSelect = (item) => {
                                   </button>
                                 </div>
                               </td>
-                              <td>
+                              {/* <td>
                                 <input
                                   type="number"
                                   className={`form-control ${
@@ -1054,13 +1357,108 @@ const handleItemSelect = (item) => {
                                   onChange={(e) =>
                                     handleQuantityWeightChange(
                                       originalIndex,
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={isDisabled}
                                   min="0"
                                   step="0.001"
                                 />
+                                {errors[
+                                  `items[${originalIndex}].quantity_weight`
+                                ] && (
+                                  <div className="invalid-feedback d-block">
+                                    {
+                                      errors[
+                                        `items[${originalIndex}].quantity_weight`
+                                      ]
+                                    }
+                                  </div>
+                                )}
+                              </td> */}
+
+                              <td>
+                                {item.unit_id && isWeightUnit(item.unit_id) ? (
+                                  <>
+                                    <input
+                                      type="number"
+                                      className={`form-control ${
+                                        errors[
+                                          `items[${originalIndex}].quantity_weight`
+                                        ]
+                                          ? "is-invalid"
+                                          : ""
+                                      }`}
+                                      placeholder="Enter Weight"
+                                      value={item.weight || ""}
+                                      onChange={(e) =>
+                                        handleQuantityWeightChange(
+                                          originalIndex,
+                                          "weight",
+                                          e.target.value,
+                                        )
+                                      }
+                                      disabled={isDisabled}
+                                      min="0"
+                                      step="0.001"
+                                    />
+                                    {/* <small className="text-muted d-block mt-1">
+                                      Weight in{" "}
+                                      {units.find((u) => u._id === item.unit_id)
+                                        ?.code || "unit"}
+                                    </small> */}
+                                  </>
+                                ) : item.unit_id &&
+                                  isQuantityUnit(item.unit_id) ? (
+                                  <>
+                                    <input
+                                      type="number"
+                                      className={`form-control ${
+                                        errors[
+                                          `items[${originalIndex}].quantity_weight`
+                                        ]
+                                          ? "is-invalid"
+                                          : ""
+                                      }`}
+                                      placeholder="Enter Quantity"
+                                      value={item.quantity || ""}
+                                      onChange={(e) =>
+                                        handleQuantityWeightChange(
+                                          originalIndex,
+                                          "quantity",
+                                          e.target.value,
+                                        )
+                                      }
+                                      disabled={isDisabled}
+                                      min="0"
+                                      step="1"
+                                    />
+                                    {/* <small className="text-muted d-block mt-1">
+                                      Quantity in{" "}
+                                      {units.find((u) => u._id === item.unit_id)
+                                        ?.code || "units"}
+                                    </small> */}
+                                  </>
+                                ) : (
+                                  <>
+                                    <input
+                                      type="number"
+                                      className={`form-control ${
+                                        errors[
+                                          `items[${originalIndex}].quantity_weight`
+                                        ]
+                                          ? "is-invalid"
+                                          : ""
+                                      }`}
+                                      placeholder="Select unit first"
+                                      disabled
+                                    />
+                                    <small className="text-muted d-block mt-1">
+                                      Please select a unit first
+                                    </small>
+                                  </>
+                                )}
+
                                 {errors[
                                   `items[${originalIndex}].quantity_weight`
                                 ] && (
@@ -1084,7 +1482,7 @@ const handleItemSelect = (item) => {
                                   onChange={(e) =>
                                     handleUnitChange(
                                       originalIndex,
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={isDisabled}
@@ -1116,7 +1514,7 @@ const handleItemSelect = (item) => {
                                     handleItemChange(
                                       originalIndex,
                                       "rate",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={isDisabled}
@@ -1129,13 +1527,12 @@ const handleItemSelect = (item) => {
                                   </div>
                                 )}
                               </td>
-
                               <td>
                                 <input
                                   type="text"
                                   className="form-control bg-light"
                                   value={`${getCurrencySymbol()}${parseFloat(
-                                    item.discount_amount || 0
+                                    item.discount_amount || 0,
                                   ).toFixed(2)}`}
                                   readOnly
                                 />
@@ -1145,7 +1542,7 @@ const handleItemSelect = (item) => {
                                   type="text"
                                   className="form-control bg-light"
                                   value={`${getCurrencySymbol()}${parseFloat(
-                                    item.tax_amount || 0
+                                    item.tax_amount || 0,
                                   ).toFixed(2)}`}
                                   readOnly
                                 />
@@ -1155,7 +1552,7 @@ const handleItemSelect = (item) => {
                                   type="text"
                                   className="form-control bg-light fw-medium"
                                   value={`${getCurrencySymbol()}${parseFloat(
-                                    item.total || 0
+                                    item.total || 0,
                                   ).toFixed(2)}`}
                                   readOnly
                                 />
@@ -1168,7 +1565,7 @@ const handleItemSelect = (item) => {
                                   disabled={
                                     isDisabled ||
                                     formData.items.filter(
-                                      (i) => i.inventory_item_id
+                                      (i) => i.inventory_item_id,
                                     ).length === 1
                                   }
                                   title="Remove item"
@@ -1233,29 +1630,61 @@ const handleItemSelect = (item) => {
                             </span>
                             <span className="float-end fw-medium">
                               {(() => {
-                                const firstItemWithUnit = formData.items
-                                  .filter(
-                                    (item) =>
-                                      item.inventory_item_id && item.unit_id
-                                  )
-                                  .find((item) => item.unit_id);
-
-                                if (!firstItemWithUnit) return "0";
-
-                                const unit = units.find(
-                                  (u) => u._id === firstItemWithUnit.unit_id
+                                // Group by unit type and calculate totals
+                                const weightItems = formData.items.filter(
+                                  (item) =>
+                                    item.inventory_item_id &&
+                                    item.unit_id &&
+                                    isWeightUnit(item.unit_id),
                                 );
-                                const unitName = unit?.code || unit?.name || "";
+                                const quantityItems = formData.items.filter(
+                                  (item) =>
+                                    item.inventory_item_id &&
+                                    item.unit_id &&
+                                    isQuantityUnit(item.unit_id),
+                                );
 
-                                const total = formData.items
-                                  .filter((item) => item.inventory_item_id)
-                                  .reduce((sum, item) => {
-                                    const qty = parseFloat(item.quantity) || 0;
-                                    const wt = parseFloat(item.weight) || 0;
-                                    return sum + (qty > 0 ? qty : wt);
-                                  }, 0);
+                                let displayText = [];
 
-                                return `${total} ${unitName}`;
+                                // Calculate total weight in base unit (grams)
+                                if (weightItems.length > 0) {
+                                  let totalGrams = 0;
+                                  weightItems.forEach((item) => {
+                                    const unit = units.find(
+                                      (u) => u._id === item.unit_id,
+                                    );
+                                    const amount = parseFloat(item.weight) || 0;
+
+                                    if (unit) {
+                                      const unitName =
+                                        unit.name?.toLowerCase() ||
+                                        unit.code?.toLowerCase() ||
+                                        "";
+                                      if (unitName.includes("kg")) {
+                                        totalGrams += amount * 1000;
+                                      } else if (
+                                        unitName.includes("g") ||
+                                        unitName.includes("gram")
+                                      ) {
+                                        totalGrams += amount;
+                                      }
+                                    }
+                                  });
+
+                                  // Convert to appropriate display unit
+                                  if (totalGrams >= 1000) {
+                                    displayText.push(
+                                      `${(totalGrams / 1000).toFixed(0)} kg`,
+                                    );
+                                  } else {
+                                    displayText.push(
+                                      `${totalGrams.toFixed(0)} g`,
+                                    );
+                                  }
+                                }
+
+
+                                return displayText;
                               })()}
                             </span>
                           </div>
@@ -1291,7 +1720,7 @@ const handleItemSelect = (item) => {
                             <span className="float-end fw-medium">
                               {getCurrencySymbol()}
                               {parseFloat(formData.shipping_cost || 0).toFixed(
-                                2
+                                2,
                               )}
                             </span>
                           </div>

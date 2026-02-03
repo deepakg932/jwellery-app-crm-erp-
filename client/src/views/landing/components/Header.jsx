@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useEffect, useState } from 'react';
 import { Button, Container, Navbar, NavbarBrand, NavbarCollapse, NavbarToggle, NavLink } from 'react-bootstrap';
 import { TbContrast } from 'react-icons/tb';
-import logo from '@/assets/images/logo.png';
+import logo from '@/assets/images/Jewellerylogo.png';
 const navItems = ['Home', 'Services', 'Features', 'Plans', 'Reviews', 'Contact'];
 export default function Header() {
   const {

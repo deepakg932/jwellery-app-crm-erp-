@@ -183,7 +183,7 @@ const EditBrandModal = ({ show, onHide, onSubmit, brand, loading = false }) => {
                 {logoPreview ? (
                   <div className="mb-3 position-relative d-inline-block">
                     <img
-                      src={`YOUR_BASE_URL${logoPreview}`} // Update with your base URL
+                      src={logoPreview} // Update with your base URL
                       alt="Preview"
                       className="img-thumbnail rounded border"
                       style={{ width: '120px', height: '120px', objectFit: 'cover' }}

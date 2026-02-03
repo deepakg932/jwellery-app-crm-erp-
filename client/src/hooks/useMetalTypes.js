@@ -36,7 +36,7 @@ export default function useMetalTypes() {
       const mappedMetals = metals.map((m) => ({
         _id: m._id || m.id,
         name: m.name || "",
-        image: m.image || m.imageUrl || "",   // ensure `image` exists
+        image: m.fullImageUrl || m.fullImageUrl || "",   // ensure `image` exists
       }));
       
       console.log("Fetched metals:", mappedMetals);

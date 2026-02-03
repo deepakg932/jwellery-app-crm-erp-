@@ -1,5 +1,5 @@
 import { Col, Container, Row } from 'react-bootstrap';
-import logoWhite from '@/assets/images/logo.png';
+import logoWhite from '@/assets/images/Jewellerylogo.png';
 import { currentYear } from '@/helpers';
 import { Link } from "react-router";
 import { LuDribbble, LuFacebook, LuInstagram } from 'react-icons/lu';

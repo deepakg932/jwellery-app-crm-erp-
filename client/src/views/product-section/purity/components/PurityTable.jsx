@@ -36,7 +36,7 @@ const PurityPage = () => {
     purity.metal_type?.toLowerCase().includes(search.toLowerCase()) ||
     purity.percentage.toString().includes(search)
   );
-
+console.log(filtered)
   // Add new purity with API
   const handleSave = async (purityData) => {
     setActionLoading({ type: "add", id: null });

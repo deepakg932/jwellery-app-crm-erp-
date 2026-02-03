@@ -11,7 +11,7 @@ import { LuSearch } from 'react-icons/lu';
 import { TbMenu4 } from 'react-icons/tb';
 import logoDark from '@/assets/images/logo-black.png';
 import logoSm from '@/assets/images/logo-sm.png';
-import logo from '@/assets/images/logo.png';
+import logo from '@/assets/images/Jewellerylogo.png';
 import ApplicationMenu from '@/layouts/components/topbar/components/ApplicationMenu';
 import FullscreenToggle from '@/layouts/components/topbar/components/FullscreenToggle';
 import MonochromeThemeModeToggler from '@/layouts/components/topbar/components/MonochromeThemeModeToggler';

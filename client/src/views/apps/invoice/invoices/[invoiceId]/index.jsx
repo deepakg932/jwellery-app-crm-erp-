@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Button, Card, CardBody, Col, Container, Row, Table } from 'react-bootstrap';
 import { TbDownload, TbPencil, TbPrinter, TbSend } from 'react-icons/tb';
 import logoDark from '@/assets/images/logo-black.png';
-import logoLight from '@/assets/images/logo.png';
+import logoLight from '@/assets/images/Jewellerylogo.png';
 import sign from '@/assets/images/sign.png';
 import qrImg from '@/assets/images/qr.png';
 import { currency } from '@/helpers';

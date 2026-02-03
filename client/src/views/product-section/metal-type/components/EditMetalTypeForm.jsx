@@ -14,13 +14,14 @@ const EditMetalTypeModal = ({ show, onHide, onSubmit, metalType, loading = false
   useEffect(() => {
     if (metalType) {
       setMetalTypeName(metalType.name || "");
-      const imageUrl = metalType.imageUrl || "";
+      const imageUrl = metalType.image || "";
       setImagePreview(imageUrl ? imageUrl : null);
       setImageFile(null);
       setError("");
+      console.log(imageUrl)
     }
   }, [metalType]);
-
+console.log(metalType)
   // Handle cleanup on unmount
   useEffect(() => {
     return () => {

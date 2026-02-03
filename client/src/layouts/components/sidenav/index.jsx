@@ -1,6 +1,6 @@
 import logoDark from '@/assets/images/logo-black.png';
 import logoSm from '@/assets/images/logo-sm.png';
-import logo from '@/assets/images/logo.png';
+import logo from '@/assets/images/Jewellerylogo.png';
 import { useLayoutContext } from '@/context/useLayoutContext';
 import AppMenu from '@/layouts/components/sidenav/components/AppMenu';
 import UserProfile from '@/layouts/components/sidenav/components/UserProfile';

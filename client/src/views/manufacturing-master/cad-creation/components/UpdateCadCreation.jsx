@@ -33,6 +33,8 @@ import {
   FiTool,
   FiSettings,
   FiX,
+  FiImage,
+  FiArchive,
 } from "react-icons/fi";
 
 const UpdateCadCreation = ({
@@ -55,6 +57,7 @@ const UpdateCadCreation = ({
     cad_software: "",
     complexity_level: "",
     remarks: "",
+    stage: "", // Added Next Stage field
 
     // Cost Tracking Fields
     material_cost: "",
@@ -65,7 +68,7 @@ const UpdateCadCreation = ({
     total_cost: "",
     cost_currency: "INR",
     cost_status: "estimated",
-    markup_percentage: "30",
+    markup_percentage: "",
     final_price: "",
 
     // Time Tracking Fields
@@ -97,19 +100,40 @@ const UpdateCadCreation = ({
     files: false,
   });
 
-console.log(selectedStage)
-
   // Status options
   const statusOptions = [
     { value: "draft", label: "Draft", color: "secondary", icon: "✏️" },
     { value: "in_progress", label: "In Progress", color: "info", icon: "⚡" },
-    { value: "first_review", label: "First Review", color: "warning", icon: "👁️" },
-    { value: "client_review", label: "Client Review", color: "warning", icon: "👤" },
+    {
+      value: "first_review",
+      label: "First Review",
+      color: "warning",
+      icon: "👁️",
+    },
+    {
+      value: "client_review",
+      label: "Client Review",
+      color: "warning",
+      icon: "👤",
+    },
     { value: "revisions", label: "Revisions", color: "warning", icon: "🔄" },
     { value: "finalized", label: "Finalized", color: "success", icon: "✅" },
     { value: "approved", label: "Approved", color: "success", icon: "👍" },
     { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
     { value: "cancelled", label: "Cancelled", color: "danger", icon: "❌" },
+  ];
+
+  // Next Stage Options
+  const defaultNextStageOptions = [
+    { value: "cad", label: "CAD Creation", icon: "🖥️" },
+    { value: "casting", label: "Casting", icon: "🔥" },
+    { value: "filing", label: "Filing", icon: "🛠️" },
+    { value: "setting", label: "Setting", icon: "🧱" },
+    { value: "polishing", label: "Polishing", icon: "✨" },
+    { value: "plating", label: "Plating", icon: "🔧" },
+    { value: "quality", label: "Quality Check", icon: "🔍" },
+    { value: "packaging", label: "Packaging", icon: "📦" },
+    { value: "none", label: "No Next Stage", icon: "🏁" },
   ];
 
   // CAD Software options
@@ -206,6 +230,7 @@ console.log(selectedStage)
         cad_software: selectedStage.cad_software || "",
         complexity_level: selectedStage.complexity_level || "",
         remarks: selectedStage.remarks || "",
+        stage: selectedStage.stage || "", // Initialize Next Stage
 
         // Cost Tracking
         material_cost: selectedStage.material_cost || "",
@@ -216,7 +241,7 @@ console.log(selectedStage)
         total_cost: selectedStage.total_cost || "",
         cost_currency: selectedStage.cost_currency || "INR",
         cost_status: selectedStage.cost_status || "estimated",
-        markup_percentage: selectedStage.markup_percentage || "30",
+        markup_percentage: selectedStage.markup_percentage || "",
         final_price: selectedStage.final_price || "",
 
         // Time Tracking
@@ -264,17 +289,25 @@ console.log(selectedStage)
 
   // Calculate total cost
   const calculateTotalCost = () => {
-    const material = parseFloat(formData.material_cost) || 0;
-    const labor = parseFloat(formData.labor_cost) || 0;
-    const software = parseFloat(formData.software_cost) || 0;
-    const machine = parseFloat(formData.machine_cost) || 0;
-    const other = parseFloat(formData.other_costs) || 0;
+    const material = Number(formData.material_cost) || 0;
+    const labor = Number(formData.labor_cost) || 0;
+    const software = Number(formData.software_cost) || 0;
+    const machine = Number(formData.machine_cost) || 0;
+    const other = Number(formData.other_costs) || 0;
+    const markup = Number(formData.markup_percentage);
+
+    console.log("CAD CALCULATING WITH:", {
+      material,
+      labor,
+      software,
+      machine,
+      other,
+      markup,
+    });
 
     const total = material + labor + software + machine + other;
-
-    // Calculate final price with markup
-    const markup = parseFloat(formData.markup_percentage) || 30;
-    const finalPrice = total * (1 + markup / 100);
+    const markupAmount = (total * markup) / 100;
+    const finalPrice = total + markupAmount;
 
     setFormData((prev) => ({
       ...prev,
@@ -282,7 +315,6 @@ console.log(selectedStage)
       final_price: finalPrice.toFixed(2),
     }));
   };
-
   // Calculate total time
   const calculateTotalTime = () => {
     const design = parseFloat(formData.design_time) || 0;
@@ -296,30 +328,73 @@ console.log(selectedStage)
     setFormData((prev) => ({
       ...prev,
       total_time_spent: total.toFixed(1),
-      estimated_hours:total.toFixed(1)
+      estimated_hours: total.toFixed(1), // Match UpdateStageModal behavior
     }));
   };
 
   // Handle form input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+
+    setFormData((prev) => {
+      // Create updated form data with the new value
+      const updatedData = { ...prev };
+
+      // Handle special cases for numbers
+      if (name.includes("_cost") || name === "markup_percentage") {
+        updatedData[name] = value === "" ? "" : value;
+      } else if (name.includes("_time")) {
+        updatedData[name] = value === "" ? "" : value;
+      } else {
+        updatedData[name] = value;
+      }
+
+      // Calculate totals if cost or markup changed
+      if (name.includes("_cost") || name === "markup_percentage") {
+        const material = Number(updatedData.material_cost) || 0;
+        const labor = Number(updatedData.labor_cost) || 0;
+        const software = Number(updatedData.software_cost) || 0;
+        const machine = Number(updatedData.machine_cost) || 0;
+        const other = Number(updatedData.other_costs) || 0;
+        const markup = Number(updatedData.markup_percentage);
+
+        console.log("CAD CALCULATING WITH:", {
+          material,
+          labor,
+          software,
+          machine,
+          other,
+          markup,
+        });
+
+        const total = material + labor + software + machine + other;
+        const markupAmount = (total * markup) / 100;
+        const finalPrice = total + markupAmount;
+
+        updatedData.total_cost = total.toFixed(2);
+        updatedData.final_price = finalPrice.toFixed(2);
+      }
+
+      // Calculate totals if time field changed
+      if (name.includes("_time")) {
+        const design = parseFloat(updatedData.design_time) || 0;
+        const modeling = parseFloat(updatedData.modeling_time) || 0;
+        const rendering = parseFloat(updatedData.rendering_time) || 0;
+        const revision = parseFloat(updatedData.revision_time) || 0;
+        const review = parseFloat(updatedData.review_time) || 0;
+
+        const total = design + modeling + rendering + revision + review;
+
+        updatedData.total_time_spent = total.toFixed(1);
+        updatedData.estimated_hours = total.toFixed(1);
+      }
+
+      return updatedData;
+    });
 
     // Clear error if exists
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-
-    // Auto-calculate totals for cost and time fields
-    if (name.includes("_cost") || name === "markup_percentage") {
-      setTimeout(() => calculateTotalCost(), 100);
-    }
-
-    if (name.includes("_time")) {
-      setTimeout(() => calculateTotalTime(), 100);
     }
   };
 
@@ -363,7 +438,7 @@ console.log(selectedStage)
       setUploadError(
         `Some files exceed 100MB limit: ${oversizedFiles
           .map((f) => f.name)
-          .join(", ")}`
+          .join(", ")}`,
       );
       return [];
     }
@@ -380,23 +455,45 @@ console.log(selectedStage)
     ];
 
     const cadExtensions = [
-      "3dm", "3ds", "blend", "dwg", "dxf", "fbx", "iges", "igs",
-      "max", "obj", "ply", "stl", "step", "stp", "skp", "sldprt",
-      "sldasm", "prt", "asm", "catpart", "catproduct", "f3d",
-      "jcad", "rhino", "zpr", "ztl"
+      "3dm",
+      "3ds",
+      "blend",
+      "dwg",
+      "dxf",
+      "fbx",
+      "iges",
+      "igs",
+      "max",
+      "obj",
+      "ply",
+      "stl",
+      "step",
+      "stp",
+      "skp",
+      "sldprt",
+      "sldasm",
+      "prt",
+      "asm",
+      "catpart",
+      "catproduct",
+      "f3d",
+      "jcad",
+      "rhino",
+      "zpr",
+      "ztl",
     ];
 
     const invalidFiles = fileList.filter(
       (file) =>
         !allowedTypes.includes(file.type) &&
         !cadExtensions.some((ext) =>
-          file.name.toLowerCase().endsWith(`.${ext}`)
-        )
+          file.name.toLowerCase().endsWith(`.${ext}`),
+        ),
     );
 
     if (invalidFiles.length > 0) {
       setUploadError(
-        `Invalid file types: ${invalidFiles.map((f) => f.name).join(", ")}`
+        `Invalid file types: ${invalidFiles.map((f) => f.name).join(", ")}`,
       );
       return [];
     }
@@ -558,92 +655,97 @@ console.log(selectedStage)
   };
 
   // Handle form submit
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
+    if (!validateForm()) return;
 
-  if (!validateForm()) return;
+    try {
+      const filesToUpload = cadFiles
+        .filter((file) => !file.isExisting && file.file)
+        .map((file) => file.file);
 
-  try {
-    const filesToUpload = cadFiles
-      .filter((file) => !file.isExisting && file.file)
-      .map((file) => file.file);
+      // ✅ Simple update data
+      const updateData = {
+        // Basic info
+        assigned_to: formData.assigned_to,
+        status: formData.status,
+        start_date: formData.start_date,
+        end_date: formData.end_date || "",
+        estimated_hours: formData.estimated_hours || "0",
+        actual_hours: formData.actual_hours || "0",
+        cad_software: formData.cad_software || "",
+        complexity_level: formData.complexity_level || "",
+        remarks: formData.remarks || "",
+        stage: formData.stage || "", // Added Next Stage
+        department: "CAD",
 
-    // ✅ **Simple update data - NO job_card_id needed**
-    const updateData = {
-      // Basic info
-      assigned_to: formData.assigned_to,
-      status: formData.status,
-      start_date: formData.start_date,
-      end_date: formData.end_date || "",
-      estimated_hours: formData.estimated_hours || "0",
-      actual_hours: formData.actual_hours || "0",
-      cad_software: formData.cad_software || "",
-      complexity_level: formData.complexity_level || "",
-      remarks: formData.remarks || "",
-      department: "CAD",  // ✅ IMPORTANT: Add department
-      
-      // Cost
-      material_cost: formData.material_cost || "0",
-      labor_cost: formData.labor_cost || "0",
-      software_cost: formData.software_cost || "0",
-      machine_cost: formData.machine_cost || "0",
-      other_costs: formData.other_costs || "0",
-      total_cost: formData.total_cost || "0",
-      cost_currency: formData.cost_currency || "INR",
-      cost_status: formData.cost_status || "estimated",
-      markup_percentage: formData.markup_percentage || "30",
-      final_price: formData.final_price || "0",
-      
-      // Time
-      design_time: formData.design_time || "0",
-      modeling_time: formData.modeling_time || "0",
-      rendering_time: formData.rendering_time || "0",
-      revision_time: formData.revision_time || "0",
-      review_time: formData.review_time || "0",
-      total_time_spent: formData.total_time_spent || "0",
-      time_breakdown: formData.time_breakdown || "",
-      
-      // File tracking
-      file_version: formData.file_version || "1.0",
-      file_revisions: formData.file_revisions || 0,
-      file_status: formData.file_status || "draft",
-      backup_location: formData.backup_location || "",
-      
-      // Files
-      files: cadFiles,
-    };
+        // Cost
+        material_cost: formData.material_cost || "0",
+        labor_cost: formData.labor_cost || "0",
+        software_cost: formData.software_cost || "0",
+        machine_cost: formData.machine_cost || "0",
+        other_costs: formData.other_costs || "0",
+        total_cost: formData.total_cost || "0",
+        cost_currency: formData.cost_currency || "INR",
+        cost_status: formData.cost_status || "estimated",
+        markup_percentage: formData.markup_percentage || "",
+        final_price: formData.final_price || "0",
 
-    console.log("🚀 Submitting CAD stage update:", {
-      cadStageId: selectedStage._id,
-      data: updateData
-    });
+        // Time
+        design_time: formData.design_time || "0",
+        modeling_time: formData.modeling_time || "0",
+        rendering_time: formData.rendering_time || "0",
+        revision_time: formData.revision_time || "0",
+        review_time: formData.review_time || "0",
+        total_time_spent: formData.total_time_spent || "0",
+        time_breakdown: formData.time_breakdown || "",
 
-    if (onUpdate) {
-      // ✅ **Pass only CAD stage ID**
-      const success = await onUpdate(
-        selectedStage._id,  // Only CAD stage ID
-        updateData,
-        filesToUpload
-      );
-      
-      if (success) {
-        onClose();
+        // File tracking
+        file_version: formData.file_version || "1.0",
+        file_revisions: formData.file_revisions || 0,
+        file_status: formData.file_status || "draft",
+        backup_location: formData.backup_location || "",
+
+        // Files
+        files: cadFiles,
+      };
+
+      console.log("🚀 Submitting CAD stage update:", {
+        cadStageId: selectedStage._id,
+        data: updateData,
+      });
+
+      if (onUpdate) {
+        const success = await onUpdate(
+          selectedStage._id,
+          updateData,
+          filesToUpload,
+        );
+
+        if (success) {
+          onClose();
+        }
       }
+    } catch (error) {
+      console.error("Error:", error);
+      setUploadError("Failed to update.");
     }
-  } catch (error) {
-    console.error("Error:", error);
-    setUploadError("Failed to update.");
-  }
-};
+  };
+
   if (!selectedStage) return null;
 
   const isDisabled = loading || uploading;
 
   // Calculate efficiency
-  const efficiency = formData.estimated_hours && formData.total_time_spent 
-    ? ((parseFloat(formData.estimated_hours) / parseFloat(formData.total_time_spent)) * 100).toFixed(1)
-    : "0";
+  const efficiency =
+    formData.estimated_hours && formData.total_time_spent
+      ? (
+          (parseFloat(formData.estimated_hours) /
+            parseFloat(formData.total_time_spent)) *
+          100
+        ).toFixed(1)
+      : "0";
 
   // Render section header
   const renderSectionHeader = (title, sectionKey, icon, badgeCount = null) => (
@@ -665,66 +767,6 @@ const handleSubmit = async (e) => {
     </div>
   );
 
-  // Render file upload section
-  const renderFileUploadSection = (
-    title,
-    fileType,
-    files,
-    accept
-  ) => (
-    <div className="mb-3">
-      <label className="form-label fw-medium d-flex align-items-center gap-2">
-        <FiFile size={16} />
-        {title}
-      </label>
-      <div className="border rounded p-3">
-        <input
-          type="file"
-          className="form-control mb-3"
-          accept={accept}
-          multiple
-          onChange={(e) => handleFileUpload(e.target.files, fileType)}
-          disabled={isDisabled}
-        />
-        {getFilesByCategory(fileType).length > 0 && (
-          <div className="mt-3">
-            <h6 className="small fw-bold mb-2">
-              Uploaded Files ({getFilesByCategory(fileType).length}):
-            </h6>
-            <div className="d-flex flex-wrap gap-2">
-              {getFilesByCategory(fileType).map((file, index) => (
-                <div
-                  key={index}
-                  className="border rounded p-2 position-relative"
-                  style={{ minWidth: "120px" }}
-                >
-                  <div
-                    className="small text-truncate"
-                    style={{ maxWidth: "100px" }}
-                  >
-                    {file.name}
-                  </div>
-                  <div className="small text-muted">
-                    {(file.size / 1024).toFixed(1)} KB
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-danger position-absolute top-0 end-0"
-                    onClick={() => handleRemoveFile(file.id)}
-                    disabled={isDisabled}
-                    style={{ transform: "translate(30%, -30%)" }}
-                  >
-                    <FiX size={12} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div
       className="modal fade show d-block"
@@ -735,10 +777,7 @@ const handleSubmit = async (e) => {
       tabIndex="-1"
     >
       <div className="modal-dialog modal-dialog-centered modal-xl">
-        <div
-          className="modal-content rounded-3"
-          style={{ maxHeight: "90vh" }}
-        >
+        <div className="modal-content rounded-3" style={{ maxHeight: "90vh" }}>
           <div
             className="modal-header border-bottom pb-3 sticky-top bg-white"
             style={{ zIndex: 1050 }}
@@ -751,7 +790,8 @@ const handleSubmit = async (e) => {
               {selectedStage && (
                 <div className="d-flex align-items-center gap-2 mt-1">
                   <span className="badge bg-primary">
-                    <FiGrid className="me-1" /> {selectedStage.design_type || "N/A"}
+                    <FiGrid className="me-1" />{" "}
+                    {selectedStage.design_type || "N/A"}
                   </span>
                   {selectedStage.material && (
                     <span className="badge bg-warning">
@@ -793,9 +833,15 @@ const handleSubmit = async (e) => {
                           <h6 className="text-muted mb-1">Cost Status</h6>
                           <div className="d-flex align-items-center">
                             <span className="badge bg-warning me-2">
-                              {costStatusOptions.find(c => c.value === formData.cost_status)?.label}
+                              {
+                                costStatusOptions.find(
+                                  (c) => c.value === formData.cost_status,
+                                )?.label
+                              }
                             </span>
-                            <h4 className="mb-0">₹ {formData.final_price || "0.00"}</h4>
+                            <h4 className="mb-0">
+                              ₹ {formData.final_price || "0.00"}
+                            </h4>
                           </div>
                         </div>
                         <FiDollarSign className="text-warning" size={24} />
@@ -803,7 +849,7 @@ const handleSubmit = async (e) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="col-md-3">
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body p-3">
@@ -814,7 +860,9 @@ const handleSubmit = async (e) => {
                             <span className="me-2">
                               <FiTrendingUp className="text-success" />
                             </span>
-                            <h4 className="mb-0">{formData.total_time_spent || "0"} hrs</h4>
+                            <h4 className="mb-0">
+                              {formData.total_time_spent || "0"} hrs
+                            </h4>
                           </div>
                         </div>
                         <FiClock className="text-info" size={24} />
@@ -822,7 +870,7 @@ const handleSubmit = async (e) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="col-md-3">
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body p-3">
@@ -841,7 +889,7 @@ const handleSubmit = async (e) => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="col-md-3">
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body p-3">
@@ -849,8 +897,14 @@ const handleSubmit = async (e) => {
                         <div>
                           <h6 className="text-muted mb-1">Efficiency</h6>
                           <div className="d-flex align-items-center">
-                            <span className={`me-2 ${parseFloat(efficiency) > 100 ? 'text-success' : 'text-danger'}`}>
-                              {parseFloat(efficiency) > 100 ? <FiTrendingUp /> : <FiTrendingDown />}
+                            <span
+                              className={`me-2 ${parseFloat(efficiency) > 100 ? "text-success" : "text-danger"}`}
+                            >
+                              {parseFloat(efficiency) > 100 ? (
+                                <FiTrendingUp />
+                              ) : (
+                                <FiTrendingDown />
+                              )}
                             </span>
                             <h4 className="mb-0">{efficiency}%</h4>
                           </div>
@@ -867,7 +921,7 @@ const handleSubmit = async (e) => {
                 {renderSectionHeader(
                   "📝 Basic Information",
                   "basic",
-                  <FiUser />
+                  <FiUser />,
                 )}
                 {expandedSections.basic && (
                   <div className="card-body">
@@ -891,11 +945,12 @@ const handleSubmit = async (e) => {
                             .filter(
                               (emp) =>
                                 emp.role_id?.role_name?.includes("CAD") ||
-                                emp.role_id?.role_name?.includes("Design")
+                                emp.role_id?.role_name?.includes("Design"),
                             )
                             .map((emp) => (
                               <option key={emp._id} value={emp._id}>
-                                {emp.name} ({emp.role_id?.role_name || "No Role"})
+                                {emp.name} (
+                                {emp.role_id?.role_name || "No Role"})
                               </option>
                             ))}
                         </select>
@@ -929,14 +984,15 @@ const handleSubmit = async (e) => {
                         </select>
                         {formErrors.status && (
                           <div className="invalid-feedback d-flex align-items-center">
-                            <FiAlertCircle className="me-1" /> {formErrors.status}
+                            <FiAlertCircle className="me-1" />{" "}
+                            {formErrors.status}
                           </div>
                         )}
                       </div>
                     </div>
 
                     <div className="row">
-                      <div className="col-md-6 mb-3">
+                      <div className="col-md-4 mb-3">
                         <label className="form-label fw-medium">
                           <FiCpu className="me-1" /> CAD Software
                         </label>
@@ -956,7 +1012,7 @@ const handleSubmit = async (e) => {
                         </select>
                       </div>
 
-                      <div className="col-md-6 mb-3">
+                      <div className="col-md-4 mb-3">
                         <label className="form-label fw-medium">
                           <FiBarChart2 className="me-1" /> Complexity Level
                         </label>
@@ -979,18 +1035,38 @@ const handleSubmit = async (e) => {
                             Estimated:{" "}
                             {
                               complexityOptions.find(
-                                (c) => c.value === formData.complexity_level
+                                (c) => c.value === formData.complexity_level,
                               )?.estimated_hours
                             }{" "}
                             hours | Cost Multiplier:{" "}
                             {
                               complexityOptions.find(
-                                (c) => c.value === formData.complexity_level
+                                (c) => c.value === formData.complexity_level,
                               )?.cost_multiplier
                             }
                             x
                           </div>
                         )}
+                      </div>
+
+                      <div className="col-md-4 mb-3">
+                        <label className="form-label fw-medium">
+                          <FiTrendingUp className="me-1" /> Next Stage
+                        </label>
+                        <select
+                          name="stage"
+                          className="form-select"
+                          value={formData.stage}
+                          onChange={handleInputChange}
+                          disabled={isDisabled}
+                        >
+                          <option value="">Select Next Stage</option>
+                          {defaultNextStageOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.icon} {option.label}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -1097,7 +1173,7 @@ const handleSubmit = async (e) => {
                 {renderSectionHeader(
                   "💰 Cost Tracking",
                   "cost",
-                  <FiDollarSign />
+                  <FiDollarSign />,
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
@@ -1141,7 +1217,9 @@ const handleSubmit = async (e) => {
                             disabled={isDisabled}
                           />
                         </div>
-                        <div className="form-text x-small">Prototyping materials</div>
+                        <div className="form-text x-small">
+                          Prototyping materials
+                        </div>
                       </div>
 
                       <div className="col-md-4 mb-2">
@@ -1183,7 +1261,9 @@ const handleSubmit = async (e) => {
                             disabled={isDisabled}
                           />
                         </div>
-                        <div className="form-text x-small">CAD software license</div>
+                        <div className="form-text x-small">
+                          CAD software license
+                        </div>
                       </div>
 
                       <div className="col-md-4 mb-2">
@@ -1230,7 +1310,7 @@ const handleSubmit = async (e) => {
 
                       <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
-                          <FiPercent className="me-1" /> Markup %
+                          Markup %
                         </label>
                         <div className="input-group input-group-sm">
                           <input
@@ -1284,32 +1364,52 @@ const handleSubmit = async (e) => {
                           <div className="progress" style={{ height: "20px" }}>
                             <div
                               className="progress-bar bg-primary"
-                              style={{ width: "25%" }}
+                                 style={{
+                                width: `${((parseFloat(formData.material_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
                               title="Material Cost"
                             >
                               Material
                             </div>
                             <div
                               className="progress-bar bg-success"
-                              style={{ width: "35%" }}
+                           style={{
+                                width: `${((parseFloat(formData.labor_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
                               title="Labor Cost"
                             >
                               Labor
                             </div>
                             <div
                               className="progress-bar bg-warning"
-                              style={{ width: "20%" }}
+                                 style={{
+                                width: `${((parseFloat(formData.software_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
                               title="Software Cost"
                             >
                               Software
                             </div>
+
+
                             <div
                               className="progress-bar bg-info"
-                              style={{ width: "20%" }}
+                                  style={{
+                                width: `${((parseFloat(formData.other_costs || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
                               title="Other Costs"
                             >
                               Other
                             </div>
+     <div
+                              className="progress-bar bg-secondary "
+                                  style={{
+                                width: `${((parseFloat(formData.machine_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Machine  Costs"
+                            >
+                              Machine 
+                            </div>
+
                           </div>
                           <div className="mt-2 small text-muted">
                             Cost breakdown visualization
@@ -1323,11 +1423,7 @@ const handleSubmit = async (e) => {
 
               {/* Time Tracking Section */}
               <div className="card mb-4">
-                {renderSectionHeader(
-                  "⏱️ Time Tracking",
-                  "time",
-                  <FiClock />
-                )}
+                {renderSectionHeader("⏱️ Time Tracking", "time", <FiClock />)}
                 {expandedSections.time && (
                   <div className="card-body">
                     <div className="row g-2">
@@ -1349,7 +1445,9 @@ const handleSubmit = async (e) => {
                           />
                           <span className="input-group-text">hrs</span>
                         </div>
-                        <div className="form-text x-small">Concept & sketching</div>
+                        <div className="form-text x-small">
+                          Concept & sketching
+                        </div>
                       </div>
 
                       <div className="col-md-4 mb-2">
@@ -1391,7 +1489,9 @@ const handleSubmit = async (e) => {
                           />
                           <span className="input-group-text">hrs</span>
                         </div>
-                        <div className="form-text x-small">3D visualization</div>
+                        <div className="form-text x-small">
+                          3D visualization
+                        </div>
                       </div>
 
                       <div className="col-md-4 mb-2">
@@ -1433,7 +1533,9 @@ const handleSubmit = async (e) => {
                           />
                           <span className="input-group-text">hrs</span>
                         </div>
-                        <div className="form-text x-small">Client/team review</div>
+                        <div className="form-text x-small">
+                          Client/team review
+                        </div>
                       </div>
 
                       <div className="col-md-4 mb-2">
@@ -1480,13 +1582,18 @@ const handleSubmit = async (e) => {
                       <h6 className="fw-bold mb-3 small">Time Allocation</h6>
                       <div className="row">
                         <div className="col-md-8">
-                          <div className="progress mb-2" style={{ height: "20px" }}>
+                          <div
+                            className="progress mb-2"
+                            style={{ height: "20px" }}
+                          >
                             <div
                               className="progress-bar bg-primary"
                               style={{
                                 width: `${
                                   (parseFloat(formData.design_time || 0) /
-                                    parseFloat(formData.total_time_spent || 1)) *
+                                    parseFloat(
+                                      formData.total_time_spent || 1,
+                                    )) *
                                   100
                                 }%`,
                               }}
@@ -1499,7 +1606,9 @@ const handleSubmit = async (e) => {
                               style={{
                                 width: `${
                                   (parseFloat(formData.modeling_time || 0) /
-                                    parseFloat(formData.total_time_spent || 1)) *
+                                    parseFloat(
+                                      formData.total_time_spent || 1,
+                                    )) *
                                   100
                                 }%`,
                               }}
@@ -1512,7 +1621,9 @@ const handleSubmit = async (e) => {
                               style={{
                                 width: `${
                                   (parseFloat(formData.rendering_time || 0) /
-                                    parseFloat(formData.total_time_spent || 1)) *
+                                    parseFloat(
+                                      formData.total_time_spent || 1,
+                                    )) *
                                   100
                                 }%`,
                               }}
@@ -1525,13 +1636,30 @@ const handleSubmit = async (e) => {
                               style={{
                                 width: `${
                                   (parseFloat(formData.revision_time || 0) /
-                                    parseFloat(formData.total_time_spent || 1)) *
+                                    parseFloat(
+                                      formData.total_time_spent || 1,
+                                    )) *
                                   100
                                 }%`,
                               }}
                               title="Revisions"
                             >
                               Revisions
+                            </div>
+                            <div
+                              className="progress-bar bg-black"
+                              style={{
+                                width: `${
+                                  (parseFloat(formData.review_time || 0) /
+                                    parseFloat(
+                                      formData.total_time_spent || 1,
+                                    )) *
+                                  100
+                                }%`,
+                              }}
+                              title="Review"
+                            >
+                              Review
                             </div>
                           </div>
                         </div>
@@ -1555,7 +1683,7 @@ const handleSubmit = async (e) => {
                   "📎 File Tracking",
                   "files",
                   <FiFile />,
-                  cadFiles.length
+                  cadFiles.length,
                 )}
                 {expandedSections.files && (
                   <div className="card-body">
@@ -1632,7 +1760,8 @@ const handleSubmit = async (e) => {
                             </h6>
                           </div>
                           <div className="card-body p-3">
-                            <div className="border rounded p-2 text-center bg-light mb-2"
+                            <div
+                              className="border rounded p-2 text-center bg-light mb-2"
                               style={{
                                 borderStyle: "dashed",
                                 borderColor: "#6c757d",
@@ -1643,13 +1772,16 @@ const handleSubmit = async (e) => {
                                 input.type = "file";
                                 input.multiple = true;
                                 input.accept = "image/*,.pdf,.psd,.ai";
-                                input.onchange = (e) => handleFileChange(e, "source");
+                                input.onchange = (e) =>
+                                  handleFileChange(e, "source");
                                 input.click();
                               }}
                             >
                               <FiUpload size={16} className="text-info mb-1" />
                               <p className="mb-0 small">Upload Source Files</p>
-                              <p className="x-small text-muted">JPG, PNG, PDF, PSD, AI</p>
+                              <p className="x-small text-muted">
+                                JPG, PNG, PDF, PSD, AI
+                              </p>
                             </div>
 
                             {getFilesByCategory("source").length > 0 && (
@@ -1660,46 +1792,59 @@ const handleSubmit = async (e) => {
                                       <tr>
                                         <th className="small">File</th>
                                         <th className="small text-end">Size</th>
-                                        <th className="small text-end">Actions</th>
+                                        <th className="small text-end">
+                                          Actions
+                                        </th>
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {getFilesByCategory("source").map((file) => (
-                                        <tr key={file.id}>
-                                          <td>
-                                            <div className="d-flex align-items-center">
-                                              <span className="me-2">
-                                                {getFileIcon(file)}
-                                              </span>
-                                              <div className="small text-truncate" style={{ maxWidth: '150px' }}>
-                                                {file.name}
+                                      {getFilesByCategory("source").map(
+                                        (file) => (
+                                          <tr key={file.id}>
+                                            <td>
+                                              <div className="d-flex align-items-center">
+                                                <span className="me-2">
+                                                  {getFileIcon(file)}
+                                                </span>
+                                                <div
+                                                  className="small text-truncate"
+                                                  style={{ maxWidth: "150px" }}
+                                                >
+                                                  {file.name}
+                                                </div>
                                               </div>
-                                            </div>
-                                          </td>
-                                          <td className="small text-end">{formatFileSize(file.size)}</td>
-                                          <td className="text-end">
-                                            <div className="btn-group btn-group-sm">
-                                              <button
-                                                type="button"
-                                                className="btn btn-outline-primary btn-sm"
-                                                onClick={() => handleDownloadFile(file)}
-                                                title="Download"
-                                              >
-                                                <FiDownload size={10} />
-                                              </button>
-                                              <button
-                                                type="button"
-                                                className="btn btn-outline-danger btn-sm"
-                                                onClick={() => handleRemoveFile(file.id)}
-                                                title="Remove"
-                                                disabled={isDisabled}
-                                              >
-                                                <FiTrash2 size={10} />
-                                              </button>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      ))}
+                                            </td>
+                                            <td className="small text-end">
+                                              {formatFileSize(file.size)}
+                                            </td>
+                                            <td className="text-end">
+                                              <div className="btn-group btn-group-sm">
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-outline-primary btn-sm"
+                                                  onClick={() =>
+                                                    handleDownloadFile(file)
+                                                  }
+                                                  title="Download"
+                                                >
+                                                  <FiDownload size={10} />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-outline-danger btn-sm"
+                                                  onClick={() =>
+                                                    handleRemoveFile(file.id)
+                                                  }
+                                                  title="Remove"
+                                                  disabled={isDisabled}
+                                                >
+                                                  <FiTrash2 size={10} />
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        ),
+                                      )}
                                     </tbody>
                                   </table>
                                 </div>
@@ -1720,7 +1865,8 @@ const handleSubmit = async (e) => {
                             </h6>
                           </div>
                           <div className="card-body p-3">
-                            <div className="border rounded p-2 text-center bg-light mb-2"
+                            <div
+                              className="border rounded p-2 text-center bg-light mb-2"
                               style={{
                                 borderStyle: "dashed",
                                 borderColor: "#6c757d",
@@ -1730,14 +1876,21 @@ const handleSubmit = async (e) => {
                                 const input = document.createElement("input");
                                 input.type = "file";
                                 input.multiple = true;
-                                input.accept = ".3dm,.stl,.step,.iges,.obj,.blend,.dwg,.dxf";
-                                input.onchange = (e) => handleFileChange(e, "output");
+                                input.accept =
+                                  ".3dm,.stl,.step,.iges,.obj,.blend,.dwg,.dxf";
+                                input.onchange = (e) =>
+                                  handleFileChange(e, "output");
                                 input.click();
                               }}
                             >
-                              <FiUpload size={16} className="text-success mb-1" />
+                              <FiUpload
+                                size={16}
+                                className="text-success mb-1"
+                              />
                               <p className="mb-0 small">Upload CAD Files</p>
-                              <p className="x-small text-muted">3DM, STL, STEP, IGES, OBJ, BLEND</p>
+                              <p className="x-small text-muted">
+                                3DM, STL, STEP, IGES, OBJ, BLEND
+                              </p>
                             </div>
 
                             {getFilesByCategory("output").length > 0 && (
@@ -1748,50 +1901,67 @@ const handleSubmit = async (e) => {
                                       <tr>
                                         <th className="small">File</th>
                                         <th className="small text-end">Size</th>
-                                        <th className="small text-center">Version</th>
-                                        <th className="small text-end">Actions</th>
+                                        <th className="small text-center">
+                                          Version
+                                        </th>
+                                        <th className="small text-end">
+                                          Actions
+                                        </th>
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {getFilesByCategory("output").map((file) => (
-                                        <tr key={file.id}>
-                                          <td>
-                                            <div className="d-flex align-items-center">
-                                              <span className="me-2">
-                                                {getFileIcon(file)}
-                                              </span>
-                                              <div className="small text-truncate" style={{ maxWidth: '120px' }}>
-                                                {file.name}
+                                      {getFilesByCategory("output").map(
+                                        (file) => (
+                                          <tr key={file.id}>
+                                            <td>
+                                              <div className="d-flex align-items-center">
+                                                <span className="me-2">
+                                                  {getFileIcon(file)}
+                                                </span>
+                                                <div
+                                                  className="small text-truncate"
+                                                  style={{ maxWidth: "120px" }}
+                                                >
+                                                  {file.name}
+                                                </div>
                                               </div>
-                                            </div>
-                                          </td>
-                                          <td className="small text-end">{formatFileSize(file.size)}</td>
-                                          <td className="small text-center">
-                                            <span className="badge bg-secondary">v{file.version}</span>
-                                          </td>
-                                          <td className="text-end">
-                                            <div className="btn-group btn-group-sm">
-                                              <button
-                                                type="button"
-                                                className="btn btn-outline-primary btn-sm"
-                                                onClick={() => handleDownloadFile(file)}
-                                                title="Download"
-                                              >
-                                                <FiDownload size={10} />
-                                              </button>
-                                              <button
-                                                type="button"
-                                                className="btn btn-outline-danger btn-sm"
-                                                onClick={() => handleRemoveFile(file.id)}
-                                                title="Remove"
-                                                disabled={isDisabled}
-                                              >
-                                                <FiTrash2 size={10} />
-                                              </button>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      ))}
+                                            </td>
+                                            <td className="small text-end">
+                                              {formatFileSize(file.size)}
+                                            </td>
+                                            <td className="small text-center">
+                                              <span className="badge bg-secondary">
+                                                v{file.version}
+                                              </span>
+                                            </td>
+                                            <td className="text-end">
+                                              <div className="btn-group btn-group-sm">
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-outline-primary btn-sm"
+                                                  onClick={() =>
+                                                    handleDownloadFile(file)
+                                                  }
+                                                  title="Download"
+                                                >
+                                                  <FiDownload size={10} />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  className="btn btn-outline-danger btn-sm"
+                                                  onClick={() =>
+                                                    handleRemoveFile(file.id)
+                                                  }
+                                                  title="Remove"
+                                                  disabled={isDisabled}
+                                                >
+                                                  <FiTrash2 size={10} />
+                                                </button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        ),
+                                      )}
                                     </tbody>
                                   </table>
                                 </div>

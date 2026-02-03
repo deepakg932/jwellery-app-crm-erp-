@@ -824,7 +824,7 @@ const AddItemModal = ({
 
                   {/* MAKING CHARGE TYPE */}
                   <div className="mb-3">
-                    <label className="form-label">Making Charge Types</label>
+                    <label className="form-label">Making Charge</label>
 
                     <Select
                       isMulti
@@ -888,7 +888,7 @@ const AddItemModal = ({
                     )}
 
                     <div className="form-text">
-                      You can select multiple making charge types
+                      You can select multiple making charge
                     </div>
                   </div>
                 </div>

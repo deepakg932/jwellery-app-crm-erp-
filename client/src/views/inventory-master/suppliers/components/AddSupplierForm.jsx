@@ -5,8 +5,9 @@ import { Country, State, City } from "country-state-city";
 const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
   const [formData, setFormData] = useState({
     supplier_name: "",
-    supplier_code: "",
+    company_name: "",
     contact_person: "",
+    contact_person_number:"",
     payment_terms: "Net 30 days",
     payment_type: "bank_transfer",
     tax_number: "",
@@ -29,20 +30,23 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
   // Initialize countries on component mount
   useEffect(() => {
     const allCountries = Country.getAllCountries();
-    const formattedCountries = allCountries.map(country => ({
+    const formattedCountries = allCountries.map((country) => ({
       value: country.isoCode,
       label: country.name,
-      phoneCode: country.phonecode
+      phoneCode: country.phonecode,
     }));
-    
+
     setCountries(formattedCountries);
-    
+
     // Set default country (India)
-    const india = formattedCountries.find(c => c.value === "IN");
+    const india = formattedCountries.find((c) => c.value === "IN");
     if (india) {
-      setFormData(prev => ({ ...prev, country: india.value }));
+      setFormData((prev) => ({ ...prev, country: india.value }));
     } else if (formattedCountries.length > 0) {
-      setFormData(prev => ({ ...prev, country: formattedCountries[0].value }));
+      setFormData((prev) => ({
+        ...prev,
+        country: formattedCountries[0].value,
+      }));
     }
   }, []);
 
@@ -50,13 +54,13 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
   useEffect(() => {
     if (formData.country) {
       const countryStates = State.getStatesOfCountry(formData.country);
-      const formattedStates = countryStates.map(state => ({
+      const formattedStates = countryStates.map((state) => ({
         value: state.isoCode,
-        label: state.name
+        label: state.name,
       }));
-      
+
       setStates(formattedStates);
-      setFormData(prev => ({ ...prev, state: "", city: "" }));
+      setFormData((prev) => ({ ...prev, state: "", city: "" }));
       setCities([]);
     }
   }, [formData.country]);
@@ -64,14 +68,17 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
   // Update cities when state changes
   useEffect(() => {
     if (formData.country && formData.state) {
-      const stateCities = City.getCitiesOfState(formData.country, formData.state);
-      const formattedCities = stateCities.map(city => ({
+      const stateCities = City.getCitiesOfState(
+        formData.country,
+        formData.state,
+      );
+      const formattedCities = stateCities.map((city) => ({
         value: city.name,
-        label: city.name
+        label: city.name,
       }));
-      
+
       setCities(formattedCities);
-      setFormData(prev => ({ ...prev, city: "" }));
+      setFormData((prev) => ({ ...prev, city: "" }));
     }
   }, [formData.country, formData.state]);
 
@@ -82,12 +89,15 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
       newErrors.supplier_name = "Supplier name is required";
     }
 
-    if (!formData.supplier_code.trim()) {
-      newErrors.supplier_code = "Supplier code is required";
+    if (!formData.company_name.trim()) {
+      newErrors.company_name = "Company Name is required";
     }
 
     if (!formData.contact_person.trim()) {
       newErrors.contact_person = "Contact person is required";
+    }
+    if (!formData.contact_person_number.trim()) {
+      newErrors.contact_person_number = "Contact Person Number is required";
     }
 
     if (!formData.phone.trim()) {
@@ -133,13 +143,14 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
     if (!validateForm()) return;
 
     // Get country and state names from their codes
-    const selectedCountry = countries.find(c => c.value === formData.country);
-    const selectedState = states.find(s => s.value === formData.state);
-    
+    const selectedCountry = countries.find((c) => c.value === formData.country);
+    const selectedState = states.find((s) => s.value === formData.state);
+
     const payload = {
       supplier_name: formData.supplier_name.trim(),
-      supplier_code: formData.supplier_code.trim(),
+      company_name: formData.company_name.trim(),
       contact_person: formData.contact_person.trim(),
+      contact_person_number: formData.contact_person_number.trim(),
       payment_terms: formData.payment_terms,
       payment_type: formData.payment_type,
       tax_number: formData.tax_number.trim(),
@@ -160,11 +171,12 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
     onSave(payload);
 
     // Reset form
-    const resetCountry = countries.find(c => c.value === "IN")?.value || "";
+    const resetCountry = countries.find((c) => c.value === "IN")?.value || "";
     setFormData({
       supplier_name: "",
-      supplier_code: "",
+      company_name: "",
       contact_person: "",
+      contact_person_number:"",
       payment_terms: "Net 30 days",
       payment_type: "bank_transfer",
       tax_number: "",
@@ -195,11 +207,12 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
   };
 
   const handleClose = () => {
-    const resetCountry = countries.find(c => c.value === "IN")?.value || "";
+    const resetCountry = countries.find((c) => c.value === "IN")?.value || "";
     setFormData({
       supplier_name: "",
-      supplier_code: "",
+      company_name: "",
       contact_person: "",
+      contact_person_number:"",
       payment_terms: "Net 30 days",
       payment_type: "bank_transfer",
       tax_number: "",
@@ -219,7 +232,7 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
 
   // Get current country and state names for display
   const getSelectedCountryName = () => {
-    const country = countries.find(c => c.value === formData.country);
+    const country = countries.find((c) => c.value === formData.country);
     return country ? country.label : "";
   };
 
@@ -268,30 +281,27 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
                   )}
                 </div>
 
-                {/* Supplier Code */}
+                {/* Company Name */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
-                    Supplier Code <span className="text-danger">*</span>
+                    Company Name <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"
-                    name="supplier_code"
+                    name="company_name"
                     className={`form-control form-control-lg ${
-                      errors.supplier_code ? "is-invalid" : ""
+                      errors.company_name ? "is-invalid" : ""
                     }`}
-                    placeholder="e.g., SUP0001"
-                    value={formData.supplier_code}
+                    placeholder="Enter company name"
+                    value={formData.company_name}
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  {errors.supplier_code && (
+                  {errors.company_name && (
                     <div className="invalid-feedback">
-                      {errors.supplier_code}
+                      {errors.company_name}
                     </div>
                   )}
-                  <div className="form-text">
-                    Unique code for the supplier
-                  </div>
                 </div>
 
                 {/* Contact Person */}
@@ -317,6 +327,30 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
                   )}
                 </div>
 
+                 {/* Contact Person Number */}
+                
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">
+                    Contact Person Number <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="contact_person_number"
+                    className={`form-control form-control-lg ${
+                      errors.contact_person_number ? "is-invalid" : ""
+                    }`}
+                    placeholder="Enter Contact Person Number name"
+                    value={formData.contact_person_number}
+                    onChange={handleChange}
+                    disabled={loading}
+                    
+                  />
+                  {errors.contact_person_number && (
+                    <div className="invalid-feedback">
+                      {errors.contact_person_number}
+                    </div>
+                  )}
+                </div>
                 {/* Email */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
@@ -345,7 +379,8 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
                   </label>
                   <div className="input-group">
                     <span className="input-group-text">
-                      {countries.find(c => c.value === formData.country)?.phoneCode || "+91"}
+                      {countries.find((c) => c.value === formData.country)
+                        ?.phoneCode || "+91"}
                     </span>
                     <input
                       type="tel"
@@ -360,15 +395,15 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
                     />
                   </div>
                   {errors.phone && (
-                    <div className="invalid-feedback d-block">{errors.phone}</div>
+                    <div className="invalid-feedback d-block">
+                      {errors.phone}
+                    </div>
                   )}
                 </div>
 
                 {/* Payment Terms */}
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    Payment Terms
-                  </label>
+                  <label className="form-label fw-medium">Payment Terms</label>
                   <select
                     name="payment_terms"
                     className="form-control form-control-lg"
@@ -387,9 +422,7 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
 
                 {/* Payment Type */}
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    Payment Type
-                  </label>
+                  <label className="form-label fw-medium">Payment Type</label>
                   <select
                     name="payment_type"
                     className="form-control form-control-lg"
@@ -406,9 +439,7 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
 
                 {/* GST Number */}
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    GST Number
-                  </label>
+                  <label className="form-label fw-medium">GST Number</label>
                   <input
                     type="text"
                     name="gst_number"
@@ -418,9 +449,7 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  <div className="form-text">
-                    15-digit GSTIN (Optional)
-                  </div>
+                  <div className="form-text">15-digit GSTIN (Optional)</div>
                 </div>
 
                 {/* Tax Number */}
@@ -437,9 +466,7 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  <div className="form-text">
-                    10-digit PAN (Optional)
-                  </div>
+                  <div className="form-text">10-digit PAN (Optional)</div>
                 </div>
 
                 {/* Address */}

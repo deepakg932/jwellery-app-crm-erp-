@@ -598,7 +598,7 @@ const SupplierTable = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
+console.log(selectedItem)
   // Filter suppliers based on search
   const filteredSuppliers = suppliers.filter(
     (supplier) =>

@@ -53,74 +53,85 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
         (po.supplier?.name &&
           po.supplier.name.toLowerCase().includes(query.toLowerCase())) ||
         (po.supplier?.supplier_name &&
-          po.supplier.supplier_name.toLowerCase().includes(query.toLowerCase()))
+          po.supplier.supplier_name
+            .toLowerCase()
+            .includes(query.toLowerCase())),
     );
 
     // Only show approved or draft POs
     const filteredResults = results.filter(
-      (po) => po.status === "approved" || po.status === "draft"
+      (po) => po.status === "approved" || po.status === "draft",
     );
 
     setPoSearchResults(filteredResults);
     setShowPoSearchResults(true);
   };
 
-  // Handle purchase order selection
-  const handlePOSelect = (po) => {
-    setSelectedPO(po);
+const handlePOSelect = (po) => {
+  setSelectedPO(po);
 
-    // Extract supplier and branch from PO response
-    const supplierId = po.supplier?._id || "";
-    const supplierName = po.supplier?.name || po.supplier?.supplier_name || "";
-    const branchId = po.branch?._id || "";
-    const branchName = po.branch?.name || "";
+  // Extract supplier and branch from PO response
+  const supplierId = po.supplier?._id || "";
+  const supplierName = po.supplier?.name || po.supplier?.supplier_name || "";
+  const branchId = po.branch?._id || "";
+  const branchName = po.branch?.branch_name || po.branch?.name || "";
 
-    setFormData((prev) => ({
-      ...prev,
-      po_id: po._id,
-      supplier_id: supplierId,
-      supplier_name: supplierName,
-      branch_id: branchId,
-      branch_name: branchName,
-    }));
+  setFormData((prev) => ({
+    ...prev,
+    po_id: po._id,
+    supplier_id: supplierId,
+    supplier_name: supplierName,
+    branch_id: branchId,
+    branch_name: branchName,
+  }));
 
-    // Auto-populate items from PO
-    const poItems =
-      po.items?.map((item) => {
-        const inventoryItem = item.inventory_item;
-        const unit = item.unit;
+  // Auto-populate items from PO
+  const poItems =
+    po.items?.map((item) => {
+      const inventoryItem = item.inventory_item;
+      const unit = item.unit;
 
-        return {
-          po_item_id: item._id,
-          inventory_item_id: inventoryItem?._id || "",
-          inventory_item_name: inventoryItem?.name || "Unknown Item",
-          sku_code: inventoryItem?.item_code || "N/A",
-          ordered_quantity: item.quantity || 0,
-          ordered_weight: item.weight || 0,
-          unit_id: unit?._id || "",
-          unit_name: unit?.name || "pcs",
-          unit_code: unit?.code || "",
-          rate: item.rate || 0,
-          total: item.total || 0,
+      // Determine if this is quantity or weight based
+      const isQuantityBased = item.quantity && parseFloat(item.quantity) > 0;
+      const isWeightBased = item.weight && parseFloat(item.weight) > 0;
 
-          // Only received fields (removed quantity and weight)
-          received_quantity: "",
-          received_weight: "",
-          cost: item.rate || 0,
-          status: "pending",
-        };
-      }) || [];
+      // Determine rate basis
+      const unitName = unit?.name?.toLowerCase() || unit?.code?.toLowerCase() || "";
+      const rateBasis = unitName.includes("kg") ? "per_kg" : 
+                       (unitName.includes("g") || unitName.includes("gram")) ? "per_gram" : 
+                       "per_unit";
 
-    setFormData((prev) => ({
-      ...prev,
-      items: poItems,
-      total_cost: calculateTotalCost(poItems),
-    }));
+      return {
+        po_item_id: item._id,
+        inventory_item_id: inventoryItem?._id || "",
+        inventory_item_name: inventoryItem?.name || "Unknown Item",
+        sku_code: inventoryItem?.item_code || "N/A",
+        ordered_quantity: isQuantityBased ? item.quantity || 0 : 0,
+        ordered_weight: isWeightBased ? item.weight || 0 : 0,
+        unit_id: unit?._id || "",
+        unit_name: unit?.name || "pcs",
+        unit_code: unit?.code || "",
+        rate: item.rate || 0,
+        cost: item.rate || 0,
+        rate_basis: rateBasis, // Track how the rate should be applied
+        received_quantity: isQuantityBased ? "" : "",
+        received_weight: isWeightBased ? "" : "",
+        total: 0,
+        status: "pending",
+      };
+    }) || [];
 
-    setPoSearchQuery("");
-    setShowPoSearchResults(false);
-    setPoSearchResults([]);
-  };
+  setFormData((prev) => ({
+    ...prev,
+    items: poItems,
+    total_cost: calculateTotalCost(poItems),
+  }));
+
+  setPoSearchQuery("");
+  setShowPoSearchResults(false);
+  setPoSearchResults([]);
+};
+
 
   // Clear selected PO
   const handleClearPO = () => {
@@ -150,22 +161,49 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
     { value: "cancelled", label: "Cancelled", color: "bg-danger" },
   ];
 
-  const calculateItemTotalCost = (item) => {
-    const receivedQty = parseFloat(item.received_quantity) || 0;
-    const receivedWeight = parseFloat(item.received_weight) || 0;
-    const cost = parseFloat(item.cost) || 0;
+const calculateItemTotalCost = (item) => {
+  const receivedQty = parseFloat(item.received_quantity) || 0;
+  const receivedWeight = parseFloat(item.received_weight) || 0;
+  const cost = parseFloat(item.cost) || 0;
 
-    // Use whichever has value: received_quantity or received_weight
-    let amount = receivedQty > 0 ? receivedQty : receivedWeight;
+  // IMPORTANT: Check which field should be used based on unit type
+  const orderedQty = parseFloat(item.ordered_quantity) || 0;
+  const orderedWeight = parseFloat(item.ordered_weight) || 0;
+
+  let amount = 0;
+  
+  // Priority: Use the field that matches what was ordered
+  if (orderedQty > 0) {
+    amount = receivedQty;
+  } else if (orderedWeight > 0) {
+    amount = receivedWeight;
+  } else {
+    // Fallback: use whichever has value
+    amount = receivedQty > 0 ? receivedQty : receivedWeight;
+  }
+
+  if (amount <= 0 || cost <= 0) return 0;
+
+  // **CRITICAL FIX**: Check if this is grams and rate is per kg
+  const unitName = (item.unit_name || "").toLowerCase();
+  
+  if (unitName.includes("g") && !unitName.includes("kg")) {
+    // If rate is per kg but amount is in grams, convert grams to kg
+    const amountInKg = amount / 1000;
+    return amountInKg * cost;
+  } else if (unitName.includes("kg")) {
+    // If rate is per kg and amount is in kg, no conversion needed
     return amount * cost;
-  };
-
+  } else {
+    // For other units
+    return amount * cost;
+  }
+};
   const calculateTotalCost = (items) => {
     return items.reduce((total, item) => {
-      return total + (parseFloat(item.total) || 0);
+      return total + calculateItemTotalCost(item);
     }, 0);
   };
-
   const validateForm = () => {
     const newErrors = {};
 
@@ -183,7 +221,7 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
 
     // Filter only items that have inventory_item_id (selected items)
     const selectedItems = formData.items.filter(
-      (item) => item.inventory_item_id
+      (item) => item.inventory_item_id,
     );
 
     if (selectedItems.length === 0) {
@@ -192,51 +230,72 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
 
     selectedItems.forEach((item, index) => {
       const originalIndex = formData.items.findIndex(
-        (i) => i.inventory_item_id === item.inventory_item_id
+        (i) => i.inventory_item_id === item.inventory_item_id,
       );
 
-      // Check for either received_quantity or received_weight field
-      const hasReceivedQty = item.received_quantity && parseFloat(item.received_quantity) > 0;
-      const hasReceivedWeight = item.received_weight && parseFloat(item.received_weight) > 0;
+      // Determine unit type first
+      const unitType = getItemUnitType(item);
+
+      // Check for either received_quantity or received_weight field based on unit type
+      const hasReceivedQty =
+        unitType === "quantity" &&
+        item.received_quantity &&
+        parseFloat(item.received_quantity) > 0;
+      const hasReceivedWeight =
+        unitType === "weight" &&
+        item.received_weight &&
+        parseFloat(item.received_weight) > 0;
       const hasUnit = item.unit_id;
 
       if (!hasReceivedQty && !hasReceivedWeight) {
         newErrors[`items[${originalIndex}].received_qty_weight`] =
-          "Received Quantity or Received Weight is required";
+          unitType === "quantity"
+            ? "Received Quantity is required"
+            : "Received Weight is required";
       }
 
       if (!hasUnit) {
         newErrors[`items[${originalIndex}].unit_id`] = "Unit is required";
       }
 
-      if (!item.cost || parseFloat(item.cost) <= 0) {
+      if (!item.rate || parseFloat(item.rate) <= 0) {
         newErrors[`items[${originalIndex}].rate`] = "Valid rate is required";
       }
 
-      // Validate received quantity/weight against ordered
-      if (item.received_quantity !== undefined && item.received_quantity !== "") {
+      // Validate received amount against ordered
+      if (
+        unitType === "quantity" &&
+        item.received_quantity !== undefined &&
+        item.received_quantity !== ""
+      ) {
         const rq = parseFloat(item.received_quantity);
+        const oq = parseFloat(item.ordered_quantity) || 0;
+
         if (Number.isNaN(rq) || rq < 0) {
           newErrors[`items[${originalIndex}].received_quantity`] =
             "Received quantity must be a non-negative number";
         }
-        if (item.ordered_quantity && rq > parseFloat(item.ordered_quantity)) {
-          newErrors[
-            `items[${originalIndex}].received_quantity`
-          ] = `Cannot exceed ordered quantity (${item.ordered_quantity})`;
+        if (oq > 0 && rq > oq) {
+          newErrors[`items[${originalIndex}].received_quantity`] =
+            `Cannot exceed ordered quantity (${oq})`;
         }
       }
 
-      if (item.received_weight !== undefined && item.received_weight !== "") {
+      if (
+        unitType === "weight" &&
+        item.received_weight !== undefined &&
+        item.received_weight !== ""
+      ) {
         const rw = parseFloat(item.received_weight);
+        const ow = parseFloat(item.ordered_weight) || 0;
+
         if (Number.isNaN(rw) || rw < 0) {
           newErrors[`items[${originalIndex}].received_weight`] =
             "Received weight must be a non-negative number";
         }
-        if (item.ordered_weight && rw > parseFloat(item.ordered_weight)) {
-          newErrors[
-            `items[${originalIndex}].received_weight`
-          ] = `Cannot exceed ordered weight (${item.ordered_weight})`;
+        if (ow > 0 && rw > ow) {
+          newErrors[`items[${originalIndex}].received_weight`] =
+            `Cannot exceed ordered weight (${ow})`;
         }
       }
     });
@@ -254,35 +313,15 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
       [field]: value,
     };
 
-    // For rate changes, recalculate total
-    if (field === "rate" || field === "cost") {
-      const hasReceivedQty = parseFloat(currentItem.received_quantity) > 0;
-      const hasReceivedWeight = parseFloat(currentItem.received_weight) > 0;
-      const hasUnit = currentItem.unit_id;
-
-      // Calculate total only if we have (received_quantity OR received_weight) AND unit AND rate
-      if ((hasReceivedQty || hasReceivedWeight) && hasUnit && parseFloat(value) > 0) {
-        const receivedQty = parseFloat(currentItem.received_quantity) || 0;
-        const receivedWeight = parseFloat(currentItem.received_weight) || 0;
-        const amount = receivedQty > 0 ? receivedQty : receivedWeight;
-        updatedItems[index].total = amount * parseFloat(value);
-      } else {
-        updatedItems[index].total = 0;
-      }
-    }
-
-    // For received_quantity/received_weight changes, recalculate total
-    if (field === "received_quantity" || field === "received_weight") {
-      const hasUnit = currentItem.unit_id;
-      const hasRate = parseFloat(currentItem.rate) > 0;
-      const hasValue = parseFloat(value) > 0;
-
-      if (hasUnit && hasRate && hasValue) {
-        const amount = parseFloat(value);
-        updatedItems[index].total = amount * parseFloat(currentItem.rate);
-      } else {
-        updatedItems[index].total = 0;
-      }
+    // For rate/cost changes or received quantity/weight changes
+    if (
+      field === "rate" ||
+      field === "cost" ||
+      field === "received_quantity" ||
+      field === "received_weight"
+    ) {
+      // Recalculate total using the new calculateItemTotalCost function
+      updatedItems[index].total = calculateItemTotalCost(updatedItems[index]);
     }
 
     setFormData((prev) => ({
@@ -319,14 +358,12 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
       ...item,
       [field]: value,
       [otherField]: "", // Clear the other field
+      total: calculateItemTotalCost({
+        ...item,
+        [field]: value,
+        [otherField]: "",
+      }),
     };
-
-    // Only calculate total if unit is selected and rate exists
-    if (value && item.unit_id && parseFloat(item.rate) > 0) {
-      updatedItems[index].total = parseFloat(value) * parseFloat(item.rate);
-    } else {
-      updatedItems[index].total = 0;
-    }
 
     setFormData((prev) => ({
       ...prev,
@@ -342,6 +379,26 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
         return newErrors;
       });
     }
+  };
+
+  const getItemUnitType = (item) => {
+    const orderedQty = parseFloat(item.ordered_quantity) || 0;
+    const orderedWeight = parseFloat(item.ordered_weight) || 0;
+    const unitName = (item.unit_name || "").toLowerCase();
+
+    if (orderedQty > 0) return "quantity";
+    if (orderedWeight > 0) return "weight";
+
+    // Fallback: check unit name
+    if (
+      unitName.includes("kg") ||
+      unitName.includes("kilo gram") ||
+      unitName.includes("gram")
+    ) {
+      return "weight";
+    }
+
+    return "quantity"; // default
   };
 
   const handleChange = (e) => {
@@ -428,7 +485,7 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
           ordered_quantity: orderedQty,
           ordered_weight: orderedWeight,
           quantity: null, // Set to null since we're only using received fields
-          weight: null,   // Set to null since we're only using received fields
+          weight: null, // Set to null since we're only using received fields
           unit_id: item.unit_id || null,
           unit_code: item.unit_code || null,
           unit_name: item.unit_name || null,
@@ -502,7 +559,7 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
 
   // Get selected items count
   const selectedItemsCount = formData.items.filter(
-    (item) => item.inventory_item_id
+    (item) => item.inventory_item_id,
   ).length;
 
   // Get currency symbol
@@ -784,7 +841,7 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                         .map((item, index) => {
                           const originalIndex = formData.items.findIndex(
                             (i) =>
-                              i.inventory_item_id === item.inventory_item_id
+                              i.inventory_item_id === item.inventory_item_id,
                           );
 
                           const orderedQty =
@@ -832,35 +889,56 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                 </div>
                               </td>
                               <td>
-                                <input
-                                  type="number"
-                                  className={`form-control ${
-                                    errors[
-                                      `items[${originalIndex}].received_qty_weight`
-                                    ]
-                                      ? "is-invalid"
-                                      : ""
-                                  }`}
-                                  placeholder={
-                                    orderedQty > 0
-                                      ? "Enter Received Quantity"
-                                      : "Enter Received Weight"
-                                  }
-                                  value={receivedQty > 0 ? receivedQty : receivedWeight}
-                                  onChange={(e) =>
-                                    handleReceivedQtyWeightChange(
-                                      originalIndex,
-                                      e.target.value,
-                                      orderedQty > 0
-                                    )
-                                  }
-                                  disabled={isDisabled}
-                                  min="0"
-                                  max={
-                                    orderedQty > 0 ? orderedQty : orderedWeight
-                                  }
-                                  step="0.001"
-                                />
+                                {getItemUnitType(item) === "quantity" ? (
+                                  <input
+                                    type="number"
+                                    className={`form-control ${
+                                      errors[
+                                        `items[${originalIndex}].received_qty_weight`
+                                      ]
+                                        ? "is-invalid"
+                                        : ""
+                                    }`}
+                                    placeholder="Enter Received Quantity"
+                                    value={item.received_quantity || ""}
+                                    onChange={(e) =>
+                                      handleReceivedQtyWeightChange(
+                                        originalIndex,
+                                        e.target.value,
+                                        true,
+                                      )
+                                    }
+                                    disabled={isDisabled}
+                                    min="0"
+                                    max={item.ordered_quantity || undefined}
+                                    step="1"
+                                  />
+                                ) : (
+                                  <input
+                                    type="number"
+                                    className={`form-control ${
+                                      errors[
+                                        `items[${originalIndex}].received_qty_weight`
+                                      ]
+                                        ? "is-invalid"
+                                        : ""
+                                    }`}
+                                    placeholder="Enter Received Weight"
+                                    value={item.received_weight || ""}
+                                    onChange={(e) =>
+                                      handleReceivedQtyWeightChange(
+                                        originalIndex,
+                                        e.target.value,
+                                        false,
+                                      )
+                                    }
+                                    disabled={isDisabled}
+                                    min="0"
+                                    max={item.ordered_weight || undefined}
+                                    step="0.001"
+                                  />
+                                )}
+
                                 {errors[
                                   `items[${originalIndex}].received_qty_weight`
                                 ] && (
@@ -872,22 +950,16 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                     }
                                   </div>
                                 )}
-                                {(errors[
-                                  `items[${originalIndex}].received_quantity`
-                                ] ||
-                                  errors[
-                                    `items[${originalIndex}].received_weight`
-                                  ]) && (
-                                  <div className="invalid-feedback d-block">
-                                    {errors[
-                                      `items[${originalIndex}].received_quantity`
-                                    ] ||
-                                      errors[
-                                        `items[${originalIndex}].received_weight`
-                                      ]}
-                                  </div>
-                                )}
+
+                                {/* Show ordered amount as hint */}
+                                <div className="small text-muted mt-1">
+                                  Ordered:{" "}
+                                  {getItemUnitType(item) === "quantity"
+                                    ? `${item.ordered_quantity || 0} ${item.unit_name || ""}`
+                                    : `${item.ordered_weight || 0} ${item.unit_name || ""}`}
+                                </div>
                               </td>
+
                               <td>
                                 <div className="form-control bg-light">
                                   {item.unit_name || item.unit || "No unit"}
@@ -916,7 +988,7 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                     handleItemChange(
                                       originalIndex,
                                       "rate",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={isDisabled}
@@ -934,7 +1006,7 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                   type="text"
                                   className="form-control bg-light fw-medium"
                                   value={`${getCurrencySymbol()}${parseFloat(
-                                    item.total || 0
+                                    item.total || 0,
                                   ).toFixed(2)}`}
                                   readOnly
                                 />
@@ -947,7 +1019,7 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                   disabled={
                                     isDisabled ||
                                     formData.items.filter(
-                                      (i) => i.inventory_item_id
+                                      (i) => i.inventory_item_id,
                                     ).length === 1
                                   }
                                   title="Remove item"
@@ -1016,11 +1088,18 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                 const totalOrdered = formData.items
                                   .filter((item) => item.inventory_item_id)
                                   .reduce((sum, item) => {
-                                    const qty =
-                                      parseFloat(item.ordered_quantity) || 0;
-                                    const wt =
-                                      parseFloat(item.ordered_weight) || 0;
-                                    return sum + (qty > 0 ? qty : wt);
+                                    const unitType = getItemUnitType(item);
+                                    if (unitType === "quantity") {
+                                      return (
+                                        sum +
+                                        (parseFloat(item.ordered_quantity) || 0)
+                                      );
+                                    } else {
+                                      return (
+                                        sum +
+                                        (parseFloat(item.ordered_weight) || 0)
+                                      );
+                                    }
                                   }, 0);
 
                                 return totalOrdered;
@@ -1034,8 +1113,36 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                 const totalReceived = formData.items
                                   .filter((item) => item.inventory_item_id)
                                   .reduce((sum, item) => {
-                                    const qty = parseFloat(item.received_quantity) || 0;
-                                    const wt = parseFloat(item.received_weight) || 0;
+                                    const unitType = getItemUnitType(item);
+                                    if (unitType === "quantity") {
+                                      return (
+                                        sum +
+                                        (parseFloat(item.received_quantity) ||
+                                          0)
+                                      );
+                                    } else {
+                                      return (
+                                        sum +
+                                        (parseFloat(item.received_weight) || 0)
+                                      );
+                                    }
+                                  }, 0);
+
+                                return totalReceived;
+                              })()}
+                            </span>
+                          </div>
+                          <div className="mb-2">
+                            <span className="text-muted">Total Received:</span>
+                            <span className="float-end fw-medium">
+                              {(() => {
+                                const totalReceived = formData.items
+                                  .filter((item) => item.inventory_item_id)
+                                  .reduce((sum, item) => {
+                                    const qty =
+                                      parseFloat(item.received_quantity) || 0;
+                                    const wt =
+                                      parseFloat(item.received_weight) || 0;
                                     return sum + (qty > 0 ? qty : wt);
                                   }, 0);
 
@@ -1060,8 +1167,10 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                 const totalReceived = formData.items
                                   .filter((item) => item.inventory_item_id)
                                   .reduce((sum, item) => {
-                                    const qty = parseFloat(item.received_quantity) || 0;
-                                    const wt = parseFloat(item.received_weight) || 0;
+                                    const qty =
+                                      parseFloat(item.received_quantity) || 0;
+                                    const wt =
+                                      parseFloat(item.received_weight) || 0;
                                     return sum + (qty > 0 ? qty : wt);
                                   }, 0);
 
@@ -1095,8 +1204,10 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                 const totalReceived = formData.items
                                   .filter((item) => item.inventory_item_id)
                                   .reduce((sum, item) => {
-                                    const qty = parseFloat(item.received_quantity) || 0;
-                                    const wt = parseFloat(item.received_weight) || 0;
+                                    const qty =
+                                      parseFloat(item.received_quantity) || 0;
+                                    const wt =
+                                      parseFloat(item.received_weight) || 0;
                                     return sum + (qty > 0 ? qty : wt);
                                   }, 0);
 
@@ -1120,21 +1231,41 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                     const totalOrdered = formData.items
                                       .filter((item) => item.inventory_item_id)
                                       .reduce((sum, item) => {
-                                        const qty =
-                                          parseFloat(item.ordered_quantity) ||
-                                          0;
-                                        const wt =
-                                          parseFloat(item.ordered_weight) || 0;
-                                        return sum + (qty > 0 ? qty : wt);
+                                        const unitType = getItemUnitType(item);
+                                        if (unitType === "quantity") {
+                                          return (
+                                            sum +
+                                            (parseFloat(
+                                              item.ordered_quantity,
+                                            ) || 0)
+                                          );
+                                        } else {
+                                          return (
+                                            sum +
+                                            (parseFloat(item.ordered_weight) ||
+                                              0)
+                                          );
+                                        }
                                       }, 0);
 
                                     const totalReceived = formData.items
                                       .filter((item) => item.inventory_item_id)
                                       .reduce((sum, item) => {
-                                        const qty =
-                                          parseFloat(item.received_quantity) || 0;
-                                        const wt = parseFloat(item.received_weight) || 0;
-                                        return sum + (qty > 0 ? qty : wt);
+                                        const unitType = getItemUnitType(item);
+                                        if (unitType === "quantity") {
+                                          return (
+                                            sum +
+                                            (parseFloat(
+                                              item.received_quantity,
+                                            ) || 0)
+                                          );
+                                        } else {
+                                          return (
+                                            sum +
+                                            (parseFloat(item.received_weight) ||
+                                              0)
+                                          );
+                                        }
                                       }, 0);
 
                                     if (totalOrdered === 0) return "0";
@@ -1143,32 +1274,6 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
                                     return `${Math.min(percentage, 100)}%`;
                                   })()}`,
                                 }}
-                                aria-valuenow={(() => {
-                                  const totalOrdered = formData.items
-                                    .filter((item) => item.inventory_item_id)
-                                    .reduce((sum, item) => {
-                                      const qty =
-                                        parseFloat(item.ordered_quantity) || 0;
-                                      const wt =
-                                        parseFloat(item.ordered_weight) || 0;
-                                      return sum + (qty > 0 ? qty : wt);
-                                    }, 0);
-
-                                  const totalReceived = formData.items
-                                    .filter((item) => item.inventory_item_id)
-                                    .reduce((sum, item) => {
-                                      const qty = parseFloat(item.received_quantity) || 0;
-                                      const wt = parseFloat(item.received_weight) || 0;
-                                      return sum + (qty > 0 ? qty : wt);
-                                    }, 0);
-
-                                  if (totalOrdered === 0) return 0;
-                                  const percentage =
-                                    (totalReceived / totalOrdered) * 100;
-                                  return Math.min(percentage, 100);
-                                })()}
-                                aria-valuemin="0"
-                                aria-valuemax="100"
                               ></div>
                             </div>
                           </div>

@@ -8,6 +8,7 @@ const AddInventoryItemForm = ({
   inventoryCategories = [],
   subCategories = [],
   suppliers = [],
+  branches = [],
 }) => {
   // Main Form State
   const [formData, setFormData] = useState({
@@ -21,6 +22,7 @@ const AddInventoryItemForm = ({
     purchase_price: "",
     profit_margin: "25",
     supplier: "",
+    branch: "",
     image: [],
   });
 
@@ -33,17 +35,24 @@ const AddInventoryItemForm = ({
   useEffect(() => {
     if (formData.category) {
       const filteredSubCats = subCategories.filter(
-        (sub) => sub.category_id === formData.category
+        (sub) => sub.category_id === formData.category,
       );
       setAvailableSubCategories(filteredSubCats);
-      
+
       // Reset sub_category if it's not in the filtered list
-      if (formData.sub_category && !filteredSubCats.find(sub => sub._id === formData.sub_category || sub.id === formData.sub_category)) {
-        setFormData(prev => ({ ...prev, sub_category: "" }));
+      if (
+        formData.sub_category &&
+        !filteredSubCats.find(
+          (sub) =>
+            sub._id === formData.sub_category ||
+            sub.id === formData.sub_category,
+        )
+      ) {
+        setFormData((prev) => ({ ...prev, sub_category: "" }));
       }
     } else {
       setAvailableSubCategories([]);
-      setFormData(prev => ({ ...prev, sub_category: "" }));
+      setFormData((prev) => ({ ...prev, sub_category: "" }));
     }
   }, [formData.category, subCategories]);
 
@@ -91,21 +100,24 @@ const AddInventoryItemForm = ({
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setErrors(prev => ({ ...prev, image: "Please upload an image file" }));
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({ ...prev, image: "Please upload an image file" }));
       return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, image: "Image size should be less than 5MB" }));
+      setErrors((prev) => ({
+        ...prev,
+        image: "Image size should be less than 5MB",
+      }));
       return;
     }
 
     setSelectedFile(file);
     const previewUrl = URL.createObjectURL(file);
     setImagePreviews([previewUrl]);
-    
+
     setFormData((prev) => ({
       ...prev,
       image: [file], // Store as array with single file
@@ -195,6 +207,7 @@ const AddInventoryItemForm = ({
       purchase_price: parseFloat(formData.purchase_price) || 0,
       profit_margin: parseFloat(formData.profit_margin) || 25,
       supplier: formData.supplier || "",
+      branch: formData.branch || "",
       image: formData.image,
     };
 
@@ -204,15 +217,17 @@ const AddInventoryItemForm = ({
 
   // Get category name for display
   const getCategoryName = (categoryId) => {
-    const category = inventoryCategories.find(cat => cat._id === categoryId || cat.id === categoryId);
+    const category = inventoryCategories.find(
+      (cat) => cat._id === categoryId || cat.id === categoryId,
+    );
     return category ? category.name : "Unknown Category";
   };
 
   // Cleanup preview URLs on unmount
   useEffect(() => {
     return () => {
-      imagePreviews.forEach(preview => {
-        if (preview && preview.startsWith('blob:')) {
+      imagePreviews.forEach((preview) => {
+        if (preview && preview.startsWith("blob:")) {
           URL.revokeObjectURL(preview);
         }
       });
@@ -371,6 +386,34 @@ const AddInventoryItemForm = ({
                     </select>
                   </div>
 
+                  {/* Add Branch Dropdown Here */}
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">Branch</label>
+                    <select
+                      name="branch"
+                      className="form-select"
+                      value={formData.branch}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="">Select Branch</option>
+                      {branches
+                        .filter((branch) => branch.status === true) // Only show active branches
+                        .map((branch) => (
+                          <option
+                            key={branch._id || branch.id}
+                            value={branch._id || branch.id}
+                          >
+                            {branch.branch_name} ({branch.branch_code})
+                            {branch.is_warehouse && " - Warehouse"}
+                          </option>
+                        ))}
+                    </select>
+                    <small className="text-muted">
+                      Select the branch where this item will be stored
+                    </small>
+                  </div>
+
                   <div className="col-12">
                     <label className="form-label fw-medium">Description</label>
                     <textarea
@@ -411,7 +454,9 @@ const AddInventoryItemForm = ({
                         Upload a single image of the item (Max 5MB)
                       </p>
                       {errors.image && (
-                        <div className="text-danger small mt-2">{errors.image}</div>
+                        <div className="text-danger small mt-2">
+                          {errors.image}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -450,7 +495,8 @@ const AddInventoryItemForm = ({
                     {selectedFile && (
                       <div className="text-center mt-2">
                         <small className="text-muted">
-                          Selected: {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
+                          Selected: {selectedFile.name} (
+                          {Math.round(selectedFile.size / 1024)} KB)
                         </small>
                       </div>
                     )}

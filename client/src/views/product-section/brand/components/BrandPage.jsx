@@ -26,6 +26,8 @@ export default function BrandPage() {
     (brand?.name || "").toLowerCase().includes(search.toLowerCase())
   );
 
+console.log(filteredBrands)
+
   // Handle update
   const handleUpdate = async (name, logoFile) => {
     if (!selectedItem) return;
@@ -270,7 +272,7 @@ export default function BrandPage() {
                     {/* LOGO PREVIEW */}
                     <td>
                       <SafeImage
-                        src={`YOUR_BASE_URL${item.logo}`} // Update with your base URL
+                        src={item.logo} // Update with your base URL
                         alt={item.name}
                         width="45"
                         height="45"

@@ -38,7 +38,7 @@ export default function useBrands() {
       const mappedBrands = brandsData.map((b) => ({
         _id: b._id || b.id,
         name: b.name || "",
-        logo: b.logo || b.logoUrl || b.image || "",
+        logo: b.fullLogoUrl || "",
       }));
       
       console.log("Fetched brands:", mappedBrands);
@@ -120,14 +120,14 @@ export default function useBrands() {
       let updatedData = {
         _id: id,
         name: data.name,
-        logo: data.logo || ""
+        logo: data.fullLogoUrl || "ddd"
       };
       
       if (res.data?.success && res.data.brand) {
         updatedData = {
           _id: res.data.brand._id || res.data.brand.id || id,
           name: res.data.brand.name || data.name,
-          logo: res.data.brand.logo || res.data.brand.logoUrl || res.data.brand.image || ""
+          logo: res.data.brand.fullLogoUrl || "ff"
         };
       }
       

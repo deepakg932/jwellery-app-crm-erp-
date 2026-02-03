@@ -15,6 +15,8 @@ export default function usePurchaseOrders() {
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
 
+  console.log(purchaseOrders);
+
   // Add fetchBranches function
   const fetchBranches = async () => {
     try {
@@ -79,7 +81,6 @@ export default function usePurchaseOrders() {
     }
   };
 
-  // Fetch inventory items (for dropdown)
   // Fetch inventory items (for dropdown)
   const fetchInventoryItems = async () => {
     try {
@@ -185,12 +186,27 @@ export default function usePurchaseOrders() {
       const mappedPurchaseOrders = purchaseOrdersData.map((item) => ({
         _id: item._id || item.id,
         order_number: item.po_number || item.order_number || `PO-${Date.now()}`,
-        supplier: item.supplier_id || item.supplier || {},
+        supplier_id: item.supplier_id || {}, // Changed from supplier to supplier_id
+        supplier: item.supplier_id || {}, // Keep both for compatibility
+        branch: item.branch || {},
         order_date: item.order_date || new Date().toISOString().split("T")[0],
         items: item.items || [],
         status: item.status || "draft",
+        payment_status: item.payment_status || "pending", // Added payment_status
         total_amount: item.total_amount || 0,
+        subtotal: item.subtotal || item.total_amount || 0,
+        grand_total: item.grand_total || item.total_amount || 0,
+        vat: item.vat || 0,
+        discount: item.discount || 0,
+        shipping_cost: item.shipping_cost || 0,
+        currency: item.currency || "INR",
+        exchange_rate: item.exchange_rate || 1,
+        reference_no: item.reference_no || "",
         notes: item.notes || "",
+        // Add other fields as needed
+        paid_amount: item.paid_amount || 0,
+        balance_amount: item.balance_amount || 0,
+        additional_payment: item.additional_payment || 0,
       }));
 
       console.log("Fetched purchase orders:", mappedPurchaseOrders);
@@ -202,7 +218,6 @@ export default function usePurchaseOrders() {
       setLoading(false);
     }
   };
-
   // Add a new purchase order
   const addPurchaseOrder = async (purchaseOrderData) => {
     try {
@@ -268,7 +283,7 @@ export default function usePurchaseOrders() {
         "Updating purchase order at:",
         url,
         "Data:",
-        purchaseOrderData
+        purchaseOrderData,
       );
 
       const res = await axios.put(url, purchaseOrderData);
@@ -293,7 +308,7 @@ export default function usePurchaseOrders() {
 
         console.log("Updated purchase order data:", updatedData);
         setPurchaseOrders((prev) =>
-          prev.map((item) => (item._id === id ? updatedData : item))
+          prev.map((item) => (item._id === id ? updatedData : item)),
         );
 
         // Refetch to ensure consistency
@@ -309,6 +324,100 @@ export default function usePurchaseOrders() {
       console.error("Update purchase order error:", err);
       setError("Failed to update purchase order");
       throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update payment status of a purchase order
+  const updatePurchaseOrderPayment = async (id, paymentData) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      console.log(
+        "Updating payment for purchase order ID:",
+        id,
+        "Payment Data:",
+        paymentData,
+      );
+
+      // Use the updatePurchaseOrder endpoint
+      const url = API_ENDPOINTS.updatePurchaseOrder(id);
+
+      // Prepare the payment update payload according to your API structure
+      const totalAmount =
+        purchaseOrders.find((po) => po._id === id)?.total_amount || 0;
+      const paidAmount = parseFloat(paymentData.paid_amount) || 0;
+      const balanceAmount = totalAmount - paidAmount;
+
+      const updatePayload = {
+        ...paymentData,
+        payment_status: paymentData.payment_status,
+        paid_amount: paidAmount,
+        balance_amount: balanceAmount,
+        payment_date:
+          paymentData.payment_date || new Date().toISOString().split("T")[0],
+        total_amount: totalAmount, // Include total amount if needed
+      };
+
+      console.log("Sending payment update to:", url, "Payload:", updatePayload);
+
+      const res = await axios.put(url, updatePayload);
+      console.log("Update payment response:", res.data);
+
+      if (res.data?.success || res.data?.status === "success") {
+        const responseData = res.data.data || res.data;
+
+        // Update the purchase order in local state immediately for better UX
+        setPurchaseOrders((prev) =>
+          prev.map((po) => {
+            if (po._id === id) {
+              const updatedPO = {
+                ...po,
+                payment_status: paymentData.payment_status,
+                paid_amount: paidAmount,
+                balance_amount: balanceAmount,
+                payment_date: paymentData.payment_date,
+                payment_method: paymentData.payment_method,
+                payment_notes: paymentData.payment_notes,
+                updated_at: new Date().toISOString(),
+              };
+
+              return updatedPO;
+            }
+            return po;
+          }),
+        );
+
+        // Refresh data to ensure consistency with backend
+        setTimeout(() => {
+          fetchPurchaseOrders();
+        }, 500);
+
+        return responseData;
+      } else {
+        throw new Error(res.data?.message || "Failed to update payment status");
+      }
+    } catch (err) {
+      console.error("Update payment error:", err);
+
+      let errorMessage = "Failed to update payment status";
+
+      if (err.response) {
+        errorMessage =
+          err.response.data?.message ||
+          err.response.data?.error ||
+          `Server error: ${err.response.status}`;
+
+        // Log detailed error for debugging
+        console.error("Error details:", err.response.data);
+      } else if (err.request) {
+        errorMessage = "Network error. Please check your connection.";
+      }
+
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -337,7 +446,7 @@ export default function usePurchaseOrders() {
       console.error("Delete purchase order error:", err);
       setError(
         "Failed to delete purchase order: " +
-          (err.response?.data?.message || err.message)
+          (err.response?.data?.message || err.message),
       );
       throw err;
     } finally {
@@ -390,6 +499,7 @@ export default function usePurchaseOrders() {
     fetchBranches,
     addPurchaseOrder,
     updatePurchaseOrder,
+    updatePurchaseOrderPayment,
     deletePurchaseOrder,
   };
 }

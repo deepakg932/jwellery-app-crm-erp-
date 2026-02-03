@@ -3,6 +3,7 @@ import { update } from "lodash";
 
 // constants/api.js
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { routes } from "@/routes";
 
 // Path segments for all your APIs
 export const PATHS = {
@@ -382,6 +383,35 @@ export const ROUTES = {
 
   GET_CAD_STAGES: "cad-stage/jobs",
   UPDATE_CAD_STAGE: "cad-stage-update",
+
+  // casting route
+
+  GET_CASTING_STAGES: "casting-stage-jobs",
+  UPDATE_CASTING_STAGE: "casting-stage-update",
+
+  // filing route
+  GET_FILING_STAGES: "filing-stage-jobs",
+  UPDATE_FILING_STAGE: "filing-stage-update",
+
+  // Setting route
+  GET_SETTING_STAGES: "setting-stage-jobs",
+  UPDATE_SETTING_STAGE: "setting-stage-update",
+
+  // Polishing route
+
+  GET_POLISHING_STAGES: "polishing-stage-jobs",
+  UPDATE_POLISHING_STAGES: "polishing-stage-update",
+
+  //plating routes
+
+  GET_PLATING_STAGES: "plating-stage-jobs",
+  UPDATE_PLATING_STAGES: "plating-stage-update",
+
+  GET_QUALITY_STAGES: "quality-stage-jobs",
+  UPDATE_QUALITY_STAGES: "quality-stage-update",
+
+  GET_PACKAGING_STAGES: "packages-stage-jobs",
+  UPDATE_PACKAGING_STAGES: "packaging-stage-update",
 };
 
 // Dynamic endpoint generator
@@ -600,24 +630,24 @@ export const API_ENDPOINTS = {
   getInventorySubCategories: () =>
     endpoint(
       PATHS.INVENTORY_SUB_CATEGORIES,
-      ROUTES.GET_INVENTORY_SUB_CATEGORIES
+      ROUTES.GET_INVENTORY_SUB_CATEGORIES,
     ),
   createInventorySubCategory: () =>
     endpoint(
       PATHS.INVENTORY_SUB_CATEGORIES,
-      ROUTES.CREATE_INVENTORY_SUB_CATEGORIES
+      ROUTES.CREATE_INVENTORY_SUB_CATEGORIES,
     ),
   updateInventorySubCategory: (id) =>
     endpoint(
       PATHS.INVENTORY_SUB_CATEGORIES,
       ROUTES.UPDATE_INVENTORY_SUB_CATEGORIES,
-      id
+      id,
     ),
   deleteInventorySubCategory: (id) =>
     endpoint(
       PATHS.INVENTORY_SUB_CATEGORIES,
       ROUTES.DELETE_INVENTORY_SUB_CATEGORIES,
-      id
+      id,
     ),
 
   // ========== INVENTORY ITEMS OPERATIONS ==========
@@ -780,13 +810,56 @@ export const API_ENDPOINTS = {
   updateDesignStage: (id) =>
     endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_DESIGN_STAGES, id),
 
+  //====================CAD_STAGES=================\\
 
-   //====================CAD_STAGES=================\\
+  getCadStages: () => endpoint(PATHS.JOB_CARDS, ROUTES.GET_CAD_STAGES),
+  updateCadStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_CAD_STAGE, id),
 
+  //====================CASTING_STAGES=================\\
 
-   getCadStages:()=>endpoint(PATHS.JOB_CARDS,ROUTES.GET_CAD_STAGES),
-   updateCadStage:(id)=>endpoint(PATHS.DESIGN_STAGES,ROUTES.UPDATE_CAD_STAGE,id),
+  getCastingStages: () => endpoint(PATHS.JOB_CARDS, ROUTES.GET_CASTING_STAGES),
+  updateCastingStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_CASTING_STAGE, id),
 
+  //====================FILING_STAGES=================\\
+
+  getFilingStages: () => endpoint(PATHS.JOB_CARDS, ROUTES.GET_FILING_STAGES),
+  updateFilingStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_FILING_STAGE, id),
+
+  //====================SETTING_STAGES=================\\
+
+  getSettingStages: () => endpoint(PATHS.JOB_CARDS, ROUTES.GET_SETTING_STAGES),
+  updateSettingStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_SETTING_STAGE, id),
+
+  //====================POLISHING_STAGES=================\\
+
+  getPolishingStages: () =>
+    endpoint(PATHS.JOB_CARDS, ROUTES.GET_POLISHING_STAGES),
+  updatePolishingStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_POLISHING_STAGES, id),
+
+  //====================PLATING_STAGES=================\\
+
+  getPlatingStages: () => endpoint(PATHS.JOB_CARDS, ROUTES.GET_PLATING_STAGES),
+  updatePlatingStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_PLATING_STAGES, id),
+
+  //====================OUALITY_STAGES=================\\
+
+  getQualityCheckStages: () =>
+    endpoint(PATHS.JOB_CARDS, ROUTES.GET_QUALITY_STAGES),
+  updateQualityCheckStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_QUALITY_STAGES, id),
+
+  //====================PACKAGING_STAGES=================\\
+
+  getPackagingStages: () =>
+    endpoint(PATHS.JOB_CARDS, ROUTES.GET_PACKAGING_STAGES),
+  updatePackagingStage: (id) =>
+    endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_PACKAGING_STAGES, id),
 
   // ========== PRODUCT OPERATIONS ==========
   // Get all products
@@ -815,35 +888,35 @@ export const API_ENDPOINTS = {
 };
 
 // Legacy exports for compatibility with existing code
-export const STONES = {
-  ALL: API_ENDPOINTS.getAllStones(),
-  CREATE: API_ENDPOINTS.createStone(),
-  UPDATE: (id) => API_ENDPOINTS.updateStone(id),
-  DELETE: (id) => API_ENDPOINTS.deleteStone(id),
-};
+// export const STONES = {
+//   ALL: API_ENDPOINTS.getAllStones(),
+//   CREATE: API_ENDPOINTS.createStone(),
+//   UPDATE: (id) => API_ENDPOINTS.updateStone(id),
+//   DELETE: (id) => API_ENDPOINTS.deleteStone(id),
+// };
 
-export const STONE_TYPES = {
-  ALL: API_ENDPOINTS.getAllStoneTypes(),
-  CREATE: API_ENDPOINTS.createStoneType(),
-  UPDATE: (id) => API_ENDPOINTS.updateStoneType(id),
-  DELETE: (id) => API_ENDPOINTS.deleteStoneType(id),
-};
+// export const STONE_TYPES = {
+//   ALL: API_ENDPOINTS.getAllStoneTypes(),
+//   CREATE: API_ENDPOINTS.createStoneType(),
+//   UPDATE: (id) => API_ENDPOINTS.updateStoneType(id),
+//   DELETE: (id) => API_ENDPOINTS.deleteStoneType(id),
+// };
 
-export const STONE_PURITIES = {
-  ALL: API_ENDPOINTS.getAllStonePurities(),
-  CREATE: API_ENDPOINTS.createStonePurity(),
-  UPDATE: (id) => API_ENDPOINTS.updateStonePurity(id),
-  DELETE: (id) => API_ENDPOINTS.deleteStonePurity(id),
-};
+// export const STONE_PURITIES = {
+//   ALL: API_ENDPOINTS.getAllStonePurities(),
+//   CREATE: API_ENDPOINTS.createStonePurity(),
+//   UPDATE: (id) => API_ENDPOINTS.updateStonePurity(id),
+//   DELETE: (id) => API_ENDPOINTS.deleteStonePurity(id),
+// };
 
 // Helper function for product endpoints
-export const PRODUCTS = {
-  ALL: API_ENDPOINTS.getAllItems(),
-  CREATE: API_ENDPOINTS.createItem(),
-  UPDATE: (id) => API_ENDPOINTS.updateItem(id),
-  DELETE: (id) => API_ENDPOINTS.deleteItem(id),
-  GET_BY_ID: (id) => API_ENDPOINTS.getItemById(id),
-  TOGGLE_STATUS: (id) => API_ENDPOINTS.toggleProductStatus(id),
-  UPDATE_STATUS: (id) => API_ENDPOINTS.updateProductStatus(id),
-  BULK_UPDATE_STATUS: API_ENDPOINTS.bulkUpdateProductStatus(),
-};
+// export const PRODUCTS = {
+//   ALL: API_ENDPOINTS.getAllItems(),
+//   CREATE: API_ENDPOINTS.createItem(),
+//   UPDATE: (id) => API_ENDPOINTS.updateItem(id),
+//   DELETE: (id) => API_ENDPOINTS.deleteItem(id),
+//   GET_BY_ID: (id) => API_ENDPOINTS.getItemById(id),
+//   TOGGLE_STATUS: (id) => API_ENDPOINTS.toggleProductStatus(id),
+//   UPDATE_STATUS: (id) => API_ENDPOINTS.updateProductStatus(id),
+//   BULK_UPDATE_STATUS: API_ENDPOINTS.bulkUpdateProductStatus(),
+// };

@@ -270,12 +270,6 @@ export const menuItems = [
         label: "Inventory Sub Categories",
         url: "/inventory/sub-categories",
       },
-
-      {
-        key: "inventory-items",
-        label: "Inventory Items",
-        url: "/inventory/items",
-      },
       {
         key: "branch-type",
         label: "Branch Type",
@@ -291,20 +285,28 @@ export const menuItems = [
         label: "Suppliers",
         url: "/inventory/suppliers",
       },
+
+      {
+        key: "inventory-items",
+        label: "Inventory Items",
+        url: "/inventory/items",
+      },
+
       {
         key: "purchase-orders",
         label: "Purchase Orders",
         url: "/inventory/purchase-orders",
       },
-      {
-        key: "purchase-return",
-        label: "Purchase Return",
-        url: "/inventory/purchase-return",
-      },
+
       {
         key: "purchase-received",
         label: "Purchase Received",
         url: "/inventory/purchase-received",
+      },
+      {
+        key: "purchase-return",
+        label: "Purchase Return",
+        url: "/inventory/purchase-return",
       },
 
       // {
@@ -576,6 +578,41 @@ export const menuItems = [
             key: "cad-creation-stage",
             label: "Cad Creation Stage",
             url: "/cad-creation-stage",
+          },
+          {
+            key: "casting-stage",
+            label: "Casting Stage",
+            url: "/casting-stage",
+          },
+          {
+            key: "filing-stage",
+            label: "Filing Stage",
+            url: "/filing-stage",
+          },
+          {
+            key: "setting-stage",
+            label: "Setting Stage",
+            url: "/setting-stage",
+          },
+          {
+            key: "polishing-stage",
+            label: "Polishing Stage",
+            url: "/polishing-stage",
+          },
+          {
+            key: "plating-stage",
+            label: "Plating Stage",
+            url: "/plating-stage",
+          },
+          {
+            key: "quality-stage",
+            label: "Quality Stage",
+            url: "/quality-stage",
+          },
+          {
+            key: "packages-stage",
+            label: "Packaging Stage",
+            url: "/packages-stage",
           },
         ],
       },

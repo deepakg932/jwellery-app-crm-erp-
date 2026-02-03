@@ -110,7 +110,7 @@ export default function useSales() {
     try {
       setLoadingItems(true);
       const response = await axios.get(
-        `${API_ENDPOINTS.getAllItems()}?page=${page}&limit=${limit}`
+        `${API_ENDPOINTS.getAllItems()}?page=${page}&limit=${limit}`,
       );
 
       console.log("Fetch items response:", response.data);
@@ -356,170 +356,154 @@ export default function useSales() {
     }
   };
   // Add a new sale - UPDATED VERSION
-  const addSale = async (saleData) => {
-    try {
-      setLoading(true);
-      setError("");
+  // Update the addSale function in useSales.js
+// Add a new sale - UPDATED FOR BACKEND COMPATIBILITY
+const addSale = async (saleData) => {
+  try {
+    setLoading(true);
+    setError("");
 
-      // Generate a temporary reference number for immediate display
-      const tempRefNo = `TEMP-${Date.now()}-${Math.floor(
-        Math.random() * 1000
-      )}`;
+    console.log("Original sale data for backend:", saleData);
 
-      // Transform the data to match backend expectations
-      const transformedData = {
-        customer_id: saleData.customer_id,
-        sale_date: saleData.sale_date,
-        sold_by: saleData.sold_by || "", // Add sold_by field
-        items: Array.isArray(saleData.items)
-          ? saleData.items.map((item) => ({
-              product_id: item.product_id,
-              quantity: parseFloat(item.quantity) || 1,
-              price_before_tax: parseFloat(item.price_before_tax) || 0,
-              gst_rate: parseFloat(item.gst_rate) || 0,
-              gst_amount: parseFloat(item.gst_amount) || 0,
-              selling_total: parseFloat(item.selling_total) || 0,
-              final_total: parseFloat(item.final_total) || 0,
-              product_name: item.product_name,
-              product_code: item.product_code,
-            }))
-          : [],
-        // Add exchange related fields
-        is_exchange: saleData.is_exchange || false,
-        exchange_amount: saleData.is_exchange
-          ? parseFloat(saleData.exchange_amount) || 0
-          : 0,
-        exchange_note: saleData.exchange_note || "",
-        sale_note: saleData.sale_note || "",
-        shipping_cost: parseFloat(saleData.shipping_cost) || 0,
-        discount: parseFloat(saleData.discount) || 0,
-        vat: parseFloat(saleData.vat) || 0,
-        subtotal: parseFloat(saleData.subtotal) || 0,
-        total_tax: parseFloat(saleData.total_tax) || 0, // Add total_tax
-        total_amount: parseFloat(saleData.total_amount) || 0,
-        grand_total:
-          parseFloat(saleData.grand_total) ||
-          parseFloat(saleData.total_amount) ||
-          0,
-        branch_id: saleData.branch_id,
-        status: saleData.status || "draft",
-        payment_status: saleData.payment_status || "pending",
-        // Include reference_no from form if provided
-        reference_no: saleData.reference_no || null,
+    // Transform the data to match backend expectations
+    const transformedData = {
+      customer_id: saleData.customer_id,
+      branch_id: saleData.branch_id,
+      sale_date: saleData.sale_date,
+      sold_by: saleData.sold_by || "",
+      
+      // Items array (backend expects this structure)
+      items: Array.isArray(saleData.items)
+        ? saleData.items.map((item) => ({
+            product_id: item.product_id,
+            quantity: parseFloat(item.quantity) || 1,
+            gst_amount: parseFloat(item.gst_amount) || 0,
+            final_total: parseFloat(item.final_total) || 0,
+            // Backend will add product_name and product_code
+          }))
+        : [],
+
+      // Exchange related fields
+      is_exchange: saleData.is_exchange || false,
+      
+      // Only send exchange_amount if is_exchange is true
+      exchange_amount: saleData.is_exchange 
+        ? parseFloat(saleData.exchange_amount) || 0 
+        : 0,
+      
+      exchange_note: saleData.exchange_note || "",
+      
+      // Exchange item details
+      exchange_item_name: saleData.is_exchange 
+        ? saleData.exchange_item_name || "" 
+        : undefined,
+      
+      exchange_item_weight: saleData.is_exchange 
+        ? parseFloat(saleData.exchange_item_weight) || 0 
+        : undefined,
+      
+      exchange_item_unit: saleData.is_exchange 
+        ? saleData.exchange_item_unit || "g" 
+        : undefined,
+      
+      exchange_item_actual_rate: saleData.is_exchange 
+        ? parseFloat(saleData.exchange_item_actual_rate) || 0 
+        : undefined,
+      
+      // Shipping and discount
+      shipping_cost: parseFloat(saleData.shipping_cost) || 0,
+      discount: parseFloat(saleData.discount) || 0,
+      
+      // Totals - backend will calculate these, but we send what we have
+      subtotal: parseFloat(saleData.subtotal) || 0,
+      total_tax: parseFloat(saleData.total_tax) || 0,
+      total_amount: parseFloat(saleData.total_amount) || 0,
+      
+      // Status fields
+      status: saleData.status || "draft", // Backend will map to sale_status
+      payment_status: saleData.payment_status || "pending",
+    };
+
+    // Remove undefined fields
+    Object.keys(transformedData).forEach(key => {
+      if (transformedData[key] === undefined) {
+        delete transformedData[key];
+      }
+    });
+
+    const url = API_ENDPOINTS.createSaleItem();
+    console.log("Adding sale at:", url, "Data:", transformedData);
+
+    // Create FormData for file upload if exchange image exists
+    let requestData = transformedData;
+    const formData = new FormData();
+    
+    // If there's an exchange image, use FormData
+    if (saleData.exchange_item_image && saleData.is_exchange) {
+      // Append all fields to FormData
+      Object.keys(transformedData).forEach(key => {
+        if (key !== 'exchange_item_image') {
+          formData.append(key, transformedData[key]);
+        }
+      });
+      
+      // Append the image file
+      formData.append('exchange_item_image', saleData.exchange_item_image);
+      
+      requestData = formData;
+      
+      // Set proper headers for FormData
+      const config = {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       };
-
-      const url = API_ENDPOINTS.createSaleItem();
-      console.log("Adding sale at:", url, "Data:", transformedData);
-
-      const res = await axios.post(url, transformedData);
+      
+      const res = await axios.post(url, requestData, config);
       console.log("Add sale response:", res.data);
 
-      if (!res.data) {
-        throw new Error("No response from server");
+      if (!res.data || !res.data.success) {
+        throw new Error(res.data?.message || "Failed to create sale");
       }
 
-      // Handle different response formats
-      const responseData = res.data.data || res.data;
+      // Process the response
+      return processSaleResponse(res.data.data || res.data);
+    } else {
+      // No image, use regular JSON request
+      const res = await axios.post(url, requestData);
+      console.log("Add sale response:", res.data);
 
-      if (!responseData) {
-        throw new Error("Invalid response structure");
+      if (!res.data || !res.data.success) {
+        throw new Error(res.data?.message || "Failed to create sale");
       }
 
-      // Extract customer info for immediate display
-      const customer = responseData.customer_id || transformedData.customer_id;
-      const customerName =
-        customer?.name || customer?.customer_name || "Unknown Customer";
-
-      // Extract employee info if available
-      const employee = responseData.sold_by || transformedData.sold_by;
-      const employeeName = employee?.name || "";
-
-      const newSale = {
-        _id: responseData._id || responseData.id || `temp-${Date.now()}`,
-        reference_no: responseData.reference_no || tempRefNo, // Use backend ref or temp
-        customer_id: customer,
-        customer_name: customerName,
-        customer_mobile: customer?.mobile || customer?.phone || "",
-        customer_code: customer?.customer_code || "",
-        sale_date: responseData.sale_date || transformedData.sale_date,
-        items: Array.isArray(responseData.items)
-          ? responseData.items.map((item) => ({
-              ...item,
-              product: item.product || null,
-            }))
-          : transformedData.items,
-        // Add exchange fields to the sale object
-        is_exchange: responseData.is_exchange || transformedData.is_exchange,
-        exchange_amount:
-          responseData.exchange_amount || transformedData.exchange_amount,
-        exchange_note:
-          responseData.exchange_note || transformedData.exchange_note,
-        sale_note: responseData.sale_note || transformedData.sale_note,
-        shipping_cost:
-          responseData.shipping_cost || transformedData.shipping_cost,
-        discount: responseData.discount || transformedData.discount,
-        vat: responseData.vat || transformedData.vat,
-        subtotal: responseData.subtotal || transformedData.subtotal,
-        total_tax: responseData.total_tax || transformedData.total_tax, // Add total_tax
-        total_amount: responseData.total_amount || transformedData.total_amount,
-        grand_total: responseData.grand_total || transformedData.grand_total,
-        branch_id: responseData.branch_id || transformedData.branch_id,
-        branch_name:
-          responseData.branch?.branch_name ||
-          responseData.branch?.name ||
-          "Main Branch",
-        branch_code:
-          responseData.branch?.branch_code || responseData.branch?.code || "",
-        // Add sold_by information
-        sold_by: employee,
-        sold_by_name: employeeName,
-        payment_status:
-          responseData.payment_status || transformedData.payment_status,
-        created_at:
-          responseData.createdAt ||
-          responseData.created_at ||
-          new Date().toISOString(),
-        updated_at:
-          responseData.updatedAt ||
-          responseData.updated_at ||
-          new Date().toISOString(),
-      };
-
-      console.log("New sale created:", newSale);
-
-      // Update state optimistically
-      setSales((prev) => [newSale, ...prev]);
-
-      // Refresh the list to get the actual reference_no from backend
-      setTimeout(() => {
-        fetchSales();
-      }, 1000);
-
-      // Return the created sale
-      return newSale;
-    } catch (err) {
-      console.error("Add sale error:", err);
-
-      // Handle specific error cases
-      if (err.response) {
-        const errorMessage =
-          err.response.data?.message ||
-          err.response.data?.error ||
-          `Server error: ${err.response.status}`;
-        setError(errorMessage);
-        throw new Error(errorMessage);
-      } else if (err.request) {
-        setError("Network error. Please check your connection.");
-        throw new Error("Network error");
-      } else {
-        setError("Failed to add sale. Please try again.");
-        throw err;
-      }
-    } finally {
-      setLoading(false);
+      // Process the response
+      return processSaleResponse(res.data.data || res.data);
     }
-  };
 
+  } catch (err) {
+    console.error("Add sale error:", err);
+
+    // Handle specific error cases
+    if (err.response) {
+      const errorMessage =
+        err.response.data?.message ||
+        err.response.data?.error ||
+        `Server error: ${err.response.status}`;
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } else if (err.request) {
+      setError("Network error. Please check your connection.");
+      throw new Error("Network error");
+    } else {
+      setError("Failed to add sale. Please try again.");
+      throw err;
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+  
   // Update payment status of a sale
   const updateSalePayment = async (id, paymentData) => {
     try {
@@ -530,7 +514,7 @@ export default function useSales() {
         "Updating payment for sale ID:",
         id,
         "Payment Data:",
-        paymentData
+        paymentData,
       );
 
       // Use the updateSaleItem endpoint
@@ -586,7 +570,7 @@ export default function useSales() {
               return updatedSale;
             }
             return sale;
-          })
+          }),
         );
 
         // Refresh data to ensure consistency with backend
@@ -704,7 +688,7 @@ export default function useSales() {
 
         console.log("Updated sale data:", updatedData);
         setSales((prev) =>
-          prev.map((item) => (item._id === id ? updatedData : item))
+          prev.map((item) => (item._id === id ? updatedData : item)),
         );
 
         // Refetch to ensure consistency

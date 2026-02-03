@@ -26,6 +26,8 @@ export default function MetalTypesPage() {
     (metal?.name || "").toLowerCase().includes(search.toLowerCase())
   );
 
+  console.log(filteredMetals)
+
   // Handle update with loading state
   const handleUpdate = async (name, imageFile) => {
     if (!selectedItem) return;
@@ -280,7 +282,7 @@ export default function MetalTypesPage() {
                     {/* IMAGE PREVIEW */}
                     <td>
                       <SafeImage
-                        src={`https://cvhjrjvd-5000.inc1.devtunnels.ms${item.image}`}
+                        src={item.image}
                         alt={item.name}
                         width="45"
                         height="45"

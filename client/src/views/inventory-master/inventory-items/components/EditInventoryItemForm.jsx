@@ -9,8 +9,9 @@ const EditInventoryItemForm = ({
   inventoryCategories = [],
   subCategories = [],
   suppliers = [],
+  branches = [], // Add branches prop
 }) => {
-  // Main Form State
+  // Main Form State - Add branch field
   const [formData, setFormData] = useState({
     name: "",
     purity: "",
@@ -22,6 +23,7 @@ const EditInventoryItemForm = ({
     purchase_price: "",
     profit_margin: "25",
     supplier: "",
+    branch: "", // Add branch field
     image: [],
     status: "active"
   });
@@ -39,6 +41,7 @@ const EditInventoryItemForm = ({
       const categoryId = item.category?._id || item.category || "";
       const subCategoryId = item.sub_category?.id || item.sub_category || "";
       const supplierId = item.supplier?._id || item.supplier || "";
+      const branchId = item.branch?._id || item.branch || "";
       
       setFormData({
         name: item.name || "",
@@ -51,6 +54,7 @@ const EditInventoryItemForm = ({
         purchase_price: item.purchase_price?.toString() || "",
         profit_margin: item.profit_margin?.toString() || "25",
         supplier: supplierId,
+        branch: branchId, // Set branch ID
         image: [],
         status: item.status || "active"
       });
@@ -65,9 +69,8 @@ const EditInventoryItemForm = ({
         categoryId,
         subCategoryId,
         supplierId,
-        itemCategory: item.category,
-        itemSubCategory: item.sub_category,
-        itemSupplier: item.supplier
+        branchId,
+        itemBranch: item.branch
       });
     }
   }, [item]);
@@ -104,9 +107,10 @@ const EditInventoryItemForm = ({
       item,
       inventoryCategories: inventoryCategories?.length,
       subCategories: subCategories?.length,
-      suppliers: suppliers?.length
+      suppliers: suppliers?.length,
+      branches: branches?.length
     });
-  }, [item, inventoryCategories, subCategories, suppliers]);
+  }, [item, inventoryCategories, subCategories, suppliers, branches]);
 
   // Input sanitization function
   const sanitizeInput = (value) => {
@@ -238,7 +242,7 @@ const EditInventoryItemForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  // Form Submission
+  // Form Submission - Add branch to payload
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -258,6 +262,7 @@ const EditInventoryItemForm = ({
       purchase_price: parseFloat(formData.purchase_price) || 0,
       profit_margin: parseFloat(formData.profit_margin) || 25,
       supplier: formData.supplier || "",
+      branch: formData.branch || "", // Add branch to payload
       image: formData.image,
       status: formData.status
     };
@@ -282,6 +287,12 @@ const EditInventoryItemForm = ({
   const getSupplierName = (supplierId) => {
     const supplier = suppliers.find(sup => sup._id === supplierId || sup.id === supplierId);
     return supplier ? (supplier.supplier_name || supplier.name) : "Unknown Supplier";
+  };
+
+  // Get branch name for display
+  const getBranchName = (branchId) => {
+    const branch = branches.find(br => br._id === branchId || br.id === branchId);
+    return branch ? `${branch.branch_name} (${branch.branch_code})` : "Unknown Branch";
   };
 
   // Cleanup preview URLs on unmount
@@ -324,14 +335,6 @@ const EditInventoryItemForm = ({
               className="modal-body"
               style={{ maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}
             >
-              {/* Debug Info (can be removed in production) */}
-              {/* <div className="mb-3 p-2 bg-light rounded small">
-                <div className="text-muted">Debug Info:</div>
-                <div>Category ID: {formData.category || "Not set"}</div>
-                <div>Sub-category ID: {formData.sub_category || "Not set"}</div>
-                <div>Supplier ID: {formData.supplier || "Not set"}</div>
-              </div> */}
-
               {/* Basic Information Section */}
               <div className="mb-4">
                 <h6 className="fw-bold text-primary mb-3">Basic Information</h6>
@@ -467,17 +470,34 @@ const EditInventoryItemForm = ({
                     )}
                   </div>
 
-                  <div className="col-12">
-                    <label className="form-label fw-medium">Description</label>
-                    <textarea
-                      name="description"
-                      className="form-control"
-                      rows="3"
-                      placeholder="Enter item description..."
-                      value={formData.description}
+                  {/* Add Branch Dropdown */}
+                  <div className="col-md-6">
+                    <label className="form-label fw-medium">Branch</label>
+                    <select
+                      name="branch"
+                      className="form-select"
+                      value={formData.branch}
                       onChange={handleChange}
                       disabled={loading}
-                    />
+                    >
+                      <option value="">Select Branch</option>
+                      {branches
+                        .filter(branch => branch.status === true) // Only show active branches
+                        .map((branch) => (
+                          <option
+                            key={branch._id || branch.id}
+                            value={branch._id || branch.id}
+                          >
+                            {branch.branch_name} ({branch.branch_code})
+                            {branch.is_warehouse && " - Warehouse"}
+                          </option>
+                        ))}
+                    </select>
+                    {formData.branch && (
+                      <small className="text-muted">
+                        Selected: {getBranchName(formData.branch)}
+                      </small>
+                    )}
                   </div>
 
                   <div className="col-md-6">
@@ -493,6 +513,19 @@ const EditInventoryItemForm = ({
                       <option value="inactive">Inactive</option>
                       <option value="draft">Draft</option>
                     </select>
+                  </div>
+
+                  <div className="col-12">
+                    <label className="form-label fw-medium">Description</label>
+                    <textarea
+                      name="description"
+                      className="form-control"
+                      rows="3"
+                      placeholder="Enter item description..."
+                      value={formData.description}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
                   </div>
                 </div>
               </div>

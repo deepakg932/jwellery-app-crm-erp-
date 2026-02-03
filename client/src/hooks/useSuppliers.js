@@ -82,12 +82,12 @@
 
 //       console.log("New supplier to add:", newSupplier);
 //       setSuppliers(prev => [...prev, newSupplier]);
-      
+
 //       // Refetch to ensure consistency
 //       setTimeout(() => {
 //         fetchSuppliers();
 //       }, 500);
-      
+
 //       return newSupplier;
 //     } catch (err) {
 //       console.error("Add supplier error:", err);
@@ -124,12 +124,12 @@
 
 //         console.log("Updated supplier data:", updatedData);
 //         setSuppliers(prev => prev.map(item => (item._id === id ? updatedData : item)));
-        
+
 //         // Refetch to ensure consistency
 //         setTimeout(() => {
 //           fetchSuppliers();
 //         }, 500);
-        
+
 //         return updatedData;
 //       } else {
 //         throw new Error(res.data?.message || "Failed to update supplier");
@@ -193,53 +193,76 @@ export default function useSuppliers() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Fetch all suppliers
-  const fetchSuppliers = async () => {
-    try {
-      setLoading(true);
-      setError("");
+// Fetch all suppliers
+const fetchSuppliers = async () => {
+  try {
+    setLoading(true);
+    setError("");
 
-      const url = API_ENDPOINTS.getSuppliers();
-      console.log("Fetching suppliers from:", url);
+    const url = API_ENDPOINTS.getSuppliers();
+    console.log("Fetching suppliers from:", url);
 
-      const res = await axios.get(url);
-      console.log("Suppliers API Response:", res.data);
+    const res = await axios.get(url);
+    console.log("Suppliers API Response:", res.data);
 
-      let suppliersData = [];
+    let suppliersData = [];
 
-      // Handle your specific response structure
-      // Note: Your API returns status: false even when successful
-      if (res.data?.fetched && Array.isArray(res.data.fetched)) {
-        suppliersData = res.data.fetched;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        suppliersData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        suppliersData = res.data;
-      }
+    // Handle your specific response structure
+    if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+      suppliersData = res.data.fetched;
+    } else if (res.data?.data && Array.isArray(res.data.data)) {
+      suppliersData = res.data.data;
+    } else if (Array.isArray(res.data)) {
+      suppliersData = res.data;
+    }
 
-      const mappedSuppliers = suppliersData.map((item) => ({
+    const mappedSuppliers = suppliersData.map((item) => {
+      // Convert contact_person_number to string if it's a number
+      const contactPersonNumber = item.contact_person_number 
+        ? item.contact_person_number.toString() 
+        : "";
+      
+      // Check if status is explicitly false
+      const status = item.status === false ? false : item.status !== false;
+      
+      return {
         _id: item._id || item.id,
+        id: item._id || item.id, // Include both _id and id for consistency
         supplier_name: item.supplier_name || "",
-        supplier_code: item.supplier_code || "",
+        company_name: item.company_name || "",
         contact_person: item.contact_person || "",
-        payment_terms: item.payment_terms || "",
-        tax_id: item.tax_id || "",
+        contact_person_number: contactPersonNumber,
+        supplier_code: item.supplier_code || "",
+        payment_terms: item.payment_terms || "Net 30 days",
+        payment_type: item.payment_type || "bank_transfer",
+        tax_number: item.tax_number || "",
+        gst_number: item.gst_number || "",
+        country: item.country || "",
+        state: item.state || "",
+        city: item.city || "",
+        pincode: item.pincode || "",
         phone: item.phone || "",
         email: item.email || "",
         address: item.address || "",
-        status: item.status !== false,
+        status: status, // Keep boolean value
+        country_code: item.country_code || "",
+        state_code: item.state_code || "",
         createdAt: item.createdAt || "",
-      }));
+        updatedAt: item.updatedAt || "",
+      };
+    });
 
-      console.log("Fetched suppliers:", mappedSuppliers);
-      setSuppliers(mappedSuppliers);
-    } catch (err) {
-      console.error("Fetch suppliers error:", err);
-      setError(err.response?.data?.message || "Failed to load suppliers");
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log("Fetched suppliers:", mappedSuppliers);
+    setSuppliers(mappedSuppliers);
+    return mappedSuppliers; // Return data for use in other functions
+  } catch (err) {
+    console.error("Fetch suppliers error:", err);
+    setError(err.response?.data?.message || "Failed to load suppliers");
+    return []; // Return empty array on error
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Add a new supplier
   const addSupplier = async (supplierData) => {
@@ -256,7 +279,7 @@ export default function useSuppliers() {
       let newSupplier = {
         _id: `temp-${Date.now()}`,
         ...supplierData,
-        supplier_code: "",
+        company_name: "",
         status: supplierData.status !== false,
       };
 
@@ -264,10 +287,17 @@ export default function useSuppliers() {
         const responseData = res.data.data;
         newSupplier = {
           _id: responseData._id,
-          supplier_name: responseData.supplier_name || supplierData.supplier_name,
-          supplier_code: responseData.supplier_code || "",
-          contact_person: responseData.contact_person || supplierData.contact_person,
-          payment_terms: responseData.payment_terms || supplierData.payment_terms,
+          supplier_name:
+            responseData.supplier_name || supplierData.supplier_name,
+          company_name: responseData.company_name || "",
+          contact_person:
+            responseData.contact_person || supplierData.contact_person,
+          contact_person_number:
+            responseData.contact_person_number ||
+            supplierData.contact_person_number,
+
+          payment_terms:
+            responseData.payment_terms || supplierData.payment_terms,
           tax_id: responseData.tax_id || supplierData.tax_id,
           phone: responseData.phone || supplierData.phone,
           email: responseData.email || supplierData.email,
@@ -278,15 +308,15 @@ export default function useSuppliers() {
       }
 
       console.log("New supplier to add:", newSupplier);
-      
+
       // Update local state
-      setSuppliers(prev => [...prev, newSupplier]);
-      
+      setSuppliers((prev) => [...prev, newSupplier]);
+
       // Refetch to ensure consistency
       setTimeout(() => {
         fetchSuppliers();
       }, 500);
-      
+
       return newSupplier;
     } catch (err) {
       console.error("Add supplier error:", err);
@@ -313,10 +343,17 @@ export default function useSuppliers() {
         const responseData = res.data.data;
         const updatedData = {
           _id: responseData._id || id,
-          supplier_name: responseData.supplier_name || supplierData.supplier_name,
-          supplier_code: responseData.supplier_code || "",
-          contact_person: responseData.contact_person || supplierData.contact_person,
-          payment_terms: responseData.payment_terms || supplierData.payment_terms,
+          supplier_name:
+            responseData.supplier_name || supplierData.supplier_name,
+          company_name: responseData.company_name || "",
+          contact_person:
+            responseData.contact_person || supplierData.contact_person,
+          contact_person_number:
+            responseData.contact_person_number ||
+            supplierData.contact_person_number,
+
+          payment_terms:
+            responseData.payment_terms || supplierData.payment_terms,
           tax_id: responseData.tax_id || supplierData.tax_id,
           phone: responseData.phone || supplierData.phone,
           email: responseData.email || supplierData.email,
@@ -326,17 +363,17 @@ export default function useSuppliers() {
         };
 
         console.log("Updated supplier data:", updatedData);
-        
+
         // Update local state
-        setSuppliers(prev => prev.map(item => 
-          item._id === id ? updatedData : item
-        ));
-        
+        setSuppliers((prev) =>
+          prev.map((item) => (item._id === id ? updatedData : item)),
+        );
+
         // Refetch to ensure consistency
         setTimeout(() => {
           fetchSuppliers();
         }, 500);
-        
+
         return updatedData;
       } else {
         throw new Error(res.data?.message || "Failed to update supplier");
@@ -363,7 +400,7 @@ export default function useSuppliers() {
       console.log("Delete response:", res.data);
 
       if (res.data?.status === true) {
-        setSuppliers(prev => prev.filter((item) => item._id !== id));
+        setSuppliers((prev) => prev.filter((item) => item._id !== id));
       } else {
         throw new Error(res.data?.message || "Failed to delete supplier");
       }

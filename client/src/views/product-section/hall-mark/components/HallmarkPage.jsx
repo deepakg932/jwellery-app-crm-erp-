@@ -42,7 +42,6 @@ const HallmarkPage = () => {
     hallmark.name?.toLowerCase().includes(search.toLowerCase()) ||
     hallmark.metal_type_name?.toLowerCase().includes(search.toLowerCase())
   );
-
   // Add new hallmark with API
   const handleSave = async (hallmarkData) => {
     setActionLoading({ type: "add", id: null });

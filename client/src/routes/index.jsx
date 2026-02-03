@@ -148,6 +148,37 @@ const CadCreationStagePage = lazy(() =>
   import("@/views/manufacturing-master/cad-creation")
 );
 
+const CastingStagePage = lazy(() =>
+  import("@/views/manufacturing-master/casting-stage")
+);
+
+const SettingStagePage = lazy(() =>
+  import("@/views/manufacturing-master/setting-stage")
+);
+
+const FilingStagePage = lazy(() =>
+  import("@/views/manufacturing-master/filing-stages")
+);
+
+const PolishingStagePage = lazy(() =>
+  import("@/views/manufacturing-master/polishing-stage")
+);
+
+const PlatingStagePage = lazy(() =>
+  import("@/views/manufacturing-master/plating-stage")
+);
+
+const QualityStagePage = lazy(() =>
+  import("@/views/manufacturing-master/quality-stage")
+);
+
+const PackagingStagePage = lazy(() =>
+  import("@/views/manufacturing-master/packaging-stage")
+);
+
+
+
+
 const TreeView = lazy(() => import("@/views/miscellaneous/tree-view"));
 const Tour = lazy(() => import("@/views/miscellaneous/tour"));
 
@@ -678,6 +709,37 @@ const manufacturingRoutes = [
     path: "cad-creation-stage",
     element: <CadCreationStagePage />,
   },
+    {
+    path: "/casting-stage",
+    element: <CastingStagePage />,
+  },
+   {
+    path: "/setting-stage",
+    element: <SettingStagePage />,
+  },
+   {
+    path: "/filing-stage",
+    element: <FilingStagePage />,
+  },
+
+   {
+    path: "/polishing-stage",
+    element: <PolishingStagePage />,
+  },
+    {
+    path: "/plating-stage",
+    element: <PlatingStagePage />,
+  },
+
+     {
+    path: "/quality-stage",
+    element: <QualityStagePage />,
+  },
+     {
+    path: "/packages-stage",
+    element: <PackagingStagePage />,
+  },
+
   {
     path: "/charts/apex/candlestick",
     element: <ApexCandlestick />,

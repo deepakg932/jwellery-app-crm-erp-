@@ -9,12 +9,14 @@ import {
   FiChevronsRight,
   FiCalendar,
   FiEye,
+  FiDollarSign,
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import AddPurchaseOrderForm from "./AddPurchaseOrderForm";
 import EditPurchaseOrderForm from "./EditPurchaseOrderForm";
 import ViewPurchaseOrderModal from "./ViewPurchaseOrderModal"; // Add this import
 import usePurchaseOrders from "@/hooks/usePurchaseOrders";
+import PurchaseOrderPaymentModal from "./PurchaseOrderPaymentModal"; // Create this component
 
 const PurchaseOrderTable = () => {
   const {
@@ -25,6 +27,7 @@ const PurchaseOrderTable = () => {
     updatePurchaseOrder,
     deletePurchaseOrder,
     fetchPurchaseOrders,
+    updatePurchaseOrderPayment
   } = usePurchaseOrders();
 
   const [search, setSearch] = useState("");
@@ -32,6 +35,8 @@ const PurchaseOrderTable = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false); // Add this state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPOForPayment, setSelectedPOForPayment] = useState(null);
   const [selectedItem, setSelectedItem] = useState([]);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
 
@@ -52,8 +57,8 @@ const PurchaseOrderTable = () => {
             .includes(search.toLowerCase()) ||
           item.inventory_item?.name
             ?.toLowerCase()
-            .includes(search.toLowerCase())
-      )
+            .includes(search.toLowerCase()),
+      ),
   );
 
   // Reset to first page when search changes
@@ -70,7 +75,7 @@ const PurchaseOrderTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentPurchaseOrders = filteredPurchaseOrders.slice(
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   );
 
   console.log(currentPurchaseOrders);
@@ -115,6 +120,43 @@ const PurchaseOrderTable = () => {
     }
   };
 
+  const handleUpdatePaymentStatus = async (paymentData) => {
+    if (!selectedPOForPayment) return;
+
+    setActionLoading({
+      type: "payment_update",
+      id: selectedPOForPayment._id,
+    });
+
+    try {
+      console.log(
+        "Updating payment status for purchase order:",
+        selectedPOForPayment._id,
+        paymentData,
+      );
+
+      await updatePurchaseOrderPayment(selectedPOForPayment._id, paymentData);
+
+      alert(
+        `Payment status updated to ${paymentData.payment_status.toUpperCase()} successfully!`,
+      );
+
+      setShowPaymentModal(false);
+      setSelectedPOForPayment(null);
+      fetchPurchaseOrders();
+    } catch (error) {
+      console.error("Payment status update failed:", error);
+
+      if (error.message.includes("Network error")) {
+        alert("Network error. Please check your internet connection.");
+      } else {
+        alert(`Failed to update payment status: ${error.message}`);
+      }
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
+  };
+
   // Delete purchase order
   const handleDeletePurchaseOrder = async () => {
     if (!selectedItem || actionLoading.type === "delete") return;
@@ -145,9 +187,14 @@ const PurchaseOrderTable = () => {
     setSelectedItem(purchaseOrder);
     console.log(
       setSelectedItem(purchaseOrder),
-      "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh"
+      "hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh",
     );
     setShowEditModal(true);
+  };
+
+  const handleOpenPaymentModal = (purchaseOrder) => {
+    setSelectedPOForPayment(purchaseOrder);
+    setShowPaymentModal(true);
   };
 
   // Open delete modal
@@ -159,6 +206,23 @@ const PurchaseOrderTable = () => {
   // Handle refresh
   const handleRefresh = () => {
     fetchPurchaseOrders();
+  };
+
+  const getPaymentStatusBadgeClass = (paymentStatus) => {
+    switch (paymentStatus?.toLowerCase()) {
+      case "paid":
+        return "bg-success";
+      case "pending":
+        return "bg-warning";
+      case "partial":
+        return "bg-info";
+      case "overdue":
+        return "bg-danger";
+      case "cancelled":
+        return "bg-secondary";
+      default:
+        return "bg-secondary";
+    }
   };
 
   // Pagination handlers
@@ -218,11 +282,11 @@ const PurchaseOrderTable = () => {
     const itemCount = items.length;
     const quantitySum = items.reduce(
       (sum, item) => sum + (parseFloat(item.quantity) || 0),
-      0
+      0,
     );
     const weightSum = items.reduce(
       (sum, item) => sum + (parseFloat(item.weight) || 0),
-      0
+      0,
     );
 
     let details = `${itemCount} item${itemCount > 1 ? "s" : ""}`;
@@ -420,9 +484,10 @@ const PurchaseOrderTable = () => {
                 <th>Supplier</th>
                 <th>Branch</th>
                 <th>Order Date</th>
-                <th>Items</th>
                 <th>Total Amount</th>
                 <th>Status</th>
+                <th>Payment Status</th> {/* New column */}
+                <th>Balance Amount</th> {/* New column */}
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
@@ -451,7 +516,7 @@ const PurchaseOrderTable = () => {
                 </tr>
               ) : (
                 currentPurchaseOrders.map((po, index) => {
-                  const total = po.total_amount || calculateTotal(po.items);
+                  const total = po.total_amount;
                   return (
                     <tr key={po._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
@@ -475,10 +540,10 @@ const PurchaseOrderTable = () => {
                       </td>
                       <td>
                         <div className="fw-medium">
-                          {po.branch?.name || po.branch?.name || "N/A"}
+                          {po.branch?.branch_name || po.branch?.name || "N/A"}
                         </div>
                         <div className="text-muted small">
-                          {po.branch?.code}
+                          {po.branch?.branch_code}
                         </div>
                       </td>
 
@@ -489,16 +554,7 @@ const PurchaseOrderTable = () => {
                         </span>
                       </td>
 
-                      <td>
-                        <div className="small">
-                          <div className="fw-medium">
-                            {getItemNames(po.items)}
-                          </div>
-                          <div className="text-muted">
-                            {getItemDetails(po.items)}
-                          </div>
-                        </div>
-                      </td>
+                  
 
                       <td>
                         <span className="fw-bold">
@@ -512,16 +568,16 @@ const PurchaseOrderTable = () => {
                             po.status === "completed"
                               ? "bg-success"
                               : po.status === "draft"
-                              ? "bg-secondary"
-                              : po.status === "pending"
-                              ? "bg-warning"
-                              : po.status === "cancelled"
-                              ? "bg-danger"
-                              : po.status === "approved"
-                              ? "bg-primary"
-                              : po.status === "shipped"
-                              ? "bg-info"
-                              : "bg-secondary"
+                                ? "bg-secondary"
+                                : po.status === "pending"
+                                  ? "bg-warning"
+                                  : po.status === "cancelled"
+                                    ? "bg-danger"
+                                    : po.status === "approved"
+                                      ? "bg-primary"
+                                      : po.status === "shipped"
+                                        ? "bg-info"
+                                        : "bg-secondary"
                           }`}
                         >
                           {po.status
@@ -529,6 +585,56 @@ const PurchaseOrderTable = () => {
                               po.status.slice(1)
                             : "Draft"}
                         </span>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`badge fw-semibold ${getPaymentStatusBadgeClass(
+                            po.payment_status,
+                          )}`}
+                        >
+                          {po.payment_status
+                            ? po.payment_status.charAt(0).toUpperCase() +
+                              po.payment_status.slice(1)
+                            : "Pending"}
+                        </span>
+                        {po.paid_amount > 0 && (
+                          <small className="d-block text-muted">
+                            Paid: ₹{po.paid_amount.toLocaleString("en-IN")}
+                          </small>
+                        )}
+                      </td>
+
+                      {/* Balance Amount Column */}
+                      <td>
+                        <div className="d-flex flex-column">
+                          <div
+                            className={`fw-bold ${
+                              po.balance_amount === 0
+                                ? "text-success"
+                                : po.balance_amount < 0
+                                  ? "text-danger"
+                                  : "text-warning"
+                            }`}
+                          >
+                            ₹
+                            {po.balance_amount?.toLocaleString("en-IN")
+                             
+                              
+                              }
+                          </div>
+                          {po.balance_amount === 0 &&
+                            po.payment_status === "paid" && (
+                              <small className="text-success">Fully Paid</small>
+                            )}
+                          {po.balance_amount > 0 &&
+                            po.payment_status === "partial" && (
+                              <small className="text-muted">Due</small>
+                            )}
+                          {po.balance_amount < 0 && (
+                            <small className="text-danger">Overpaid</small>
+                          )}
+                        </div>
                       </td>
 
                       {/* ACTION BUTTONS - Updated to include View */}
@@ -542,6 +648,19 @@ const PurchaseOrderTable = () => {
                           >
                             <FiEye size={14} />
                             View
+                          </button>
+
+                          {/* Payment Button - NEW */}
+                          <button
+                            className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
+                            onClick={() => handleOpenPaymentModal(po)}
+                            disabled={
+                              actionLoading.type && actionLoading.id === po._id
+                            }
+                            title="Update Payment Status"
+                          >
+                            <FiDollarSign size={14} />
+                            <span className="d-none d-md-inline">Payment</span>
                           </button>
 
                           {/* Edit Button */}
@@ -707,6 +826,21 @@ const PurchaseOrderTable = () => {
             setShowViewModal(false);
             setSelectedItem(null);
           }}
+        />
+      )}
+      {showPaymentModal && selectedPOForPayment && (
+        <PurchaseOrderPaymentModal
+          showModal={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedPOForPayment(null);
+          }}
+          purchaseOrder={selectedPOForPayment}
+          onUpdate={handleUpdatePaymentStatus}
+          loading={
+            actionLoading.type === "payment_update" &&
+            actionLoading.id === selectedPOForPayment._id
+          }
         />
       )}
       {/* EDIT MODAL */}

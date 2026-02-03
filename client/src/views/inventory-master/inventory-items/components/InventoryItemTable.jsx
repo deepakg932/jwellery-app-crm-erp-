@@ -25,6 +25,7 @@ const InventoryItemTable = () => {
     deleteInventoryItem,
     suppliers,
     subCategories,
+    branches,
   } = useInventoryItems();
 
   const [search, setSearch] = useState("");
@@ -47,7 +48,7 @@ const InventoryItemTable = () => {
       item.sub_category_name?.toLowerCase().includes(search.toLowerCase()) ||
       item.purity?.toLowerCase().includes(search.toLowerCase()) ||
       item.supplier_name?.toLowerCase().includes(search.toLowerCase()) ||
-      item.description?.toLowerCase().includes(search.toLowerCase())
+      item.description?.toLowerCase().includes(search.toLowerCase()),
   );
 
   // Reset to first page when search changes
@@ -110,11 +111,11 @@ const InventoryItemTable = () => {
   };
 
   // Open edit modal
-const handleOpenEdit = (purchaseOrder) => {
-  // You can also fetch the full data here if needed
-  setSelectedItem(purchaseOrder);
-  setShowEditModal(true);
-};
+  const handleOpenEdit = (purchaseOrder) => {
+    // You can also fetch the full data here if needed
+    setSelectedItem(purchaseOrder);
+    setShowEditModal(true);
+  };
   // Open delete modal
   const handleOpenDelete = (item) => {
     setSelectedItem(item);
@@ -177,18 +178,63 @@ const handleOpenEdit = (purchaseOrder) => {
 
   // Format price with Indian Rupees
   const formatPrice = (price) => {
-    return `₹${parseFloat(price || 0).toLocaleString('en-IN')}`;
+    return `₹${parseFloat(price || 0).toLocaleString("en-IN")}`;
   };
 
   // Get selling price
   const getSellingPrice = (item) => {
     return item.final_price || item.selling_price || 0;
   };
+  // Add this function in your InventoryItemTable component
+const showBarcodeModal = (barcodeUrl, itemCode) => {
+  if (!barcodeUrl) return;
+
+  const modalHtml = `
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8)" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Barcode - ${itemCode || 'Item'}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <div class="mb-3">
+              <div class="fw-medium">${itemCode || 'Item Code'}</div>
+            </div>
+            <img src="${barcodeUrl}" alt="Barcode" class="img-fluid border p-2" style="max-height: 50vh; object-fit: contain; background: white;" />
+            <div class="mt-3">
+              <a href="${barcodeUrl}" class="btn btn-sm btn-primary" download="${itemCode || 'barcode'}.png">
+                Download Barcode
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const modalContainer = document.createElement("div");
+  modalContainer.innerHTML = modalHtml;
+  document.body.appendChild(modalContainer);
+
+  // Add click handler to close modal
+  const closeBtn = modalContainer.querySelector(".btn-close");
+  closeBtn.addEventListener("click", () => {
+    document.body.removeChild(modalContainer);
+  });
+
+  // Close modal when clicking outside
+  modalContainer.addEventListener("click", (e) => {
+    if (e.target === modalContainer) {
+      document.body.removeChild(modalContainer);
+    }
+  });
+};
 
   // Show image in modal
   const showImageModal = (imageUrl) => {
     if (!imageUrl) return;
-    
+
     const modalHtml = `
       <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.8)" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -204,19 +250,19 @@ const handleOpenEdit = (purchaseOrder) => {
         </div>
       </div>
     `;
-    
-    const modalContainer = document.createElement('div');
+
+    const modalContainer = document.createElement("div");
     modalContainer.innerHTML = modalHtml;
     document.body.appendChild(modalContainer);
-    
+
     // Add click handler to close modal
-    const closeBtn = modalContainer.querySelector('.btn-close');
-    closeBtn.addEventListener('click', () => {
+    const closeBtn = modalContainer.querySelector(".btn-close");
+    closeBtn.addEventListener("click", () => {
       document.body.removeChild(modalContainer);
     });
-    
+
     // Close modal when clicking outside
-    modalContainer.addEventListener('click', (e) => {
+    modalContainer.addEventListener("click", (e) => {
       if (e.target === modalContainer) {
         document.body.removeChild(modalContainer);
       }
@@ -299,9 +345,7 @@ const handleOpenEdit = (purchaseOrder) => {
           <div className="row align-items-center mb-4">
             <div className="col-md-6">
               <h1 className="h3 fw-bold mb-2">Inventory Items</h1>
-              <p className="text-muted mb-0">
-                Manage jewelry items inventory
-              </p>
+              <p className="text-muted mb-0">Manage jewelry items inventory</p>
             </div>
 
             <div className="col-md-6 d-flex justify-content-end gap-2">
@@ -367,6 +411,7 @@ const handleOpenEdit = (purchaseOrder) => {
               <tr>
                 <th>#</th>
                 <th>Item Code</th>
+                <th>Barcode</th>
                 <th>Item Name</th>
                 <th>Category</th>
                 <th>Sub Category</th>
@@ -375,6 +420,7 @@ const handleOpenEdit = (purchaseOrder) => {
                 <th>Selling Price</th>
                 <th>Profit Margin</th>
                 <th>Supplier</th>
+                <th>Branch</th>
                 <th>Status</th>
                 <th className="text-end">Actions</th>
               </tr>
@@ -405,7 +451,8 @@ const handleOpenEdit = (purchaseOrder) => {
               ) : (
                 currentItems.map((item, index) => {
                   const sellingPrice = getSellingPrice(item);
-                  
+                  const hasBarcode = item.barcode && item.barcode.trim() !== "";
+
                   return (
                     <tr key={item._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
@@ -415,7 +462,28 @@ const handleOpenEdit = (purchaseOrder) => {
                           {item.item_code || "N/A"}
                         </div>
                       </td>
-
+                      <td>
+                        {hasBarcode ? (
+                          <div className="d-flex flex-column align-items-center">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
+                              onClick={() =>
+                                showBarcodeModal(item.barcode, item.item_code)
+                              }
+                              title="View Barcode"
+                            >
+                              <FiImage size={14} />
+                              View Barcode
+                            </button>
+                            <small className="text-muted mt-1">
+                              {item.item_code || "Item Code"}
+                            </small>
+                          </div>
+                        ) : (
+                          <span className="text-muted small">No Barcode</span>
+                        )}
+                      </td>
                       <td>
                         <div className="fw-semibold">{item.name}</div>
                         {/* {item.description && (
@@ -436,7 +504,24 @@ const handleOpenEdit = (purchaseOrder) => {
                           {getSubCategoryName(item)}
                         </span>
                       </td>
-
+                      <td>
+                        <div className="small">
+                          {item.branch_name ? (
+                            <>
+                              <div className="fw-medium">
+                                {item.branch_name}
+                              </div>
+                              {item.branch_is_warehouse && (
+                                <span className="badge bg-info small mt-1">
+                                  Warehouse
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted">No Branch</span>
+                          )}
+                        </div>
+                      </td>
                       <td>
                         <span className="badge bg-warning text-dark fw-semibold">
                           {item.purity || "No Purity"}
@@ -486,10 +571,10 @@ const handleOpenEdit = (purchaseOrder) => {
                       <td>
                         <span
                           className={`badge fw-semibold ${
-                            item.status === "active" 
-                              ? "bg-success" 
-                              : item.status === "inactive" 
-                                ? "bg-danger" 
+                            item.status === "active"
+                              ? "bg-success"
+                              : item.status === "inactive"
+                                ? "bg-danger"
                                 : "bg-secondary"
                           }`}
                         >
@@ -654,6 +739,7 @@ const handleOpenEdit = (purchaseOrder) => {
           inventoryCategories={inventoryCategories}
           subCategories={subCategories}
           suppliers={suppliers || []}
+          branches={branches || []}
         />
       )}
 
@@ -674,6 +760,7 @@ const handleOpenEdit = (purchaseOrder) => {
           inventoryCategories={inventoryCategories}
           subCategories={subCategories}
           suppliers={suppliers || []}
+          branches={branches || []}
         />
       )}
 

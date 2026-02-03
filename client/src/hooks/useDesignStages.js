@@ -9,216 +9,123 @@ export default function useDesignStages() {
   const [employees, setEmployees] = useState([]);
 
   // Fetch all design stages
-  const fetchDesignStages = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
+const fetchDesignStages = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError("");
 
-      const url = `${API_ENDPOINTS.getDesignStages()}`;
-      console.log("Fetching design stages from:", url);
+    const url = `${API_ENDPOINTS.getDesignStages()}`;
+    console.log("Fetching design stages from:", url);
 
-      const res = await axios.get(url);
-      console.log("Design stages API Response:", res.data);
+    const res = await axios.get(url);
+    console.log("Design stages API Response:", res.data);
 
-      let stagesData = [];
+    let stagesData = [];
 
-      // Extract data based on response structure
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        stagesData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        stagesData = res.data;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        stagesData = res.data.data;
-      }
-
-      console.log("Extracted stages data:", stagesData);
-
-      // Format design stages data - we need to check both design_stage and current_stage
-      const mappedStages = stagesData.map((jobCard, index) => {
-        // First check for current_stage (new structure)
-        const currentStage = jobCard.current_stage || {};
-        
-        // If no current_stage, check for design_stage (old structure)
-        const designStage = currentStage._id ? currentStage : jobCard.design_stage || {};
-        
-        // Extract data from the stage
-        const stageData = designStage || {};
-console.log(designStage)
-        // Extract assigned person details
-        let assignedTo = {};
-        let assignedName = "Unassigned";
-        
-        if (designStage.assigned_to) {
-          if (typeof designStage.assigned_to === 'object' && designStage.assigned_to.name) {
-            assignedTo = designStage.assigned_to;
-            assignedName = designStage.assigned_to.name;
-          } else if (designStage.assigned_to.name) {
-            assignedName = designStage.assigned_to.name;
-          }
-        } else if (jobCard.assigned_to) {
-          assignedTo = jobCard.assigned_to;
-          assignedName = jobCard.assigned_to.name || "Unassigned";
-        }
-
-        // Get the first item from job card items for product info
-        const firstItem =
-          jobCard.items && jobCard.items.length > 0 ? jobCard.items[0] : null;
-
-        // Create stage name
-        let stageName = designStage.stage_name || "Design Stage";
-        if (jobCard.job_card_no) {
-          if (firstItem?.product_name) {
-            stageName = `${firstItem.product_name} - ${jobCard.job_card_no}`;
-          } else {
-            stageName = `Job Card: ${jobCard.job_card_no}`;
-          }
-        }
-
-        // Handle design files from stage data
-        const designFiles = stageData.design_files || [];
-        const formattedFiles = Array.isArray(designFiles)
-          ? designFiles.map((file, fileIndex) => ({
-              id: file._id || `file-${index}-${fileIndex}`,
-              name: file.name,
-              url: file.url,
-              size: file.size || 0,
-              type: file.type || "image/jpeg",
-              uploaded_at: file.uploaded_at || designStage.createdAt,
-              isExisting: true,
-            }))
-          : [];
-
-        // Handle reference images from job card
-        const referenceImages = jobCard.images || [];
-        // const referenceFiles = Array.isArray(referenceImages)
-        //   ? referenceImages.map((image, fileIndex) => ({
-        //       id: `ref-${index}-${fileIndex}`,
-        //       name: `reference-${fileIndex + 1}`,
-        //       url: image.startsWith("http")
-        //         ? image
-        //         : `http://localhost:5000${image}`,
-        //       size: 0,
-        //       type: "image/jpeg",
-        //       uploaded_at: jobCard.job_card_date || new Date(),
-        //       isReference: true,
-        //     }))
-        //   : [];
-
-        // Combine all files
-        const allFiles = [...formattedFiles,];
-
-    
-
-        // Determine stage type - use stage_name or department
-        const stageType = designStage.stage_name || 
-                         designStage.department?.toLowerCase() || 
-                         jobCard.stage?.toLowerCase() || 
-                         "unknown";
-
-        return {
-          // Stage identification
-          _id: designStage._id,
-          job_card_id: designStage.job_card_id || jobCard._id,
-          job_card_no: jobCard.job_card_no,
-          stage_name: stageName,
-          stage_code: jobCard.job_card_no,
-          stage_type: stageType,
-          stage_order: index + 1,
-
-          // Basic Information from Design Stage
-          assigned_to: designStage.assigned_to?._id || designStage.assigned_to || "",
-          assigned_department: designStage.department || stageType.charAt(0).toUpperCase() + stageType.slice(1),
-          assigned_name: assignedName,
-          start_date: designStage.start_date,
-          end_date: designStage.end_date,
-          status: designStage.status || "pending",
-          remarks: designStage.remarks || "",
-          completed_at: designStage.completed_at,
-
-          // Stage Specific Details from data field
-          estimated_hours: stageData.estimated_hours || 0,
-          actual_hours: stageData.actual_hours || 0,
-          design_notes: stageData.design_notes || "",
-          design_specifications: stageData.design_specifications || "",
-        //   auto_start_next: stageData.auto_start_next || false,
-
-          // Design Information from Job Card
-          design_type: firstItem?.product_name || "Jewelry Design",
-
-          // Files
-          files: allFiles,
-          design_files: designFiles,
-
-          // Financial Information from Job Card
-          design_cost: jobCard.total_amount || 0,
-
-
-          // Product Details from job card items
-          product_info: firstItem
-            ? {
-                product_id: firstItem.product_id,
-                product_name: firstItem.product_name,
-                description: firstItem.description,
-                quantity: firstItem.quantity,
-                unit_price: firstItem.unit_price,
-                total_amount: firstItem.total_amount,
-                notes: firstItem.notes,
-              }
-            : null,
-
-          // Job Card Details
-          job_card_details: {
-            job_card_date: jobCard.job_card_date,
-            expected_delivery_date: jobCard.expected_delivery_date,
-            delivery_date: jobCard.delivery_date,
-            priority: jobCard.priority || "medium",
-            note: jobCard.note,
-            instructions: jobCard.instructions,
-            stage: jobCard.stage,
-            status: jobCard.status,
-            images: jobCard.images,
-          },
-
-          // Timestamps
-          created_at: designStage.createdAt || new Date().toISOString(),
-          updated_at: designStage.updatedAt || new Date().toISOString(),
-
-          // Additional Financial Information
-          total_amount: jobCard.total_amount,
-          advance_amount: jobCard.advance_amount,
-          balance_amount: jobCard.balance_amount,
-
-          // Additional details
-          quotation_number: jobCard.quotation_number,
-          priority: jobCard.priority || "medium",
-        };
-      });
-
-      console.log("Mapped design stages:", mappedStages);
-      setDesignStages(mappedStages);
-      return mappedStages;
-    } catch (err) {
-      console.error("Fetch design stages error:", err);
-
-      if (err.response) {
-        const errorMessage =
-          err.response.data?.message ||
-          err.response.data?.error ||
-          `Server error: ${err.response.status}`;
-        setError(errorMessage);
-      } else if (err.request) {
-        setError("Network error. Please check your connection.");
-      } else {
-        console.log("Error fetching design stages:", err.message);
-        setError("Failed to load design stages");
-      }
-
-      setDesignStages([]);
-      return [];
-    } finally {
-      setLoading(false);
+    // Extract data based on response structure
+    if (res.data?.success && Array.isArray(res.data.data)) {
+      stagesData = res.data.data;
+    } else if (Array.isArray(res.data)) {
+      stagesData = res.data;
+    } else if (res.data?.data && Array.isArray(res.data.data)) {
+      stagesData = res.data.data;
     }
-  }, []);
+
+    console.log("Extracted stages data:", stagesData);
+
+    // Format design stages data - now using design_stage structure
+    const mappedStages = stagesData.map((jobCard, index) => {
+      const designStage = jobCard.design_stage || {};
+      const assignedTo = designStage.assigned_to || {};
+
+      return {
+        // IDs
+        _id: designStage._id || jobCard._id,
+        job_card_id: jobCard._id,
+        job_card_no: jobCard.job_card_no,
+        
+        // Basic Information from Design Stage
+        assigned_to: assignedTo._id || "",
+        assigned_name: assignedTo.name || "Unassigned",
+        assigned_email: assignedTo.email || "",
+        assigned_department: designStage.department || "Design",
+        
+        // Stage Status and Timing
+        status: designStage.status || "pending",
+        stage: jobCard.stage || "design", // This is the overall job card stage
+        stage_name: designStage.stage_name || `Design - ${jobCard.job_card_no}`,
+        stage_type: jobCard.stage || "design",
+        
+        // Dates
+        start_date: designStage.start_date,
+        end_date: designStage.end_date,
+        completed_at: designStage.completed_at,
+        remarks: designStage.remarks || "",
+        createdAt: designStage.createdAt || new Date().toISOString(),
+        updatedAt: designStage.updatedAt || new Date().toISOString(),
+        
+        // Time Tracking
+        estimated_hours: designStage.estimated_hours || 0,
+        actual_hours: designStage.actual_hours || 0,
+        preparation_time: designStage.preparation_time || 0,
+        processing_time: designStage.processing_time || 0,
+        finishing_time: designStage.finishing_time || 0,
+        inspection_time: designStage.inspection_time || 0,
+        packaging_time: designStage.packaging_time || 0,
+        total_time_spent: designStage.total_time_spent || 0,
+        
+        // Design Details
+        design_notes: designStage.design_notes || "",
+        design_specifications: designStage.design_specifications || "",
+        
+        // Cost Tracking
+        material_cost: designStage.material_cost || 0,
+        labor_cost: designStage.labor_cost || 0,
+        tooling_cost: designStage.tooling_cost || 0,
+        machine_cost: designStage.machine_cost || 0,
+        other_costs: designStage.other_costs || 0,
+        total_cost: designStage.total_cost || 0,
+        markup_percentage: designStage.markup_percentage || 0,
+        final_price: designStage.final_price || 0,
+        cost_currency: designStage.cost_currency || "INR",
+        cost_status: designStage.cost_status || "estimated",
+        
+        // Files
+        files: designStage.files || [],
+        design_files: designStage.files || [],
+        
+        // Job Card Details
+        job_card_status: jobCard.status || "in_progress",
+        job_card_stage: jobCard.stage || "design",
+        job_card_priority: jobCard.priority || "medium",
+      };
+    });
+
+    console.log("Mapped design stages:", mappedStages);
+    setDesignStages(mappedStages);
+    return mappedStages;
+  } catch (err) {
+    console.error("Fetch design stages error:", err);
+
+    if (err.response) {
+      const errorMessage =
+        err.response.data?.message ||
+        err.response.data?.error ||
+        `Server error: ${err.response.status}`;
+      setError(errorMessage);
+    } else if (err.request) {
+      setError("Network error. Please check your connection.");
+    } else {
+      console.log("Error fetching design stages:", err.message);
+      setError("Failed to load design stages");
+    }
+
+    setDesignStages([]);
+    return [];
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   // Fetch employees for assignment
   const fetchEmployees = async () => {
@@ -241,7 +148,7 @@ console.log(designStage)
   const updateStageWithFiles = async (
     stageId,
     updateData,
-    filesToUpload = []
+    filesToUpload = [],
   ) => {
     try {
       setLoading(true);
@@ -253,44 +160,137 @@ console.log(designStage)
       // Create FormData for file upload
       const formData = new FormData();
 
-      // Append all form fields
+      // Basic Information Fields
       formData.append("assigned_to", updateData.assigned_to || "");
       formData.append("status", updateData.status || "");
       formData.append("start_date", updateData.start_date || "");
       formData.append("end_date", updateData.end_date || "");
       formData.append("remarks", updateData.remarks || "");
-      formData.append("estimated_hours", updateData.estimated_hours || "");
-      formData.append("actual_hours", updateData.actual_hours || "");
+      formData.append(
+        "estimated_hours",
+        parseFloat(updateData.estimated_hours) || 0,
+      );
+      formData.append("actual_hours", parseFloat(updateData.actual_hours) || 0);
       formData.append("design_notes", updateData.design_notes || "");
       formData.append(
         "design_specifications",
-        updateData.design_specifications || ""
+        updateData.design_specifications || "",
       );
-    //   formData.append("auto_start_next", updateData.auto_start_next || false);
       formData.append("stage", updateData.stage || "");
+      // formData.append("stage_type", updateData.stage_type || "");
 
-      // Append existing files as JSON string
+      // Cost Tracking Fields
+      formData.append(
+        "material_cost",
+        parseFloat(updateData.material_cost) || 0,
+      );
+      formData.append("labor_cost", parseFloat(updateData.labor_cost) || 0);
+      formData.append("tooling_cost", parseFloat(updateData.tooling_cost) || 0);
+      formData.append("machine_cost", parseFloat(updateData.machine_cost) || 0);
+      formData.append("other_costs", parseFloat(updateData.other_costs) || 0);
+      formData.append("total_cost", parseFloat(updateData.total_cost) || 0);
+      formData.append("cost_currency", updateData.cost_currency || "INR");
+      formData.append("cost_status", updateData.cost_status || "estimated");
+      formData.append(
+        "markup_percentage",
+        parseFloat(updateData.markup_percentage) || 30,
+      );
+      formData.append("final_price", parseFloat(updateData.final_price) || 0);
+
+      // Time Tracking Fields
+      formData.append(
+        "preparation_time",
+        parseFloat(updateData.preparation_time) || 0,
+      );
+      formData.append(
+        "processing_time",
+        parseFloat(updateData.processing_time) || 0,
+      );
+      formData.append(
+        "finishing_time",
+        parseFloat(updateData.finishing_time) || 0,
+      );
+      formData.append(
+        "inspection_time",
+        parseFloat(updateData.inspection_time) || 0,
+      );
+      formData.append(
+        "packaging_time",
+        parseFloat(updateData.packaging_time) || 0,
+      );
+      formData.append(
+        "total_time_spent",
+        parseFloat(updateData.total_time_spent) || 0,
+      );
+      formData.append("time_breakdown", updateData.time_breakdown || "");
+
+      // File Tracking Fields
+      formData.append("file_version", updateData.file_version || "1.0");
+      formData.append(
+        "file_revisions",
+        parseInt(updateData.file_revisions) || 0,
+      );
+      formData.append("file_status", updateData.file_status || "draft");
+      formData.append("backup_location", updateData.backup_location || "");
+
+      // Handle source and output files as JSON arrays
+      formData.append(
+        "source_files",
+        JSON.stringify(updateData.source_files || []),
+      );
+      formData.append(
+        "output_files",
+        JSON.stringify(updateData.output_files || []),
+      );
+
+      // Separate existing and new files
       const existingFiles =
         updateData.files
-          ?.filter((file) => file.isExisting && !file.isReference)
+          ?.filter(
+            (file) => (file.isExisting || file.isReference) && !file.file,
+          )
           .map((file) => ({
+            id: file.id,
             name: file.name,
             size: file.size,
             type: file.type,
             url: file.url,
+            category: file.category || "output",
+            version: file.version || "1.0",
+            isExisting: true,
             uploaded_at: file.uploaded_at || new Date(),
+            status: file.status || "existing",
           })) || [];
 
-      formData.append("design_files", JSON.stringify(existingFiles));
+      const newFiles =
+        updateData.files
+          ?.filter((file) => !file.isExisting && file.file)
+          .map((file) => ({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            category: file.category || "output",
+            version: file.version || "1.0",
+            status: "new",
+          })) || [];
+
+      // Send files info as JSON
+      const allFilesInfo = [...existingFiles, ...newFiles];
+      formData.append("files_info", JSON.stringify(allFilesInfo));
 
       // Append new files
       filesToUpload.forEach((file) => {
         formData.append("files", file);
       });
 
+      // Log all FormData entries for debugging
       console.log("FormData entries:");
       for (let pair of formData.entries()) {
-        console.log(pair[0] + ": " + pair[1]);
+        if (pair[0] === "files") {
+          console.log(`${pair[0]}: [File] ${pair[1].name}`);
+        } else {
+          console.log(`${pair[0]}: ${pair[1]}`);
+        }
       }
 
       const res = await axios.put(url, formData, {

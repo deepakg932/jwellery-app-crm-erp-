@@ -9,18 +9,60 @@ export default function useInventoryItems() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [branches, setBranches] = useState([]);
 
   // Helper function to get ID
   const getId = (item) => item._id || item.id;
+
+  // === FETCH BRANCHES ===
+  const fetchBranches = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(API_ENDPOINTS.getBranches()); // Use your branches endpoint
+
+      let branchesData = [];
+
+      // Handle response based on your API structure
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        branchesData = res.data.data;
+      } else if (Array.isArray(res.data)) {
+        branchesData = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        branchesData = res.data.data;
+      }
+
+      const mappedBranches = branchesData.map((branch) => ({
+        _id: branch._id || branch.id,
+        id: branch._id || branch.id,
+        branch_name: branch.branch_name || branch.name || "",
+        branch_code: branch.branch_code || "",
+        address: branch.address || "",
+        phone: branch.phone || "",
+        contact_person: branch.contact_person || "",
+        is_warehouse: branch.is_warehouse || false,
+        status: branch.status || true,
+        branch_type: branch.branch_type || {},
+      }));
+
+      setBranches(mappedBranches);
+      return mappedBranches;
+    } catch (err) {
+      console.error("Fetch branches error:", err);
+      setError("Failed to load branches");
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // === FETCH SUPPLIERS ===
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
       const res = await axios.get(API_ENDPOINTS.getSuppliers());
-      
+
       let suppliersData = [];
-      
+
       // Handle different response structures
       if (res.data?.fetched && Array.isArray(res.data.fetched)) {
         suppliersData = res.data.fetched;
@@ -31,15 +73,15 @@ export default function useInventoryItems() {
       } else if (res.data?.data && Array.isArray(res.data.data)) {
         suppliersData = res.data.data;
       }
-      
+
       const mappedSuppliers = suppliersData
-        .filter(supplier => supplier.status !== false)
+        .filter((supplier) => supplier.status !== false)
         .map((supplier) => ({
           _id: getId(supplier),
           id: getId(supplier),
           name: supplier.supplier_name || supplier.name || "",
           supplier_name: supplier.supplier_name || "",
-          supplier_code: supplier.supplier_code || "",
+          company_name: supplier.company_name || "",
           contact_person: supplier.contact_person || "",
           phone: supplier.phone || "",
           email: supplier.email || "",
@@ -47,9 +89,9 @@ export default function useInventoryItems() {
           city: supplier.city || "",
           state: supplier.state || "",
           status: supplier.status || true,
-          ...supplier
+          ...supplier,
         }));
-      
+
       setSuppliers(mappedSuppliers);
       return mappedSuppliers;
     } catch (err) {
@@ -66,11 +108,15 @@ export default function useInventoryItems() {
     try {
       setLoading(true);
       const res = await axios.get(API_ENDPOINTS.getInventorySubCategories());
-      
+
       let subCategoriesData = [];
-      
+
       // Handle different response structures
-      if (res.data?.success && res.data?.data?.data && Array.isArray(res.data.data.data)) {
+      if (
+        res.data?.success &&
+        res.data?.data?.data &&
+        Array.isArray(res.data.data.data)
+      ) {
         // Structure: { success: true, data: { data: [...] } }
         subCategoriesData = res.data.data.data;
       } else if (res.data?.data && Array.isArray(res.data.data)) {
@@ -80,7 +126,7 @@ export default function useInventoryItems() {
       } else if (Array.isArray(res.data)) {
         subCategoriesData = res.data;
       }
-      
+
       const mappedSubCategories = subCategoriesData.map((subCat) => ({
         _id: getId(subCat),
         id: getId(subCat),
@@ -89,9 +135,9 @@ export default function useInventoryItems() {
         category_name: subCat.category?.name || "",
         description: subCat.description || "",
         status: subCat.status || true,
-        ...subCat
+        ...subCat,
       }));
-      
+
       setSubCategories(mappedSubCategories);
       return mappedSubCategories;
     } catch (err) {
@@ -108,28 +154,32 @@ export default function useInventoryItems() {
     try {
       setLoading(true);
       const res = await axios.get(API_ENDPOINTS.getInventoryCategories());
-      
+
       let categoriesData = [];
-      
+
       if (res.data?.success && Array.isArray(res.data.data)) {
         categoriesData = res.data.data;
-      } else if (res.data?.success && res.data?.data?.data && Array.isArray(res.data.data.data)) {
+      } else if (
+        res.data?.success &&
+        res.data?.data?.data &&
+        Array.isArray(res.data.data.data)
+      ) {
         categoriesData = res.data.data.data;
       } else if (Array.isArray(res.data)) {
         categoriesData = res.data;
       } else if (res.data?.data && Array.isArray(res.data.data)) {
         categoriesData = res.data.data;
       }
-      
+
       const mappedCategories = categoriesData.map((cat) => ({
         _id: getId(cat),
         id: getId(cat),
         name: cat.name || "",
         description: cat.description || "",
         status: cat.status || "active",
-        ...cat
+        ...cat,
       }));
-      
+
       setInventoryCategories(mappedCategories);
       return mappedCategories;
     } catch (err) {
@@ -142,89 +192,102 @@ export default function useInventoryItems() {
   };
 
   // === FETCH INVENTORY ITEMS ===
-  const fetchInventoryItems = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(API_ENDPOINTS.getInventoryItems());
-      
-      let itemsData = [];
-      
-      if (res.data?.success && res.data?.data?.data && Array.isArray(res.data.data.data)) {
-        // Structure: { success: true, data: { data: [...] } }
-        itemsData = res.data.data.data;
-      } else if (res.data?.success && Array.isArray(res.data.data)) {
-        itemsData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        itemsData = res.data;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        itemsData = res.data.data;
-      }
-      
-      const mappedItems = itemsData.map((item) => {
-        // Extract nested data from response
-        const categoryId = item.category?._id || item.category || "";
-        const categoryName = item.category?.name || "";
-        const subCategoryId = item.sub_category?.id || item.sub_category || "";
-        const subCategoryName = item.sub_category?.name || "";
-        const supplierId = item.supplier?._id || item.supplier || "";
-        const supplierName = item.supplier?.supplier_name || "";
-        const supplierPhone = item.supplier?.phone || "";
-        const supplierEmail = item.supplier?.email || "";
-        const supplierAddress = item.supplier?.address || "";
-        
-        const newItem = {
-          _id: getId(item),
-          id: getId(item),
-          item_code: item.item_code || "",
-          name: item.name || "",
-          purity: item.purity || "",
-          category: categoryId,
-          category_name: categoryName,
-          sub_category: subCategoryId,
-          sub_category_name: subCategoryName,
-          description: item.description || "",
-          discount: item.discount || 0,
-          tax: item.tax || 0,
-          purchase_price: item.purchase_price || 0,
-          profit_margin: item.profit_margin || 0,
-          supplier: supplierId,
-          supplier_name: supplierName,
-          supplier_phone: supplierPhone,
-          supplier_email: supplierEmail,
-          supplier_address: supplierAddress,
-          images: Array.isArray(item.images) ? item.images : [],
-          status: item.status || "active",
-          selling_price: item.selling_price || 0,
-          discount_amount: item.discount_amount || 0,
-          tax_amount: item.tax_amount || 0,
-          final_price: item.final_price || 0,
-          createdAt: item.createdAt || "",
-          updatedAt: item.updatedAt || "",
-          ...item
-        };
-        
-        return newItem;
-      });
-      
-      setItems(mappedItems);
-      return mappedItems;
-    } catch (err) {
-      console.error("Fetch inventory items error:", err);
-      setError("Failed to load inventory items");
-      return [];
-    } finally {
-      setLoading(false);
+const fetchInventoryItems = async () => {
+  try {
+    setLoading(true);
+    const res = await axios.get(API_ENDPOINTS.getInventoryItems());
+
+    let itemsData = [];
+
+    if (
+      res.data?.success &&
+      res.data?.data?.data &&
+      Array.isArray(res.data.data.data)
+    ) {
+      // Structure: { success: true, data: { data: [...] } }
+      itemsData = res.data.data.data;
+    } else if (res.data?.success && Array.isArray(res.data.data)) {
+      itemsData = res.data.data;
+    } else if (Array.isArray(res.data)) {
+      itemsData = res.data;
+    } else if (res.data?.data && Array.isArray(res.data.data)) {
+      itemsData = res.data.data;
     }
-  };
+
+    const mappedItems = itemsData.map((item) => {
+      // Extract nested data from response
+      const categoryId = item.category?._id || item.category || "";
+      const categoryName = item.category?.name || "";
+      const subCategoryId = item.sub_category?.id || item.sub_category || "";
+      const subCategoryName = item.sub_category?.name || "";
+      const supplierId = item.supplier?._id || item.supplier || "";
+      const supplierName = item.supplier?.supplier_name || "";
+      const supplierPhone = item.supplier?.phone || "";
+      const supplierEmail = item.supplier?.email || "";
+      const supplierAddress = item.supplier?.address || "";
+      
+      // Extract branch data
+      const branchId = item.branch?._id || item.branch || "";
+      const branchName = item.branch?.branch_name || "";
+      
+      const newItem = {
+        _id: getId(item),
+        id: getId(item),
+        item_code: item.item_code || "",
+        name: item.name || "",
+        purity: item.purity || "",
+        category: categoryId,
+        category_name: categoryName,
+        sub_category: subCategoryId,
+        sub_category_name: subCategoryName,
+        description: item.description || "",
+        discount: item.discount || 0,
+        tax: item.tax || 0,
+        purchase_price: item.purchase_price || 0,
+        profit_margin: item.profit_margin || 0,
+        supplier: supplierId,
+        supplier_name: supplierName,
+        supplier_phone: supplierPhone,
+        supplier_email: supplierEmail,
+        supplier_address: supplierAddress,
+        // Add branch data
+        branch: branchId,
+        branch_name: branchName,
+        // Add barcode data
+        barcode: item.barcode || "",
+        images: Array.isArray(item.images) ? item.images : [],
+        status: item.status || "active",
+        selling_price: item.selling_price || 0,
+        discount_amount: item.discount_amount || 0,
+        tax_amount: item.tax_amount || 0,
+        final_price: item.final_price || 0,
+        createdAt: item.createdAt || "",
+        updatedAt: item.updatedAt || "",
+        ...item,
+      };
+
+      return newItem;
+    });
+
+    setItems(mappedItems);
+    return mappedItems;
+  } catch (err) {
+    console.error("Fetch inventory items error:", err);
+    setError("Failed to load inventory items");
+    return [];
+  } finally {
+    setLoading(false);
+  }
+};
 
   // === ADD INVENTORY ITEM ===
   const addInventoryItem = async (itemData) => {
     try {
       setLoading(true);
-      
+
       // Create FormData for file upload
       const formData = new FormData();
-      
+
       // Add all form fields
       formData.append("name", itemData.name);
       formData.append("purity", itemData.purity);
@@ -232,31 +295,42 @@ export default function useInventoryItems() {
       if (itemData.sub_category) {
         formData.append("sub_category", itemData.sub_category);
       }
+      formData.append("branch", itemData.branch || ""); // Add branch
       formData.append("description", itemData.description || "");
       formData.append("discount", parseFloat(itemData.discount) || 0);
       formData.append("tax", parseFloat(itemData.tax) || 0);
-      formData.append("purchase_price", parseFloat(itemData.purchase_price) || 0);
-      formData.append("profit_margin", parseFloat(itemData.profit_margin) || 25);
+      formData.append(
+        "purchase_price",
+        parseFloat(itemData.purchase_price) || 0,
+      );
+      formData.append(
+        "profit_margin",
+        parseFloat(itemData.profit_margin) || 25,
+      );
       if (itemData.supplier) {
         formData.append("supplier", itemData.supplier);
       }
-      
+
       // Add image file if exists
       if (itemData.image && itemData.image.length > 0) {
         formData.append("image", itemData.image[0]); // Only first image as per your backend
       }
-      
-      const res = await axios.post(API_ENDPOINTS.createInventoryItem(), formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
+
+      const res = await axios.post(
+        API_ENDPOINTS.createInventoryItem(),
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
       let newItem = {};
-      
+
       if (res.data && res.data.success && res.data.data) {
         const item = res.data.data;
-        
+
         // Extract nested data
         const categoryId = item.category?._id || item.category || "";
         const categoryName = item.category?.name || "";
@@ -264,7 +338,19 @@ export default function useInventoryItems() {
         const subCategoryName = item.sub_category?.name || "";
         const supplierId = item.supplier?._id || item.supplier || "";
         const supplierName = item.supplier?.supplier_name || "";
-        
+
+        // Extract branch data from response (similar to category/supplier)
+        const branchId =
+          item.branch?._id || item.branch?.id || item.branch || "";
+        const branchName = item.branch?.branch_name || "";
+        const branchCode = item.branch?.branch_code || "";
+        const branchIsWarehouse = item.branch?.is_warehouse || false;
+        const branchAddress = item.branch?.address || "";
+        const branchPhone = item.branch?.phone || "";
+        const branchContactPerson = item.branch?.contact_person || "";
+        const branchTypeId = item.branch?.branch_type?.id || "";
+        const branchTypeName = item.branch?.branch_type?.name || "";
+
         newItem = {
           _id: getId(item),
           id: getId(item),
@@ -282,6 +368,18 @@ export default function useInventoryItems() {
           profit_margin: item.profit_margin || 0,
           supplier: supplierId,
           supplier_name: supplierName,
+
+          // Add branch data
+          branch: branchId,
+          branch_name: branchName,
+          branch_code: branchCode,
+          branch_is_warehouse: branchIsWarehouse,
+          branch_address: branchAddress,
+          branch_phone: branchPhone,
+          branch_contact_person: branchContactPerson,
+          branch_type_id: branchTypeId,
+          branch_type_name: branchTypeName,
+
           images: Array.isArray(item.images) ? item.images : [],
           status: item.status || "active",
           selling_price: item.selling_price || 0,
@@ -294,10 +392,10 @@ export default function useInventoryItems() {
       } else {
         throw new Error("Failed to create item");
       }
-      
-      setItems(prev => [...prev, newItem]);
+
+      setItems((prev) => [...prev, newItem]);
       await fetchInventoryItems();
-      
+
       return newItem;
     } catch (err) {
       console.error("Add inventory item error:", err);
@@ -312,10 +410,10 @@ export default function useInventoryItems() {
   const updateInventoryItem = async (id, itemData) => {
     try {
       setLoading(true);
-      
+
       // Create FormData for file upload
       const formData = new FormData();
-      
+
       // Add all form fields
       formData.append("name", itemData.name);
       formData.append("purity", itemData.purity);
@@ -323,16 +421,23 @@ export default function useInventoryItems() {
       if (itemData.sub_category) {
         formData.append("sub_category", itemData.sub_category);
       }
+      formData.append("branch", itemData.branch || ""); // Add branch
       formData.append("description", itemData.description || "");
       formData.append("discount", parseFloat(itemData.discount) || 0);
       formData.append("tax", parseFloat(itemData.tax) || 0);
-      formData.append("purchase_price", parseFloat(itemData.purchase_price) || 0);
-      formData.append("profit_margin", parseFloat(itemData.profit_margin) || 25);
+      formData.append(
+        "purchase_price",
+        parseFloat(itemData.purchase_price) || 0,
+      );
+      formData.append(
+        "profit_margin",
+        parseFloat(itemData.profit_margin) || 25,
+      );
       if (itemData.supplier) {
         formData.append("supplier", itemData.supplier);
       }
       formData.append("status", itemData.status || "active");
-      
+
       // Add image file if exists (and it's a File object)
       if (itemData.image && itemData.image.length > 0) {
         const image = itemData.image[0];
@@ -340,17 +445,21 @@ export default function useInventoryItems() {
           formData.append("image", image);
         }
       }
-      
-      const res = await axios.put(API_ENDPOINTS.updateInventoryItem(id), formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      
+
+      const res = await axios.put(
+        API_ENDPOINTS.updateInventoryItem(id),
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
       let updatedItem = {};
       if (res.data && res.data.success && res.data.data) {
         const item = res.data.data;
-        
+
         // Extract nested data
         const categoryId = item.category?._id || item.category || "";
         const categoryName = item.category?.name || "";
@@ -358,7 +467,19 @@ export default function useInventoryItems() {
         const subCategoryName = item.sub_category?.name || "";
         const supplierId = item.supplier?._id || item.supplier || "";
         const supplierName = item.supplier?.supplier_name || "";
-        
+
+        // Extract branch data
+        const branchId =
+          item.branch?._id || item.branch?.id || item.branch || "";
+        const branchName = item.branch?.branch_name || "";
+        const branchCode = item.branch?.branch_code || "";
+        const branchIsWarehouse = item.branch?.is_warehouse || false;
+        const branchAddress = item.branch?.address || "";
+        const branchPhone = item.branch?.phone || "";
+        const branchContactPerson = item.branch?.contact_person || "";
+        const branchTypeId = item.branch?.branch_type?.id || "";
+        const branchTypeName = item.branch?.branch_type?.name || "";
+
         updatedItem = {
           _id: getId(item) || id,
           id: getId(item) || id,
@@ -376,6 +497,18 @@ export default function useInventoryItems() {
           profit_margin: item.profit_margin || 0,
           supplier: supplierId,
           supplier_name: supplierName,
+
+          // Add branch data
+          branch: branchId,
+          branch_name: branchName,
+          branch_code: branchCode,
+          branch_is_warehouse: branchIsWarehouse,
+          branch_address: branchAddress,
+          branch_phone: branchPhone,
+          branch_contact_person: branchContactPerson,
+          branch_type_id: branchTypeId,
+          branch_type_name: branchTypeName,
+
           images: Array.isArray(item.images) ? item.images : [],
           status: item.status || "active",
           selling_price: item.selling_price || 0,
@@ -388,17 +521,19 @@ export default function useInventoryItems() {
       } else {
         throw new Error("Failed to update item");
       }
-      
-      setItems(prev => 
-        prev.map((item) => (item._id === id ? updatedItem : item))
+
+      setItems((prev) =>
+        prev.map((item) => (item._id === id ? updatedItem : item)),
       );
-      
+
       await fetchInventoryItems();
-      
+
       return updatedItem;
     } catch (err) {
       console.error("Update inventory item error:", err);
-      setError(err.response?.data?.message || "Failed to update inventory item");
+      setError(
+        err.response?.data?.message || "Failed to update inventory item",
+      );
       throw err;
     } finally {
       setLoading(false);
@@ -409,12 +544,11 @@ export default function useInventoryItems() {
   const deleteInventoryItem = async (id) => {
     try {
       setLoading(true);
-      
+
       await axios.delete(API_ENDPOINTS.deleteInventoryItem(id));
-      
-      setItems(prev => prev.filter((item) => item._id !== id));
+
+      setItems((prev) => prev.filter((item) => item._id !== id));
       await fetchInventoryItems();
-      
     } catch (err) {
       console.error("Delete inventory item error:", err);
       setError("Failed to delete inventory item");
@@ -432,7 +566,8 @@ export default function useInventoryItems() {
         fetchSuppliers(),
         fetchInventoryCategories(),
         fetchSubCategories(),
-        fetchInventoryItems()
+        fetchInventoryItems(),
+        fetchBranches(),
       ]);
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -451,16 +586,17 @@ export default function useInventoryItems() {
     inventoryCategories,
     subCategories,
     suppliers,
-    
+    branches,
+
     // Loading States
     loading,
     error,
-    
+
     // CRUD Operations
     addInventoryItem,
     updateInventoryItem,
     deleteInventoryItem,
-    
+
     // Fetch Functions
     fetchInventoryItems,
     fetchSuppliers,
