@@ -31,7 +31,7 @@ router.post(
   '/createProduct',
   // authenticate,
   // requirePermission("products:create"),
-Productupload.single('images'), // "images" = key in Postman, max 5 files
+Productupload.array('image',3), // "images" = key in Postman, max 5 files
   createProduct
 );
 
@@ -48,7 +48,7 @@ Productupload.single('images'), // "images" = key in Postman, max 5 files
 
 router.put(
   "/updateProduct/:id",
- Productupload.single('image'),  
+ Productupload.array('image',3),  
   updateProduct
 );
 

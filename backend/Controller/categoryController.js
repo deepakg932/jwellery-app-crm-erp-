@@ -1,27 +1,41 @@
-// categoryController.js
+
 import Category from "../Models/models/Category.js";
 
 export const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().select("name _id metal_type");
-    console.log(categories, "get categories");
-    return res.json({ success: true, categories });
+    const categories = await Category.find()
+      .select("name _id metal_type image"); // ✅ image include
+
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+
+    const categoriesWithImage = categories.map((cat) => ({
+      ...cat._doc,
+      fullImageUrl: cat.image
+        ? `${baseUrl}${cat.image}`
+        : null,
+    }));
+
+    return res.json({
+      success: true,
+      categories: categoriesWithImage,
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
 
 export const createCategory = async (req, res) => {
   try {
     const { name, metal_type } = req.body;
     console.log(req.body, "request body");
 
-    // if (!name || !metal_type) {
-    //   return res
-    //     .status(400)
-    //     .json({ success: false, message: "Name & Metal type are required" });
-    // }
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+ 
+    // const baseUrl = `${req.protocol}://${req.get("host")}`;
+       const baseUrl = process.env.APP_URL; // ✅ ENV UR
     console.log("baseUrl", baseUrl);
     const newCategory = new Category({
       name,
@@ -32,16 +46,18 @@ export const createCategory = async (req, res) => {
     const savedCategory = await newCategory.save();
     console.log(savedCategory, "savedCategory");
 
-    const fullImageUrl = savedCategory.image
-      ? `${baseUrl}${savedCategory.image}`
-      : null;
-    console.log("fullImageUrl", fullImageUrl);
+    // const fullImageUrl = savedCategory.image
+    //   ? `${baseUrl}${savedCategory.image}`
+    //   : null;
+    // console.log("fullImageUrl", fullImageUrl);
 
     return res.json({
       success: true,
       category: {
         ...savedCategory._doc,
-        fullImageUrl,
+          fullImageUrl: savedCategory.image
+          ? `${baseUrl}${savedCategory.image}`
+          : null,
       },
     });
   } catch (err) {
@@ -58,7 +74,8 @@ export const updateCategory = async (req, res) => {
     console.log(req.body, "update category body");
 
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
     console.log("baseUrl", baseUrl);
 
     let category = await Category.findById(id);
@@ -79,12 +96,14 @@ export const updateCategory = async (req, res) => {
     const updatedCategory = await category.save();
 
   
-    const fullImageUrl = updatedCategory.image
-      ? `${baseUrl}${updatedCategory.image}`
-      : null;
-      console.log(fullImageUrl,"fullImageUrl")
+    // const fullImageUrl = updatedCategory.image
+    //   ? `${baseUrl}${updatedCategory.image}`
+    //   : null;
+    //   console.log(fullImageUrl,"fullImageUrl")
 
-    return res.json({ success: true, message: "Category updated successfully",category: {   ...updatedCategory._doc,   fullImageUrl  },
+    return res.json({ success: true, message: "Category updated successfully",category: {   ...updatedCategory._doc,   fullImageUrl: updatedCategory.image
+          ? `${baseUrl}${updatedCategory.image}`
+          : null,  },
     });
 
   } catch (err) {

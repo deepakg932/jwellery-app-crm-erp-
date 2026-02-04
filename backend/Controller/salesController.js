@@ -5,7 +5,7 @@ import Invoice from "../Models/models/Invoice.js";
 import { generateInvoiceNumber } from "../helper/generateInvoiceNumber.js";
 import fs from "fs";
 import path from "path";
-import PDFDocument from "pdfkit";
+
 
 
 
@@ -104,108 +104,6 @@ import PDFDocument from "pdfkit";
 // };
 
 
-export const generateInvoicePDF = async (req, res) => {
-  try {
-    const { invoice_id } = req.params;
-
-    const invoice = await Invoice.findById(invoice_id)
-      .populate("sale_id")
-      .populate("customer_id", "name mobile")
-      .populate("branch_id", "branch_name branch_code");
-
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: "Invoice not found",
-      });
-    }
-
-    // 📁 folder
-    const dir = "uploads/invoices";
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-    const fileName = `invoice-${invoice.invoice_number}.pdf`;
-    const filePath = path.join(dir, fileName);
-
-    const doc = new PDFDocument({ margin: 40 });
-    doc.pipe(fs.createWriteStream(filePath));
-
-    /* ================= HEADER ================= */
-    doc.fontSize(18).text("INVOICE", { align: "center" });
-    doc.moveDown();
-
-    doc.fontSize(10);
-    doc.text(`Invoice No: ${invoice.invoice_number}`);
-    doc.text(`Reference No: ${invoice.sale_id.reference_no}`);
-    doc.text(`Invoice Date: ${invoice.invoice_date.toDateString()}`);
-    doc.text(`Status: ${invoice.payment_status}`);
-    doc.moveDown();
-
-    /* ================= CUSTOMER ================= */
-    doc.fontSize(12).text("Customer Details", { underline: true });
-    doc.fontSize(10);
-    doc.text(`Name: ${invoice.customer_id.name}`);
-    doc.text(`Mobile: ${invoice.customer_id.mobile}`);
-    doc.moveDown();
-
-    /* ================= BRANCH ================= */
-    doc.fontSize(12).text("Branch Details", { underline: true });
-    doc.fontSize(10);
-    doc.text(`Branch: ${invoice.branch_id.branch_name}`);
-    doc.text(`Code: ${invoice.branch_id.branch_code}`);
-    doc.moveDown();
-
-    /* ================= ITEMS TABLE ================= */
-    doc.fontSize(12).text("Items", { underline: true });
-    doc.moveDown(0.5);
-
-    doc.fontSize(10);
-    invoice.items.forEach((item, index) => {
-      doc.text(
-        `${index + 1}. ${item.product_name} | Qty: ${item.quantity} | Rate: ₹${item.price_before_tax} | GST: ₹${item.gst_amount} | Total: ₹${item.final_total}`
-      );
-    });
-
-    doc.moveDown();
-
-    /* ================= TOTALS ================= */
-    doc.fontSize(12).text("Summary", { underline: true });
-    doc.fontSize(10);
-    doc.text(`Subtotal: ₹${invoice.subtotal}`);
-    doc.text(`Tax: ₹${invoice.total_tax}`);
-    doc.text(`Discount: ₹${invoice.discount}`);
-    doc.text(`Shipping: ₹${invoice.shipping_cost}`);
-    doc.moveDown(0.5);
-    doc.fontSize(11).text(`Total Amount: ₹${invoice.total_amount}`, {
-      bold: true,
-    });
-
-    doc.moveDown(2);
-    doc.fontSize(9).text(
-      "This is a system generated invoice. No signature required.",
-      { align: "center" }
-    );
-
-    doc.end();
-
-    // 💾 SAVE PDF URL
-    invoice.pdf_url = `/uploads/invoices/${fileName}`;
-    await invoice.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Invoice PDF generated",
-      pdf_url: invoice.pdf_url,
-    });
-
-  } catch (error) {
-    console.error("Invoice PDF Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
 
 
 
@@ -251,69 +149,6 @@ export const generateInvoicePDF = async (req, res) => {
 
 
 
-export const updateSale = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const data = req.body;
-
-    const sale = await Sale.findById(id);
-    if (!sale) {
-      return res.status(404).json({ success: false, message: "Sale not found" });
-    }
-
-    if (sale.sale_status === "cancelled") {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot update cancelled sale",
-      });
-    }
-
-    // frontend → backend mapping
-    if (data.status) {
-      data.sale_status = data.status;
-      delete data.status;
-    }
-
-    const updatedSale = await Sale.findByIdAndUpdate(
-      id,
-      { ...data },
-      { new: true }
-    );
-
-    
-    if (updatedSale.sale_status === "completed") {
-      const invoiceExists = await Invoice.findOne({
-        sale_id: updatedSale._id,
-      });
-
-      if (!invoiceExists) {
-        await Invoice.create({
-          invoice_number: await generateInvoiceNumber(),
-          sale_id: updatedSale._id,
-          customer_id: updatedSale.customer_id,
-          branch_id: updatedSale.branch_id,
-          items: updatedSale.items,
-          subtotal: updatedSale.subtotal,
-          total_tax: updatedSale.total_tax,
-          discount: updatedSale.discount,
-          shipping_cost: updatedSale.shipping_cost,
-          total_amount: updatedSale.total_amount,
-          payment_status: updatedSale.payment_status,
-          created_by: req.user?._id,
-        });
-      }
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Sale updated successfully",
-      data: updatedSale,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-};
 
 
 
@@ -350,52 +185,111 @@ export const listProductsForSale = async (req, res) => {
 
 
 
+// export const listSales = async (req, res) => {
+//   try {
+//     const sales = await Sale.find()
+//       .sort({ createdAt: -1 })
+//       .populate("customer_id", "name mobile")
+//       .populate("branch_id", "branch_name branch_code")
+//             .populate("sold_by", "name employee_code"); 
+
+      
+
+//     const saleIds = sales.map(s => s._id);
+
+//     const invoices = await Invoice.find({
+//       sale_id: { $in: saleIds },
+//     });
+
+//     const invoiceMap = {};
+//     invoices.forEach(inv => {
+//       invoiceMap[inv.sale_id.toString()] = inv;
+//     });
+
+//     const formattedSales = sales.map(sale => {
+//       const total = Number(sale.total_amount || 0);
+//       const paid = Number(sale.paid_amount || 0);
+
+//       const invoice = invoiceMap[sale._id.toString()];
+
+//       return {
+//         ...sale.toObject(),
+//         current_paid: paid,
+//         balance_amount: total - paid,
+
+//         // 🔥 UI KE LIYE
+//         has_invoice: !!invoice,
+//         invoice_id: invoice?._id || null,
+//         invoice_number: invoice?.invoice_number || null,
+//       };
+//     });
+
+//     res.status(200).json({ success: true, data: formattedSales });
+//   } catch (err) {
+//     res.status(500).json({ success: false, message: err.message });
+//   }
+// };
+
+
 export const listSales = async (req, res) => {
   try {
+    const BASE_URL = process.env.APP_URL || "http://localhost:3000";
+
     const sales = await Sale.find()
       .sort({ createdAt: -1 })
       .populate("customer_id", "name mobile")
       .populate("branch_id", "branch_name branch_code")
-            .populate("sold_by", "name employee_code"); 
+      .populate("sold_by", "name employee_code");
 
-      
-
-    const saleIds = sales.map(s => s._id);
+    const saleIds = sales.map((s) => s._id);
 
     const invoices = await Invoice.find({
       sale_id: { $in: saleIds },
     });
 
     const invoiceMap = {};
-    invoices.forEach(inv => {
+    invoices.forEach((inv) => {
       invoiceMap[inv.sale_id.toString()] = inv;
     });
 
-    const formattedSales = sales.map(sale => {
-      const total = Number(sale.total_amount || 0);
-      const paid = Number(sale.paid_amount || 0);
+    const formattedSales = sales.map((sale) => {
+      const saleObj = sale.toObject();
 
-      const invoice = invoiceMap[sale._id.toString()];
+      const total = Number(saleObj.total_amount || 0);
+      const paid = Number(saleObj.paid_amount || 0);
+
+      const invoice = invoiceMap[saleObj._id.toString()];
+
+      /* ================= IMAGE URL FIX ================= */
+      if (saleObj.exchange_details?.image) {
+        saleObj.exchange_details.fullImageUrl =
+          `${BASE_URL}${saleObj.exchange_details.image}`;
+      }
 
       return {
-        ...sale.toObject(),
+        ...saleObj,
         current_paid: paid,
         balance_amount: total - paid,
 
-        // 🔥 UI KE LIYE
+        // 🔥 UI helpers
         has_invoice: !!invoice,
         invoice_id: invoice?._id || null,
         invoice_number: invoice?.invoice_number || null,
       };
     });
 
-    res.status(200).json({ success: true, data: formattedSales });
+    return res.status(200).json({
+      success: true,
+      data: formattedSales,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("List Sales Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
-
-
 
 
 
@@ -515,123 +409,517 @@ export const updateSalePayment = async (req, res) => {
 
 
 
-export const createSale = async (req, res) => {
-  try {
-    const data = req.body;
-    data.is_exchange = data.is_exchange === true || data.is_exchange === "true";
+// export const createSale = async (req, res) => {
+//   try {
+//     const data = req.body;
+//     data.is_exchange = data.is_exchange === true || data.is_exchange === "true";
 
 
-    // if (!data.customer_id || !data.branch_id || !data.items?.length) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Customer, Branch and items are required",
-    //   });
-    // }
+//     // if (!data.customer_id || !data.branch_id || !data.items?.length) {
+//     //   return res.status(400).json({
+//     //     success: false,
+//     //     message: "Customer, Branch and items are required",
+//     //   });
+//     // }
 
-    if (data.status) {
-      data.sale_status = data.status;
-      delete data.status;
-    }
+//     if (data.status) {
+//       data.sale_status = data.status;
+//       delete data.status;
+//     }
 
-    const reference_no = await generateSaleReference();
+//     const reference_no = await generateSaleReference();
 
-    // ================= ITEMS VALIDATION =================
-    let subtotal = 0;
-    let totalTax = 0;
+//     // ================= ITEMS VALIDATION =================
+//     let subtotal = 0;
+//     let totalTax = 0;
 
-    for (const item of data.items) {
-      const product = await Product.findById(item.product_id);
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: "Product not found",
-        });
-      }
+//     for (const item of data.items) {
+//       const product = await Product.findById(item.product_id);
+//       if (!product) {
+//         return res.status(404).json({
+//           success: false,
+//           message: "Product not found",
+//         });
+//       }
 
-      item.product_name = product.product_name;
-      item.product_code = product.product_code;
+//       item.product_name = product.product_name;
+//       item.product_code = product.product_code;
 
-      subtotal += Number(item.final_total || 0);
-      totalTax += Number(item.gst_amount || 0) * Number(item.quantity || 1);
-    }
+//       subtotal += Number(item.final_total || 0);
+//       totalTax += Number(item.gst_amount || 0) * Number(item.quantity || 1);
+//     }
 
-   const toNumber = (val) => {
-  const num = Number(val);
-  return Number.isFinite(num) ? num : 0;
-};
+//    const toNumber = (val) => {
+//   const num = Number(val);
+//   return Number.isFinite(num) ? num : 0;
+// };
 
-    let exchangeDetails = null;
-    let exchangeAmount = 0;
+//     let exchangeDetails = null;
+//     let exchangeAmount = 0;
 
-    if (data.is_exchange === true) {
+//     if (data.is_exchange === true) {
 
 
       
 
- const itemName = data.exchange_item_name?.trim();
- const rawUnit = data.exchange_item_unit?.toLowerCase() || "g";
-  const rawWeight = toNumber(data.exchange_item_weight);
-  const rawRate = toNumber(data.exchange_item_actual_rate);
+//  const itemName = data.exchange_item_name?.trim();
+//  const rawUnit = data.exchange_item_unit?.toLowerCase() || "g";
+//   const rawWeight = toNumber(data.exchange_item_weight);
+//   const rawRate = toNumber(data.exchange_item_actual_rate);
 
 
-  if (!itemName || rawWeight <= 0 || rawRate <= 0) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid exchange item weight or rate",
-    });
-  }
+//   if (!itemName || rawWeight <= 0 || rawRate <= 0) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Invalid exchange item weight or rate",
+//     });
+//   }
 
 
 
 
     
 
-    let weightInGram = rawWeight;
+//     let weightInGram = rawWeight;
 
-if (rawUnit === "kg") {
-  weightInGram = rawWeight * 1000;
-}
-
-
+// if (rawUnit === "kg") {
+//   weightInGram = rawWeight * 1000;
+// }
 
 
-if (data.exchange_item_unit?.toLowerCase() === "kg") {
-    weightInGram = rawWeight * 1000;
-  }
 
-        const calculatedValue = weightInGram * rawRate;
 
+// if (data.exchange_item_unit?.toLowerCase() === "kg") {
+//     weightInGram = rawWeight * 1000;
+//   }
+
+//         const calculatedValue = weightInGram * rawRate;
+
+//       exchangeAmount = toNumber(data.exchange_amount) || calculatedValue;
+
+//       let imageUrl = null;
+//   if (req.file) {
+//     imageUrl = `${process.env.APP_URL}/uploads/exchange/${req.file.filename}`;
+//   }
+
+//       exchangeDetails = {
+//         item_name: itemName,
+
+//          weight: rawWeight,
+//   unit: rawUnit,
+//        weight_in_gram: weightInGram,
+
+//   actual_rate: rawRate,
+//   calculated_value: calculatedValue,
+//     image: imageUrl,
+//       };
+//     }
+
+//     const shippingCost = toNumber(data.shipping_cost);
+// const discount = toNumber(data.discount);
+
+// let totalAmount =
+//   subtotal + shippingCost - discount - exchangeAmount;
+
+// if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+//   totalAmount = 0;
+// }
+
+//     const sale = await Sale.create({
+//       reference_no,
+//       customer_id: data.customer_id,
+//       branch_id: data.branch_id,
+//       sale_date: data.sale_date,
+//       sold_by: data.sold_by,
+
+//       items: data.items,
+
+//       is_exchange: data.is_exchange,
+//       exchange_amount: exchangeAmount,
+//       exchange_note: data.exchange_note,
+//       exchange_details: exchangeDetails,
+
+//       shipping_cost: shippingCost,
+//       discount,
+//       subtotal,
+//       total_tax: totalTax,
+//       total_amount: Math.round(totalAmount),
+
+//       payment_status: data.payment_status,
+//       sale_status: data.sale_status,
+
+//       created_by: req.user?._id,
+//     });
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Sale created successfully",
+//       data: sale,
+//     });
+//   } catch (error) {
+//     console.error("Create Sale Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+
+
+
+
+
+
+// export const createSale = async (req, res) => {
+//   try {
+//     const data = req.body;
+
+//     // boolean normalize
+//     data.is_exchange =
+//       data.is_exchange === true || data.is_exchange === "true";
+
+//     if (data.status) {
+//       data.sale_status = data.status;
+//       delete data.status;
+//     }
+
+//     const BASE_URL = process.env.APP_URL;
+//     const reference_no = await generateSaleReference();
+
+//     /* ================= ITEMS VALIDATION ================= */
+//     let subtotal = 0;
+//     let totalTax = 0;
+
+//     for (const item of data.items || []) {
+//       const product = await Product.findById(item.product_id);
+//       if (!product) {
+//         return res.status(404).json({
+//           success: false,
+//           message: "Product not found",
+//         });
+//       }
+
+//       item.product_name = product.product_name;
+//       item.product_code = product.product_code;
+
+//       subtotal += Number(item.final_total || 0);
+//       totalTax += Number(item.gst_amount || 0) * Number(item.quantity || 1);
+//     }
+
+//     const toNumber = (val) => {
+//       const num = Number(val);
+//       return Number.isFinite(num) ? num : 0;
+//     };
+
+//     /* ================= EXCHANGE ================= */
+//     let exchangeDetails = null;
+//     let exchangeAmount = 0;
+
+//     if (data.is_exchange === true) {
+//       const itemName = data.exchange_item_name?.trim();
+//       const rawUnit = data.exchange_item_unit?.toLowerCase() || "g";
+//       const rawWeight = toNumber(data.exchange_item_weight);
+//       const rawRate = toNumber(data.exchange_item_actual_rate);
+
+//       if (!itemName || rawWeight <= 0 || rawRate <= 0) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid exchange item data",
+//         });
+//       }
+
+//       let weightInGram = rawWeight;
+//       if (rawUnit === "kg") {
+//         weightInGram = rawWeight * 1000;
+//       }
+
+//       const calculatedValue = weightInGram * rawRate;
+//       exchangeAmount = toNumber(data.exchange_amount) || calculatedValue;
+
+//       // ✅ IMAGE HANDLE (RELATIVE PATH)
+//       let imagePath = null;
+//       if (req.file) {
+//         imagePath = `/uploads/exchange/${req.file.filename}`;
+//       }
+
+//       exchangeDetails = {
+//         item_name: itemName,
+//         weight: rawWeight,
+//         unit: rawUnit,
+//         weight_in_gram: weightInGram,
+//         actual_rate: rawRate,
+//         calculated_value: calculatedValue,
+//         image: imagePath, // ✅ DB me relative path
+//       };
+//     }
+
+//     /* ================= TOTAL ================= */
+//     const shippingCost = toNumber(data.shipping_cost);
+//     const discount = toNumber(data.discount);
+
+//     let totalAmount =
+//       subtotal + shippingCost - discount - exchangeAmount;
+
+//     if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+//       totalAmount = 0;
+//     }
+
+//     /* ================= SAVE SALE ================= */
+//     const sale = await Sale.create({
+//       reference_no,
+//       customer_id: data.customer_id,
+//       branch_id: data.branch_id,
+//       sale_date: data.sale_date,
+//       sold_by: data.sold_by,
+
+//       items: data.items,
+
+//       is_exchange: data.is_exchange,
+//       exchange_amount: exchangeAmount,
+//       exchange_note: data.exchange_note,
+//       exchange_details: exchangeDetails,
+
+//       shipping_cost: shippingCost,
+//       discount,
+//       subtotal,
+//       total_tax: totalTax,
+//       total_amount: Math.round(totalAmount),
+
+//       payment_status: data.payment_status,
+//       sale_status: data.sale_status,
+
+//       created_by: req.user?._id || null,
+//     });
+
+//     /* ================= RESPONSE IMAGE URL ================= */
+//     const saleObj = sale.toObject();
+
+//     if (saleObj.exchange_details?.image) {
+//       saleObj.exchange_details.fullImageUrl =
+//         `${BASE_URL}${saleObj.exchange_details.image}`;
+//     }
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Sale created successfully",
+//       data: saleObj,
+//     });
+
+//   } catch (error) {
+//     console.error("Create Sale Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message || "Server error",
+//     });
+//   }
+// };
+ 
+
+
+export const createSale = async (req, res) => {
+  try {
+    console.log("=== CREATE SALE REQUEST ===");
+    console.log("Request body:", req.body);
+    console.log("Request file:", req.file);
+    console.log("Request headers:", req.headers['content-type']);
+   
+    let data = { ...req.body };
+
+    
+    if (data.items && typeof data.items === 'string') {
+      try {
+        data.items = JSON.parse(data.items);
+        console.log("Parsed items from JSON string:", data.items);
+      } catch (parseError) {
+        console.error("Error parsing items JSON:", parseError);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid items format",
+        });
+      }
+    }
+
+
+    data.is_exchange =
+      data.is_exchange === true ||
+      data.is_exchange === 'true' ||
+      data.is_exchange === '1';
+
+    console.log("is_exchange value:", data.is_exchange);
+    console.log("is_exchange type:", typeof data.is_exchange);
+
+    if (data.status) {
+      data.sale_status = data.status;
+      delete data.status;
+    }
+
+    const BASE_URL = process.env.APP_URL || 'http://localhost:3000';
+    const reference_no = await generateSaleReference();
+
+    let subtotal = 0;
+    let totalTax = 0;
+
+    if (!data.items || !Array.isArray(data.items)) {
+      return res.status(400).json({
+        success: false,
+        message: "Items must be an array",
+      });
+    }
+
+    console.log("Validating items:", data.items);
+
+    for (const item of data.items) {
+      console.log("Processing item:", item);
+     
+      if (!item.product_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Product ID is required for all items",
+        });
+      }
+
+      const product = await Product.findById(item.product_id);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: `Product not found with ID: ${item.product_id}`,
+        });
+      }
+
+    
+      item.product_name = product.product_name;
+      item.product_code = product.product_code;
+
+
+      const quantity = Number(item.quantity) || 1;
+      const finalTotal = Number(item.final_total) || 0;
+      const gstAmount = Number(item.gst_amount) || 0;
+
+      subtotal += finalTotal;
+      totalTax += gstAmount * quantity;
+
+      console.log(`Item ${item.product_code}: qty=${quantity}, finalTotal=${finalTotal}, gst=${gstAmount}`);
+    }
+
+    const toNumber = (val) => {
+      if (val === undefined || val === null || val === '') return 0;
+      const num = Number(val);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    /* ================= EXCHANGE ================= */
+    let exchangeDetails = null;
+    let exchangeAmount = 0;
+
+    console.log("Checking exchange data:", {
+      is_exchange: data.is_exchange,
+      exchange_item_name: data.exchange_item_name,
+      exchange_item_weight: data.exchange_item_weight,
+      exchange_item_actual_rate: data.exchange_item_actual_rate,
+      exchange_amount: data.exchange_amount,
+      hasFile: !!req.file
+    });
+
+    if (data.is_exchange === true) {
+      const itemName = data.exchange_item_name?.trim();
+      const rawUnit = data.exchange_item_unit?.toLowerCase() || 'g';
+      const rawWeight = toNumber(data.exchange_item_weight);
+      const rawRate = toNumber(data.exchange_item_actual_rate);
+
+      console.log("Exchange item details:", {
+        itemName,
+        rawUnit,
+        rawWeight,
+        rawRate,
+        exchangeAmount: data.exchange_amount
+      });
+
+      if (!itemName || rawWeight <= 0 || rawRate <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid exchange item data. Please provide item name, weight, and actual rate.",
+        });
+      }
+
+      let weightInGram = rawWeight;
+      if (rawUnit === 'kg') {
+        weightInGram = rawWeight * 1000;
+      }
+
+      const calculatedValue = weightInGram * rawRate;
       exchangeAmount = toNumber(data.exchange_amount) || calculatedValue;
 
-      let imageUrl = null;
-  if (req.file) {
-    imageUrl = `${process.env.APP_URL}/uploads/exchange/${req.file.filename}`;
-  }
+      console.log("Exchange calculation:", {
+        weightInGram,
+        calculatedValue,
+        exchangeAmount
+      });
+
+      
+      let imagePath = null;
+      if (req.file) {
+        console.log("Processing uploaded file:", {
+          filename: req.file.filename,
+          originalname: req.file.originalname,
+          size: req.file.size,
+          mimetype: req.file.mimetype,
+          path: req.file.path
+        });
+       
+        // Ensure uploads directory exists
+        const uploadDir = 'uploads/exchange';
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+       
+        // Generate unique filename
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(req.file.originalname);
+        const filename = `exchange-${uniqueSuffix}${ext}`;
+        const filepath = path.join(uploadDir, filename);
+       
+        // Move file to permanent location
+        fs.renameSync(req.file.path, filepath);
+       
+        imagePath = `/uploads/exchange/${filename}`;
+        console.log("Saved image at:", imagePath);
+      }
 
       exchangeDetails = {
         item_name: itemName,
-
-         weight: rawWeight,
-  unit: rawUnit,
-       weight_in_gram: weightInGram,
-
-  actual_rate: rawRate,
-  calculated_value: calculatedValue,
-    image: imageUrl,
+        weight: rawWeight,
+        unit: rawUnit,
+        weight_in_gram: weightInGram,
+        actual_rate: rawRate,
+        calculated_value: calculatedValue,
+        image: imagePath,
       };
+
+      console.log("Exchange details saved:", exchangeDetails);
     }
 
+    /* ================= TOTAL CALCULATION ================= */
     const shippingCost = toNumber(data.shipping_cost);
-const discount = toNumber(data.discount);
+    const discount = toNumber(data.discount);
 
-let totalAmount =
-  subtotal + shippingCost - discount - exchangeAmount;
+    console.log("Cost calculations:", {
+      subtotal,
+      shippingCost,
+      discount,
+      exchangeAmount
+    });
 
-if (!Number.isFinite(totalAmount) || totalAmount < 0) {
-  totalAmount = 0;
-}
+    let totalAmount = subtotal + shippingCost - discount - exchangeAmount;
 
-    const sale = await Sale.create({
+    if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+      totalAmount = 0;
+    }
+
+    console.log("Final total amount:", totalAmount);
+
+    /* ================= SAVE SALE ================= */
+    const saleData = {
       reference_no,
       customer_id: data.customer_id,
       branch_id: data.branch_id,
@@ -642,34 +930,310 @@ if (!Number.isFinite(totalAmount) || totalAmount < 0) {
 
       is_exchange: data.is_exchange,
       exchange_amount: exchangeAmount,
-      exchange_note: data.exchange_note,
+      exchange_note: data.exchange_note || '',
       exchange_details: exchangeDetails,
 
       shipping_cost: shippingCost,
       discount,
       subtotal,
       total_tax: totalTax,
-      total_amount: Math.round(totalAmount),
+      total_amount: Math.round(totalAmount * 100) / 100, // Keep 2 decimal places
 
-      payment_status: data.payment_status,
-      sale_status: data.sale_status,
+      payment_status: data.payment_status || 'pending',
+      sale_status: data.sale_status || 'draft',
 
+      created_by: req.user?._id || null,
+    };
+
+    console.log("Creating sale with data:", saleData);
+
+    const sale = await Sale.create(saleData);
+
+
+
+
+
+       const invoice = await Invoice.create({
+      invoice_number: await generateInvoiceNumber(),
+      sale_id: sale._id,
+      customer_id: sale.customer_id,
+      branch_id: sale.branch_id,
+   sold_by: sale.sold_by,
+      is_exchange: sale.is_exchange,
+      exchange_note: sale.exchange_note,
+      exchange_details: sale.is_exchange ? sale.exchange_details : null,
+      items: sale.items,
+      subtotal: sale.subtotal,
+      total_tax: sale.total_tax,
+      discount: sale.discount,
+      shipping_cost: sale.shipping_cost,
+      total_amount: sale.total_amount,
+      payment_status: sale.payment_status,
       created_by: req.user?._id,
     });
 
+
+
+
+    /* ================= RESPONSE IMAGE URL ================= */
+    const saleObj = sale.toObject();
+
+    if (saleObj.exchange_details?.image) {
+      saleObj.exchange_details.fullImageUrl = `${BASE_URL}${saleObj.exchange_details.image}`;
+      console.log("Generated full image URL:", saleObj.exchange_details.fullImageUrl);
+    }
+
+    console.log("Sale created successfully", {
+  sale_id: saleObj._id,
+  invoice_number: invoice.invoice_number,
+  invoice_id: invoice._id,
+});
+
+    // return res.status(201).json({
+    //   success: true,
+    //   message: "Sale created successfully",
+    //   data: saleObj,
+    // });
+
+
+
     return res.status(201).json({
-      success: true,
-      message: "Sale created successfully",
-      data: sale,
-    });
+  success: true,
+  message: "Sale created successfully",
+  data: {
+    ...saleObj,
+
+    // 🔥 IMPORTANT FOR FRONTEND
+    invoice_id: invoice._id,
+    invoice_number: invoice.invoice_number,
+    has_invoice: true,
+
+    // payment helpers (future safe)
+    current_paid: saleObj.paid_amount || 0,
+    balance_amount: saleObj.total_amount - (saleObj.paid_amount || 0),
+  },
+});
+
   } catch (error) {
     console.error("Create Sale Error:", error);
+    console.error("Error stack:", error.stack);
+   
+    // Handle specific errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors: Object.values(error.errors).map(err => err.message)
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Duplicate entry found",
+      });
+    }
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message || "Server error",
     });
   }
 };
 
 
 
+
+
+
+export const updateSale = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let data = { ...req.body };
+
+    const BASE_URL = process.env.APP_URL || "http://localhost:3000";
+
+    const sale = await Sale.findById(id);
+    if (!sale) {
+      return res.status(404).json({
+        success: false,
+        message: "Sale not found",
+      });
+    }
+
+    if (sale.sale_status === "cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot update cancelled sale",
+      });
+    }
+
+    /* ================= JSON PARSE (🔥 MAIN FIX) ================= */
+    if (data.items && typeof data.items === "string") {
+      try {
+        data.items = JSON.parse(data.items);
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid items JSON format",
+        });
+      }
+    }
+
+    if (data.items && !Array.isArray(data.items)) {
+      return res.status(400).json({
+        success: false,
+        message: "Items must be an array",
+      });
+    }
+
+    /* ================= STATUS MAP ================= */
+    if (data.status) {
+      data.sale_status = data.status;
+      delete data.status;
+    }
+
+    /* ================= BOOLEAN NORMALIZE ================= */
+    data.is_exchange =
+      data.is_exchange === true ||
+      data.is_exchange === "true" ||
+      data.is_exchange === "1";
+
+    const toNumber = (val) => {
+      const num = Number(val);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    /* ================= EXCHANGE UPDATE ================= */
+    let exchangeDetails = sale.exchange_details || null;
+    let exchangeAmount = sale.exchange_amount || 0;
+
+    if (data.is_exchange === true) {
+      const itemName =
+        data.exchange_item_name?.trim() ||
+        exchangeDetails?.item_name;
+
+      const rawUnit =
+        data.exchange_item_unit?.toLowerCase() ||
+        exchangeDetails?.unit ||
+        "g";
+
+      const rawWeight = toNumber(
+        data.exchange_item_weight ?? exchangeDetails?.weight
+      );
+
+      const rawRate = toNumber(
+        data.exchange_item_actual_rate ?? exchangeDetails?.actual_rate
+      );
+
+      if (!itemName || rawWeight <= 0 || rawRate <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid exchange item data",
+        });
+      }
+
+      let weightInGram = rawWeight;
+      if (rawUnit === "kg") weightInGram = rawWeight * 1000;
+
+      const calculatedValue = weightInGram * rawRate;
+      exchangeAmount =
+        toNumber(data.exchange_amount) || calculatedValue;
+
+      /* 🖼 IMAGE UPDATE */
+      let imagePath = exchangeDetails?.image || null;
+
+      if (req.file) {
+        if (imagePath) {
+          const oldPath = path.join(process.cwd(), imagePath);
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+        }
+
+        const uploadDir = "uploads/exchange";
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        const ext = path.extname(req.file.originalname);
+        const filename = `exchange-${Date.now()}${ext}`;
+        fs.renameSync(
+          req.file.path,
+          path.join(uploadDir, filename)
+        );
+
+        imagePath = `/uploads/exchange/${filename}`;
+      }
+
+      exchangeDetails = {
+        item_name: itemName,
+        weight: rawWeight,
+        unit: rawUnit,
+        weight_in_gram: weightInGram,
+        actual_rate: rawRate,
+        calculated_value: calculatedValue,
+        image: imagePath,
+      };
+    } else {
+      exchangeDetails = null;
+      exchangeAmount = 0;
+    }
+
+    /* ================= TOTAL RECALC ================= */
+    const subtotal = toNumber(data.subtotal ?? sale.subtotal);
+    const shippingCost = toNumber(
+      data.shipping_cost ?? sale.shipping_cost
+    );
+    const discount = toNumber(data.discount ?? sale.discount);
+
+    let totalAmount =
+      subtotal + shippingCost - discount - exchangeAmount;
+
+    if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+      totalAmount = 0;
+    }
+
+    const newPaid = Number(data.paid_amount ?? sale.paid_amount ?? 0);
+    delete data.paid_amount;
+
+    const updatedSale = await Sale.findByIdAndUpdate(
+      id,
+      {
+        ...data,
+          paid_amount: newPaid,   // ✅ overwrite, not add
+        exchange_amount: exchangeAmount,
+        exchange_details: exchangeDetails,
+        total_amount: Math.round(totalAmount * 100) / 100,
+      },
+      { new: true }
+    );
+
+    /* ================= RESPONSE IMAGE ================= */
+    const saleObj = updatedSale.toObject();
+
+    const total = Number(saleObj.total_amount || 0);
+const paid = Number(saleObj.paid_amount || 0); // agar future me payments add ho
+
+
+// const balance = total - paid;
+// saleObj.current_paid = paid;
+// saleObj.balance_amount = total - paid;
+
+    if (saleObj.exchange_details?.image) {
+      saleObj.exchange_details.fullImageUrl =
+        `${BASE_URL}${saleObj.exchange_details.image}`;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Sale updated successfully",
+      data: saleObj,
+    });
+
+  } catch (err) {
+    console.error("Update Sale Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

@@ -8,14 +8,15 @@ const  router = express.Router()
 
 router.post(
   "/create-inventory-item",
-  inventoryUpload.single("image"),
+  inventoryUpload.array("image"),
   createInventoryItem
 );
 
 router.get("/get-inventory-items",getInventoryItems)
+
 router.put(
   "/update-inventory-item/:id",
-  inventoryUpload.single("image"),
+  inventoryUpload.array("image"),
   updateInventoryItem
 );
 router.delete("/delete-inventory-item/:id",deleteinventoryitem)

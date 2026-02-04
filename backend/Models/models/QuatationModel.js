@@ -1,4 +1,3 @@
-// models/Quotation.js
 import mongoose from "mongoose";
 
 const QuotationItemSchema = new mongoose.Schema(
@@ -44,13 +43,28 @@ const QuotationItemSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    parent_quotation_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Quotation",
+      default: null,
+    },
+
+    version: {
+      type: Number,
+      default: 1,
+    },
+
+    is_latest: {
+      type: Boolean,
+      default: true,
+    },
 
     subtotal: {
       type: Number,
       default: 0,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const QuotationSchema = new mongoose.Schema(
@@ -134,7 +148,7 @@ const QuotationSchema = new mongoose.Schema(
       ref: "User",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Quotation", QuotationSchema);

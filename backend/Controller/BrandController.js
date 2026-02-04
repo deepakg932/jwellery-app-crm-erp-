@@ -11,17 +11,17 @@ export const createBrand = async (req, res) => {
       return res.status(400).json({status: false,message: "Brand already exists"});
     }
 
-  
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+      const baseUrl = process.env.APP_URL; // ✅ ENV URL
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
     console.log(baseUrl,"baseurl")
 
     const brand = await Brand.create({name,logo: req.file ? `/uploads/brands/${req.file.filename}` : null });
     console.log(brand,'brand')
 
   
-    const fullLogoUrl = brand.logo ? `${baseUrl}${brand.logo}` : null;
+    // const fullLogoUrl = brand.logo ? `${baseUrl}${brand.logo}` : null;
 
-    return res.status(200).json({status: true,message: "Brand created",brand: { ...brand._doc, fullLogoUrl}});
+    return res.status(200).json({status: true,message: "Brand created",brand: { ...brand._doc,  fullLogoUrl: brand.logo ? `${baseUrl}${brand.logo}` : null,}});
 
   } catch (err) {
     console.error(err);
@@ -31,29 +31,29 @@ export const createBrand = async (req, res) => {
 
 
 
-export const updateBrand = async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log(id,"idd")
-    const updateData = { ...req.body };
+// export const updateBrand = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     console.log(id,"idd")
+//     const updateData = { ...req.body };
 
-    if (req.file) {
-      updateData.logo = "/uploads/brands/" + req.file.filename;
-    }
+//     if (req.file) {
+//       updateData.logo = "/uploads/brands/" + req.file.filename;
+//     }
 
-    const brand = await Brand.findByIdAndUpdate(id, updateData, { new: true });
-    console.log(brand,"brand for update")
+//     const brand = await Brand.findByIdAndUpdate(id, updateData, { new: true });
+//     console.log(brand,"brand for update")
 
-    if (!brand) {
-      return res.status(404).json({ status: false, message: "Brand not found" });
-    }
+//     if (!brand) {
+//       return res.status(404).json({ status: false, message: "Brand not found" });
+//     }
 
-    return res.status(200).json({ status: true, message: "Brand updated", brand });
+//     return res.status(200).json({ status: true, message: "Brand updated", brand });
 
-  } catch (err) {
-    res.status(500).json({ status: false, message: "Server error", error: err.message });
-  }
-};
+//   } catch (err) {
+//     res.status(500).json({ status: false, message: "Server error", error: err.message });
+//   }
+// };
 
 export const getBrands = async (req, res) => {
   try {
@@ -61,7 +61,8 @@ export const getBrands = async (req, res) => {
     console.log(brands,"all brands")
 
  
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
     console.log(baseUrl,"baseurl")
 
     const brandsWithFullUrl = brands.map(brand => ({
@@ -125,3 +126,42 @@ export const getBrandDashboardStats = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+export const updateBrand = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    if (req.file) {
+      updateData.logo = `/uploads/brands/${req.file.filename}`;
+    }
+
+    const brand = await Brand.findByIdAndUpdate(id, updateData, { new: true });
+
+    if (!brand) {
+      return res.status(404).json({
+        status: false,
+        message: "Brand not found",
+      });
+    }
+
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+
+    return res.status(200).json({
+      status: true,
+      message: "Brand updated",
+      brand: {
+        ...brand._doc,
+        fullLogoUrl: brand.logo ? `${baseUrl}${brand.logo}` : null,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+      error: err.message,
+    });
+  }
+};
+

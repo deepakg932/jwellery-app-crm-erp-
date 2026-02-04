@@ -87,13 +87,24 @@ export const deleteHallmark = async (req, res) => {
 export const getAllHallmarks = async (req, res) => {
   try {
     const data = await Hallmark.find()
-      .populate("purity_id")
-      // .populate("mark_id");
-      console.log(data,"data");
+      .populate("purity_id");
 
-    return res.json({ success: true, hallmarks: data });
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+
+    const hallmarksWithImage = data.map((h) => ({
+      ...h._doc,
+      fullImageUrl: h.image ? `${baseUrl}${h.image}` : null,
+    }));
+
+    return res.json({
+      success: true,
+      hallmarks: hallmarksWithImage,
+    });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };
 
@@ -104,7 +115,6 @@ export const createHallmark = async (req, res) => {
 
    
 
-    // Fetch metal details to get metal name
     const metal = await Metal.findById(metal_type);
     if (!metal) {
       return res.status(400).json({
@@ -113,7 +123,8 @@ export const createHallmark = async (req, res) => {
       });
     }
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     const hallmark = new Hallmark({
       name,
@@ -127,13 +138,13 @@ export const createHallmark = async (req, res) => {
 
     const saved = await hallmark.save();
 
-    const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
+    // const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
 
     return res.status(200).json({
       success: true,
       hallmark: { 
         ...saved._doc, 
-        fullImageUrl,
+       fullImageUrl: saved.image ? `${baseUrl}${saved.image}` : null,
         metal_details: {
           id: metal._id,
           name: metal.metal_name || metal.name
@@ -152,72 +163,72 @@ export const createHallmark = async (req, res) => {
 
 
 
-export const updateHallmark = async (req, res) => {
-  try {
-    const { name, purity_id, metal_type, description } = req.body;
+// export const updateHallmark = async (req, res) => {
+//   try {
+//     const { name, purity_id, metal_type, description } = req.body;
 
-    let hallmark = await Hallmark.findById(req.params.id);
-    if (!hallmark) {
-      return res.status(404).json({
-        success: false,
-        message: "Hallmark not found"
-      });
-    }
+//     let hallmark = await Hallmark.findById(req.params.id);
+//     if (!hallmark) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Hallmark not found"
+//       });
+//     }
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+//     const baseUrl = `${req.protocol}://${req.headers.host}`;
 
   
-    if (!name || !metal_type) {
-      return res.status(400).json({
-        success: false,
-        message: "name, purity_id & metal_type are required"
-      });
-    }
+//     if (!name || !metal_type) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "name, purity_id & metal_type are required"
+//       });
+//     }
 
-    // const purityData = await Purity.findById(purity_id);
-    // if (!purityData) {
-    //   return res.status(404).json({
-    //     success: false,
-    //     message: "Purity not found"
-    //   });
-    // }
+//     // const purityData = await Purity.findById(purity_id);
+//     // if (!purityData) {
+//     //   return res.status(404).json({
+//     //     success: false,
+//     //     message: "Purity not found"
+//     //   });
+//     // }
 
-    // // Auto-calculated percentage
-    // const percentage = purityData.percentage;
+//     // // Auto-calculated percentage
+//     // const percentage = purityData.percentage;
 
-    // Update TEXT fields
-    hallmark.name = name;
-    // hallmark.purity_id = purity_id;
-    // hallmark.percentage = percentage;   // Auto-filled ✔
-    hallmark.metal_type = metal_type;
-    hallmark.description = description || "";
+//     // Update TEXT fields
+//     hallmark.name = name;
+//     // hallmark.purity_id = purity_id;
+//     // hallmark.percentage = percentage;   // Auto-filled ✔
+//     hallmark.metal_type = metal_type;
+//     hallmark.description = description || "";
 
-    // Update image if new file uploaded
-    if (req.file) {
-      hallmark.image = `/uploads/hallmark/${req.file.filename}`;
-    }
+//     // Update image if new file uploaded
+//     if (req.file) {
+//       hallmark.image = `/uploads/hallmark/${req.file.filename}`;
+//     }
 
-    const updated = await hallmark.save();
+//     const updated = await hallmark.save();
 
-    // Build full image URL
-    const fullImageUrl = updated.image ? `${baseUrl}${updated.image}` : null;
+//     // Build full image URL
+//     const fullImageUrl = updated.image ? `${baseUrl}${updated.image}` : null;
 
-    return res.json({
-      success: true,
-      message: "Hallmark updated successfully",
-      hallmark: {
-        ...updated._doc,
-        fullImageUrl
-      }
-    });
+//     return res.json({
+//       success: true,
+//       message: "Hallmark updated successfully",
+//       hallmark: {
+//         ...updated._doc,
+//         fullImageUrl
+//       }
+//     });
 
-  } catch (err) {
-    return res.status(500).json({
-      success: false,
-      error: err.message
-    });
-  }
-};
+//   } catch (err) {
+//     return res.status(500).json({
+//       success: false,
+//       error: err.message
+//     });
+//   }
+// };
 
 
 
@@ -443,6 +454,57 @@ export const getMetalDetails = async (req, res) => {
     return res.status(500).json({
       success: false,
       error: err.message
+    });
+  }
+};
+
+
+
+export const updateHallmark = async (req, res) => {
+  try {
+    const { name, purity_id, metal_type, description } = req.body;
+
+    let hallmark = await Hallmark.findById(req.params.id);
+    if (!hallmark) {
+      return res.status(404).json({
+        success: false,
+        message: "Hallmark not found",
+      });
+    }
+
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+
+    if (!name || !metal_type) {
+      return res.status(400).json({
+        success: false,
+        message: "name & metal_type are required",
+      });
+    }
+
+    hallmark.name = name;
+    hallmark.metal_type = metal_type;
+    hallmark.description = description || "";
+
+    if (req.file) {
+      hallmark.image = `/uploads/hallmark/${req.file.filename}`;
+    }
+
+    const updated = await hallmark.save();
+
+    return res.json({
+      success: true,
+      message: "Hallmark updated successfully",
+      hallmark: {
+        ...updated._doc,
+        fullImageUrl: updated.image
+          ? `${baseUrl}${updated.image}`
+          : null,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
     });
   }
 };

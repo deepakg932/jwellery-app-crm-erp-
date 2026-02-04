@@ -23,7 +23,8 @@ export const createSubcategory = async (req, res) => {
       return res.status(400).json({success: false,message: "Name and Parent Category are required"});
     }
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     const newSubcategory = new Subcategory({
       name,
@@ -35,11 +36,13 @@ export const createSubcategory = async (req, res) => {
     const savedSubcategory = await newSubcategory.save();
 
 
-    const fullImageUrl = savedSubcategory.image
-      ? `${baseUrl}${savedSubcategory.image}`
-      : null;
+    // const fullImageUrl = savedSubcategory.image
+    //   ? `${baseUrl}${savedSubcategory.image}`
+    //   : null;
 
-    return res.json({ success: true, subcategory: {   ...savedSubcategory._doc,   fullImageUrl
+    return res.json({ success: true, subcategory: {   ...savedSubcategory._doc,  fullImageUrl: savedSubcategory.image
+          ? `${baseUrl}${savedSubcategory.image}`
+          : null,
       }
     });
 
@@ -59,7 +62,8 @@ export const updateSubcategory = async (req, res) => {
     const { name, category_id } = req.body;
 
  
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+     const baseUrl = process.env.APP_URL; // ✅ ENV URL
     console.log(baseUrl,"baseurl");
 
     let subcategory = await Subcategory.findById(id);
@@ -80,11 +84,13 @@ export const updateSubcategory = async (req, res) => {
     const updatedSubcategory = await subcategory.save();
 
     
-    const fullImageUrl = updatedSubcategory.image
-      ? `${baseUrl}${updatedSubcategory.image}`
-      : null;
+    // const fullImageUrl = updatedSubcategory.image
+    //   ? `${baseUrl}${updatedSubcategory.image}`
+    //   : null;
 
-    return res.json({success: true,message: "Subcategory updated successfully",subcategory: {...updatedSubcategory._doc,fullImageUrl}
+    return res.json({success: true,message: "Subcategory updated successfully",subcategory: {...updatedSubcategory._doc,fullImageUrl: updatedSubcategory.image
+          ? `${baseUrl}${updatedSubcategory.image}`
+          : null,}
     });
 
   } catch (err) {
@@ -146,23 +152,47 @@ export const searchSubcategoriesByName = async (req, res) => {
     }
 };
 
+// export const getAllSubcategories = async (req, res) => {
+//   try {
+//     const subcategories = await Subcategory.find();
+//     console.log(subcategories,"all subcategories");
+
+//     const baseUrl = `${req.protocol}://${req.headers.host}`;
+//     console.log(baseUrl,"baseurl");
+
+//     const subcategoriesWithFullUrl = subcategories.map(sub => ({
+//       ...sub._doc,
+//       fullImageUrl: sub.image ? `${baseUrl}${sub.image}` : null
+//     }));
+
+//     return res.json({success: true,subcategories: subcategoriesWithFullUrl
+//     });
+
+//   } catch (err) {
+//     return res.status(500).json({ success: false, message: err.message });
+//   }
+// };
 export const getAllSubcategories = async (req, res) => {
   try {
     const subcategories = await Subcategory.find();
-    console.log(subcategories,"all subcategories");
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
-    console.log(baseUrl,"baseurl");
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
-    const subcategoriesWithFullUrl = subcategories.map(sub => ({
+    const subcategoriesWithFullUrl = subcategories.map((sub) => ({
       ...sub._doc,
-      fullImageUrl: sub.image ? `${baseUrl}${sub.image}` : null
+      fullImageUrl: sub.image
+        ? `${baseUrl}${sub.image}`
+        : null,
     }));
 
-    return res.json({success: true,subcategories: subcategoriesWithFullUrl
+    return res.json({
+      success: true,
+      subcategories: subcategoriesWithFullUrl,
     });
-
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };

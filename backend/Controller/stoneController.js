@@ -15,19 +15,23 @@ export const createStone = async (req, res) => {
       return res.status(400).json({ success: false, message: "Stone already exists"});
     }
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     const stone = await Stone.create({
       stone_purity,
       stone_type,
       stone_price,
       stone_name,
-      stone_image: req.file ? `/uploads/stone/${req.file.filename}` : null
+      stone_image: req.file ? `/uploads/stones/${req.file.filename}` : null
     });
 
-    const fullImageUrl = stone.stone_image ? `${baseUrl}${stone.stone_image}` : null;
+    // const fullImageUrl = stone.stone_image ? `${baseUrl}${stone.stone_image}` : null;
 
-    return res.status(200).json({success: true,message: "Stone created successfully",stone: { ...stone._doc, fullImageUrl }});
+    return res.status(200).json({success: true,message: "Stone created successfully",stone: { ...stone._doc, fullImageUrl: stone.stone_image
+          ? `${baseUrl}${stone.stone_image}`
+          : null, }});
 
   } catch (err) {
     return res.status(500).json({success: false,error: err.message});
@@ -41,11 +45,14 @@ export const getAllStoneTypes = async (req, res) => {
     const stones = await Stone.find().sort({ createdAt: -1 });
     console.log(stones,"stones")
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+       const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     const finalData = stones.map(s => ({
       ...s._doc,
-      fullImageUrl: s.stone_image ? `${baseUrl}${s.stone_image}` : null
+     fullImageUrl: s.stone_image
+        ? `${baseUrl}${s.stone_image}`
+        : null,
     }));
 
     return res.status(200).json({
@@ -99,7 +106,8 @@ export const updateStoneType = async (req, res) => {
     }
 
     const { stone_purity, stone_type, stone_price, stone_name } = req.body;
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+     const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     if (stone_name) stone.stone_name = stone_name;
     if (stone_purity) stone.stone_purity = stone_purity;
@@ -112,11 +120,13 @@ export const updateStoneType = async (req, res) => {
 
     const updatedStone = await stone.save();
 
-    const fullImageUrl = updatedStone.stone_image
-      ? `${baseUrl}${updatedStone.stone_image}`
-      : null;
+    // const fullImageUrl = updatedStone.stone_image
+    //   ? `${baseUrl}${updatedStone.stone_image}`
+    //   : null;
 
-    return res.status(200).json({success: true, message: "Stone updated successfully", stone: { ...updatedStone._doc, fullImageUrl } });
+    return res.status(200).json({success: true, message: "Stone updated successfully", stone: { ...updatedStone._doc,  fullImageUrl: updatedStone.stone_image
+          ? `${baseUrl}${updatedStone.stone_image}`
+          : null, } });
 
   } catch (err) {
     return res.status(500).json({ success: false,error: err.message});

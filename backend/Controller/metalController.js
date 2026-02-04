@@ -24,7 +24,7 @@ import Metal from "../Models/models/MetalTypeModel.js"
 
 //     const saved = await metal.save();
 
-//     const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
+//     // const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
 
 
 //      return res.json({
@@ -42,6 +42,9 @@ import Metal from "../Models/models/MetalTypeModel.js"
 //     return res.status(500).json({ success: false, message: err.message });
 //   }
 // };
+
+
+
 
 export const createMetal = async (req, res) => {
   try {
@@ -81,8 +84,6 @@ export const createMetal = async (req, res) => {
 
 
 
-
-
 export const getMetalTypes = async (req, res) => {
   try {
     return res.json({ success: true, metal_types: MetalType });
@@ -105,8 +106,10 @@ export const getMetals = async (req, res) => {
   try {
     const metals = await Metal.find().sort({ createdAt: -1 });
 
-    // IMPORTANT: NGROK + DEV TUNNEL only works with req.headers.host
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // // IMPORTANT: NGROK + DEV TUNNEL only works with req.headers.host
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     const metalsWithFullUrl = metals.map(metal => ({
       ...metal._doc,
@@ -174,7 +177,8 @@ export const updateMetal = async (req, res) => {
     const { name } = req.body;
     console.log("name",name)
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    // const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
     console.log("baseUrl",baseUrl)
 
     let metal = await Metal.findById(id);
@@ -187,16 +191,27 @@ export const updateMetal = async (req, res) => {
       metal.name = name;
 
     if (req.file) {
-      metal.image = "/metalUpload/metal/" + req.file.filename;
+       metal.image = `/uploads/metals/${req.file.filename}`; // ✅ same path
+      // metal.image = "/metalUpload/metal/" + req.file.filename;
     }
 
     const updatedMetal = await metal.save();
     console.log("updatedMetal",updatedMetal)
 
   
-    const fullImageUrl = updatedMetal.image ? `${baseUrl}${updatedMetal.image}` : null;
+    // const fullImageUrl = updatedMetal.image ? `${baseUrl}${updatedMetal.image}` : null;
+    return res.json({
+      success: true,
+      message: "Metal updated successfully",
+      metal: {
+        ...updatedMetal._doc,
+        fullImageUrl: updatedMetal.image
+          ? `${baseUrl}${updatedMetal.image}`
+          : null,
+      },
+    
 
-    return res.json({success: true,message: "Metal updated successfully",metal: {  ...updatedMetal._doc,  fullImageUrl}
+    // return res.json({success: true,message: "Metal updated successfully",metal: {  ...updatedMetal._doc,  fullImageUrl}
     });
 
   } catch (err) {

@@ -44,6 +44,7 @@ export const getProducts = async (req, res) => {
 
     // Build filter object
     const filter = {};
+    const BASE_URL = process.env.APP_URL;
 
     // Status filter
     if (status && (status === "active" || status === "inactive" || status === "draft" || status === "out_of_stock" || status === "discontinued")) {
@@ -154,29 +155,64 @@ export const getProducts = async (req, res) => {
 
     console.log("Products fetched:", products.length);
 
-    const transformedProducts = products.map(product => {
-      const productObj = product.toObject();
+    // const transformedProducts = products.map(product => {
+    //   const productObj = product.toObject();
       
      
-      if (productObj.price_making_costs && Array.isArray(productObj.price_making_costs)) {
-        productObj.price_making_costs = productObj.price_making_costs.map(cost => {
-          // If we have populated data from price_making_id, use it
-          if (cost.price_making_id && typeof cost.price_making_id === 'object') {
-            return {
-              ...cost,
-              stage_name: cost.price_making_id.stage_name || cost.stage_name || "",
-              sub_stage_name: cost.price_making_id.sub_stage_name || cost.sub_stage_name || "",
-              cost_type: cost.price_making_id.cost_type || cost.cost_type || "",
-              unit_name: cost.price_making_id.unit_name || cost.unit_name || "",
-              cost_amount: cost.cost_amount || cost.price_making_id.cost_amount || 0
-            };
-          }
-          return cost;
-        });
-      }
+    //   if (productObj.price_making_costs && Array.isArray(productObj.price_making_costs)) {
+    //     productObj.price_making_costs = productObj.price_making_costs.map(cost => {
+    //       // If we have populated data from price_making_id, use it
+    //       if (cost.price_making_id && typeof cost.price_making_id === 'object') {
+    //         return {
+    //           ...cost,
+    //           stage_name: cost.price_making_id.stage_name || cost.stage_name || "",
+    //           sub_stage_name: cost.price_making_id.sub_stage_name || cost.sub_stage_name || "",
+    //           cost_type: cost.price_making_id.cost_type || cost.cost_type || "",
+    //           unit_name: cost.price_making_id.unit_name || cost.unit_name || "",
+    //           cost_amount: cost.cost_amount || cost.price_making_id.cost_amount || 0
+    //         };
+    //       }
+    //       return cost;
+    //     });
+    //   }
       
-      return productObj;
+    //   return productObj;
+    // });
+
+
+
+
+const transformedProducts = products.map(product => {
+  const productObj = product.toObject();
+
+  // ✅ ADD FULL IMAGE URLS
+  productObj.fullImageUrls = productObj.image
+    ? productObj.image.map(img => `${BASE_URL}${img}`)
+    : [];
+
+  // Existing logic (unchanged)
+  if (productObj.price_making_costs && Array.isArray(productObj.price_making_costs)) {
+    productObj.price_making_costs = productObj.price_making_costs.map(cost => {
+      if (cost.price_making_id && typeof cost.price_making_id === "object") {
+        return {
+          ...cost,
+          stage_name: cost.price_making_id.stage_name || cost.stage_name || "",
+          sub_stage_name: cost.price_making_id.sub_stage_name || cost.sub_stage_name || "",
+          cost_type: cost.price_making_id.cost_type || cost.cost_type || "",
+          unit_name: cost.price_making_id.unit_name || cost.unit_name || "",
+          cost_amount: cost.cost_amount || cost.price_making_id.cost_amount || 0,
+        };
+      }
+      return cost;
     });
+  }
+
+  return productObj;
+});
+
+
+
+
 
     return res.json({
       success: true,
@@ -603,6 +639,9 @@ export const createProduct = async (req, res) => {
                 metal_type_name: hallmarkDoc.metal_type_name,
                 description: hallmarkDoc.description,
                 image: hallmarkDoc.image
+  ? `${process.env.APP_URL}${hallmarkDoc.image}`
+  : null
+                // image: hallmarkDoc.image
               };
             }
           } catch (err) {
@@ -912,10 +951,10 @@ const selling_price_with_gst = round3(
     // Handle images
     let imagePaths = [];
     if (req.files && req.files.length > 0) {
-      imagePaths = req.files.map(f => `/uploads/products/images/${f.filename}`);
-    } else if (req.file) {
-      imagePaths = [`/uploads/products/${req.file.filename}`];
-    }
+  imagePaths = req.files.map(
+    (file) => `/uploads/products/${file.filename}`
+  );
+}
     console.log("Image Paths:", imagePaths);
 
     // Create product
@@ -960,9 +999,12 @@ const selling_price_with_gst = round3(
       selling_price_before_tax,
       selling_price_with_gst,
 
-      images: imagePaths,
+      image: imagePaths,
       status: "active",
     });
+
+
+    
 
     // Populate and return
     const populatedProduct = await Product.findById(product._id)
@@ -976,10 +1018,18 @@ const selling_price_with_gst = round3(
       .populate("stones.stone_id", "stone_type name")
       .populate("materials.wastage_id", "wastage_type")
       .populate("materials.material_id", "material_type");
-    
-    console.log("Product created successfully:", populatedProduct._id);
 
-    return res.status(200).json({ success: true,  message: "Product created successfully",  data: populatedProduct,});
+      
+      console.log("Product created successfully:", populatedProduct._id);
+
+      const baseUrl = process.env.APP_URL;
+const productWithFullImages = {
+  ...populatedProduct._doc,
+  fullImageUrls: populatedProduct.image
+    ? populatedProduct.image.map(img => `${baseUrl}${img}`)
+    : [],
+};
+    return res.status(200).json({ success: true,  message: "Product created successfully",  data: productWithFullImages,});
   } catch (err) {
     console.error("Error creating product:", err);
     return res.status(500).json({   success: false,   message: err.message || "Internal server error",});
@@ -1008,9 +1058,7 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    /* =========================
-       1️⃣ PARSE JSON FIELDS
-    ========================= */
+  
     const parseIfString = (val) =>
       typeof val === "string" ? JSON.parse(val) : val;
 
@@ -1030,9 +1078,7 @@ export const updateProduct = async (req, res) => {
       ? parseIfString(payload.price_making_costs)
       : existingProduct.price_making_costs;
 
-    /* =========================
-       2️⃣ RECALCULATE TOTALS
-    ========================= */
+  
     const total_metals_cost = metalsData.reduce(
       (s, m) => s + (m.subtotal || 0),
       0
@@ -1091,19 +1137,14 @@ export const updateProduct = async (req, res) => {
       selling_price_before_tax + gst_amount
     );
 
-    /* =========================
-       3️⃣ HANDLE IMAGES
-    ========================= */
-    let imagePaths = existingProduct.images || [];
+   
+    let imagePaths = existingProduct.image || [];
     if (req.files?.length) {
       imagePaths = req.files.map(
-        (f) => `/uploads/products/images/${f.filename}`
+        (f) => `/uploads/products/${f.filename}`
       );
     }
 
-    /* =========================
-       4️⃣ UPDATE PRODUCT
-    ========================= */
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
@@ -1130,18 +1171,30 @@ export const updateProduct = async (req, res) => {
         selling_price_before_tax,
         selling_price_with_gst,
 
-        images: imagePaths,
+        image: imagePaths,
       },
       { new: true, runValidators: true }
     )
-      .populate("product_brand_id", "brand_name name")
-      .populate("product_category_id", "category_name name")
-      .populate("product_subcategory_id", "sub_category_name name");
+      // .populate("product_brand_id", "brand_name name")
+      // .populate("product_category_id", "category_name name")
+      // .populate("product_subcategory_id", "sub_category_name name");
+
+
+      const BASE_URL = process.env.APP_URL;
+
+const productWithFullImages = {
+  ...updatedProduct._doc,
+  fullImageUrls: updatedProduct.image
+    ? updatedProduct.image.map(img => `${BASE_URL}${img}`)
+    : [],
+};
+
 
     return res.json({
       success: true,
       message: "Product updated successfully",
-      data: updatedProduct,
+      data: productWithFullImages,
+      
     });
   } catch (err) {
     console.error("Update Product Error:", err);

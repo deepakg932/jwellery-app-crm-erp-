@@ -119,7 +119,7 @@ const ProductSchema = new mongoose.Schema(
     selling_price_before_tax: { type: Number, default: 0 },
     selling_price_with_gst: { type: Number, default: 0 },
 
-    images: [String],
+    image: [String],
 //  unit_price: { type: Number, default: 0 },
     // stock_quantity: { type: Number, default: 0 },
 

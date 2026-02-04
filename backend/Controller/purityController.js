@@ -13,8 +13,12 @@ export const createPurity = async (req, res) => {
       return res.status(400).json({ success: false, message: "All fields are required"});
     }
 
+
+
+    
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
    
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
     console.log(baseUrl, "Base URL");
 
     const purity = new Purity({
@@ -30,10 +34,10 @@ console.log(purity, "New Purity");
 
 
 
-    const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
-    console.log(fullImageUrl, "Full Image URL");
+    // const fullImageUrl = saved.image ? `${baseUrl}${saved.image}` : null;
+    // console.log(fullImageUrl, "Full Image URL");
 
-    return res.json({success: true,purity: {  ...saved._doc,  fullImageUrl}
+    return res.json({success: true,purity: {  ...saved._doc, fullImageUrl: saved.image ? `${baseUrl}${saved.image}` : null,}
     });
 
   } catch (err) {
@@ -49,11 +53,13 @@ export const getAllPurities= async (req, res) => {
   try {
     const purities = await Purity.find().sort({ createdAt: -1 });
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+     const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     const purityList = purities.map(p => ({
       ...p._doc,
-      fullImageUrl: p.image ? `${baseUrl}${p.image}` : null
+      fullImageUrl: p.image ? `${baseUrl}${p.image}` : null,
+      // fullImageUrl: p.image ? `${baseUrl}${p.image}` : null
     }));
 
     return res.json({success: true,purity: purityList});
@@ -89,7 +95,8 @@ export const updatePurity = async (req, res) => {
     const { id } = req.params;
     const { purity_name, stone_name, metal_type, percentage } = req.body;
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    // const baseUrl = `${req.protocol}://${req.headers.host}`;
+        const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
     let purity = await Purity.findById(id);
     if (!purity) {
@@ -121,7 +128,9 @@ export const updatePurity = async (req, res) => {
       message: "Purity updated successfully",
       purity: {
         ...updatedPurity._doc,
-        fullImageUrl
+    fullImageUrl: updatedPurity.image
+          ? `${baseUrl}${updatedPurity.image}`
+          : null,
       }
     });
   } catch (err) {

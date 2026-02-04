@@ -5,6 +5,7 @@ import {
   listQuotations,
   updateQuotation,
   deleteQuotation,
+  getQuotationWithHistory
 } from "../Controller/QuatationController.js";
 
 const router = express.Router();
@@ -14,5 +15,6 @@ router.post("/create-quotation", createQuotation);
 router.get("/get-quotations", listQuotations);
 router.put("/update-quotation/:id", updateQuotation);
 router.delete("/delete-quotation/:id", deleteQuotation);
+router.get("/quotations/:id/history", getQuotationWithHistory);
 
 export default router;

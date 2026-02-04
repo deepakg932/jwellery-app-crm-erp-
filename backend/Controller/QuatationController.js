@@ -150,6 +150,19 @@ export const listQuotations = async (req, res) => {
 export const updateQuotation = async (req, res) => {
   try {
     const { id } = req.params;
+
+
+    const oldQuotation = await Quotation.findById(id);
+    if (!oldQuotation) {
+      return res.status(404).json({
+        success: false,
+        message: "Quotation not found",
+      });
+    }
+
+
+
+
     const {
       customer_id,
       quotation_date,
@@ -261,3 +274,45 @@ export const deleteQuotation = async (req, res) => {
 };
 
 
+export const getQuotationWithHistory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const quotation = await Quotation.findById(id);
+    if (!quotation) {
+      return res.status(404).json({
+        success: false,
+        message: "Quotation not found",
+      });
+    }
+
+    const parentId =
+      quotation.parent_quotation_id || quotation._id;
+
+    const allQuotations = await Quotation.find({
+      $or: [
+        { _id: parentId },
+        { parent_quotation_id: parentId },
+      ],
+    })
+      .sort({ version: 1 })
+      .populate("customer_id", "name mobile")
+      .populate("branch_id", "branch_name branch_code");
+
+    const actual = allQuotations.find(q => q.is_latest);
+    const old = allQuotations.filter(q => !q.is_latest);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        actual_quotation: actual,
+        old_quotations: old,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

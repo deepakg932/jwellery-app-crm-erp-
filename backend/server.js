@@ -140,6 +140,15 @@ app.use("/api/design-stage",jobCardStageRoutes)
 
 
 
+
+
+
+
+import uploadRoutes from "./routes/uploadRoutes.js";
+
+app.use("/api", uploadRoutes);
+
+
 app.use((req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (token) {

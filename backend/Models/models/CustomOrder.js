@@ -5,32 +5,36 @@ const CustomOrderSchema = new mongoose.Schema(
     order_number: {
       type: String,
       unique: true,
-    //   required: true,
+      //   required: true,
     },
 
     customer_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-    //   required: true,
+      //   required: true,
     },
     unit_id: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Unit",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Unit",
     },
     weight: {
-       type: Number,
-    //    required: true,
-     },
-     purity: {
-       type: String, // 916 / 750
-    //    required: true,
-     },
+      type: Number,
+      //    required: true,
+    },
+    purity_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Purity",
+    },
     jewellery_type: String, // Ring, Chain
     design_name: String,
 
     karat: {
       type: String, // 18K / 22K
-    //   required: true,
+      //   required: true,
+    },
+    metal_type_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref:"Metal"
     },
 
     approx_weight: Number,
@@ -54,7 +58,7 @@ const CustomOrderSchema = new mongoose.Schema(
 
     notes: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("CustomOrder", CustomOrderSchema);

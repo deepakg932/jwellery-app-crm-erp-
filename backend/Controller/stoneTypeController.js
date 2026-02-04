@@ -1,43 +1,111 @@
 import StoneType from "../Models/models/StoneType.js"
 
+// export const createStoneType = async (req, res) => {
+//   try {
+//     const { stone_type} = req.body;
+//     console.log("Request Body:", req.body);
+//     console.log("Uploaded File:", req.file);
+
+//     if (!stone_type) {
+//       return res.status(400).json({success: false,message: "Stone type is required"});
+//     }
+
+//     // const baseUrl = `${req.protocol}://${req.headers.host}`;
+
+    
+//     const baseUrl = process.env.APP_URL; // ✅ ENV URL
+
+//     const stone = new StoneType({
+//       stone_type,
+//       stone_image: req.file ? `/uploads/stones/${req.file.filename}` : null
+//     });
+
+//     const saved = await stone.save();
+
+//     // const fullImageUrl = saved.stone_image ? `${baseUrl}${saved.stone_image}` : null;
+
+//     return res.status(200).json({ success: true, message: "Stone created successfully", stone: {   ...saved._doc,           fullImageUrl: saved.stone_image
+//           ? `${baseUrl}${saved.stone_image}`
+//           : null,
+//  }
+//     });
+
+//   } catch (err) {
+//     return res.status(500).json({success: false,message: "Server error",error: err.message
+//     });
+//   }
+// };
 export const createStoneType = async (req, res) => {
   try {
-    const { stone_type} = req.body;
-    console.log("Request Body:", req.body);
-    console.log("Uploaded File:", req.file);
+    const { stone_type } = req.body;
 
     if (!stone_type) {
-      return res.status(400).json({success: false,message: "Stone type is required"});
+      return res.status(400).json({
+        success: false,
+        message: "Stone type is required",
+      });
     }
 
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    const baseUrl = process.env.APP_URL;
 
     const stone = new StoneType({
       stone_type,
-      stone_image: req.file ? `/uploads/stones/${req.file.filename}` : null
+      stone_image: req.file
+        ? `/uploads/stone/${req.file.filename}`
+        : null,
     });
 
     const saved = await stone.save();
 
-    const fullImageUrl = saved.stone_image ? `${baseUrl}${saved.stone_image}` : null;
-
-    return res.status(200).json({ success: true, message: "Stone created successfully", stone: {   ...saved._doc,   fullImageUrl }
+    return res.status(200).json({
+      success: true,
+      message: "Stone created successfully",
+      stone: {
+        ...saved._doc,
+        fullImageUrl: saved.stone_image
+          ? `${baseUrl}${saved.stone_image}`
+          : null,
+      },
     });
-
   } catch (err) {
-    return res.status(500).json({success: false,message: "Server error",error: err.message
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
     });
   }
 };
+
+
+
 export const getAllStoneTypes = async (req, res) => {
   try {
     const stones = await StoneType.find();
-    console.log("Fetched Stones:", stones);
-   return res.status(200).json({ success: true, stones });
+
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+
+    const finalData = stones.map((s) => ({
+      ...s._doc,
+      fullImageUrl: s.stone_image
+        ? `${baseUrl}${s.stone_image}`
+        : null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      stones: finalData,
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error", error: err.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
+
+
+
 export const getStoneTypeById = async (req, res) => {
   try {
     const stone = await StoneType.findById(req.params.id);
@@ -53,43 +121,48 @@ export const getStoneTypeById = async (req, res) => {
 
 export const updateStoneType = async (req, res) => {
   try {
-    const { stone_type } = req.body; 
+    const { stone_type } = req.body;
 
     const stone = await StoneType.findById(req.params.id);
     if (!stone) {
-      return res.status(404).json({success: false,message: "Stone not found"
+      return res.status(404).json({
+        success: false,
+        message: "Stone not found",
       });
     }
 
-   
-    const baseUrl = `${req.protocol}://${req.headers.host}`;
+    const baseUrl = process.env.APP_URL; // ✅ ENV URL
 
-  
     if (stone_type) {
       stone.stone_type = stone_type;
     }
 
-    
     if (req.file) {
-      stone.stone_image = `/uploads/stones/${req.file.filename}`;
+      // ✅ SAME PATH AS CREATE
+      stone.stone_image = `/uploads/stone/${req.file.filename}`;
     }
 
     const updatedStone = await stone.save();
 
-    const fullImageUrl = updatedStone.image
-      ? `${baseUrl}${updatedStone.image}`
-      : null;
-
     return res.status(200).json({
-      success: true,message: "Stone updated successfully",
-      stone: { ...updatedStone._doc, fullImageUrl
-      }
+      success: true,
+      message: "Stone updated successfully",
+      stone: {
+        ...updatedStone._doc,
+        fullImageUrl: updatedStone.stone_image
+          ? `${baseUrl}${updatedStone.stone_image}`
+          : null,
+      },
     });
-
   } catch (err) {
-    return res.status(500).json({success: false,message: "Server error",error: err.message});
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message,
+    });
   }
 };
+
 
 
 
@@ -106,41 +179,13 @@ export const deleteStoneType = async (req, res) => {
   }
 };
 
-// export const stonepurity = async (req, res) => {
-//   try {
-//     const { stone_purity, stone_type } = req.body;
 
-//     // Validate fields
-//     if (!stone_purity || !stone_type) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "stone_purity and stone_type are required"
-//       });
-//     }
 
-//     // Create new stone/purity entry
-//     const purity = new StoneType({
-//       stone_purity,
-//       stone_type
-//     });
 
-//     const savedPurity = await purity.save();
 
-//     return res.status(200).json({
-//       success: true,
-//       message: "Stone purity saved successfully",
-//       purity: savedPurity
-//     });
 
-//   } catch (err) {
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server error",
-//       error: err.message
-//     });
-//   }
-// };
 
+//Stone Purity
 export const createStonePurity = async (req, res) => {
   try {
     const { stone_purity, stone_type,percentage} = req.body;
@@ -167,23 +212,7 @@ export const createStonePurity = async (req, res) => {
 
 
 
-// export const getstonePurity = async(req,res)=>{
-//   const {stone_purity} = req.params
-//   console.log("tone_purity,stone_type",stone_purity)
-//   try{
-//     let check = await StoneType.findOne({stone_purity:stone_purity})
-//     console.log(check)
-//     if(!check){
-//       return res.status(400).json({status:false, message:"Stone purity is not found"})
-//     }else{
-//       return res.status(200).json({status:true,message:"Data fetched successfully",check})
-//     }
-//   }catch(e){
-//     console.log(e,"e")
-//     return res.status(500).json({status:false,message:"Internal error"})
 
-//   }
-// }
 
 
 
@@ -203,28 +232,6 @@ export const getStonePurities = async (req, res) => {
   }
 };
 
-
-
-// export const getStonePurityById = async (req, res) => {
-//   try {
-//     const purity = await StonePurity.findById(req.params.id);
-
-//     if (!purity) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Stone purity not found"
-//       });
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       purity
-//     });
-
-//   } catch (err) {
-//     return res.status(500).json({ success: false, error: err.message });
-//   }
-// };
 
 
 
