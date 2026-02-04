@@ -316,3 +316,166 @@ export const getQuotationWithHistory = async (req, res) => {
     });
   }
 };
+
+
+// export const getCustomerQuotationActualAndPrevious = async (req, res) => {
+//   try {
+//     const { customer_id } = req.query;
+
+//     if (!customer_id) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "customer_id is required",
+//       });
+//     }
+
+//     const quotations = await Quotation.find({ customer_id })
+//       .sort({ createdAt: -1 }) // 🔥 latest first
+//       .populate("customer_id", "name mobile")
+//       .populate("items.product_id", "name product_code")
+//       .populate("branch_id", "branch_name branch_code");
+
+//     if (!quotations.length) {
+//       return res.status(200).json({
+//         success: true,
+//         data: {
+//           actual_quotation: null,
+//           previous_quotations: [],
+//         },
+//       });
+//     }
+
+//     // formatter → SAME for actual & previous
+//     const formatQuotation = (q) => ({
+//       quotation_id: q._id,
+//       quotation_number: q.quotation_number,
+
+//       quotation_date: q.quotation_date,
+//       expiry_date: q.expiry_date,
+
+//       notes: q.note,
+//       terms_conditions: q.terms_conditions,
+
+//       subtotal: q.subtotal,
+//       tax_amount: q.tax_amount,
+//       shipping_cost: q.shipping_cost,
+//       discount: q.discount,
+//       grand_total: q.grand_total,
+
+//       status: q.status,
+
+//       customer: {
+//         id: q.customer_id?._id,
+//         name: q.customer_id?.name,
+//         mobile: q.customer_id?.mobile,
+//       },
+
+//       branch: {
+//         id: q.branch_id?._id,
+//         name: q.branch_id?.branch_name,
+//         code: q.branch_id?.branch_code,
+//       },
+
+//       items: q.items.map((item) => ({
+//         product_id: item.product_id?._id,
+//         product_code: item.product_code,
+//         product_name: item.product_name,
+//         quantity: item.quantity,
+//         unit_price: item.unit_price,
+//         discount: item.discount,
+//         tax_rate: item.tax_rate,
+//         tax_amount: item.tax_amount,
+//         subtotal: item.subtotal,
+//         net_price: item.net_price,
+//       })),
+
+//       createdAt: q.createdAt,
+//     });
+
+//     // 🔥 ACTUAL & PREVIOUS
+//     const actualQuotation = formatQuotation(quotations[0]);
+//     const previousQuotations = quotations.slice(1).map(formatQuotation);
+
+//     return res.status(200).json({
+//       success: true,
+//       data: {
+//         actual_quotation: actualQuotation,
+//         previous_quotations: previousQuotations,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Get Actual & Previous Quotation Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+
+
+
+export const getActualAndPreviousQuotationGlobal = async (req, res) => {
+  try {
+    const quotations = await Quotation.find()
+      .sort({ createdAt: -1 }) // 🔥 latest first
+      .populate("customer_id", "name mobile")
+      .populate("items.product_id", "name product_code")
+      .populate("branch_id", "branch_name branch_code");
+
+    if (!quotations.length) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          actual_quotation: null,
+          previous_quotations: [],
+        },
+      });
+    }
+
+    const formatQuotation = (q) => ({
+      quotation_id: q._id,
+      quotation_number: q.quotation_number,
+      quotation_date: q.quotation_date,
+      expiry_date: q.expiry_date,
+
+      notes: q.note,
+      terms_conditions: q.terms_conditions,
+
+      subtotal: q.subtotal,
+      tax_amount: q.tax_amount,
+      shipping_cost: q.shipping_cost,
+      discount: q.discount,
+      grand_total: q.grand_total,
+
+      customer: {
+        id: q.customer_id?._id,
+        name: q.customer_id?.name,
+        mobile: q.customer_id?.mobile,
+      },
+
+      items: q.items.map((item) => ({
+        product_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        subtotal: item.subtotal,
+      })),
+
+      createdAt: q.createdAt,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        actual_quotation: formatQuotation(quotations[0]),
+        previous_quotations: quotations.slice(1).map(formatQuotation),
+      },
+    });
+  } catch (error) {
+    console.error("Get Global Quotation Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
