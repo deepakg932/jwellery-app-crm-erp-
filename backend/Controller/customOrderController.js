@@ -43,8 +43,8 @@ export const getCustomOrders = async (req, res) => {
     const orders = await CustomOrder.find(filter)
       .populate("customer_id", "name mobile")
       .populate("unit_id", "name")
-      .populate("purity_id", "name value") // ✅ ADD THIS
-      .populate("metal_type_id", "name")      // ✅ ADD THIS
+      .populate("purity_id", "purity_name")
+      .populate("metal_type_id", "name")  
       .sort({ createdAt: -1 })
       .skip((pageNumber - 1) * pageSize)
       .limit(pageSize);
