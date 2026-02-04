@@ -19,7 +19,6 @@ import ViewSaleModal from "./ViewSaleModal";
 import CreateSaleReturnModal from "../../sales-return/componets/CreateSaleReturnModal";
 import useSales from "@/hooks/useSales";
 import useSalesReturn from "@/hooks/useSalesReturn";
-
 import PaymentStatusUpdateModal from "./PaymentStatusUpdateModal";
 
 const SalesTable = () => {
@@ -43,10 +42,9 @@ const SalesTable = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [showPaymentStatusModal, setShowPaymentStatusModal] = useState(false); // New state for payment status modal
+  const [showPaymentStatusModal, setShowPaymentStatusModal] = useState(false);
   const [selectedSaleForReturn, setSelectedSaleForReturn] = useState(null);
-  const [selectedSaleForPaymentUpdate, setSelectedSaleForPaymentUpdate] =
-    useState(null); // New state
+  const [selectedSaleForPaymentUpdate, setSelectedSaleForPaymentUpdate] = useState(null);
   const [selectedItem, setSelectedItem] = useState([]);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
 
@@ -95,31 +93,19 @@ const SalesTable = () => {
     }
   };
 
-  // Get payment status options
-  const getPaymentStatusOptions = () => {
-    return [
-      { value: "pending", label: "Pending", color: "warning" },
-      { value: "partial", label: "Partial", color: "info" },
-      { value: "paid", label: "Paid", color: "success" },
-      { value: "overdue", label: "Overdue", color: "danger" },
-      { value: "cancelled", label: "Cancelled", color: "secondary" },
-    ];
-  };
-
   // Filter sales based on search
   const filteredSales = sales.filter(
     (sale) =>
       sale.reference_no?.toLowerCase().includes(search.toLowerCase()) ||
-      sale.customer_id?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      sale.customer_id?.customer_name
-        ?.toLowerCase()
-        .includes(search.toLowerCase()) ||
+      sale.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.customer_mobile?.toLowerCase().includes(search.toLowerCase()) ||
       sale.status?.toLowerCase().includes(search.toLowerCase()) ||
-      sale.payment_status?.toLowerCase().includes(search.toLowerCase()) || // Added payment status search
+      sale.payment_status?.toLowerCase().includes(search.toLowerCase()) ||
+      sale.branch_name?.toLowerCase().includes(search.toLowerCase()) ||
       sale.items?.some(
         (item) =>
-          item.product?.name?.toLowerCase().includes(search.toLowerCase()) ||
-          item.item_name?.toLowerCase().includes(search.toLowerCase())
+          item.product_name?.toLowerCase().includes(search.toLowerCase()) ||
+          item.product_code?.toLowerCase().includes(search.toLowerCase())
       )
   );
 
@@ -137,37 +123,7 @@ const SalesTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Calculate totals for each sale
-  const calculateTotal = (items) => {
-    if (!items) return 0;
-    return items.reduce((total, item) => {
-      const quantity = parseFloat(item.quantity) || 0;
-      const rate = parseFloat(item.rate) || 0;
-      const discount = parseFloat(item.discount) || 0;
-      const tax = parseFloat(item.tax) || 0;
-
-      const subtotal = quantity * rate;
-      const itemTotal = subtotal - discount + tax;
-
-      return total + itemTotal;
-    }, 0);
-  };
-
-  // Calculate balance amount
-  const calculateBalanceAmount = (sale) => {
-    // Use balance_amount from API if available
-    if (sale.balance_amount !== undefined) {
-      return sale.balance_amount;
-    }
-
-    // Calculate if not available from API
-    const totalAmount =
-      sale.grand_total || sale.total_amount || calculateTotal(sale.items) || 0;
-
-    const paidAmount = sale.paid_amount || 0;
-
-    return totalAmount - paidAmount;
-  };
+  console.log(currentSales)
 
   // Add new sale
   const handleAddSale = async (saleData) => {
@@ -381,8 +337,8 @@ const SalesTable = () => {
 
     const names = items.map((item) => {
       return (
-        item.product?.name ||
         item.product_name ||
+        item.product?.name ||
         item.product_id?.name ||
         "Unknown Item"
       );
@@ -393,12 +349,6 @@ const SalesTable = () => {
     } else {
       return `${names[0]}, ${names[1]} +${names.length - 2} more`;
     }
-  };
-
-  // Get customer name
-  const getCustomerName = (customer) => {
-    if (!customer) return "N/A";
-    return customer.name || customer.customer_name || "Unknown Customer";
   };
 
   // Delete Confirmation Modal
@@ -570,9 +520,9 @@ const SalesTable = () => {
                 <th>Branch</th>
                 <th>Items</th>
                 <th>Total Amount</th>
-                <th> Sale Status</th>
+                <th>Sale Status</th>
                 <th>Payment Status</th>
-                <th>Balance Amount</th> {/* NEW COLUMN ADDED */}
+                <th>Balance Amount</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
@@ -581,8 +531,6 @@ const SalesTable = () => {
               {loading && sales.length === 0 ? (
                 <tr>
                   <td colSpan="11" className="text-center py-5">
-                    {" "}
-                    {/* Updated colSpan from 10 to 11 */}
                     <div className="d-flex flex-column align-items-center">
                       <div
                         className="spinner-border text-primary mb-3"
@@ -597,8 +545,6 @@ const SalesTable = () => {
               ) : filteredSales.length === 0 ? (
                 <tr>
                   <td colSpan="11" className="text-center py-5">
-                    {" "}
-                    {/* Updated colSpan from 10 to 11 */}
                     <div className="d-flex flex-column align-items-center">
                       <FiSearch size={48} className="text-muted mb-3" />
                       <p className="text-muted mb-1">
@@ -616,25 +562,12 @@ const SalesTable = () => {
                 </tr>
               ) : (
                 currentSales.map((sale, index) => {
-                  // Calculate total if not available
-                  const total =
-                    sale.grand_total ||
-                    sale.total_amount ||
-                    calculateTotal(sale.items) ||
-                    0;
-
-                  // Calculate balance amount
-                  const balanceAmount = calculateBalanceAmount(sale);
-
-                  // Get customer info
-                  const customerName =
-                    sale.customer_name ||
-                    getCustomerName(sale.customer_id) ||
-                    "Unknown Customer";
-                  const customerCode =
-                    sale.customer_code || sale.customer_id?.customer_code || "";
-                  const customerPhone =
-                    sale.customer_phone || sale.customer_id?.phone || "";
+                  // Use backend data directly (NO CALCULATIONS)
+                  const totalAmount = sale.total_amount || 0; // This is the actual total from backend (includes exchange adjustments)
+                  const balanceAmount = sale.balance_amount || 0; // Direct from backend
+                  const paidAmount = sale.paid_amount || sale.current_paid || 0; // Direct from backend
+                  const isExchange = sale.is_exchange || false;
+                  const exchangeAmount = sale.exchange_amount || 0;
 
                   return (
                     <tr key={sale._id || index} className="hover-row">
@@ -651,18 +584,20 @@ const SalesTable = () => {
                             (Pending)
                           </small>
                         )}
-                      </td>
-                      <td>
-                        <div className="fw-medium">{customerName}</div>
-                        <div className="text-muted small">
-                          {customerPhone && `${customerPhone}`}
-                          {customerCode && ` (${customerCode})`}
-                        </div>
-                        {sale.customer_id?.email && (
-                          <div className="text-muted small">
-                            {sale.customer_id.email}
-                          </div>
+                        {isExchange && (
+                          <small className="text-info small d-block">
+                            <FiRepeat size={12} className="me-1" />
+                            Exchange Sale
+                          </small>
                         )}
+                      </td>
+                      
+                      <td>
+                        <div className="fw-medium">{sale.customer_name || "Unknown Customer"}</div>
+                        <div className="text-muted small">
+                          {sale.customer_mobile && `${sale.customer_mobile}`}
+                          {sale.customer_code && ` (${sale.customer_code})`}
+                        </div>
                       </td>
 
                       <td>
@@ -672,15 +607,13 @@ const SalesTable = () => {
                             {formatDate(sale.sale_date)}
                           </span>
                         </div>
-                        {sale.due_date && (
-                          <small className="text-muted d-block">
-                            Due: {formatDate(sale.due_date)}
-                          </small>
-                        )}
                       </td>
 
                       <td>
-                        <div className="fw-medium">{sale.branch_name}</div>
+                        <div className="fw-medium">{sale.branch_name || "N/A"}</div>
+                        {sale.branch_code && (
+                          <div className="text-muted small">{sale.branch_code}</div>
+                        )}
                       </td>
 
                       <td>
@@ -694,30 +627,20 @@ const SalesTable = () => {
                           <div className="text-muted">
                             {getItemDetails(sale.items)}
                           </div>
-                          {sale.items?.some((item) => item.product_code) && (
-                            <div className="text-muted">
-                              {sale.items
-                                .filter((item) => item.product_code)
-                                .slice(0, 2)
-                                .map((item) => item.product_code)
-                                .join(", ")}
-                              {sale.items.filter((item) => item.product_code)
-                                .length > 2 && "..."}
-                            </div>
-                          )}
                         </div>
                       </td>
 
                       <td>
                         <div className="fw-bold text-dark">
-                          ₹
-                          {total.toLocaleString("en-IN", {
+                          ₹{totalAmount.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
                         </div>
-                        {sale.currency && sale.currency !== "INR" && (
-                          <small className="text-muted">{sale.currency}</small>
+                        {isExchange && exchangeAmount > 0 && (
+                          <div className="text-muted small">
+                            Exchange: ₹{exchangeAmount.toLocaleString("en-IN")}
+                          </div>
                         )}
                       </td>
 
@@ -732,12 +655,13 @@ const SalesTable = () => {
                               sale.status.slice(1)
                             : "Draft"}
                         </span>
-                        {sale.payment_method && (
-                          <small className="d-block text-muted mt-1">
-                            {sale.payment_method}
+                        {sale.sale_note && (
+                          <small className="d-block text-muted mt-1 text-truncate" style={{maxWidth: '150px'}} title={sale.sale_note}>
+                            {sale.sale_note}
                           </small>
                         )}
                       </td>
+                      
                       <td>
                         <div className="d-flex flex-column gap-1">
                           <span
@@ -750,20 +674,18 @@ const SalesTable = () => {
                                 sale.payment_status.slice(1)
                               : "Pending"}
                           </span>
-                          {sale.paid_amount !== undefined &&
-                            sale.paid_amount > 0 && (
-                              <small className="text-muted">
-                                Paid: ₹
-                                {sale.paid_amount.toLocaleString("en-IN", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </small>
-                            )}
+                          {paidAmount > 0 && (
+                            <small className="text-muted">
+                              Paid: ₹{paidAmount.toLocaleString("en-IN", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </small>
+                          )}
                         </div>
                       </td>
 
-                      {/* NEW: Balance Amount Column */}
+                      {/* Balance Amount Column */}
                       <td>
                         <div className="d-flex flex-column">
                           <div
@@ -775,8 +697,7 @@ const SalesTable = () => {
                                 : "text-warning"
                             }`}
                           >
-                            ₹
-                            {balanceAmount.toLocaleString("en-IN", {
+                            ₹{balanceAmount.toLocaleString("en-IN", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
@@ -792,11 +713,6 @@ const SalesTable = () => {
                           {balanceAmount < 0 && (
                             <small className="text-danger">Overpaid</small>
                           )}
-                          {sale.due_date &&
-                            balanceAmount > 0 &&
-                            new Date(sale.due_date) < new Date() && (
-                              <small className="text-danger">Overdue</small>
-                            )}
                         </div>
                       </td>
 

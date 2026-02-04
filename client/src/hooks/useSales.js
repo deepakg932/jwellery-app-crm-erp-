@@ -245,88 +245,128 @@ export default function useSales() {
         const soldBy = sale.sold_by || {};
         const soldByName = soldBy.name || "";
 
-        // Use reference_no as identifier
+        // Use reference_no as identifier (it's available in your response)
         const referenceNo =
           sale.reference_no ||
           sale.sale_number ||
-          sale.ref_number ||
           `REF-${sale._id?.slice(-8) || Date.now()}`;
 
-        // Calculate totals from API response
-        const totalAmount = parseFloat(sale.total_amount) || 0;
+        // Calculate totals from API response - FIXED BASED ON YOUR RESPONSE
         const subtotal = parseFloat(sale.subtotal) || 0;
+        const totalTax = parseFloat(sale.total_tax) || 0;
+        const totalAmount = parseFloat(sale.total_amount) || 0;
         const shippingCost = parseFloat(sale.shipping_cost) || 0;
         const discount = parseFloat(sale.discount) || 0;
-
-        // Payment information
-        const paidAmount = parseFloat(sale.paid_amount) || 0;
-        const currentPaid = parseFloat(sale.current_paid) || paidAmount;
-        const balanceAmount =
-          parseFloat(sale.balance_amount) || totalAmount - currentPaid;
-
-        // Exchange information
-        const isExchange = sale.is_exchange || false;
         const exchangeAmount = parseFloat(sale.exchange_amount) || 0;
+
+        // IMPORTANT: Calculate grand_total based on your business logic
+        // From your response, total_amount seems to be AFTER exchange adjustment
+        // So grand_total should be subtotal + total_tax + shipping_cost - discount
+        const grandTotal = subtotal + totalTax + shippingCost - discount;
+
+        // final_total might be the same as grand_total in your case
+        const finalTotal = parseFloat(sale.final_total) || grandTotal;
+
+        // Payment information - FIXED BASED ON YOUR RESPONSE
+        const currentPaid = parseFloat(sale.current_paid) || 0;
+        const balanceAmount = parseFloat(sale.balance_amount);
+
+        // Determine paid_amount from payment_status
+        let paidAmount = 0;
+        if (sale.payment_status === "paid") {
+          paidAmount = currentPaid || totalAmount;
+        } else {
+          paidAmount = currentPaid;
+        }
+
+        // Items information - FIXED BASED ON YOUR RESPONSE
+        const items = Array.isArray(sale.items) ? sale.items : [];
+        const firstItem = items[0] || {};
+
+        // GST information from first item or sale level
+        const gstRate = firstItem.gst_rate || 0;
+        const gstAmount = firstItem.gst_amount || 0;
+
+        // Price before tax from first item
+        const priceBeforeTax = firstItem.price_before_tax || 0;
+
+        // Exchange details - FIXED BASED ON YOUR RESPONSE
+        const exchangeDetails = sale.exchange_details || {};
+        const isExchange = sale.is_exchange || false;
 
         return {
           _id: sale._id,
-          // Use reference_no - with fallback
+          // Use reference_no from your response
           reference_no: referenceNo,
-          sale_number: sale.sale_number, // Keep original if exists
+          sale_number: referenceNo, // Using reference_no as sale_number too
           customer_id: customer,
           customer_name: customerName,
           customer_mobile: customerMobile,
           customer_code: customer.customer_code || "",
           sale_date:
             sale.sale_date || sale.createdAt || new Date().toISOString(),
-          items: sale.items || [],
-          // Exchange fields
+          items: items,
+
+          // Exchange fields - FIXED
           is_exchange: isExchange,
           exchange_amount: exchangeAmount,
           exchange_note: sale.exchange_note || "",
-          // Use sale_status from API, fallback to status
-          status:
-            sale.sale_status?.toLowerCase() ||
-            sale.status?.toLowerCase() ||
-            "draft",
+          exchange_details: exchangeDetails,
+
+          // Status fields - FIXED
+          status: (sale.sale_status || sale.status || "draft").toLowerCase(),
           sale_note: sale.sale_note || sale.notes || "",
+
+          // Financial fields - FIXED
           shipping_cost: shippingCost,
           discount: discount,
-          tax_amount: parseFloat(sale.gst_amount) || 0,
-          total_tax: parseFloat(sale.total_tax) || 0,
-          gst_amount: parseFloat(sale.gst_amount) || 0,
-          gst_rate: sale.items?.[0]?.gst_rate || 0,
+          tax_amount: totalTax,
+          total_tax: totalTax,
+          gst_amount: gstAmount,
+          gst_rate: gstRate,
           subtotal: subtotal,
           total_amount: totalAmount,
-          // Use total_amount as final_total and grand_total since they're not in the response
-          final_total: totalAmount,
-          grand_total: totalAmount,
+          final_total: finalTotal,
+          grand_total: grandTotal,
+          price_before_tax: priceBeforeTax,
+
+          // Branch information
           branch_id: branch,
           branch_name: branchName,
           branch_code: branchCode,
+
           // Sold by information
           sold_by: soldBy,
           sold_by_id: soldBy._id || "",
           sold_by_name: soldByName,
-          payment_status: sale.payment_status?.toLowerCase() || "pending",
-          paid_amount: currentPaid,
+
+          // Payment fields - FIXED
+          payment_status: (sale.payment_status || "pending").toLowerCase(),
+          paid_amount: paidAmount,
           current_paid: currentPaid,
           balance_amount: balanceAmount,
           payment_date: sale.payment_date || null,
           payment_method: sale.payment_method || "",
           payment_notes: sale.payment_notes || "",
+
+          // Timestamps
           created_at: sale.createdAt || new Date().toISOString(),
           updated_at: sale.updatedAt || new Date().toISOString(),
 
-          // INVOICE FIELDS
+          // INVOICE FIELDS - FIXED
           has_invoice: sale.has_invoice || false,
           invoice_id: sale.invoice_id || null,
           invoice_number: sale.invoice_number || null,
 
-          // Additional fields for your response structure
-          product_code: sale.items?.[0]?.product_code,
-          price_before_tax: sale.items?.[0]?.price_before_tax,
-          selling_total: sale.items?.[0]?.selling_total,
+          // Additional fields for item details
+          product_name: firstItem.product_name || "",
+          product_id: firstItem.product_id || "",
+          quantity: firstItem.quantity || 1,
+          selling_total: firstItem.selling_total || 0,
+
+          // Additional metadata
+          created_by: sale.created_by || null,
+          __v: sale.__v || 0,
         };
       });
 
@@ -351,159 +391,205 @@ export default function useSales() {
 
       // Return empty array on error
       setSales([]);
+      return [];
     } finally {
       setLoading(false);
     }
   };
-  // Add a new sale - UPDATED VERSION
-  // Update the addSale function in useSales.js
-// Add a new sale - UPDATED FOR BACKEND COMPATIBILITY
-const addSale = async (saleData) => {
-  try {
-    setLoading(true);
-    setError("");
 
-    console.log("Original sale data for backend:", saleData);
+  const addSale = async (formData) => {
+    try {
+      setLoading(true);
+      setError("");
 
-    // Transform the data to match backend expectations
-    const transformedData = {
-      customer_id: saleData.customer_id,
-      branch_id: saleData.branch_id,
-      sale_date: saleData.sale_date,
-      sold_by: saleData.sold_by || "",
-      
-      // Items array (backend expects this structure)
-      items: Array.isArray(saleData.items)
-        ? saleData.items.map((item) => ({
-            product_id: item.product_id,
-            quantity: parseFloat(item.quantity) || 1,
-            gst_amount: parseFloat(item.gst_amount) || 0,
-            final_total: parseFloat(item.final_total) || 0,
-            // Backend will add product_name and product_code
-          }))
-        : [],
+      console.log("=== SENDING SALE DATA ===");
 
-      // Exchange related fields
-      is_exchange: saleData.is_exchange || false,
-      
-      // Only send exchange_amount if is_exchange is true
-      exchange_amount: saleData.is_exchange 
-        ? parseFloat(saleData.exchange_amount) || 0 
-        : 0,
-      
-      exchange_note: saleData.exchange_note || "",
-      
-      // Exchange item details
-      exchange_item_name: saleData.is_exchange 
-        ? saleData.exchange_item_name || "" 
-        : undefined,
-      
-      exchange_item_weight: saleData.is_exchange 
-        ? parseFloat(saleData.exchange_item_weight) || 0 
-        : undefined,
-      
-      exchange_item_unit: saleData.is_exchange 
-        ? saleData.exchange_item_unit || "g" 
-        : undefined,
-      
-      exchange_item_actual_rate: saleData.is_exchange 
-        ? parseFloat(saleData.exchange_item_actual_rate) || 0 
-        : undefined,
-      
-      // Shipping and discount
-      shipping_cost: parseFloat(saleData.shipping_cost) || 0,
-      discount: parseFloat(saleData.discount) || 0,
-      
-      // Totals - backend will calculate these, but we send what we have
-      subtotal: parseFloat(saleData.subtotal) || 0,
-      total_tax: parseFloat(saleData.total_tax) || 0,
-      total_amount: parseFloat(saleData.total_amount) || 0,
-      
-      // Status fields
-      status: saleData.status || "draft", // Backend will map to sale_status
-      payment_status: saleData.payment_status || "pending",
-    };
-
-    // Remove undefined fields
-    Object.keys(transformedData).forEach(key => {
-      if (transformedData[key] === undefined) {
-        delete transformedData[key];
-      }
-    });
-
-    const url = API_ENDPOINTS.createSaleItem();
-    console.log("Adding sale at:", url, "Data:", transformedData);
-
-    // Create FormData for file upload if exchange image exists
-    let requestData = transformedData;
-    const formData = new FormData();
-    
-    // If there's an exchange image, use FormData
-    if (saleData.exchange_item_image && saleData.is_exchange) {
-      // Append all fields to FormData
-      Object.keys(transformedData).forEach(key => {
-        if (key !== 'exchange_item_image') {
-          formData.append(key, transformedData[key]);
+      // Debug: Show all FormData entries
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(
+            `${key}: [File: ${value.name}, size: ${value.size}, type: ${value.type}]`,
+          );
+        } else if (key === "items") {
+          try {
+            const parsed = JSON.parse(value);
+            console.log(`${key}:`, parsed);
+          } catch (e) {
+            console.log(`${key}:`, value.substring(0, 100) + "...");
+          }
+        } else {
+          console.log(`${key}:`, value);
         }
-      });
-      
-      // Append the image file
-      formData.append('exchange_item_image', saleData.exchange_item_image);
-      
-      requestData = formData;
-      
-      // Set proper headers for FormData
-      const config = {
+      }
+
+      const url = API_ENDPOINTS.createSaleItem();
+      console.log("Sending request to:", url);
+
+      const res = await axios.post(url, formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
+        timeout: 30000, // 30 seconds timeout
+      });
+
+      console.log("Add sale response:", res.data);
+
+      if (!res.data) {
+        throw new Error("No response from server");
+      }
+
+      if (!res.data.success) {
+        throw new Error(res.data.message || "Failed to create sale");
+      }
+
+      const responseData = res.data.data || res.data;
+
+      if (!responseData) {
+        throw new Error("Invalid response structure");
+      }
+
+      // Extract customer info
+      const customer = responseData.customer_id || {};
+      const customerName =
+        customer.name || customer.customer_name || "Unknown Customer";
+      const customerMobile = customer.mobile || customer.phone || "";
+
+      // Extract branch info
+      const branch = responseData.branch_id || {};
+      const branchName = branch.branch_name || branch.name || "Main Branch";
+      const branchCode = branch.branch_code || branch.code || "";
+
+      // Extract sold_by info
+      const soldBy = responseData.sold_by || {};
+      const soldByName = soldBy.name || "";
+
+      // Extract exchange details
+      const exchangeDetails = responseData.exchange_details || {};
+
+      // Build the new sale object
+      const newSale = {
+        _id: responseData._id,
+        reference_no: responseData.reference_no,
+        sale_number: responseData.reference_no,
+        customer_id: customer,
+        customer_name: customerName,
+        customer_mobile: customerMobile,
+        customer_code: customer.customer_code || "",
+        sale_date: responseData.sale_date,
+
+        items: Array.isArray(responseData.items)
+          ? responseData.items.map((item) => ({
+              ...item,
+              product: item.product || null,
+              product_name: item.product_name,
+              product_code: item.product_code,
+            }))
+          : [],
+
+        // Exchange details
+        is_exchange: responseData.is_exchange || false,
+        exchange_amount: responseData.exchange_amount || 0,
+        exchange_note: responseData.exchange_note || "",
+        exchange_item_name: exchangeDetails.item_name || "",
+        exchange_item_weight: exchangeDetails.weight || 0,
+        exchange_item_unit: exchangeDetails.unit || "",
+        exchange_item_actual_rate: exchangeDetails.actual_rate || 0,
+        exchange_item_image: exchangeDetails.image || null,
+        exchange_details: exchangeDetails,
+
+        // Financial details
+        sale_note: responseData.sale_note || "",
+        shipping_cost: responseData.shipping_cost || 0,
+        discount: responseData.discount || 0,
+        subtotal: responseData.subtotal || 0,
+        total_tax: responseData.total_tax || 0,
+        total_amount: responseData.total_amount || 0,
+        final_total: responseData.total_amount || 0,
+        grand_total: responseData.total_amount || 0,
+
+        // Branch details
+        branch_id: branch,
+        branch_name: branchName,
+        branch_code: branchCode,
+
+        // Salesperson details
+        sold_by: soldBy,
+        sold_by_id: soldBy._id || "",
+        sold_by_name: soldByName,
+
+        // Status
+        status: responseData.sale_status?.toLowerCase() || "draft",
+        sale_status: responseData.sale_status || "draft",
+        payment_status: responseData.payment_status?.toLowerCase() || "pending",
+
+        // Payment information
+        paid_amount: 0,
+        balance_amount: responseData.total_amount || 0,
+
+        // Timestamps
+        created_at: responseData.createdAt || new Date().toISOString(),
+        updated_at: responseData.updatedAt || new Date().toISOString(),
+
+        // Additional fields
+        created_by: responseData.created_by || null,
       };
-      
-      const res = await axios.post(url, requestData, config);
-      console.log("Add sale response:", res.data);
 
-      if (!res.data || !res.data.success) {
-        throw new Error(res.data?.message || "Failed to create sale");
+      // Add full image URL if available
+      if (exchangeDetails.fullImageUrl) {
+        newSale.exchange_item_image_url = exchangeDetails.fullImageUrl;
       }
 
-      // Process the response
-      return processSaleResponse(res.data.data || res.data);
-    } else {
-      // No image, use regular JSON request
-      const res = await axios.post(url, requestData);
-      console.log("Add sale response:", res.data);
+      console.log("New sale created:", newSale);
 
-      if (!res.data || !res.data.success) {
-        throw new Error(res.data?.message || "Failed to create sale");
+      // Update state
+      setSales((prev) => [newSale, ...prev]);
+
+      // Refresh data
+      setTimeout(() => {
+        fetchSales();
+      }, 1000);
+
+      return newSale;
+    } catch (err) {
+      console.error("Add sale error details:", err);
+
+      let errorMessage = "Failed to create sale";
+
+      if (err.response) {
+        console.error("Error response:", {
+          status: err.response.status,
+          data: err.response.data,
+          headers: err.response.headers,
+        });
+
+        errorMessage =
+          err.response.data?.message ||
+          err.response.data?.error ||
+          `Server error: ${err.response.status}`;
+
+        // Handle validation errors
+        if (err.response.status === 400 && err.response.data?.errors) {
+          const fieldErrors = err.response.data.errors;
+          errorMessage = `Validation errors: ${
+            Array.isArray(fieldErrors)
+              ? fieldErrors.join(", ")
+              : JSON.stringify(fieldErrors)
+          }`;
+        }
+      } else if (err.request) {
+        console.error("No response received:", err.request);
+        errorMessage = "No response from server. Please check your connection.";
+      } else {
+        console.error("Request setup error:", err.message);
+        errorMessage = err.message || "Failed to create sale";
       }
 
-      // Process the response
-      return processSaleResponse(res.data.data || res.data);
-    }
-
-  } catch (err) {
-    console.error("Add sale error:", err);
-
-    // Handle specific error cases
-    if (err.response) {
-      const errorMessage =
-        err.response.data?.message ||
-        err.response.data?.error ||
-        `Server error: ${err.response.status}`;
       setError(errorMessage);
       throw new Error(errorMessage);
-    } else if (err.request) {
-      setError("Network error. Please check your connection.");
-      throw new Error("Network error");
-    } else {
-      setError("Failed to add sale. Please try again.");
-      throw err;
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
-  
+  };
   // Update payment status of a sale
   const updateSalePayment = async (id, paymentData) => {
     try {
@@ -607,107 +693,103 @@ const addSale = async (saleData) => {
   };
 
   // Update a sale
-  const updateSale = async (id, saleData) => {
-    try {
-      setLoading(true);
-      setError("");
+const updateSale = async (id, formData) => {
+  try {
+    setLoading(true);
+    setError("");
 
-      const url = API_ENDPOINTS.updateSaleItem(id);
-      console.log("Updating sale at:", url, "Data:", saleData);
+    const url = API_ENDPOINTS.updateSaleItem(id);
+    console.log("=== UPDATING SALE ===");
+    console.log("Update URL:", url);
 
-      // Transform saleData to match API expectations
-      const transformedData = {
-        customer_id: saleData.customer_id,
-        sale_date: saleData.sale_date,
-        sold_by: saleData.sold_by || "",
-        items: Array.isArray(saleData.items)
-          ? saleData.items.map((item) => ({
-              product_id: item.product_id,
-              quantity: parseFloat(item.quantity) || 1,
-              price_before_tax: parseFloat(item.price_before_tax) || 0,
-              gst_rate: parseFloat(item.gst_rate) || 0,
-              gst_amount: parseFloat(item.gst_amount) || 0,
-              selling_total: parseFloat(item.selling_total) || 0,
-              final_total: parseFloat(item.final_total) || 0,
-              product_name: item.product_name,
-              product_code: item.product_code,
-            }))
-          : [],
-        is_exchange: saleData.is_exchange || false,
-        exchange_amount: saleData.is_exchange
-          ? parseFloat(saleData.exchange_amount) || 0
-          : 0,
-        exchange_note: saleData.exchange_note || "",
-        sale_note: saleData.sale_note || "",
-        shipping_cost: parseFloat(saleData.shipping_cost) || 0,
-        discount: parseFloat(saleData.discount) || 0,
-        subtotal: parseFloat(saleData.subtotal) || 0,
-        total_tax: parseFloat(saleData.total_tax) || 0,
-        total_amount: parseFloat(saleData.total_amount) || 0,
-        branch_id: saleData.branch_id,
-        sale_status: saleData.status || "draft", // Map status to sale_status
-        payment_status: saleData.payment_status || "pending",
-      };
+    // Create FormData from the passed formData (should be FormData object)
+    const requestData = new FormData();
 
-      const res = await axios.put(url, transformedData);
-      console.log("Update sale response:", res.data);
-
-      if (res.data?.success) {
-        const responseData = res.data.data || res.data;
-        const updatedData = {
-          _id: responseData._id || responseData.id || id,
-          reference_no: responseData.reference_no,
-          customer_id: responseData.customer_id || transformedData.customer_id,
-          sale_date: responseData.sale_date || transformedData.sale_date,
-          items: responseData.items || transformedData.items,
-          is_exchange: responseData.is_exchange || transformedData.is_exchange,
-          exchange_amount:
-            responseData.exchange_amount || transformedData.exchange_amount,
-          exchange_note:
-            responseData.exchange_note || transformedData.exchange_note,
-          status:
-            responseData.sale_status || transformedData.sale_status || "draft",
-          sale_note: responseData.sale_note || transformedData.sale_note,
-          shipping_cost:
-            responseData.shipping_cost || transformedData.shipping_cost,
-          discount: responseData.discount || transformedData.discount,
-          subtotal: responseData.subtotal || transformedData.subtotal,
-          total_tax: responseData.total_tax || transformedData.total_tax,
-          total_amount:
-            responseData.total_amount || transformedData.total_amount,
-          final_total:
-            responseData.total_amount || transformedData.total_amount,
-          grand_total:
-            responseData.total_amount || transformedData.total_amount,
-          branch_id: responseData.branch_id || transformedData.branch_id,
-          sold_by: responseData.sold_by || transformedData.sold_by,
-          sold_by_name: responseData.sold_by?.name || "",
-          payment_status:
-            responseData.payment_status || transformedData.payment_status,
-        };
-
-        console.log("Updated sale data:", updatedData);
-        setSales((prev) =>
-          prev.map((item) => (item._id === id ? updatedData : item)),
-        );
-
-        // Refetch to ensure consistency
-        setTimeout(() => {
-          fetchSales();
-        }, 500);
-
-        return updatedData;
-      } else {
-        throw new Error(res.data?.message || "Failed to update sale");
+    // Copy all entries from the formData to requestData
+    if (formData.entries) {
+      for (let [key, value] of formData.entries()) {
+        requestData.append(key, value);
       }
-    } catch (err) {
-      console.error("Update sale error:", err);
-      setError("Failed to update sale");
-      throw err;
-    } finally {
-      setLoading(false);
+    } else {
+      // If formData is not FormData, convert it
+      for (let key in formData) {
+        if (formData[key] !== undefined && formData[key] !== null) {
+          if (key === 'items' && Array.isArray(formData[key])) {
+            requestData.append(key, JSON.stringify(formData[key]));
+          } else if (formData[key] instanceof File) {
+            requestData.append(key, formData[key]);
+          } else {
+            requestData.append(key, formData[key].toString());
+          }
+        }
+      }
     }
-  };
+
+    // DEBUG: Log what we're sending
+    console.log("Sending FormData:");
+    for (let [key, value] of requestData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}: [File: ${value.name}, size: ${value.size}]`);
+      } else {
+        console.log(`${key}:`, value);
+      }
+    }
+
+    // Send the request
+    const config = {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+      timeout: 30000,
+    };
+
+    console.log("Sending update request...");
+    const res = await axios.put(url, requestData, config);
+    console.log("Update sale response:", res.data);
+
+    if (res.data?.success) {
+      const responseData = res.data.data || res.data;
+      console.log("Response data:", responseData);
+
+      // Update local state
+      setSales((prev) =>
+        prev.map((sale) =>
+          sale._id === id ? { ...sale, ...responseData } : sale
+        )
+      );
+
+      // Refresh data
+      setTimeout(() => {
+        fetchSales();
+      }, 1000);
+
+      return responseData;
+    } else {
+      throw new Error(res.data?.message || "Failed to update sale");
+    }
+  } catch (err) {
+    console.error("Update sale error:", err);
+    
+    let errorMessage = "Failed to update sale";
+    
+    if (err.response) {
+      console.error("Error response:", err.response.data);
+      errorMessage = err.response.data?.message || 
+                    err.response.data?.error || 
+                    `Server error: ${err.response.status}`;
+    } else if (err.request) {
+      errorMessage = "No response from server. Please check your connection.";
+    } else {
+      errorMessage = err.message || "Failed to update sale";
+    }
+    
+    setError(errorMessage);
+    throw new Error(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
+
   // Delete a sale
   const deleteSale = async (id) => {
     try {

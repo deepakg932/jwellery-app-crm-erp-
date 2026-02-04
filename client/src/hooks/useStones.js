@@ -130,7 +130,7 @@ export default function useStones() {
         stone_type: s.stone_type || "",
         stone_purity: s.stone_purity || "",
         stone_price: s.stone_price || s.selling_price || s.cost_price || 0,
-        stone_image: s.stone_image || s.image || "",
+        stone_image: s.fullImageUrl || "",
       }));
       
       console.log("Fetched stones:", mappedStones);
@@ -258,7 +258,7 @@ export default function useStones() {
           stone_type: stoneFromApi.stone_type || data.stone_type,
           stone_purity: stoneFromApi.stone_purity || data.stone_purity,
           stone_price: stoneFromApi.stone_price || data.stone_price,
-          stone_image: stoneFromApi.stone_image || "",
+          stone_image: stoneFromApi.fullImageUrl || "",
         };
       } else if (res.data && res.data.success) {
         updatedData = {
@@ -267,7 +267,7 @@ export default function useStones() {
           stone_type: res.data.stone_type || data.stone_type,
           stone_purity: res.data.stone_purity || data.stone_purity,
           stone_price: res.data.stone_price || data.stone_price,
-          stone_image: res.data.stone_image || "",
+          stone_image: res.data.fullImageUrl || "",
         };
       } else {
         // Fallback

@@ -6,7 +6,8 @@ import EditStoneForm from "./EditStoneForm";
 import useStonesType from "@/hooks/useStonesType";
 
 export default function StoneTablePage() {
-  const { stones, loading, addStone, updateStone, deleteStone } = useStonesType();
+  const { stones, loading, addStone, updateStone, deleteStone } =
+    useStonesType();
 
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -17,9 +18,9 @@ export default function StoneTablePage() {
 
   // Filter stones by search
   const filteredStones = (stones || []).filter((stone) =>
-    (stone?.stone_type || "").toLowerCase().includes(search.toLowerCase())
+    (stone?.stone_type || "").toLowerCase().includes(search.toLowerCase()),
   );
-
+  console.log(stones);
   // Handle update with loading state
   const handleUpdate = async (stoneData, imageFile) => {
     if (!selectedItem) return;
@@ -154,7 +155,14 @@ export default function StoneTablePage() {
   const SafeImage = ({ src, alt, ...props }) => {
     const [hasError, setHasError] = useState(false);
 
-    if (hasError || !src) {
+    // Check if image URL is valid
+    if (
+      !src ||
+      src === null ||
+      src === "null" ||
+      src === "undefined" ||
+      hasError
+    ) {
       return (
         <div
           className="bg-light border rounded d-flex justify-content-center align-items-center"
@@ -270,11 +278,11 @@ export default function StoneTablePage() {
                 filteredStones.map((item, index) => (
                   <tr key={item._id || index}>
                     <td>{index + 1}</td>
-
+                  {console.log(item.fullImageUrl)}
                     {/* IMAGE PREVIEW */}
                     <td>
                       <SafeImage
-                        src={`https://cvhjrjvd-5000.inc1.devtunnels.ms${item.stone_image}`}
+                        src={item.fullImageUrl || ""}
                         alt={item.stone_type}
                         width="45"
                         height="45"

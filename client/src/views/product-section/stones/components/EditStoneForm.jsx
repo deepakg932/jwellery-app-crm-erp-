@@ -266,7 +266,7 @@ const EditStoneForm = ({
                       <div className="text-center">
                         <div className="position-relative d-inline-block">
                           <img
-                            src={imagePreview.startsWith('blob:') ? imagePreview : `https://cvhjrjvd-5000.inc1.devtunnels.ms${imagePreview}`}
+                            src={imagePreview.startsWith('blob:') ? imagePreview : imagePreview}
                             alt="Preview"
                             className="img-thumbnail rounded border"
                             style={{ width: '200px', height: '200px', objectFit: 'cover' }}

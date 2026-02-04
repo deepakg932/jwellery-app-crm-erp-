@@ -64,6 +64,7 @@ const InventoryItemTable = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  console.log(currentItems)
 
   // Add new inventory item
   const handleAddItem = async (itemData) => {
@@ -230,6 +231,30 @@ const showBarcodeModal = (barcodeUrl, itemCode) => {
     }
   });
 };
+
+  const SafeImage = ({ src, alt, ...props }) => {
+    const [hasError, setHasError] = useState(false);
+
+    if (hasError || !src) {
+      return (
+        <div
+          className="bg-light border rounded d-flex justify-content-center align-items-center"
+          style={{ width: 45, height: 45 }}
+        >
+          <FiImage className="text-muted" />
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={src}
+        alt={alt || "Metal type"}
+        {...props}
+        onError={() => setHasError(true)}
+      />
+    );
+  };
 
   // Show image in modal
   const showImageModal = (imageUrl) => {
@@ -410,6 +435,7 @@ const showBarcodeModal = (barcodeUrl, itemCode) => {
             <thead>
               <tr>
                 <th>#</th>
+                <th>Images</th>
                 <th>Item Code</th>
                 <th>Barcode</th>
                 <th>Item Name</th>
@@ -456,6 +482,18 @@ const showBarcodeModal = (barcodeUrl, itemCode) => {
                   return (
                     <tr key={item._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
+
+                         {/* IMAGE PREVIEW */}
+                    <td>
+                      <SafeImage
+                        src={item.images}
+                        alt={item.name}
+                        width="45"
+                        height="45"
+                        className="rounded border"
+                        tyle={{ objectFit: "cover", borderRadius: "6px" }}
+                      />
+                    </td>
 
                       <td>
                         <div className="fw-medium text-primary">

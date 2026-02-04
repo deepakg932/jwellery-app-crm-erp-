@@ -100,48 +100,55 @@ export default function useBrands() {
     }
   };
 
-  const updateBrand = async (id, data) => {
-    const formData = new FormData();
-    formData.append("name", data.name);
-    if (data.logoFile) formData.append("logo", data.logoFile);
+const updateBrand = async (id, data) => {
+  const formData = new FormData();
+  formData.append("name", data.name);
+  if (data.logoFile) formData.append("logo", data.logoFile);
 
-    try {
-      setLoading(true);
-      
-      const url = API_ENDPOINTS.updateBrand(id);
-      console.log("Updating brand at:", url);
-      
-      const res = await axios.put(url, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      console.log("Update response:", res.data);
-      
-      let updatedData = {
-        _id: id,
-        name: data.name,
-        logo: data.fullLogoUrl || "ddd"
+  try {
+    setLoading(true);
+    
+    const url = API_ENDPOINTS.updateBrand(id);
+    console.log("Updating brand at:", url);
+    
+    const res = await axios.put(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    
+    console.log("Update response:", res.data);
+    
+    // FIXED: Check for status instead of success
+    if (res.data?.status && res.data.brand) {
+      const { brand } = res.data;
+      const updatedData = {
+        _id: brand._id || id,
+        name: brand.name || data.name,
+        logo: brand.fullLogoUrl || brand.logo || data.logo || ""
       };
-      
-      if (res.data?.success && res.data.brand) {
-        updatedData = {
-          _id: res.data.brand._id || res.data.brand.id || id,
-          name: res.data.brand.name || data.name,
-          logo: res.data.brand.fullLogoUrl || "ff"
-        };
-      }
       
       console.log("Updated brand data:", updatedData);
       setBrands(prev => prev.map(b => (b._id === id ? updatedData : b)));
       return updatedData;
-    } catch (err) {
-      console.error("Update error:", err);
-      setError("Failed to update brand");
-      throw err;
-    } finally {
-      setLoading(false);
+    } else {
+      // Fallback if response structure is different
+      const updatedData = {
+        _id: id,
+        name: data.name,
+        logo: data.logo || ""
+      };
+      
+      console.log("Updated brand data (fallback):", updatedData);
+      setBrands(prev => prev.map(b => (b._id === id ? updatedData : b)));
+      return updatedData;
     }
-  };
+  } catch (err) {
+    console.error("Update error:", err);
+    setError("Failed to update brand");
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   const deleteBrand = async (id) => {
     try {

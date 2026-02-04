@@ -17,12 +17,15 @@ import CustomOrderForm from "./AddCustomOrder";
 import useCustomOrders from "@/hooks/useCustomOrders";
 import useQuotations from "@/hooks/useQuotations";
 import AddQuotationForm from "@/views/manufacturing/quotations/components/AddQuotationForm";
+import ViewCustomOrderModal from "./ViewCustomOrderModal";
 
 const CustomOrderTable = () => {
   const {
     customOrders,
     customers,
     customerGroups,
+    metalTypes ,
+    purities ,
     loading,
     error,
     units,
@@ -33,6 +36,7 @@ const CustomOrderTable = () => {
     fetchCustomOrders,
     fetchCustomers,
   } = useCustomOrders();
+
 
   const {
     quotations,
@@ -55,18 +59,20 @@ const CustomOrderTable = () => {
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
   const [customerQuotations, setCustomerQuotations] = useState({});
-
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+console.log(customOrders)
   // Filtered orders
   const filteredOrders = customOrders.filter(
     (order) =>
       order.order_number?.toLowerCase().includes(search.toLowerCase()) ||
       order.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-      order.customer_mobile?.includes(search) ||
-      order.purity?.toLowerCase().includes(search.toLowerCase())
+      order.customer_mobile?.includes(search)
+     
   );
 
   // Reset to first page when search changes
@@ -106,6 +112,8 @@ const CustomOrderTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
 
+console.log(currentOrders)
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -133,15 +141,15 @@ const CustomOrderTable = () => {
             diffDays < 0
               ? "text-danger"
               : diffDays <= 3
-              ? "text-warning"
-              : "text-success"
+                ? "text-warning"
+                : "text-success"
           }
         >
           {diffDays < 0
             ? "Overdue"
             : diffDays === 0
-            ? "Today"
-            : `${diffDays} days left`}
+              ? "Today"
+              : `${diffDays} days left`}
         </small>
       </div>
     );
@@ -184,7 +192,10 @@ const CustomOrderTable = () => {
       setActionLoading({ type: null, id: null });
     }
   };
-
+  const handleViewOrder = (order) => {
+    setSelectedOrder(order);
+    setShowViewModal(true);
+  };
   // Handle view quotations
   const handleViewQuotations = (order) => {
     const customerId = order.customer_id;
@@ -233,7 +244,7 @@ const CustomOrderTable = () => {
     }
   };
 
-    // Add new order
+  // Add new order
   const handleAddOrder = async (orderData) => {
     setActionLoading({ type: "add", id: null });
     try {
@@ -262,7 +273,7 @@ const CustomOrderTable = () => {
     }
   };
 
-    // Delete order
+  // Delete order
   const handleDeleteOrder = async () => {
     if (!selectedItem) return;
 
@@ -381,7 +392,7 @@ const CustomOrderTable = () => {
     }
 
     const activeQuotations = quotations.filter(
-      (q) => q.status !== "converted" && q.status !== "expired"
+      (q) => q.status !== "converted" && q.status !== "expired",
     );
 
     return (
@@ -559,7 +570,7 @@ const CustomOrderTable = () => {
                 <div className="col-md-6 text-end">
                   {getQuotationStatusBadge(
                     selectedQuotation.status,
-                    selectedQuotation.expiry_date
+                    selectedQuotation.expiry_date,
                   )}
                 </div>
               </div>
@@ -627,12 +638,12 @@ const CustomOrderTable = () => {
                             <td className="text-end">{item.quantity || 0}</td>
                             <td className="text-end">
                               {formatCurrency(
-                                item.unit_price || item.price || 0
+                                item.unit_price || item.price || 0,
                               )}
                             </td>
                             <td className="text-end fw-medium">
                               {formatCurrency(
-                                item.subtotal || item.net_price || 0
+                                item.subtotal || item.net_price || 0,
                               )}
                             </td>
                           </tr>
@@ -897,17 +908,16 @@ const CustomOrderTable = () => {
                       <div>
                         <div className="fw-semibold d-flex align-items-center">
                           {order.customer_name || "N/A"}
-                       
                         </div>
                         <small className="text-muted">
-                            {getQuotationBadge(order.customer_id)}
+                          {getQuotationBadge(order.customer_id)}
                         </small>
                       </div>
                     </td>
                     <td className="fw-semibold">{order.weight} g</td>
                     <td>
                       <span className="badge bg-light text-dark fw-semibold">
-                        {order.purity || "N/A"}
+                        {order.purity_name || "N/A"}
                       </span>
                     </td>
                     <td>{formatDeliveryDate(order.delivery_date)}</td>
@@ -946,7 +956,14 @@ const CustomOrderTable = () => {
                           <FiEye size={16} />
                           View Quotations
                         </button>
-
+                        <button
+                          className="btn btn-outline-primary"
+                          onClick={() => handleViewOrder(order)}
+                          title="View"
+                        >
+                                 <FiEye size={16} />
+                                 
+                        </button>
                         {/* Edit Button */}
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
@@ -1086,12 +1103,25 @@ const CustomOrderTable = () => {
           onAddCustomer={handleAddCustomer}
           loading={actionLoading.type === "add"}
           customers={customers}
+          purities ={purities }
+          metalTypes ={metalTypes }
           units={units}
           customerGroups={customerGroups}
           mode="add"
         />
       )}
-
+      {/* View Modal */}
+      {showViewModal && selectedOrder && (
+        <ViewCustomOrderModal
+          order={selectedOrder}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedOrder(null);
+          }}
+          onEdit={handleEditOrder}
+          onDelete={handleDeleteOrder}
+        />
+      )}
       {showEditModal && selectedItem && (
         <CustomOrderForm
           onClose={() => {
@@ -1103,6 +1133,8 @@ const CustomOrderTable = () => {
           order={selectedItem}
           customers={customers}
           units={units}
+             purities ={purities }
+          metalTypes ={metalTypes }
           customerGroups={customerGroups}
           loading={
             actionLoading.type === "update" &&

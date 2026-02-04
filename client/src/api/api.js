@@ -356,6 +356,10 @@ export const ROUTES = {
   UPDATE_QUOTATION: "update-quotation",
   DELETE_QUOTATION: "delete-quotation",
 
+  // Quotation history
+
+  GET_QUOTATION_HISTORY: "quotations/actual-previous",
+
   // Repair routes
   GET_REPAIRS: "get-repairs",
   CREATE_REPAIR: "create-repair",
@@ -782,6 +786,9 @@ export const API_ENDPOINTS = {
     endpoint(PATHS.QUOTATION, ROUTES.UPDATE_QUOTATION, id),
   deleteQuotation: (id) =>
     endpoint(PATHS.QUOTATION, ROUTES.DELETE_QUOTATION, id),
+
+  //Quotation history
+  getQuotationsHistory:()=>endpoint(PATHS.QUOTATION,ROUTES.GET_QUOTATION_HISTORY),
 
   // ========== REPAIR OPERATIONS ==========
   getRepairs: () => endpoint(PATHS.REPAIRS, ROUTES.GET_REPAIRS),

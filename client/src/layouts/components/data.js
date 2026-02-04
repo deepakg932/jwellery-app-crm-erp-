@@ -548,6 +548,12 @@ export const menuItems = [
         url: "/quotations",
       },
       {
+        key: "quotations-history",
+        label: "Quotations History",
+        url: "/quotations-history",
+      },
+
+      {
         key: "repair",
         label: "Repair",
         url: "/repair",

@@ -664,9 +664,9 @@ export default function ItemsTablePage() {
                           <strong className="d-block mb-1">
                             {item.product_name || "Unnamed Item"}
                           </strong>
-                          {item.product_brand && (
+                          {item.product_brand_id && (
                             <div className="text-muted small">
-                              Brand: {item.product_brand}
+                              Brand: {item.product_brand_id.name}
                             </div>
                           )}
                           {item.selling_price_with_gst > 0 && (
@@ -682,9 +682,12 @@ export default function ItemsTablePage() {
                       {/* CATEGORY */}
                       <td>
                         <div>
+                          {item.product_category_id && (
                           <span className="d-block fw-medium">
-                            {item.product_category || "No Category"}
+
+                            {item.product_category_id.name || "No Category"}
                           </span>
+                           )}
                           {item.gst_rate && (
                             <div className="text-muted small">
                               GST: {item.gst_rate}
@@ -696,9 +699,9 @@ export default function ItemsTablePage() {
                       {/* SUBCATEGORY */}
                       <td>
                         <div>
-                          {item.product_subcategory ? (
+                          {item.product_subcategory_id ? (
                             <span className="d-block">
-                              {item.product_subcategory}
+                              {item.product_subcategory_id.name}
                             </span>
                           ) : (
                             <span className="text-muted">-</span>

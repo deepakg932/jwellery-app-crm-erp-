@@ -63,6 +63,8 @@ const CategoryTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
 
+  console.log(currentItems)
+
   // Safe image component to prevent errors
   const SafeImage = ({ src, alt, ...props }) => {
     const [hasError, setHasError] = useState(false);

@@ -7,6 +7,7 @@ import PurityPage from "../views/product-section/purity/components/PurityTable";
 // ProtectedRoute
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AddItemModal from "../views/item-master/components/AddItemForm";
+import QuotationsHistory from "../views/manufacturing/quotations/components/QuotationsHistory";
 
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
@@ -133,6 +134,7 @@ const CustomOrderPage = lazy(() =>
   import("@/views/manufacturing/custom-order")
 );
 const QuotationsPage = lazy(() => import("@/views/manufacturing/quotations"));
+const QuotationsHistoryPage = lazy(() => import("@/views/manufacturing/quotations/components/QuotationsHistory"));
 const RepairPage = lazy(() => import("@/views/manufacturing/repair"));
 
 // manufacturing
@@ -691,10 +693,15 @@ const customRepairRoutes = [
     path: "/quotations",
     element: <QuotationsPage />,
   },
+   {
+    path: "/quotations-history",
+    element: <QuotationsHistoryPage />,
+  },
   {
     path: "/repair",
     element: <RepairPage />,
   },
+
 ];
 const manufacturingRoutes = [
   {

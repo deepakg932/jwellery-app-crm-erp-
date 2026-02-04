@@ -41,7 +41,7 @@ const SubCategory = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
-
+console.log(currentItems)
   // Reset to first page when search changes
   React.useEffect(() => {
     setCurrentPage(1);

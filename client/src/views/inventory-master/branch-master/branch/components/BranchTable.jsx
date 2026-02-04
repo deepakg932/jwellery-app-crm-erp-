@@ -930,11 +930,7 @@ const BranchTable = () => {
                         {branch.status ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td>
-                      <span className="text-muted small">
-                        {formatDate(branch.createdAt)}
-                      </span>
-                    </td>
+                  
                     
                     {/* ACTION BUTTONS */}
                     <td>

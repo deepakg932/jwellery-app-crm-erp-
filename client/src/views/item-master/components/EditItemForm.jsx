@@ -49,23 +49,22 @@ const EditItemModal = ({
   // Materials Table State
   const [materialsData, setMaterialsData] = useState([]);
 
-  // Price Makings State
-  const [selectedPriceMakings, setSelectedPriceMakings] = useState([]);
+  // Price Makings State (price_making_costs)
+  const [priceMakingCosts, setPriceMakingCosts] = useState([]);
 
   // Form State
   const [formState, setFormState] = useState({
     product_name: "",
-    product_code: "",
+    article_no: "", // Fixed: Use article_no instead of product_code
     product_brand: "",
     product_category: "",
     product_subcategory: "",
     markup_percentage: 15,
-    gst_rate: "",
-    gst_total: 0,
-    cgst_rate: 0,
-    sgst_rate: 0,
-    igst_rate: 0,
-    utgst_rate: 0,
+    gst_rate: "0%",
+    cgst_rate: "0%",
+    sgst_rate: "0%",
+    igst_rate: "0%",
+    utgst_rate: "0%",
   });
 
   const [existingImages, setExistingImages] = useState([]);
@@ -76,16 +75,16 @@ const EditItemModal = ({
   const [currentSubcategories, setCurrentSubcategories] = useState([]);
   const fileInputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
-  
+
   // Hallmark states
   const [hallmarksByMetal, setHallmarksByMetal] = useState({});
   const [loadingHallmarks, setLoadingHallmarks] = useState({});
 
   // Helper function to get wastage type display value
   const getWastageTypeDisplay = (type) => {
-    if (!type) return '';
-    if (typeof type === 'string') return type;
-    return type.wastage_type || type.name || 'Unknown';
+    if (!type) return "";
+    if (typeof type === "string") return type;
+    return type.wastage_type || type.name || "Unknown";
   };
 
   // Helper to get ID
@@ -121,13 +120,14 @@ const EditItemModal = ({
     // Helper to find ID by name in dropdown data
     const findIdByName = (name, array) => {
       if (!name || !array) return "";
-      const found = array.find(item => 
-        item.name === name || 
-        item.product_brand === name ||
-        item.metal_type === name ||
-        item.stone_type === name ||
-        item.material_type === name ||
-        item.wastage_type === name
+      const found = array.find(
+        (item) =>
+          item.name === name ||
+          item.product_brand === name ||
+          item.metal_type === name ||
+          item.stone_type === name ||
+          item.material_type === name ||
+          item.wastage_type === name,
       );
       return found ? getId(found) : name;
     };
@@ -135,9 +135,8 @@ const EditItemModal = ({
     // Helper to find ID for purity
     const findPurityId = (purityName) => {
       if (!purityName) return "";
-      const found = purities.find(p => 
-        p.purity_name === purityName || 
-        p.name === purityName
+      const found = purities.find(
+        (p) => p.purity_name === purityName || p.name === purityName,
       );
       return found ? getId(found) : purityName;
     };
@@ -145,53 +144,44 @@ const EditItemModal = ({
     // Helper to find ID for stone purity
     const findStonePurityId = (purityName) => {
       if (!purityName) return "";
-      const found = stonePurities.find(sp => 
-        sp.stone_purity === purityName || 
-        sp.name === purityName
+      const found = stonePurities.find(
+        (sp) => sp.stone_purity === purityName || sp.name === purityName,
       );
       return found ? getId(found) : purityName;
-    };
-
-    // Helper to find price making by cost type
-    const findPriceMaking = (costType) => {
-      if (!costType) return null;
-      const found = priceMakings.find(pm => 
-        pm.cost_type === costType || 
-        pm.name === costType
-      );
-      return found || null;
     };
 
     // Set form state from item
     setFormState({
       product_name: item.product_name || "",
-      product_code: item.product_code || "",
+      article_no: item.article_no || "", // Fixed: Use article_no
       product_brand: item.product_brand_id?._id || item.product_brand || "",
-      product_category: item.product_category_id?._id || item.product_category || "",
-      product_subcategory: item.product_subcategory_id?._id || item.product_subcategory || "",
+      product_category:
+        item.product_category_id?._id || item.product_category || "",
+      product_subcategory:
+        item.product_subcategory_id?._id || item.product_subcategory || "",
       markup_percentage: item.markup_percentage || 15,
-      gst_rate: item.gst_rate || "",
-      gst_total: parseFloat(item.gst_rate?.replace('%', '')) || 0,
-      cgst_rate: parseFloat(item.cgst_rate?.replace('%', '')) || 0,
-      sgst_rate: parseFloat(item.sgst_rate?.replace('%', '')) || 0,
-      igst_rate: parseFloat(item.igst_rate?.replace('%', '')) || 0,
-      utgst_rate: parseFloat(item.utgst_rate?.replace('%', '')) || 0,
+      gst_rate: item.gst_rate || "0%",
+      cgst_rate: item.cgst_rate || "0%",
+      sgst_rate: item.sgst_rate || "0%",
+      igst_rate: item.igst_rate || "0%",
+      utgst_rate: item.utgst_rate || "0%",
     });
 
-    // Initialize price makings from item
-    if (item.price_making_costs && priceMakings.length > 0) {
-      const selectedPMs = item.price_making_costs.map(cost => {
-        // Try to find by cost_type first
-        let pm = findPriceMaking(cost.cost_type);
-        if (pm) {
-          return pm;
-        }
-        // If not found by name, try to find by ID
-        pm = priceMakings.find(p => getId(p) === getId(cost.price_making_id));
-        return pm || cost;
-      }).filter(pm => pm); // Remove null/undefined
-      
-      setSelectedPriceMakings(selectedPMs);
+    // Initialize price making costs from item
+    if (item.price_making_costs) {
+      const formattedPriceMakings = item.price_making_costs.map(
+        (cost, index) => ({
+          id: Date.now() + 3000 + index,
+          price_making_id: cost.price_making_id || getId(cost),
+          stage_name: cost.stage_name || "",
+          sub_stage_name: cost.sub_stage_name || "",
+          cost_type: cost.cost_type || "",
+          unit_name: cost.unit_name || "",
+          cost_amount: cost.cost_amount || 0,
+          is_active: cost.is_active !== undefined ? cost.is_active : true,
+        }),
+      );
+      setPriceMakingCosts(formattedPriceMakings);
     }
 
     // Initialize metals data
@@ -215,10 +205,11 @@ const EditItemModal = ({
       // Try to get unit ID
       let unitId = "";
       if (metal.unit) {
-        const foundUnit = units.find(u => 
-          u.name === metal.unit || 
-          u.unit_name === metal.unit ||
-          getId(u) === getId(metal.unit)
+        const foundUnit = units.find(
+          (u) =>
+            u.name === metal.unit ||
+            u.unit_name === metal.unit ||
+            getId(u) === getId(metal.unit),
         );
         unitId = foundUnit ? getId(foundUnit) : metal.unit;
       }
@@ -239,6 +230,7 @@ const EditItemModal = ({
         weight: metal.weight || 0,
         unit: unitId,
         rate_per_gram: metal.rate_per_gram || 0,
+        making_charge_type: metal.making_charge_type || "Fixed",
       };
     });
     console.log("Formatted metals:", formattedMetals);
@@ -296,10 +288,11 @@ const EditItemModal = ({
       // Try to get unit
       let unitId = "";
       if (material.unit) {
-        const foundUnit = units.find(u => 
-          u.name === material.unit || 
-          u.unit_name === material.unit ||
-          getId(u) === getId(material.unit)
+        const foundUnit = units.find(
+          (u) =>
+            u.name === material.unit ||
+            u.unit_name === material.unit ||
+            getId(u) === getId(material.unit),
         );
         unitId = foundUnit ? getId(foundUnit) : material.unit;
       }
@@ -316,13 +309,25 @@ const EditItemModal = ({
     console.log("Formatted materials:", formattedMaterials);
     setMaterialsData(formattedMaterials);
 
-    // Handle images
-    setExistingImages(item.images || []);
+    // Handle images - FIXED: Use images array from response
+    const itemImages = item.images || item.fullImageUrls || [];
+    console.log("Item images:", itemImages);
+    setExistingImages(itemImages);
     setNewImageFiles([]);
     setNewImagePreviews([]);
     setImagesToDelete([]);
     setErrors({});
-  }, [item, metals, purities, units, stoneTypes, stonePurities, wastageTypes, materialTypes, priceMakings]);
+  }, [
+    item,
+    metals,
+    purities,
+    units,
+    stoneTypes,
+    stonePurities,
+    wastageTypes,
+    materialTypes,
+    priceMakings,
+  ]);
 
   // Fetch hallmarks for each metal when metals data is initialized
   useEffect(() => {
@@ -330,24 +335,24 @@ const EditItemModal = ({
       const promises = metalsData.map(async (metal) => {
         if (metal.metal_type && fetchHallmarksByMetal) {
           try {
-            setLoadingHallmarks(prev => ({ ...prev, [metal.id]: true }));
+            setLoadingHallmarks((prev) => ({ ...prev, [metal.id]: true }));
             const hallmarks = await fetchHallmarksByMetal(metal.metal_type);
-            setHallmarksByMetal(prev => ({
+            setHallmarksByMetal((prev) => ({
               ...prev,
-              [metal.id]: hallmarks
+              [metal.id]: hallmarks,
             }));
           } catch (err) {
             console.error("Error fetching hallmarks:", err);
-            setHallmarksByMetal(prev => ({
+            setHallmarksByMetal((prev) => ({
               ...prev,
-              [metal.id]: []
+              [metal.id]: [],
             }));
           } finally {
-            setLoadingHallmarks(prev => ({ ...prev, [metal.id]: false }));
+            setLoadingHallmarks((prev) => ({ ...prev, [metal.id]: false }));
           }
         }
       });
-      
+
       Promise.all(promises);
     };
 
@@ -360,14 +365,14 @@ const EditItemModal = ({
   useEffect(() => {
     if (formState.product_category) {
       let subcats = [];
-      
+
       if (getSubcategoriesForCategory) {
         subcats = getSubcategoriesForCategory(formState.product_category);
       } else if (formData?.subcategories) {
         const categoryIdStr = String(formState.product_category).trim();
         subcats = formData.subcategories[categoryIdStr] || [];
       }
-      
+
       setCurrentSubcategories(subcats);
     } else {
       setCurrentSubcategories([]);
@@ -378,10 +383,7 @@ const EditItemModal = ({
   const handleGSTRateChange = (selectedGstId) => {
     console.log("Selected GST ID:", selectedGstId);
 
-    const selectedGST = gstRates.find(
-      (gst) =>
-        getId(gst) === selectedGstId
-    );
+    const selectedGST = gstRates.find((gst) => getId(gst) === selectedGstId);
 
     if (selectedGST) {
       const gstTotal = selectedGST.gst_total || selectedGST.value || 0;
@@ -392,58 +394,51 @@ const EditItemModal = ({
 
       setFormState((prev) => ({
         ...prev,
-        gst_rate: selectedGstId,
-        gst_total: gstTotal,
-        cgst_rate: cgstPercentage,
-        sgst_rate: sgstPercentage,
-        igst_rate: igstPercentage,
-        utgst_rate: utgstPercentage,
+        gst_rate: `${gstTotal}%`,
+        cgst_rate: `${cgstPercentage}%`,
+        sgst_rate: `${sgstPercentage}%`,
+        igst_rate: `${igstPercentage}%`,
+        utgst_rate: `${utgstPercentage}%`,
       }));
     }
   };
 
-  const getSelectedGSTDisplay = () => {
-    if (!formState.gst_rate) return "Select GST Rate";
+  // ==================== PRICE MAKING COSTS FUNCTIONS ====================
+  const addPriceMakingRow = () => {
+    const newId = Date.now() + 3000 + priceMakingCosts.length;
 
-    const selected = gstRates.find(
-      (gst) => getId(gst) === formState.gst_rate
-    );
-
-    if (!selected) return "Invalid GST Rate";
-
-    const gstTotal = selected.gst_total || selected.value || 0;
-    const cgst = selected.cgst_percentage || 0;
-    const sgst = selected.sgst_percentage || 0;
-    const igst = selected.igst_percentage || 0;
-    const utgst = selected.utgst_percentage || 0;
-
-    if (igst > 0) {
-      return `IGST ${igst}%`;
-    } else {
-      let display = `GST ${gstTotal}%`;
-      let details = [];
-      if (cgst > 0) details.push(`CGST ${cgst}%`);
-      if (sgst > 0) details.push(`SGST ${sgst}%`);
-      if (utgst > 0) details.push(`UTGST ${utgst}%`);
-      if (details.length > 0) {
-        display += ` (${details.join(", ")})`;
-      }
-      return display;
-    }
+    setPriceMakingCosts([
+      ...priceMakingCosts,
+      {
+        id: newId,
+        price_making_id: priceMakings.length > 0 ? getId(priceMakings[0]) : "",
+        stage_name: "",
+        sub_stage_name: "",
+        cost_type: "",
+        unit_name: "",
+        cost_amount: 0,
+        is_active: true,
+      },
+    ]);
   };
 
-  const getSelectedGSTObject = () => {
-    if (!formState.gst_rate) return null;
+  const removePriceMaking = (id) => {
+    setPriceMakingCosts(priceMakingCosts.filter((cost) => cost.id !== id));
+  };
 
-    return gstRates.find(
-      (gst) => getId(gst) === formState.gst_rate
+  const updatePriceMaking = (id, field, value) => {
+    setPriceMakingCosts(
+      priceMakingCosts.map((cost) => {
+        if (cost.id !== id) return cost;
+        return { ...cost, [field]: value };
+      }),
     );
   };
 
   // ==================== TABLE FUNCTIONS ====================
   const addMetalRow = () => {
     const newId = Date.now();
-    
+
     setMetalsData([
       ...metalsData,
       {
@@ -454,6 +449,7 @@ const EditItemModal = ({
         weight: 0,
         unit: units.length > 0 ? getId(units[0]) : "",
         rate_per_gram: 0,
+        making_charge_type: "Fixed",
       },
     ]);
   };
@@ -461,7 +457,7 @@ const EditItemModal = ({
   const removeMetal = (id) => {
     setMetalsData(metalsData.filter((metal) => metal.id !== id));
     // Remove hallmarks for this metal
-    setHallmarksByMetal(prev => {
+    setHallmarksByMetal((prev) => {
       const newHallmarks = { ...prev };
       delete newHallmarks[id];
       return newHallmarks;
@@ -470,7 +466,7 @@ const EditItemModal = ({
 
   const addStoneRow = () => {
     const newId = Date.now();
-    
+
     setStones([
       ...stones,
       {
@@ -514,38 +510,38 @@ const EditItemModal = ({
     setMetalsData(
       metalsData.map((metal) => {
         if (metal.id !== id) return metal;
-        
+
         const updatedMetal = { ...metal, [field]: value };
-        
+
         // If metal_type changed, fetch hallmarks
         if (field === "metal_type" && value && fetchHallmarksByMetal) {
           // Clear existing hallmark when metal changes
           updatedMetal.hallmark = "";
-          
+
           // Fetch hallmarks for this metal
-          setLoadingHallmarks(prev => ({ ...prev, [id]: true }));
-          
+          setLoadingHallmarks((prev) => ({ ...prev, [id]: true }));
+
           fetchHallmarksByMetal(value)
-            .then(hallmarks => {
-              setHallmarksByMetal(prev => ({
+            .then((hallmarks) => {
+              setHallmarksByMetal((prev) => ({
                 ...prev,
-                [id]: hallmarks
+                [id]: hallmarks,
               }));
             })
-            .catch(err => {
+            .catch((err) => {
               console.error("Error fetching hallmarks:", err);
-              setHallmarksByMetal(prev => ({
+              setHallmarksByMetal((prev) => ({
                 ...prev,
-                [id]: []
+                [id]: [],
               }));
             })
             .finally(() => {
-              setLoadingHallmarks(prev => ({ ...prev, [id]: false }));
+              setLoadingHallmarks((prev) => ({ ...prev, [id]: false }));
             });
         }
-        
+
         return updatedMetal;
-      })
+      }),
     );
   };
 
@@ -554,7 +550,7 @@ const EditItemModal = ({
       stones.map((stone) => {
         if (stone.id !== id) return stone;
         return { ...stone, [field]: value };
-      })
+      }),
     );
   };
 
@@ -563,7 +559,7 @@ const EditItemModal = ({
       materialsData.map((mat) => {
         if (mat.id !== id) return mat;
         return { ...mat, [field]: value };
-      })
+      }),
     );
   };
 
@@ -595,11 +591,15 @@ const EditItemModal = ({
     }
   };
 
+  // FIXED: Proper image upload handling
   const handleNewImageUpload = (files) => {
     const availableSlots =
       3 -
       (existingImages.length - imagesToDelete.length + newImageFiles.length);
     const newFiles = Array.from(files).slice(0, availableSlots);
+
+    const validFiles = [];
+    const validPreviews = [];
 
     newFiles.forEach((file) => {
       if (!file.type.startsWith("image/")) {
@@ -612,18 +612,29 @@ const EditItemModal = ({
         return;
       }
 
+      validFiles.push(file);
+
       const reader = new FileReader();
       reader.onload = (e) => {
-        setNewImagePreviews((prev) => [...prev, e.target.result]);
+        validPreviews.push(e.target.result);
+        // Update state only when all previews are ready
+        if (validPreviews.length === validFiles.length) {
+          setNewImagePreviews((prev) => [...prev, ...validPreviews]);
+        }
       };
       reader.readAsDataURL(file);
     });
 
-    setNewImageFiles((prev) => [...prev, ...newFiles]);
+    if (validFiles.length > 0) {
+      setNewImageFiles((prev) => [...prev, ...validFiles]);
+    }
   };
 
+  // FIXED: Image removal functions
   const removeExistingImage = (index) => {
-    setImagesToDelete((prev) => [...prev, existingImages[index]]);
+    const imageToDelete = existingImages[index];
+    setImagesToDelete((prev) => [...prev, imageToDelete]);
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const removeNewImage = (index) => {
@@ -633,6 +644,7 @@ const EditItemModal = ({
 
   const restoreImage = (imageUrl) => {
     setImagesToDelete((prev) => prev.filter((img) => img !== imageUrl));
+    setExistingImages((prev) => [...prev, imageUrl]);
   };
 
   // ==================== CALCULATIONS ====================
@@ -655,94 +667,54 @@ const EditItemModal = ({
     return weight * rate;
   };
 
-  const calculateGST = (amount, percentage) => {
-    const rateValue = parseFloat(percentage) || 0;
-    return (amount * rateValue) / 100;
-  };
-
-  const calculateGSTBreakdown = (amount) => {
-    const selectedGST = getSelectedGSTObject();
-
-    if (!selectedGST) {
-      return {
-        gstAmount: 0,
-        cgstAmount: 0,
-        sgstAmount: 0,
-        igstAmount: 0,
-        utgstAmount: 0,
-        totalGST: 0,
-      };
-    }
-
-    const gstTotal = selectedGST.gst_total || selectedGST.value || 0;
-    const cgstPercentage = selectedGST.cgst_percentage || 0;
-    const sgstPercentage = selectedGST.sgst_percentage || 0;
-    const igstPercentage = selectedGST.igst_percentage || 0;
-    const utgstPercentage = selectedGST.utgst_percentage || 0;
-
-    const gstAmount = calculateGST(amount, gstTotal);
-    const cgstAmount = calculateGST(amount, cgstPercentage);
-    const sgstAmount = calculateGST(amount, sgstPercentage);
-    const igstAmount = calculateGST(amount, igstPercentage);
-    const utgstAmount = calculateGST(amount, utgstPercentage);
-
-    return {
-      gstAmount,
-      cgstAmount,
-      sgstAmount,
-      igstAmount,
-      utgstAmount,
-      totalGST: gstAmount,
-    };
-  };
-
-  // Calculate making charge amount
-  const getMakingChargeAmount = () => {
-    if (!selectedPriceMakings || selectedPriceMakings.length === 0) {
-      return 0;
-    }
-
-    const totalAmount = selectedPriceMakings.reduce((sum, pm) => {
-      const costAmount = parseFloat(pm.cost_amount) || 0;
-      return sum + costAmount;
-    }, 0);
-
-    return totalAmount;
-  };
-
   // Totals
   const totalMetalsCost = metalsData.reduce(
     (sum, metal) => sum + calculateMetalSubtotal(metal),
-    0
+    0,
   );
   const totalStonesCost = stones.reduce(
     (sum, stone) => sum + calculateStoneSubtotal(stone),
-    0
+    0,
   );
   const totalMaterialsCost = materialsData.reduce(
     (sum, mat) => sum + calculateMaterialCost(mat),
-    0
+    0,
   );
-  const makingChargeAmount = getMakingChargeAmount();
-  
+  const totalPriceMakingCosts = priceMakingCosts.reduce(
+    (sum, cost) => sum + (parseFloat(cost.cost_amount) || 0),
+    0,
+  );
+
   const baseTotal = totalMetalsCost + totalStonesCost + totalMaterialsCost;
-  const grandTotal = baseTotal + makingChargeAmount;
-  
+  const grandTotal = baseTotal + totalPriceMakingCosts;
+
   const sellingPriceBeforeTax =
     grandTotal * (1 + (parseFloat(formState.markup_percentage) || 0) / 100);
-  const gstBreakdown = calculateGSTBreakdown(sellingPriceBeforeTax);
-  const sellingPriceWithGST = sellingPriceBeforeTax + gstBreakdown.totalGST;
+
+  // Calculate GST amounts based on rates
+  const gstTotal = parseFloat(formState.gst_rate?.replace("%", "")) || 0;
+  const cgstRate = parseFloat(formState.cgst_rate?.replace("%", "")) || 0;
+  const sgstRate = parseFloat(formState.sgst_rate?.replace("%", "")) || 0;
+  const igstRate = parseFloat(formState.igst_rate?.replace("%", "")) || 0;
+  const utgstRate = parseFloat(formState.utgst_rate?.replace("%", "")) || 0;
+
+  const gstAmount = (sellingPriceBeforeTax * gstTotal) / 100;
+  const cgstAmount = (sellingPriceBeforeTax * cgstRate) / 100;
+  const sgstAmount = (sellingPriceBeforeTax * sgstRate) / 100;
+  const igstAmount = (sellingPriceBeforeTax * igstRate) / 100;
+  const utgstAmount = (sellingPriceBeforeTax * utgstRate) / 100;
+
+  const sellingPriceWithGST = sellingPriceBeforeTax + gstAmount;
 
   // ==================== FORM VALIDATION ====================
   const validateForm = () => {
     const newErrors = {};
     if (!formState.product_name.trim())
       newErrors.product_name = "Product name is required";
-    if (!formState.product_code.trim())
-      newErrors.product_code = "Product code is required";
+    if (!formState.article_no.trim())
+      newErrors.article_no = "Article number is required";
     if (!formState.product_category)
       newErrors.product_category = "Category is required";
-    if (!formState.gst_rate) newErrors.gst_rate = "GST rate is required";
 
     return newErrors;
   };
@@ -756,98 +728,103 @@ const EditItemModal = ({
       return;
     }
 
-    // Get selected GST
-    const selectedGST = getSelectedGSTObject();
+    try {
+      // Prepare data in the format expected by updateItem function
+      const submitData = {
+        // Basic information
+        product_name: formState.product_name,
+        article_no: formState.article_no,
 
-    // Prepare data in format that matches backend expectations
-    const finalData = {
-      // Basic information
-      product_name: formState.product_name,
-      product_code: formState.product_code,
+        // IDs
+        product_brand: formState.product_brand,
+        product_category: formState.product_category,
+        product_subcategory: formState.product_subcategory,
 
-      // IDs - field names MUST match backend
-      product_brand: formState.product_brand,
-      product_category: formState.product_category,
-      product_subcategory: formState.product_subcategory,
+        // Markup
+        markup_percentage: parseFloat(formState.markup_percentage) || 15,
 
-      // Markup
-      markup_percentage: parseFloat(formState.markup_percentage) || 15,
+        // GST rates
+        gst_rate: formState.gst_rate || "0%",
+        cgst_rate: formState.cgst_rate || "0%",
+        sgst_rate: formState.sgst_rate || "0%",
+        igst_rate: formState.igst_rate || "0%",
+        utgst_rate: formState.utgst_rate || "0%",
 
-      // GST rates - format as strings with % sign
-      gst_rate: selectedGST ? `${selectedGST.gst_total || 0}%` : '0%',
-      cgst_rate: selectedGST ? `${selectedGST.cgst_percentage || 0}%` : '0%',
-      sgst_rate: selectedGST ? `${selectedGST.sgst_percentage || 0}%` : '0%',
-      igst_rate: selectedGST ? `${selectedGST.igst_percentage || 0}%` : '0%',
-      utgst_rate: selectedGST ? `${selectedGST.utgst_percentage || 0}%` : '0%',
+        // Metals data
+        metals: metalsData.map((metal) => ({
+          metal_type: metal.metal_type,
+          purity: metal.purity,
+          hallmark: metal.hallmark || "", // Send hallmark ID
+          weight: parseFloat(metal.weight) || 0,
+          unit: metal.unit,
+          rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
+          making_charge_type: metal.making_charge_type || "Fixed",
+        })),
 
-      // Metals - INCLUDING HALLMARK
-      metals: metalsData.map((metal) => ({
-        metal_type: metal.metal_type,
-        purity: metal.purity,
-        weight: parseFloat(metal.weight) || 0,
-        unit: metal.unit,
-        rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
-        hallmark: metal.hallmark || "", // Add hallmark
-      })),
+        // Stones data
+        stones: stones.map((stone) => ({
+          stone_type: stone.stone_type,
+          stone_purity: stone.stone_purity,
+          size: parseFloat(stone.size) || 0,
+          quantity: parseInt(stone.quantity) || 0,
+          weight: parseFloat(stone.weight) || 0,
+          price_per_carat: parseFloat(stone.price_per_carat) || 0,
+        })),
 
-      // Stones - send IDs with field names that match backend
-      stones: stones.map((stone) => ({
-        stone_type: stone.stone_type,
-        stone_purity: stone.stone_purity,
-        size: parseFloat(stone.size) || 0,
-        quantity: parseInt(stone.quantity) || 0,
-        weight: parseFloat(stone.weight) || 0,
-        price_per_carat: parseFloat(stone.price_per_carat) || 0,
-      })),
+        // Materials data
+        materials: materialsData.map((material) => ({
+          wastage_type: material.wastage_type,
+          material_type: material.material_type,
+          weight: parseFloat(material.weight) || 0,
+          unit: material.unit,
+          rate_per_unit: parseFloat(material.rate_per_unit) || 0,
+        })),
 
-      // Materials - send IDs with field names that match backend
-      materials: materialsData.map((material) => ({
-        wastage_type: material.wastage_type,
-        material_type: material.material_type,
-        weight: parseFloat(material.weight) || 0,
-        unit: material.unit,
-        rate_per_unit: parseFloat(material.rate_per_unit) || 0,
-      })),
+        // Price making costs
+        price_making_costs: priceMakingCosts.map((cost) => ({
+          price_making_id: cost.price_making_id,
+          stage_name: cost.stage_name,
+          sub_stage_name: cost.sub_stage_name,
+          cost_type: cost.cost_type,
+          unit_name: cost.unit_name,
+          cost_amount: parseFloat(cost.cost_amount) || 0,
+          is_active: cost.is_active !== undefined ? cost.is_active : true,
+        })),
 
-      // Price making costs
-      making_charges: selectedPriceMakings.map((pm) => ({
-        price_making_id: getId(pm),
-        cost_type: pm.cost_type || "",
-        stage_name: pm.stage_name || "",
-        sub_stage_name: pm.sub_stage_name || "",
-        cost_amount: parseFloat(pm.cost_amount) || 0,
-        unit_name: pm.unit_name || "",
-      })),
+        // Images - FIXED: Send new image files
+        image: newImageFiles, // This should be an array of File objects
 
-      total_making_charge_amount: makingChargeAmount,
+        // Images to delete
+        imagesToDelete: imagesToDelete, // This should be an array of image URLs
+      };
 
-      // Images
-      newImages: newImageFiles,
-      imagesToDelete: imagesToDelete,
-      existingImages: existingImages.filter(img => !imagesToDelete.includes(img)),
-    };
+      console.log("Submitting edit data:", {
+        basicInfo: {
+          name: submitData.product_name,
+          article_no: submitData.article_no,
+          brandId: submitData.product_brand,
+          categoryId: submitData.product_category,
+          subcategoryId: submitData.product_subcategory,
+        },
+        metalsCount: submitData.metals.length,
+        stonesCount: submitData.stones.length,
+        materialsCount: submitData.materials.length,
+        priceMakingsCount: submitData.price_making_costs.length,
+        newImagesCount: submitData.image?.length || 0,
+        imagesToDeleteCount: submitData.imagesToDelete?.length || 0,
+      });
 
-    console.log('Submitting edit data:', {
-      basicInfo: {
-        name: finalData.product_name,
-        code: finalData.product_code,
-        brandId: finalData.product_brand,
-        categoryId: finalData.product_category,
-        subcategoryId: finalData.product_subcategory,
-      },
-      metalsCount: finalData.metals.length,
-      metalsWithHallmark: finalData.metals.filter(m => m.hallmark).length,
-      stonesCount: finalData.stones.length,
-      materialsCount: finalData.materials.length,
-      priceMakingsCount: finalData.making_charges.length,
-    });
-
-    if (onSubmit) {
-      await onSubmit(finalData);
+      if (onSubmit) {
+        await onSubmit(submitData);
+      }
+    } catch (error) {
+      console.error("Error preparing form data:", error);
+      setErrors({ submit: "Failed to prepare form data" });
     }
   };
 
   const handleClose = () => {
+    // Clean up object URLs
     newImagePreviews.forEach((preview) => {
       if (preview.startsWith("blob:")) {
         URL.revokeObjectURL(preview);
@@ -859,7 +836,7 @@ const EditItemModal = ({
   if (!show) return null;
 
   const currentImages = existingImages.filter(
-    (img) => !imagesToDelete.includes(img)
+    (img) => !imagesToDelete.includes(img),
   );
   const totalImages = currentImages.length + newImagePreviews.length;
 
@@ -917,22 +894,22 @@ const EditItemModal = ({
                   </div>
                   <div className="mb-3">
                     <label className="form-label">
-                      Product Code <span className="text-danger">*</span>
+                      Article No <span className="text-danger">*</span>
                     </label>
                     <input
                       type="text"
                       className={`form-control ${
-                        errors.product_code ? "is-invalid" : ""
+                        errors.article_no ? "is-invalid" : ""
                       }`}
-                      value={formState.product_code}
+                      value={formState.article_no}
                       onChange={(e) =>
-                        handleInputChange("product_code", e.target.value)
+                        handleInputChange("article_no", e.target.value)
                       }
                       disabled={loading}
                     />
-                    {errors.product_code && (
+                    {errors.article_no && (
                       <div className="invalid-feedback">
-                        {errors.product_code}
+                        {errors.article_no}
                       </div>
                     )}
                   </div>
@@ -960,10 +937,7 @@ const EditItemModal = ({
                           : "Select Category"}
                       </option>
                       {categories.map((cat) => (
-                        <option
-                          key={getId(cat)}
-                          value={getId(cat)}
-                        >
+                        <option key={getId(cat)} value={getId(cat)}>
                           {getName(cat)}
                         </option>
                       ))}
@@ -983,16 +957,16 @@ const EditItemModal = ({
                           className="form-select"
                           value={formState.product_subcategory}
                           onChange={(e) =>
-                            handleInputChange("product_subcategory", e.target.value)
+                            handleInputChange(
+                              "product_subcategory",
+                              e.target.value,
+                            )
                           }
                           disabled={loading}
                         >
                           <option value="">Select Subcategory</option>
                           {currentSubcategories.map((sub) => (
-                            <option
-                              key={getId(sub)}
-                              value={getId(sub)}
-                            >
+                            <option key={getId(sub)} value={getId(sub)}>
                               {getName(sub)}
                             </option>
                           ))}
@@ -1023,10 +997,7 @@ const EditItemModal = ({
                           : "Select Brand"}
                       </option>
                       {brands.map((brand) => (
-                        <option
-                          key={getId(brand)}
-                          value={getId(brand)}
-                        >
+                        <option key={getId(brand)} value={getId(brand)}>
                           {getName(brand)}
                         </option>
                       ))}
@@ -1035,59 +1006,6 @@ const EditItemModal = ({
                 </div>
               </div>
 
-              {/* Price Making Costs Section */}
-              {priceMakings.length > 0 && (
-                <div className="card mb-4 border">
-                  <div className="card-header bg-light">
-                    <h6 className="mb-0 fw-bold">Making Charge Types</h6>
-                  </div>
-                  <div className="card-body">
-                    <Select
-                      isMulti
-                      options={priceMakings.map((pm) => ({
-                        value: getId(pm),
-                        label: pm.cost_type || pm.name,
-                        originalData: pm,
-                      }))}
-                      value={selectedPriceMakings.map((pm) => ({
-                        value: getId(pm),
-                        label: pm.cost_type || pm.name,
-                        originalData: pm,
-                      }))}
-                      onChange={(selectedOptions) => {
-                        const selectedPMs = selectedOptions.map(
-                          (option) => option.originalData
-                        );
-                        setSelectedPriceMakings(selectedPMs);
-                      }}
-                      placeholder="Select Making Charge Types"
-                      isDisabled={loading || priceMakings.length === 0}
-                      className="react-select-container"
-                      classNamePrefix="react-select"
-                      styles={{
-                        control: (base, state) => ({
-                          ...base,
-                          borderColor: "#dee2e6",
-                          "&:hover": {
-                            borderColor: "#ced4da",
-                          },
-                          backgroundColor: state.isDisabled
-                            ? "#e9ecef"
-                            : "white",
-                        }),
-                        menu: (base) => ({
-                          ...base,
-                          zIndex: 9999,
-                        }),
-                      }}
-                    />
-                    <div className="form-text">
-                      You can select multiple making charge types
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* GST Section */}
               <div className="card mb-4 border">
                 <div className="card-header bg-light">
@@ -1095,53 +1013,24 @@ const EditItemModal = ({
                 </div>
                 <div className="card-body">
                   <div className="row">
-                    <div className="col-md-2 mb-3">
-                      <label className="form-label">
-                        GST Rate <span className="text-danger">*</span>
-                      </label>
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label">GST Rate</label>
                       <select
-                        className={`form-select ${
-                          errors.gst_rate ? "is-invalid" : ""
-                        }`}
+                        className="form-select"
                         value={formState.gst_rate}
                         onChange={(e) => handleGSTRateChange(e.target.value)}
                         disabled={loading || gstRates.length === 0}
                       >
-                        <option value="">
-                          {gstRates.length === 0
-                            ? "Loading GST rates..."
-                            : "Select GST Rate"}
-                        </option>
+                        <option value="0%">Select GST Rate</option>
                         {gstRates.map((gst) => {
                           const gstTotal = gst.gst_total || gst.value || 0;
                           return (
-                            <option
-                              key={getId(gst)}
-                              value={getId(gst)}
-                            >
+                            <option key={getId(gst)} value={`${gstTotal}%`}>
                               GST {gstTotal}%
                             </option>
                           );
                         })}
                       </select>
-                      {errors.gst_rate && (
-                        <div className="invalid-feedback">
-                          {errors.gst_rate}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="col-md-2 mb-3">
-                      <label className="form-label">Total GST</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={
-                          formState.gst_total ? `${formState.gst_total}%` : "0%"
-                        }
-                        readOnly
-                        disabled={loading}
-                      />
                     </div>
 
                     <div className="col-md-2 mb-3">
@@ -1149,9 +1038,7 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={
-                          formState.cgst_rate ? `${formState.cgst_rate}%` : "0%"
-                        }
+                        value={formState.cgst_rate || "0%"}
                         readOnly
                         disabled={loading}
                       />
@@ -1162,9 +1049,7 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={
-                          formState.sgst_rate ? `${formState.sgst_rate}%` : "0%"
-                        }
+                        value={formState.sgst_rate || "0%"}
                         readOnly
                         disabled={loading}
                       />
@@ -1175,9 +1060,7 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={
-                          formState.igst_rate ? `${formState.igst_rate}%` : "0%"
-                        }
+                        value={formState.igst_rate || "0%"}
                         readOnly
                         disabled={loading}
                       />
@@ -1188,20 +1071,149 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={
-                          formState.utgst_rate
-                            ? `${formState.utgst_rate}%`
-                            : "0%"
-                        }
+                        value={formState.utgst_rate || "0%"}
                         readOnly
                         disabled={loading}
                       />
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  <div className="alert alert-info small mb-0 mt-2">
-                    <strong>Selected GST:</strong> {getSelectedGSTDisplay()}
-                  </div>
+              {/* Price Making Costs Section */}
+              <div className="card mb-4 border">
+                <div className="card-header bg-light d-flex justify-content-between align-items-center">
+                  <h6 className="mb-0 fw-bold">Price Making Costs</h6>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary d-flex align-items-center gap-1"
+                    onClick={addPriceMakingRow}
+                    disabled={loading}
+                  >
+                    <FiPlus /> Add Cost
+                  </button>
+                </div>
+                <div className="card-body p-0">
+                  {priceMakingCosts.length === 0 ? (
+                    <div className="text-center p-4">
+                      <p className="text-muted mb-0">
+                        No price making costs added.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-bordered mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Stage Name</th>
+                            <th>Sub Stage</th>
+                            <th>Cost Type</th>
+                            <th>Unit</th>
+                            <th>Cost Amount</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {priceMakingCosts.map((cost) => (
+                            <tr key={cost.id}>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={cost.stage_name}
+                                  onChange={(e) =>
+                                    updatePriceMaking(
+                                      cost.id,
+                                      "stage_name",
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={loading}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={cost.sub_stage_name}
+                                  onChange={(e) =>
+                                    updatePriceMaking(
+                                      cost.id,
+                                      "sub_stage_name",
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={loading}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={cost.cost_type}
+                                  onChange={(e) =>
+                                    updatePriceMaking(
+                                      cost.id,
+                                      "cost_type",
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={loading}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={cost.unit_name}
+                                  onChange={(e) =>
+                                    updatePriceMaking(
+                                      cost.id,
+                                      "unit_name",
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={loading}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  className="form-control form-control-sm"
+                                  value={cost.cost_amount}
+                                  onChange={(e) =>
+                                    updatePriceMaking(
+                                      cost.id,
+                                      "cost_amount",
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={loading}
+                                />
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() => removePriceMaking(cost.id)}
+                                  disabled={loading}
+                                >
+                                  <FiTrash2 />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {priceMakingCosts.length > 0 && (
+                    <div className="card-footer text-end fw-bold">
+                      Total Price Making Costs: ₹
+                      {totalPriceMakingCosts.toFixed(2)}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1251,7 +1263,7 @@ const EditItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "metal_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading || metals.length === 0}
@@ -1279,7 +1291,7 @@ const EditItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "purity",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading || purities.length === 0}
@@ -1302,47 +1314,47 @@ const EditItemModal = ({
                               <td>
                                 <select
                                   className={`form-select form-select-sm ${
-                                    loadingHallmarks[metal.id] ? "opacity-50" : ""
+                                    loadingHallmarks[metal.id]
+                                      ? "opacity-50"
+                                      : ""
                                   }`}
                                   value={metal.hallmark || ""}
                                   onChange={(e) =>
                                     updateMetal(
                                       metal.id,
                                       "hallmark",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
                                     loading ||
                                     loadingHallmarks[metal.id] ||
                                     !metal.metal_type ||
-                                    (hallmarksByMetal[metal.id] || []).length === 0
+                                    (hallmarksByMetal[metal.id] || [])
+                                      .length === 0
                                   }
                                 >
                                   <option value="">
                                     {loadingHallmarks[metal.id]
                                       ? "Loading hallmarks..."
                                       : !metal.metal_type
-                                      ? "Select metal first"
-                                      : (hallmarksByMetal[metal.id] || []).length === 0
-                                      ? "No hallmarks available"
-                                      : "Select Hallmark"}
+                                        ? "Select metal first"
+                                        : (hallmarksByMetal[metal.id] || [])
+                                              .length === 0
+                                          ? "No hallmarks available"
+                                          : "Select Hallmark"}
                                   </option>
-                                  {(hallmarksByMetal[metal.id] || []).map((hallmark) => (
-                                    <option key={getId(hallmark)} value={getId(hallmark)}>
-                                      {getName(hallmark)}
-                                    </option>
-                                  ))}
+                                  {(hallmarksByMetal[metal.id] || []).map(
+                                    (hallmark) => (
+                                      <option
+                                        key={getId(hallmark)}
+                                        value={getId(hallmark)}
+                                      >
+                                        {getName(hallmark)}
+                                      </option>
+                                    ),
+                                  )}
                                 </select>
-                                {metal.hallmark && (
-                                  <small className="text-muted d-block mt-1">
-                                    Selected: {
-                                      (hallmarksByMetal[metal.id] || []).find(
-                                        h => getId(h) === metal.hallmark
-                                      )?.name || "Unknown"
-                                    }
-                                  </small>
-                                )}
                               </td>
                               <td>
                                 <input
@@ -1354,7 +1366,7 @@ const EditItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "weight",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1365,7 +1377,11 @@ const EditItemModal = ({
                                   className="form-select form-select-sm"
                                   value={metal.unit}
                                   onChange={(e) =>
-                                    updateMetal(metal.id, "unit", e.target.value)
+                                    updateMetal(
+                                      metal.id,
+                                      "unit",
+                                      e.target.value,
+                                    )
                                   }
                                   disabled={loading || units.length === 0}
                                 >
@@ -1394,7 +1410,7 @@ const EditItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "rate_per_gram",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1473,7 +1489,7 @@ const EditItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "stone_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading || stoneTypes.length === 0}
@@ -1501,10 +1517,12 @@ const EditItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "stone_purity",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
-                                  disabled={loading || stonePurities.length === 0}
+                                  disabled={
+                                    loading || stonePurities.length === 0
+                                  }
                                 >
                                   <option value="">
                                     {stonePurities.length === 0
@@ -1528,7 +1546,11 @@ const EditItemModal = ({
                                   className="form-control form-control-sm"
                                   value={stone.size}
                                   onChange={(e) =>
-                                    updateStone(stone.id, "size", e.target.value)
+                                    updateStone(
+                                      stone.id,
+                                      "size",
+                                      e.target.value,
+                                    )
                                   }
                                   disabled={loading}
                                 />
@@ -1542,7 +1564,7 @@ const EditItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "quantity",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1558,7 +1580,7 @@ const EditItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "weight",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1574,7 +1596,7 @@ const EditItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "price_per_carat",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1624,7 +1646,8 @@ const EditItemModal = ({
                   {materialsData.length === 0 ? (
                     <div className="text-center p-4">
                       <p className="text-muted mb-0">
-                        No materials added. Click "Add Row" to add material details.
+                        No materials added. Click "Add Row" to add material
+                        details.
                       </p>
                     </div>
                   ) : (
@@ -1652,10 +1675,12 @@ const EditItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "wastage_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
-                                  disabled={loading || wastageTypes.length === 0}
+                                  disabled={
+                                    loading || wastageTypes.length === 0
+                                  }
                                 >
                                   <option value="">Select Wastage Type</option>
                                   {wastageTypes.map((type) => (
@@ -1676,17 +1701,16 @@ const EditItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "material_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
-                                  disabled={loading || materialTypes.length === 0}
+                                  disabled={
+                                    loading || materialTypes.length === 0
+                                  }
                                 >
                                   <option value="">Select Material Type</option>
                                   {materialTypes.map((mt) => (
-                                    <option
-                                      key={getId(mt)}
-                                      value={getId(mt)}
-                                    >
+                                    <option key={getId(mt)} value={getId(mt)}>
                                       {getName(mt)}
                                     </option>
                                   ))}
@@ -1702,7 +1726,7 @@ const EditItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "weight",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1716,7 +1740,7 @@ const EditItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "unit",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading || units.length === 0}
@@ -1742,7 +1766,7 @@ const EditItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "rate_per_unit",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1776,7 +1800,7 @@ const EditItemModal = ({
                 </div>
               </div>
 
-              {/* Price Summary - UPDATED WITH MAKING CHARGES */}
+              {/* Price Summary */}
               <div className="card mb-4 border">
                 <div className="card-header bg-light">
                   <h6 className="mb-0 fw-bold">Price Summary with GST</h6>
@@ -1795,33 +1819,6 @@ const EditItemModal = ({
                             </tr>
                           )}
 
-                          {/* MAKING CHARGES SECTION */}
-                          {selectedPriceMakings.length > 0 && (
-                            <>
-                              <tr className="border-top">
-                                <td colSpan="2" className="fw-bold pt-3">
-                                  Making Charges:
-                                </td>
-                              </tr>
-
-                              {selectedPriceMakings.map((pm, index) => (
-                                <tr key={getId(pm) || index}>
-                                  <td className="ps-3">• {pm.cost_type || "Charge"}</td>
-                                  <td className="text-end">
-                                    ₹{parseFloat(pm.cost_amount || 0).toFixed(2)}
-                                  </td>
-                                </tr>
-                              ))}
-
-                              <tr className="border-top">
-                                <td className="fw-bold">Total Making Charges:</td>
-                                <td className="text-end fw-bold">
-                                  ₹{makingChargeAmount.toFixed(2)}
-                                </td>
-                              </tr>
-                            </>
-                          )}
-                          
                           {totalStonesCost > 0 && (
                             <tr>
                               <td className="fw-bold">Total Stones Cost:</td>
@@ -1830,35 +1827,61 @@ const EditItemModal = ({
                               </td>
                             </tr>
                           )}
-                          
+
                           {totalMaterialsCost > 0 && (
                             <tr>
-                              <td className="fw-bold">Total Materials & Wastage Cost:</td>
+                              <td className="fw-bold">
+                                Total Materials & Wastage Cost:
+                              </td>
                               <td className="text-end">
                                 ₹{totalMaterialsCost.toFixed(2)}
                               </td>
                             </tr>
                           )}
 
-                          {/* SUBTOTAL BEFORE MAKING CHARGE */}
-                          {totalMetalsCost > 0 && (
-                            <tr className="border-top">
-                              <td className="fw-bold">Subtotal (Before Making Charge):</td>
+                          {totalPriceMakingCosts > 0 && (
+                            <tr>
+                              <td className="fw-bold">
+                                Total Price Making Costs:
+                              </td>
                               <td className="text-end">
-                                ₹{baseTotal.toFixed(2)}
+                                ₹{totalPriceMakingCosts.toFixed(2)}
                               </td>
                             </tr>
                           )}
 
                           <tr className="border-top">
-                            <td className="fw-bold">Grand Total (Before Markup):</td>
+                            <td className="fw-bold">
+                              Grand Total (Before Markup):
+                            </td>
                             <td className="text-end fw-bold">
                               ₹{grandTotal.toFixed(2)}
                             </td>
                           </tr>
-                          
+
                           <tr>
-                            <td className="fw-bold">Markup ({formState.markup_percentage || 0}%):</td>
+                            <td className="fw-bold">Markup Percentage:</td>
+                            <td className="text-end">
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="form-control form-control-sm"
+                                value={formState.markup_percentage}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "markup_percentage",
+                                    e.target.value,
+                                  )
+                                }
+                                disabled={loading}
+                                style={{ width: "100px", display: "inline" }}
+                              />
+                              %
+                            </td>
+                          </tr>
+
+                          <tr>
+                            <td className="fw-bold">Markup Amount:</td>
                             <td className="text-end">
                               ₹
                               {(
@@ -1869,9 +1892,11 @@ const EditItemModal = ({
                               ).toFixed(2)}
                             </td>
                           </tr>
-                          
+
                           <tr className="border-top">
-                            <td className="fw-bold fs-5">Selling Price (Before Tax):</td>
+                            <td className="fw-bold fs-5">
+                              Selling Price (Before Tax):
+                            </td>
                             <td className="text-end fs-5 fw-bold">
                               ₹{sellingPriceBeforeTax.toFixed(2)}
                             </td>
@@ -1883,74 +1908,70 @@ const EditItemModal = ({
                     <div className="col-md-6">
                       <table className="table table-borderless">
                         <tbody>
-                          {gstBreakdown.cgstAmount > 0 && (
+                          <tr>
+                            <td className="fw-bold">GST Breakdown:</td>
+                            <td></td>
+                          </tr>
+
+                          {cgstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">CGST ({formState.cgst_rate}%):</td>
+                              <td className="fw-bold">
+                                CGST ({formState.cgst_rate}):
+                              </td>
                               <td className="text-end">
-                                ₹{gstBreakdown.cgstAmount.toFixed(2)}
+                                ₹{cgstAmount.toFixed(2)}
                               </td>
                             </tr>
                           )}
-                          
-                          {gstBreakdown.sgstAmount > 0 && (
+
+                          {sgstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">SGST ({formState.sgst_rate}%):</td>
+                              <td className="fw-bold">
+                                SGST ({formState.sgst_rate}):
+                              </td>
                               <td className="text-end">
-                                ₹{gstBreakdown.sgstAmount.toFixed(2)}
+                                ₹{sgstAmount.toFixed(2)}
                               </td>
                             </tr>
                           )}
-                          
-                          {gstBreakdown.igstAmount > 0 && (
+
+                          {igstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">IGST ({formState.igst_rate}%):</td>
+                              <td className="fw-bold">
+                                IGST ({formState.igst_rate}):
+                              </td>
                               <td className="text-end">
-                                ₹{gstBreakdown.igstAmount.toFixed(2)}
+                                ₹{igstAmount.toFixed(2)}
                               </td>
                             </tr>
                           )}
-                          
-                          {gstBreakdown.utgstAmount > 0 && (
+
+                          {utgstAmount > 0 && (
                             <tr>
-                              <td className="fw-bold">UTGST ({formState.utgst_rate}%):</td>
+                              <td className="fw-bold">
+                                UTGST ({formState.utgst_rate}):
+                              </td>
                               <td className="text-end">
-                                ₹{gstBreakdown.utgstAmount.toFixed(2)}
+                                ₹{utgstAmount.toFixed(2)}
                               </td>
                             </tr>
                           )}
 
                           <tr className="border-top">
-                            <td className="fw-bold">Total GST ({getSelectedGSTDisplay()}):</td>
+                            <td className="fw-bold">
+                              Total GST ({formState.gst_rate}):
+                            </td>
                             <td className="text-end">
-                              ₹{gstBreakdown.totalGST.toFixed(2)}
+                              ₹{gstAmount.toFixed(2)}
                             </td>
                           </tr>
 
                           <tr className="border-top">
-                            <td className="fw-bold fs-5 text-success">Final Selling Price (With GST):</td>
+                            <td className="fw-bold fs-5 text-success">
+                              Final Selling Price (With GST):
+                            </td>
                             <td className="text-end fs-5 fw-bold text-success">
                               ₹{sellingPriceWithGST.toFixed(2)}
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td colSpan="2" className="pt-3">
-                              <div className="mb-3">
-                                <label className="form-label">Markup Percentage (%)</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  className="form-control"
-                                  value={formState.markup_percentage}
-                                  onChange={(e) =>
-                                    handleInputChange(
-                                      "markup_percentage",
-                                      e.target.value
-                                    )
-                                  }
-                                  disabled={loading}
-                                />
-                              </div>
                             </td>
                           </tr>
                         </tbody>
@@ -1960,7 +1981,7 @@ const EditItemModal = ({
                 </div>
               </div>
 
-              {/* Images Section */}
+              {/* Images Section - FIXED */}
               <div className="mb-4">
                 <label className="form-label fw-medium">
                   Product Images ({totalImages}/3)

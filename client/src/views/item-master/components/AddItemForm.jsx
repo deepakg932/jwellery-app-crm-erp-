@@ -600,13 +600,6 @@ const AddItemModal = ({
     // Get selected GST object
     const selectedGST = getSelectedGSTObject();
 
-    // DEBUG: Log subcategory before submission
-    console.log("Subcategory before submission:", {
-      subcategoryId: formState.product_subcategory,
-      subcategoryDisplay:
-        formState.product_subcategory_name || "No display name",
-    });
-
     // Prepare final data
     const finalData = {
       // Basic info
@@ -673,7 +666,7 @@ const AddItemModal = ({
       })),
 
       // Images
-      images: imageFiles,
+      image: imageFiles,
     };
 
     console.log("Submitting data to backend:", {

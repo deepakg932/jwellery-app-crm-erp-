@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { FiUpload, FiPlus, FiTrash2, FiEye } from "react-icons/fi";
-import axios from "axios";
 import AddCustomerForm from "@/views/user/customer/components/AddCustomerForm";
 
 const CustomOrderForm = ({
@@ -10,6 +9,8 @@ const CustomOrderForm = ({
   loading = false,
   customers = [],
   customerGroups = [],
+  metalTypes = [],
+  purities = [],
   units = [],
   mode = "add",
   onAddCustomer,
@@ -20,85 +21,72 @@ const CustomOrderForm = ({
     customer_mobile: "",
     weight: "",
     unit_id: "",
-    purity: "",
+    metal_type_id: "",
+    purity_id: "",
     delivery_date: "",
     status: "pending",
     notes: "",
-    images: [], // This will hold File objects for new uploads
+    images: [],
   });
 
   const [errors, setErrors] = useState({});
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [addingCustomer, setAddingCustomer] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
   const [previewImages, setPreviewImages] = useState([]);
-  const [existingImages, setExistingImages] = useState([]); // For existing images when editing
+  const [existingImages, setExistingImages] = useState([]);
 
-  // Initialize form when component mounts or order changes
   useEffect(() => {
     if (mode === "edit" && order) {
-      const images = order.images || [];
-      const existingImageUrls = [];
-      const previews = [];
-
-      // Separate existing images (with URLs) from new uploads
-      images.forEach((img, index) => {
-        if (typeof img === 'string' || img.url) {
-          // This is an existing image (URL string or object with url)
-          existingImageUrls.push({
-            url: typeof img === 'string' ? img : img.url,
-            name: `image-${index}.jpg`,
-            isExisting: true
-          });
-        } else if (img.file) {
-          // This is a new upload (has File object)
-          previews.push({
-            id: img.id || `img-${index}`,
-            file: img.file,
-            url: img.url || URL.createObjectURL(img.file),
-            name: img.name || `image-${index}`,
-            size: img.size || 0,
-            type: img.type || "image/jpeg",
-            isNew: true
-          });
-        }
-      });
-
       setFormData({
         customer_id: order.customer_id || "",
         customer_name: order.customer_name || "",
         customer_mobile: order.customer_mobile || "",
         weight: order.weight || "",
         unit_id: order.unit_id || "",
-        purity: order.purity || "",
+        metal_type_id: order.metal_type_id || "",
+        purity_id: order.purity_id || "",
         delivery_date: order.delivery_date
           ? new Date(order.delivery_date).toISOString().split("T")[0]
           : "",
         status: order.status || "pending",
         notes: order.notes || "",
-        images: [], // Start with empty array, we'll handle images separately
+        images: [],
       });
 
+      // Handle existing images
+      const images = order.images || [];
+      const existingImageUrls = images
+        .filter(img => typeof img === 'string' || img.url)
+        .map(img => ({
+          url: typeof img === 'string' ? img : img.url,
+          name: `existing-image-${Date.now()}`,
+          isExisting: true
+        }));
       setExistingImages(existingImageUrls);
-      setPreviewImages(previews);
     } else {
       const defaultDate = new Date();
       defaultDate.setDate(defaultDate.getDate() + 7);
 
       const defaultUnit = units.find(
-        (unit) => unit.code === "g" || unit.name.toLowerCase().includes("gram")
+        (unit) => unit.code === "g" || unit.name.toLowerCase().includes("gram"),
       );
 
       setFormData((prev) => ({
         ...prev,
         delivery_date: defaultDate.toISOString().split("T")[0],
-        unit_id: defaultUnit?._id || (units.length > 0 ? units[0]._id : ""),
+        unit_id: defaultUnit?._id || "",
         images: [],
       }));
-      setExistingImages([]);
-      setPreviewImages([]);
     }
   }, [order, mode, units]);
+
+  const handleMetalTypeChange = (metalTypeId) => {
+    setFormData((prev) => ({
+      ...prev,
+      metal_type_id: metalTypeId,
+      purity_id: "",
+    }));
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -119,8 +107,12 @@ const CustomOrderForm = ({
       newErrors.unit_id = "Unit is required";
     }
 
-    if (!formData.purity?.trim()) {
-      newErrors.purity = "Purity is required";
+    if (!formData.metal_type_id) {
+      newErrors.metal_type_id = "Metal type is required";
+    }
+
+    if (!formData.purity_id) {
+      newErrors.purity_id = "Purity is required";
     }
 
     if (!formData.delivery_date) {
@@ -137,54 +129,55 @@ const CustomOrderForm = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    console.log("Form submitted", formData);
+    
+    if (!validateForm()) {
+      console.log("Validation failed", errors);
+      return;
+    }
 
     try {
-      // Create FormData for file upload
       const formDataToSend = new FormData();
-      
-      // Append basic fields
-      formDataToSend.append('customer_id', formData.customer_id);
-      formDataToSend.append('weight', parseFloat(formData.weight));
-      formDataToSend.append('unit_id', formData.unit_id);
-      formDataToSend.append('purity', formData.purity);
-      formDataToSend.append('delivery_date', formData.delivery_date);
-      formDataToSend.append('status', formData.status);
-      formDataToSend.append('notes', formData.notes || "");
 
-      // Append new images as files
-      previewImages.forEach((image, index) => {
+      formDataToSend.append("customer_id", formData.customer_id);
+      formDataToSend.append("weight", parseFloat(formData.weight));
+      formDataToSend.append("unit_id", formData.unit_id);
+      formDataToSend.append("metal_type_id", formData.metal_type_id);
+      formDataToSend.append("purity_id", formData.purity_id);
+      formDataToSend.append("delivery_date", formData.delivery_date);
+      formDataToSend.append("status", formData.status);
+      formDataToSend.append("notes", formData.notes || "");
+
+      previewImages.forEach((image) => {
         if (image.file) {
           formDataToSend.append(`images`, image.file);
         }
       });
 
-      console.log("Submitting order with images:", previewImages.length);
+      // Add existing images if any
+      if (existingImages.length > 0) {
+        formDataToSend.append("existingImages", JSON.stringify(existingImages.map(img => img.url)));
+      }
 
-      // Prepare payload for onSave function
       const payload = {
         customer_id: formData.customer_id,
         weight: parseFloat(formData.weight),
         unit_id: formData.unit_id,
-        purity: formData.purity,
+        metal_type_id: formData.metal_type_id,
+        purity_id: formData.purity_id,
         delivery_date: formData.delivery_date,
         status: formData.status,
         notes: formData.notes || "",
-        images: formDataToSend, // Pass FormData object
-        existingImages: existingImages.map(img => img.url), // Pass existing image URLs
+        images: formDataToSend,
+        existingImages: existingImages.map((img) => img.url),
       };
 
-      // If editing, add the ID
+      // For edit mode
       if (mode === "edit" && order) {
         payload.id = order._id;
       }
 
-      console.log("Final payload to save:", {
-        ...payload,
-        images: `FormData with ${previewImages.length} files`
-      });
-
-      // Call the save function
+      console.log("Saving payload:", payload);
       await onSave(payload);
     } catch (error) {
       console.error("Form submission error:", error);
@@ -195,10 +188,14 @@ const CustomOrderForm = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (name === "metal_type_id") {
+      handleMetalTypeChange(value);
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -226,13 +223,11 @@ const CustomOrderForm = ({
       const newPreviewImages = [];
 
       files.forEach((file) => {
-        // Validate file type
         if (!file.type.match("image.*")) {
           alert(`${file.name} is not an image file`);
           return;
         }
 
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           alert(`${file.name} is too large. Max size is 5MB`);
           return;
@@ -245,7 +240,7 @@ const CustomOrderForm = ({
           name: file.name,
           size: file.size,
           type: file.type,
-          isNew: true
+          isNew: true,
         };
 
         newPreviewImages.push(newImage);
@@ -255,18 +250,17 @@ const CustomOrderForm = ({
         setPreviewImages((prev) => [...prev, ...newPreviewImages]);
       }
 
-      e.target.value = ""; // Reset file input
+      e.target.value = "";
     }
   };
 
   const removeImage = (id) => {
-    const imageToRemove = previewImages.find(img => img.id === id);
-    
-    // Revoke object URL to prevent memory leak
+    const imageToRemove = previewImages.find((img) => img.id === id);
+
     if (imageToRemove && imageToRemove.isNew) {
       URL.revokeObjectURL(imageToRemove.url);
     }
-    
+
     setPreviewImages((prev) => prev.filter((img) => img.id !== id));
   };
 
@@ -274,7 +268,6 @@ const CustomOrderForm = ({
     setExistingImages((prev) => prev.filter((img) => img.url !== url));
   };
 
-  // Handle customer addition using the hook's addCustomer function
   const handleAddCustomer = async (customerData) => {
     try {
       setAddingCustomer(true);
@@ -304,20 +297,20 @@ const CustomOrderForm = ({
   };
 
   const handleClose = () => {
-    // Clean up object URLs
-    previewImages.forEach(image => {
+    previewImages.forEach((image) => {
       if (image.isNew) {
         URL.revokeObjectURL(image.url);
       }
     });
-    
+
     setFormData({
       customer_id: "",
       customer_name: "",
       customer_mobile: "",
       weight: "",
       unit_id: "",
-      purity: "",
+      metal_type_id: "",
+      purity_id: "",
       delivery_date: "",
       status: "pending",
       notes: "",
@@ -460,7 +453,37 @@ const CustomOrderForm = ({
                     )}
                     {selectedUnit && (
                       <div className="form-text">
-                        Conversion Factor: {selectedUnit.conversion_factor}
+                        Unit: {selectedUnit.name} ({selectedUnit.code})
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Metal Type */}
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label fw-medium">
+                      Metal Type <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      name="metal_type_id"
+                      className={`form-control form-control-lg ${
+                        errors.metal_type_id ? "is-invalid" : ""
+                      }`}
+                      value={formData.metal_type_id}
+                      onChange={handleChange}
+                      disabled={loading || metalTypes.length === 0}
+                    >
+                      <option value="">Select Metal Type</option>
+                      {metalTypes
+                        .filter((metal) => metal.is_active)
+                        .map((metal) => (
+                          <option key={metal._id} value={metal._id}>
+                            {metal.name} {metal.code ? `(${metal.code})` : ""}
+                          </option>
+                        ))}
+                    </select>
+                    {errors.metal_type_id && (
+                      <div className="invalid-feedback d-block">
+                        {errors.metal_type_id}
                       </div>
                     )}
                   </div>
@@ -471,28 +494,25 @@ const CustomOrderForm = ({
                       Purity <span className="text-danger">*</span>
                     </label>
                     <select
-                      name="purity"
+                      name="purity_id"
                       className={`form-control form-control-lg ${
-                        errors.purity ? "is-invalid" : ""
+                        errors.purity_id ? "is-invalid" : ""
                       }`}
-                      value={formData.purity}
+                      value={formData.purity_id}
                       onChange={handleChange}
                       disabled={loading}
                     >
                       <option value="">Select Purity</option>
-                      <option value="18K">18K (750)</option>
-                      <option value="20K">20K (833)</option>
-                      <option value="22K">22K (916)</option>
-                      <option value="24K">24K (999)</option>
-                      <option value="14K">14K (585)</option>
-                      <option value="10K">10K (417)</option>
-                      <option value="18K Diamond">18K with Diamond</option>
-                      <option value="22K Diamond">22K with Diamond</option>
-                      <option value="Platinum">Platinum</option>
-                      <option value="Silver">Silver</option>
+                      {purities.map((purity) => (
+                        <option key={purity._id} value={purity._id}>
+                          {purity.purity_name}
+                        </option>
+                      ))}
                     </select>
-                    {errors.purity && (
-                      <div className="invalid-feedback">{errors.purity}</div>
+                    {errors.purity_id && (
+                      <div className="invalid-feedback d-block">
+                        {errors.purity_id}
+                      </div>
                     )}
                   </div>
 
@@ -591,7 +611,8 @@ const CustomOrderForm = ({
                           Images ({allImages.length})
                           {existingImages.length > 0 && (
                             <small className="text-muted ms-2">
-                              ({existingImages.length} existing, {previewImages.length} new)
+                              ({existingImages.length} existing,{" "}
+                              {previewImages.length} new)
                             </small>
                           )}
                         </h6>
@@ -645,7 +666,9 @@ const CustomOrderForm = ({
                                     {image.name}
                                   </small>
                                   <small className="text-muted">
-                                    {image.size ? `${(image.size / 1024).toFixed(2)} KB` : 'Uploaded'}
+                                    {image.size
+                                      ? `${(image.size / 1024).toFixed(2)} KB`
+                                      : "Uploaded"}
                                   </small>
                                 </div>
                               </div>
@@ -690,11 +713,7 @@ const CustomOrderForm = ({
                 <button
                   type="submit"
                   className="btn btn-primary d-flex align-items-center gap-2"
-                  disabled={
-                    loading ||
-                    !formData.customer_id ||
-                    !formData.unit_id
-                  }
+                  disabled={loading}
                 >
                   {loading ? (
                     <>
@@ -754,7 +773,11 @@ const CustomOrderForm = ({
                 />
                 <div className="mt-3 text-white">
                   <p className="mb-0">{selectedImage.name}</p>
-                  <small>{selectedImage.size ? `${(selectedImage.size / 1024).toFixed(2)} KB` : 'Uploaded'}</small>
+                  <small>
+                    {selectedImage.size
+                      ? `${(selectedImage.size / 1024).toFixed(2)} KB`
+                      : "Uploaded"}
+                  </small>
                 </div>
               </div>
             </div>

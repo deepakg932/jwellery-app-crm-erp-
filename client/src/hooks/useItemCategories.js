@@ -68,13 +68,13 @@ export default function useItemCategories() {
       } else if (res.data && Array.isArray(res.data.data)) {
         categoriesData = res.data.data;
       }
-      
+      console.log(categoriesData)
       // Map to ensure consistent structure
       const mappedCategories = categoriesData.map((cat) => ({
         _id: cat._id || cat.id,
         name: cat.name || "",
         metal_type: cat.metal_type || "", // This is the string "gold" from your API
-        imageUrl: cat.fullImageUrl || cat.imageUrl || cat.image || "",
+        imageUrl: cat.fullImageUrl || "",
         // Add any other fields you need
         ...cat
       }));

@@ -53,7 +53,7 @@ const PaymentStatusUpdateModal = ({
 
       setPaymentForm({
         payment_status: sale.payment_status || "pending",
-        additional_payment: 0, // Start with 0 for additional payment
+        additional_payment: "", // Start with 0 for additional payment
         payment_date: paymentDate,
         payment_method: sale.payment_method || "",
         payment_notes: sale.payment_notes || "",
@@ -68,7 +68,7 @@ const PaymentStatusUpdateModal = ({
   const balanceAmount = sale.balance_amount || (totalAmount - currentPaidAmount);
   
   // Calculate new totals based on additional payment
-  const additionalPayment = paymentForm.additional_payment || 0;
+  const additionalPayment = paymentForm.additional_payment ;
   const newTotalPaid = currentPaidAmount + additionalPayment;
   const newBalance = totalAmount - newTotalPaid;
   const maxAdditionalPayment = balanceAmount; // Can't pay more than balance
@@ -263,13 +263,14 @@ const PaymentStatusUpdateModal = ({
                 <span className="input-group-text">₹</span>
                 <input
                   type="number"
+                  placeholder="0"
                   className="form-control"
                   name="additional_payment"
                   value={paymentForm.additional_payment}
                   onChange={handleAdditionalPaymentChange}
                   min="0"
                   max={maxAdditionalPayment}
-                  step="0.01"
+                  step="1"
                   disabled={loading}
                 />
                 <button

@@ -30,7 +30,7 @@ const StoneTable = () => {
     (stone?.stone_type || "").toLowerCase().includes(search.toLowerCase()) ||
     (stone?.stone_purity || "").toLowerCase().includes(search.toLowerCase())
   );
-
+console.log(filteredStones)
   // Format price to Indian Rupees
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
@@ -186,7 +186,7 @@ const StoneTable = () => {
 
     return (
       <img
-        src={`https://cvhjrjvd-5000.inc1.devtunnels.ms${src}`}
+        src={src}
         alt={alt || "Stone image"}
         {...props}
         onError={() => setHasError(true)}

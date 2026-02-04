@@ -108,13 +108,13 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
 
     return {
       name: product.product_name || "Unnamed Product",
-      code: product.product_code || "",
+      code: product.article_no || "",
       price_before_tax: product.selling_price_before_tax || 0,
       gst_rate: gstRate,
       gst_amount: product.gst_amount || 0,
       selling_total:
         (product.selling_price_before_tax || 0) + (product.gst_amount || 0),
-      category: product.product_category || product.product_category_id?.name,
+      category: product.product_category_id?.name,
       brand: product.product_brand || product.product_brand_id?.name,
       metalWeight: product.total_metals_cost
         ? `${product.metals?.[0]?.weight || 0}g`
@@ -464,24 +464,9 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value, type, checked, files } = e.target;
+    const { name, value, type, checked } = e.target;
 
-    if (type === "file") {
-      if (files && files[0]) {
-        const file = files[0];
-        const reader = new FileReader();
-
-        reader.onloadend = () => {
-          setFormData((prev) => ({
-            ...prev,
-            exchange_item_image: file,
-            exchange_item_image_preview: reader.result,
-          }));
-        };
-
-        reader.readAsDataURL(file);
-      }
-    } else if (type === "checkbox") {
+    if (type === "checkbox") {
       setFormData((prev) => ({
         ...prev,
         [name]: checked,
@@ -531,14 +516,17 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
   };
 
   const removeImage = () => {
+    console.log("Removing image...");
     setFormData((prev) => ({
       ...prev,
       exchange_item_image: null,
       exchange_item_image_preview: null,
     }));
 
+    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+      console.log("File input cleared");
     }
   };
 
@@ -613,76 +601,152 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     };
   }, []);
 
+  // In AddSaleForm.js - Update handleSubmit function:
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     const calculated = getCalculatedTotals();
 
-    // Prepare items array for backend
-    const itemsForBackend = calculated.itemsCalculated.map((item) => {
-      // Backend calculates final_total as (price_before_tax + gst_amount) * quantity
-      // But backend expects final_total as the total for the quantity
-      const finalTotal = parseFloat(item.final_total) || 0;
+    // Create FormData object
+    const formDataToSend = new FormData();
 
-      return {
-        product_id: item.product_id,
-        quantity: parseFloat(item.quantity) || 1,
-        gst_amount: parseFloat(item.gst_amount) || 0,
-        final_total: finalTotal,
-        // Note: price_before_tax is not sent to backend
-      };
-    });
+    // Append basic fields
+    formDataToSend.append("customer_id", formData.customer_id);
+    formDataToSend.append("sale_date", formData.sale_date);
 
-    // Calculate final total amount
+    if (formData.sold_by) {
+      formDataToSend.append("sold_by", formData.sold_by);
+    }
+
+    formDataToSend.append("branch_id", formData.branch_id);
+
+    // Append items as JSON array
+    const itemsArray = calculated.itemsCalculated.map((item) => ({
+      product_id: item.product_id,
+      quantity: parseFloat(item.quantity) || 1,
+      price_before_tax: parseFloat(item.price_before_tax) || 0,
+      gst_rate: parseFloat(item.gst_rate) || 0,
+      gst_amount: parseFloat(item.gst_amount) || 0,
+      selling_total: parseFloat(item.selling_total) || 0,
+      final_total: parseFloat(item.final_total) || 0,
+      product_name: item.product_name,
+      product_code: item.product_code,
+    }));
+
+    console.log("Items being sent:", itemsArray);
+    formDataToSend.append("items", JSON.stringify(itemsArray));
+
+    // Append exchange details
+    formDataToSend.append("is_exchange", formData.is_exchange.toString());
+
+    if (formData.is_exchange) {
+      const exchangeAmount = parseFloat(formData.exchange_amount) || 0;
+      formDataToSend.append("exchange_amount", exchangeAmount.toString());
+
+      if (formData.exchange_note) {
+        formDataToSend.append("exchange_note", formData.exchange_note);
+      }
+
+      // Append exchange item details
+      if (formData.exchange_item_name) {
+        formDataToSend.append(
+          "exchange_item_name",
+          formData.exchange_item_name,
+        );
+      }
+
+      const weight = parseFloat(formData.exchange_item_weight) || 0;
+      formDataToSend.append("exchange_item_weight", weight.toString());
+
+      if (formData.exchange_item_unit) {
+        formDataToSend.append(
+          "exchange_item_unit",
+          formData.exchange_item_unit,
+        );
+      }
+
+      const rate = parseFloat(formData.exchange_item_actual_rate) || 0;
+      formDataToSend.append("exchange_item_actual_rate", rate.toString());
+
+      // APPEND IMAGE FILE - FIXED
+      if (
+        formData.exchange_item_image &&
+        formData.exchange_item_image instanceof File
+      ) {
+        console.log("Appending image file to FormData:", {
+          name: formData.exchange_item_image.name,
+          size: formData.exchange_item_image.size,
+          type: formData.exchange_item_image.type,
+        });
+        formDataToSend.append(
+          "exchange_item_image",
+          formData.exchange_item_image,
+        );
+      } else if (formData.exchange_item_image) {
+        console.log(
+          "exchange_item_image exists but is not a File:",
+          formData.exchange_item_image,
+        );
+      } else {
+        console.log("No image file found");
+      }
+    }
+
+    // Append other fields
+    if (formData.sale_note) {
+      formDataToSend.append("sale_note", formData.sale_note);
+    }
+
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
+    formDataToSend.append("shipping_cost", shippingCost.toString());
+
     const discount = parseFloat(formData.discount) || 0;
-    const exchangeAmount = formData.is_exchange
-      ? parseFloat(formData.exchange_amount) || 0
-      : 0;
+    formDataToSend.append("discount", discount.toString());
 
-    const beforeExchangeTotal = calculated.grandTotal + exchangeAmount;
-    const totalAmount = calculated.grandTotal;
+    formDataToSend.append("subtotal", calculated.subtotal.toString());
+    formDataToSend.append("total_tax", calculated.totalTax.toString());
+    formDataToSend.append("total_amount", calculated.grandTotal.toString());
 
-    const payload = {
-      customer_id: formData.customer_id,
-      branch_id: formData.branch_id,
-      sale_date: formData.sale_date,
-      sold_by: formData.sold_by || "",
-      items: itemsForBackend,
+    formDataToSend.append("status", formData.status);
+    formDataToSend.append("payment_status", formData.payment_status);
 
-      is_exchange: formData.is_exchange,
-      exchange_amount: exchangeAmount,
-      exchange_note: formData.exchange_note || "",
+    // DEBUG: Log all FormData entries
+    console.log("=== DEBUG: FormData being sent ===");
+    for (let [key, value] of formDataToSend.entries()) {
+      if (value instanceof File) {
+        console.log(
+          `${key}: [File: ${value.name}, size: ${value.size} bytes, type: ${value.type}]`,
+        );
+      } else if (key === "items") {
+        try {
+          console.log(`${key}:`, JSON.parse(value));
+        } catch (e) {
+          console.log(`${key}: [Invalid JSON]`);
+        }
+      } else {
+        console.log(`${key}:`, value);
+      }
+    }
+    console.log("=== END DEBUG ===");
 
-      // Only include exchange item details if exchange is enabled
-      ...(formData.is_exchange && {
-        exchange_item_name: formData.exchange_item_name || "",
-        exchange_item_weight: parseFloat(formData.exchange_item_weight) || 0,
-        exchange_item_unit: formData.exchange_item_unit || "g",
-        exchange_item_actual_rate:
-          parseFloat(formData.exchange_item_actual_rate) || 0,
-        exchange_item_image: formData.exchange_item_image || null,
-      }),
-
-      shipping_cost: shippingCost,
-      discount: discount,
-
-      // These are calculated by backend but we send estimates
-      subtotal: calculated.subtotal,
-      total_tax: calculated.totalTax,
-      total_amount: totalAmount > 0 ? totalAmount : 0,
-
-      status: formData.status,
-      payment_status: formData.payment_status,
-    };
-
-    console.log("Submitting sale data:", payload);
-    onSave(payload);
+    // Call onSave with FormData
+    onSave(formDataToSend);
   };
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
+
+    console.log("Selected file:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
 
     // Validate file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
@@ -694,10 +758,18 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     }
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
+    const validTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    if (!validTypes.includes(file.type)) {
       setErrors((prev) => ({
         ...prev,
-        exchange_item_image: "Please upload an image file",
+        exchange_item_image:
+          "Please upload a valid image file (JPEG, PNG, GIF, WebP)",
       }));
       return;
     }
@@ -705,12 +777,22 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
     // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
+      console.log("FileReader loaded, setting state...");
       setFormData((prev) => ({
         ...prev,
         exchange_item_image: file,
         exchange_item_image_preview: reader.result,
       }));
     };
+
+    reader.onerror = (error) => {
+      console.error("FileReader error:", error);
+      setErrors((prev) => ({
+        ...prev,
+        exchange_item_image: "Error reading image file",
+      }));
+    };
+
     reader.readAsDataURL(file);
 
     // Clear any previous errors
@@ -718,6 +800,7 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
       setErrors((prev) => ({ ...prev, exchange_item_image: "" }));
     }
   };
+
   const handleClose = () => {
     setFormData({
       customer_id: "",
@@ -1214,24 +1297,26 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                         Item Image (Optional)
                       </label>
                       <div className="d-flex align-items-center gap-3">
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          className="form-control d-none"
-                          name="exchange_item_image"
-                          onChange={handleImageUpload} // Use the new handler
-                          accept="image/*"
-                          disabled={isDisabled}
-                          id="exchange-item-image"
-                        />
-                        <label
-                          htmlFor="exchange-item-image"
-                          className="btn btn-outline-secondary d-flex align-items-center gap-2 cursor-pointer"
-                          style={{ cursor: "pointer" }}
-                        >
-                          <FiCamera size={16} />
-                          Choose Image
-                        </label>
+                        <div>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="d-none"
+                            name="exchange_item_image"
+                            onChange={handleImageUpload}
+                            accept="image/*"
+                            disabled={isDisabled}
+                            id="exchange-item-image"
+                          />
+                          <label
+                            htmlFor="exchange-item-image"
+                            className="btn btn-outline-secondary d-flex align-items-center gap-2"
+                            style={{ cursor: "pointer" }}
+                          >
+                            <FiCamera size={16} />
+                            Choose Image
+                          </label>
+                        </div>
 
                         {formData.exchange_item_image_preview && (
                           <div className="position-relative">
@@ -1248,7 +1333,11 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                             <button
                               type="button"
                               className="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle"
-                              style={{ padding: "2px 6px", fontSize: "10px" }}
+                              style={{
+                                padding: "2px 6px",
+                                fontSize: "10px",
+                                transform: "translate(50%, -50%)",
+                              }}
                               onClick={removeImage}
                               title="Remove image"
                             >
@@ -1256,10 +1345,23 @@ const AddSaleForm = ({ onClose, onSave, loading = false }) => {
                             </button>
                           </div>
                         )}
+
+                        {formData.exchange_item_image &&
+                          !formData.exchange_item_image_preview && (
+                            <span className="small text-muted">
+                              {formData.exchange_item_image.name}
+                            </span>
+                          )}
                       </div>
+
                       <div className="form-text">
                         Upload image of the exchange item (max 5MB)
                       </div>
+                      {errors.exchange_item_image && (
+                        <div className="text-danger small mt-1">
+                          {errors.exchange_item_image}
+                        </div>
+                      )}
                     </div>
 
                     {/* Exchange Note */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   FiUpload,
   FiTrash2,
@@ -7,6 +7,7 @@ import {
   FiPlus,
   FiInfo,
   FiRefreshCw,
+  FiCamera,
 } from "react-icons/fi";
 import useSales from "@/hooks/useSales";
 
@@ -16,11 +17,15 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     items,
     branches,
     employees,
+    units,
     loadingCustomers,
     loadingItems,
     loadingBranches,
     loadingEmployees,
+    loadingUnits,
   } = useSales();
+
+  console.log(sale)
 
   const [formData, setFormData] = useState({
     customer_id: "",
@@ -42,6 +47,18 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     is_exchange: false,
     exchange_amount: 0,
     exchange_note: "",
+    // Updated exchange fields to match API response
+    exchange_details: {
+      item_name: "",
+      weight: "",
+      unit: "",
+      weight_in_gram: "",
+      actual_rate: "",
+      calculated_value: "",
+      image: null,
+    },
+    exchange_item_image_preview: null,
+    // Existing fields
     sale_note: "",
     shipping_cost: 0,
     discount: 0,
@@ -60,6 +77,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
   const [selectedProductDetails, setSelectedProductDetails] = useState(null);
   const [showProductDetails, setShowProductDetails] = useState(false);
   const searchRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Sale status options
   const saleStatusOptions = [
@@ -147,29 +165,38 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
         });
       }
 
-      // Extract sold_by information - IMPORTANT: Check both sold_by and sold_by_id
+      // Extract sold_by information
       const soldById =
         sale.sold_by?._id || sale.sold_by_id || sale.sold_by || "";
 
-      // Log for debugging
-      console.log("Sold By ID extracted:", soldById);
-      console.log("Sold By object:", sale.sold_by);
-      console.log("Exchange data:", {
-        is_exchange: sale.is_exchange,
-        exchange_amount: sale.exchange_amount,
-      });
+      // Extract exchange details from sale data
+      const exchangeDetails = sale.exchange_details || {};
+      console.log("Exchange details from API:", exchangeDetails);
 
+      // Set form data
       setFormData({
         customer_id: sale.customer_id?._id || sale.customer_id || "",
         sale_date: sale.sale_date
           ? new Date(sale.sale_date).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0],
-        sold_by: soldById, // This should now be properly set
+        sold_by: soldById,
         items: saleItems,
-        // Add exchange fields - IMPORTANT: Ensure these are set from API response
-        is_exchange: sale.is_exchange || false,
+        // Exchange fields
+        is_exchange: sale.is_exchange,
         exchange_amount: sale.exchange_amount || 0,
         exchange_note: sale.exchange_note || "",
+        // Updated exchange_details to match API
+        exchange_details: {
+          item_name: exchangeDetails.item_name || "",
+          weight: exchangeDetails.weight?.toString() || "",
+          unit: exchangeDetails.unit || "",
+          weight_in_gram: exchangeDetails.weight_in_gram?.toString() || "",
+          actual_rate: exchangeDetails.actual_rate?.toString() || "",
+          calculated_value: exchangeDetails.calculated_value?.toString() || "",
+          image: exchangeDetails.fullImageUrl || null,
+        },
+        exchange_item_image_preview: exchangeDetails.fullImageUrl || null,
+        // Existing fields
         sale_note: sale.sale_note || "",
         shipping_cost: sale.shipping_cost || 0,
         discount: sale.discount || 0,
@@ -186,34 +213,21 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.customer_id) {
-      newErrors.customer_id = "Customer is required";
-    }
+    // Basic validations
+    if (!formData.customer_id) newErrors.customer_id = "Customer is required";
+    if (!formData.sale_date) newErrors.sale_date = "Sale date is required";
+    if (!formData.branch_id) newErrors.branch_id = "Branch is required";
+    if (!formData.status) newErrors.status = "Sale status is required";
 
-    if (!formData.sale_date) {
-      newErrors.sale_date = "Sale date is required";
-    }
-
-    if (!formData.branch_id) {
-      newErrors.branch_id = "Branch is required";
-    }
-
-    if (!formData.status) {
-      newErrors.status = "Sale status is required";
-    }
-
-    // Filter only items that have product_id (selected items)
+    // Validate items
     const selectedItems = formData.items.filter((item) => item.product_id);
-
-    if (selectedItems.length === 0) {
+    if (selectedItems.length === 0)
       newErrors.items = "At least one item is required";
-    }
 
     selectedItems.forEach((item, index) => {
       const originalIndex = formData.items.findIndex(
-        (i) => i.product_id === item.product_id
+        (i) => i.product_id === item.product_id,
       );
-
       const quantity = parseFloat(item.quantity);
       if (!item.quantity || isNaN(quantity) || quantity <= 0) {
         newErrors[`items[${originalIndex}].quantity`] =
@@ -221,23 +235,55 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       }
     });
 
-    // Validate shipping cost (can be 0)
-    if (formData.shipping_cost < 0) {
-      newErrors.shipping_cost = "Shipping cost cannot be negative";
-    }
-
-    // Validate discount (can be 0)
-    if (formData.discount < 0) {
-      newErrors.discount = "Discount cannot be negative";
-    }
-
-    // Validate exchange amount if exchange is enabled
+    // Validate exchange details
     if (formData.is_exchange) {
+      // Exchange amount validation
       const exchangeAmount = parseFloat(formData.exchange_amount) || 0;
       if (exchangeAmount < 0) {
         newErrors.exchange_amount = "Exchange amount cannot be negative";
       }
+
+      // Exchange details validation
+      if (!formData.exchange_details.item_name?.trim()) {
+        newErrors.exchange_details = {
+          ...newErrors.exchange_details,
+          item_name: "Item name is required",
+        };
+      }
+
+      const weight = parseFloat(formData.exchange_details.weight);
+      if (!formData.exchange_details.weight || isNaN(weight) || weight <= 0) {
+        newErrors.exchange_details = {
+          ...newErrors.exchange_details,
+          weight: "Valid weight is required",
+        };
+      }
+
+      if (!formData.exchange_details.unit) {
+        newErrors.exchange_details = {
+          ...newErrors.exchange_details,
+          unit: "Unit is required",
+        };
+      }
+
+      const actualRate = parseFloat(formData.exchange_details.actual_rate);
+      if (
+        !formData.exchange_details.actual_rate ||
+        isNaN(actualRate) ||
+        actualRate <= 0
+      ) {
+        newErrors.exchange_details = {
+          ...newErrors.exchange_details,
+          actual_rate: "Valid actual rate is required",
+        };
+      }
     }
+
+    // Validate other numeric fields
+    if (formData.shipping_cost < 0)
+      newErrors.shipping_cost = "Shipping cost cannot be negative";
+    if (formData.discount < 0)
+      newErrors.discount = "Discount cannot be negative";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -256,62 +302,111 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     };
   };
 
-  const calculateTotals = () => {
+  // Calculate totals WITHOUT updating state - returns calculated values
+  const getCalculatedTotals = useCallback(() => {
     // Calculate item totals
     const itemsCalculated = formData.items
       .filter((item) => item.product_id)
       .map((item) => {
-        const { subtotal, final_total } = calculateItemTotal(
-          item.quantity,
-          item.selling_total
-        );
-        return { ...item, subtotal, final_total };
+        const quantity = parseFloat(item.quantity) || 0;
+        const priceBeforeTax = parseFloat(item.price_before_tax) || 0;
+        const gstAmount = parseFloat(item.gst_amount) || 0;
+        const sellingTotalPerUnit = priceBeforeTax + gstAmount;
+
+        // Backend calculates: final_total = (price_before_tax + gst_amount) * quantity
+        const finalTotal = sellingTotalPerUnit * quantity;
+
+        return {
+          ...item,
+          selling_total: sellingTotalPerUnit,
+          final_total: finalTotal,
+        };
       });
 
-    const itemSubtotal = itemsCalculated.reduce(
-      (total, item) => total + (item.subtotal || 0),
-      0
-    );
+    // Calculate totals
+    const itemSubtotal = itemsCalculated.reduce((total, item) => {
+      const quantity = parseFloat(item.quantity) || 0;
+      const priceBeforeTax = parseFloat(item.price_before_tax) || 0;
+      return total + priceBeforeTax * quantity;
+    }, 0);
+
     const itemGstTotal = itemsCalculated.reduce((total, item) => {
       const quantity = parseFloat(item.quantity) || 0;
       const gstAmount = parseFloat(item.gst_amount) || 0;
       return total + gstAmount * quantity;
     }, 0);
+
     const itemTotal = itemsCalculated.reduce(
       (total, item) => total + (item.final_total || 0),
-      0
+      0,
     );
 
-    // Calculate additional charges/discounts
+    // Additional amounts
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
-    const additionalDiscount = parseFloat(formData.discount) || 0;
+    const discount = parseFloat(formData.discount) || 0;
     const exchangeAmount = formData.is_exchange
       ? parseFloat(formData.exchange_amount) || 0
       : 0;
 
-    const subtotal = itemSubtotal;
+    // Backend calculation: total_amount = subtotal + shipping - discount - exchange
+    const subtotal = itemTotal;
     const totalTax = itemGstTotal;
+    const beforeExchangeTotal = itemTotal + shippingCost - discount;
+    const grandTotal = Math.max(0, beforeExchangeTotal - exchangeAmount);
 
-    // Calculate: Grand Total = (Item Total + Shipping Cost - Discount) - Exchange Amount
-    const beforeExchangeTotal = itemTotal + shippingCost - additionalDiscount;
-    const grandTotal = beforeExchangeTotal - exchangeAmount;
+    return {
+      itemsCalculated,
+      subtotal,
+      totalTax,
+      grandTotal,
+      itemTotal,
+      beforeExchangeTotal,
+      itemGstTotal,
+    };
+  }, [
+    formData.items,
+    formData.shipping_cost,
+    formData.discount,
+    formData.exchange_amount,
+    formData.is_exchange,
+  ]);
 
-    // Update form data with calculated totals
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.map((item, index) => {
-        const calculatedItem = itemsCalculated.find(
-          (calc) => calc.product_id === item.product_id
-        );
-        return calculatedItem ? calculatedItem : item;
-      }),
-      subtotal: subtotal,
-      total_tax: totalTax,
-      total_amount: grandTotal > 0 ? grandTotal : 0,
-    }));
-  };
+  // Update totals in state when needed
+  const updateTotals = useCallback(() => {
+    const calculated = getCalculatedTotals();
 
-  // Handle search input
+    setFormData((prev) => {
+      // Check if values actually changed
+      const hasChanges =
+        Math.abs(prev.subtotal - calculated.subtotal) > 0.01 ||
+        Math.abs(prev.total_tax - calculated.totalTax) > 0.01 ||
+        Math.abs(prev.total_amount - calculated.grandTotal) > 0.01;
+
+      if (!hasChanges) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        items: prev.items.map((item) => {
+          const calculatedItem = calculated.itemsCalculated.find(
+            (calc) => calc.product_id === item.product_id,
+          );
+          return calculatedItem ? calculatedItem : item;
+        }),
+        subtotal: calculated.subtotal,
+        total_tax: calculated.totalTax,
+        total_amount: calculated.grandTotal > 0 ? calculated.grandTotal : 0,
+      };
+    });
+  }, [getCalculatedTotals]);
+
+  // Initial calculation on mount
+  useEffect(() => {
+    updateTotals();
+  }, [updateTotals]);
+
+  // Handle search for main products
   const handleSearch = (query) => {
     setSearchQuery(query);
 
@@ -347,12 +442,76 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
 
   // Toggle exchange checkbox
   const toggleExchange = () => {
+    setFormData((prev) => {
+      const newState = {
+        ...prev,
+        is_exchange: !prev.is_exchange,
+      };
+
+      // Reset all exchange fields when disabling
+      if (!prev.is_exchange) {
+        // Keep exchange enabled, no reset needed
+      } else {
+        // Reset when disabling exchange
+        newState.exchange_amount = 0;
+        newState.exchange_note = "";
+        newState.exchange_details = {
+          item_name: "",
+          weight: "",
+          unit: "",
+          weight_in_gram: "",
+          actual_rate: "",
+          calculated_value: "",
+          image: null,
+        };
+        newState.exchange_item_image_preview = null;
+      }
+
+      return newState;
+    });
+
+    // Recalculate totals after exchange toggle
+    setTimeout(() => updateTotals(), 0);
+  };
+
+  // Handle exchange details change
+  const handleExchangeDetailChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData((prev) => ({
       ...prev,
-      is_exchange: !prev.is_exchange,
-      exchange_amount: !prev.is_exchange ? 0 : prev.exchange_amount, // Reset amount when disabling
-      exchange_note: !prev.is_exchange ? "" : prev.exchange_note, // Clear note when disabling
+      exchange_details: {
+        ...prev.exchange_details,
+        [name]: value,
+      },
     }));
+
+    // Recalculate calculated_value if weight or actual_rate changes
+    if (name === "weight" || name === "actual_rate") {
+      setTimeout(() => {
+        const weight = parseFloat(formData.exchange_details.weight || 0);
+        const rate = parseFloat(formData.exchange_details.actual_rate || 0);
+
+        setFormData((prev) => ({
+          ...prev,
+          exchange_details: {
+            ...prev.exchange_details,
+            calculated_value: (weight * rate).toString(),
+          },
+        }));
+      }, 0);
+    }
+
+    // Clear errors
+    if (errors.exchange_details?.[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        exchange_details: {
+          ...prev.exchange_details,
+          [name]: "",
+        },
+      }));
+    }
   };
 
   // Show product details modal
@@ -363,11 +522,9 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
 
   // Handle product selection from search results
   const handleProductSelect = (product) => {
-    // Find the first empty item slot or add a new one
     let itemIndex = formData.items.findIndex((item) => !item.product_id);
 
     if (itemIndex === -1) {
-      // Add new item row
       itemIndex = formData.items.length;
       setFormData((prev) => ({
         ...prev,
@@ -401,8 +558,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       gst_rate: displayInfo.gst_rate,
       gst_amount: displayInfo.gst_amount,
       selling_total: displayInfo.selling_total,
-      quantity: "",
-      final_total: 0,
+      quantity: "1", // Set default quantity to 1
     };
 
     setFormData((prev) => ({
@@ -413,6 +569,9 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     setSearchQuery("");
     setShowSearchResults(false);
     setSearchResults([]);
+
+    // Recalculate totals after adding product
+    setTimeout(() => updateTotals(), 100);
   };
 
   const handleQuantityChange = (index, value) => {
@@ -442,6 +601,9 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
         return newErrors;
       });
     }
+
+    // Recalculate totals
+    setTimeout(() => updateTotals(), 0);
   };
 
   const handleChange = (e) => {
@@ -451,7 +613,29 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       setFormData((prev) => ({
         ...prev,
         [name]: checked,
+        // Reset exchange fields when unchecking is_exchange
+        ...(name === "is_exchange" && !checked
+          ? {
+              exchange_amount: 0,
+              exchange_note: "",
+              exchange_details: {
+                item_name: "",
+                weight: "",
+                unit: "",
+                weight_in_gram: "",
+                actual_rate: "",
+                calculated_value: "",
+                image: null,
+              },
+              exchange_item_image_preview: null,
+            }
+          : {}),
       }));
+
+      // Recalculate totals after exchange toggle
+      if (name === "is_exchange") {
+        setTimeout(() => updateTotals(), 0);
+      }
     } else {
       setFormData((prev) => ({
         ...prev,
@@ -459,20 +643,110 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       }));
     }
 
+    // Clear error for the field being changed
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
 
     // Recalculate totals for numeric fields
-    if (
-      name === "shipping_cost" ||
-      name === "discount" ||
-      name === "exchange_amount"
-    ) {
-      setTimeout(() => calculateTotals(), 0);
+    const fieldsToRecalculate = [
+      "shipping_cost",
+      "discount",
+      "exchange_amount",
+    ];
+
+    if (fieldsToRecalculate.includes(name)) {
+      setTimeout(() => updateTotals(), 0);
     }
   };
 
+  const removeImage = () => {
+    console.log("Removing image...");
+    setFormData((prev) => ({
+      ...prev,
+      exchange_details: {
+        ...prev.exchange_details,
+        image: null, // Set to null to indicate removal
+      },
+      exchange_item_image_preview: null,
+    }));
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      console.log("File input cleared");
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
+
+    console.log("Selected file:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
+
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({
+        ...prev,
+        exchange_item_image: "Image size must be less than 5MB",
+      }));
+      return;
+    }
+
+    // Validate file type
+    const validTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    if (!validTypes.includes(file.type)) {
+      setErrors((prev) => ({
+        ...prev,
+        exchange_item_image:
+          "Please upload a valid image file (JPEG, PNG, GIF, WebP)",
+      }));
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      console.log("FileReader loaded, setting state...");
+      setFormData((prev) => ({
+        ...prev,
+        exchange_details: {
+          ...prev.exchange_details,
+          image: file, // Store the File object
+        },
+        exchange_item_image_preview: reader.result,
+      }));
+    };
+
+    reader.onerror = (error) => {
+      console.error("FileReader error:", error);
+      setErrors((prev) => ({
+        ...prev,
+        exchange_item_image: "Error reading image file",
+      }));
+    };
+
+    reader.readAsDataURL(file);
+
+    // Clear any previous errors
+    if (errors.exchange_item_image) {
+      setErrors((prev) => ({ ...prev, exchange_item_image: "" }));
+    }
+  };
   // Remove item row
   const removeItem = (index) => {
     if (formData.items.length > 1) {
@@ -482,7 +756,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
         items: updatedItems,
       }));
 
-      setTimeout(() => calculateTotals(), 0);
+      setTimeout(() => updateTotals(), 0);
     }
   };
 
@@ -506,7 +780,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       items: updatedItems,
     }));
 
-    setTimeout(() => calculateTotals(), 0);
+    setTimeout(() => updateTotals(), 0);
   };
 
   // Add new empty item row
@@ -530,17 +804,6 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     }));
   };
 
-  // Calculate totals whenever items or other fields change
-  useEffect(() => {
-    calculateTotals();
-  }, [
-    formData.items,
-    formData.shipping_cost,
-    formData.discount,
-    formData.exchange_amount,
-    formData.is_exchange,
-  ]);
-
   // Close search results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -555,45 +818,127 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     };
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+const handleSubmit = (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    const payload = {
-      _id: sale?._id, // Include the sale ID for update
-      customer_id: formData.customer_id,
-      sale_date: formData.sale_date,
-      sold_by: formData.sold_by,
-      items: formData.items
-        .filter((item) => item.product_id)
-        .map((item) => ({
-          product_id: item.product_id,
-          quantity: parseFloat(item.quantity) || 1,
-          price_before_tax: parseFloat(item.price_before_tax) || 0,
-          gst_rate: parseFloat(item.gst_rate) || 0,
-          gst_amount: parseFloat(item.gst_amount) || 0,
-          selling_total: parseFloat(item.selling_total) || 0,
-          final_total: parseFloat(item.final_total) || 0,
-          product_name: item.product_name,
-          product_code: item.product_code,
-        })),
-      is_exchange: formData.is_exchange,
-      exchange_amount: parseFloat(formData.exchange_amount) || 0,
-      exchange_note: formData.exchange_note || "",
-      sale_note: formData.sale_note,
-      shipping_cost: parseFloat(formData.shipping_cost) || 0,
-      discount: parseFloat(formData.discount) || 0,
-      subtotal: parseFloat(formData.subtotal) || 0,
-      total_tax: parseFloat(formData.total_tax) || 0,
-      total_amount: parseFloat(formData.total_amount) || 0,
-      branch_id: formData.branch_id,
-      status: formData.status,
-      payment_status: formData.payment_status,
-    };
+  const calculated = getCalculatedTotals();
 
-    console.log("Updating sale data:", payload);
-    onSave(payload);
-  };
+  // Create FormData object
+  const formDataToSend = new FormData();
+
+  // Append all required fields - MUST include ALL fields from your expected payload
+  formDataToSend.append("customer_id", formData.customer_id || "");
+  formDataToSend.append("sale_date", formData.sale_date || "");
+  formDataToSend.append("branch_id", formData.branch_id || "");
+  
+  // Append sold_by if exists
+  if (formData.sold_by) {
+    formDataToSend.append("sold_by", formData.sold_by);
+  }
+
+  // Append items as JSON array - ensure it's the full calculated items
+  const itemsArray = calculated.itemsCalculated.map((item) => ({
+    product_id: item.product_id,
+    quantity: parseFloat(item.quantity) || 1,
+    price_before_tax: parseFloat(item.price_before_tax) || 0,
+    gst_rate: parseFloat(item.gst_rate) || 0,
+    gst_amount: parseFloat(item.gst_amount) || 0,
+    selling_total: parseFloat(item.selling_total) || 0,
+    final_total: parseFloat(item.final_total) || 0,
+    product_name: item.product_name,
+    product_code: item.product_code,
+  }));
+
+  console.log("Items being sent:", itemsArray);
+  formDataToSend.append("items", JSON.stringify(itemsArray));
+
+  // CRITICAL: Append exchange fields exactly as your backend expects
+  formDataToSend.append("is_exchange", formData.is_exchange.toString());
+
+  if (formData.is_exchange) {
+    // Append exchange amount
+    const exchangeAmount = parseFloat(formData.exchange_amount) || 0;
+    formDataToSend.append("exchange_amount", exchangeAmount.toString());
+
+    // Append exchange note if exists
+    if (formData.exchange_note) {
+      formDataToSend.append("exchange_note", formData.exchange_note);
+    }
+
+    // Append individual exchange item fields (NOT as exchange_details object)
+    if (formData.exchange_details?.item_name) {
+      formDataToSend.append("exchange_item_name", formData.exchange_details.item_name);
+    }
+
+    const exchangeWeight = parseFloat(formData.exchange_details?.weight) || 0;
+    formDataToSend.append("exchange_item_weight", exchangeWeight.toString());
+
+    if (formData.exchange_details?.unit) {
+      formDataToSend.append("exchange_item_unit", formData.exchange_details.unit);
+    }
+
+    const exchangeRate = parseFloat(formData.exchange_details?.actual_rate) || 0;
+    formDataToSend.append("exchange_item_actual_rate", exchangeRate.toString());
+
+    // Handle image upload - check if it's a File object
+    if (formData.exchange_details?.image instanceof File) {
+      console.log("Appending image file:", formData.exchange_details.image.name);
+      formDataToSend.append("exchange_item_image", formData.exchange_details.image);
+    } else if (
+      formData.exchange_details?.image &&
+      typeof formData.exchange_details.image === "string" &&
+      formData.exchange_details.image.startsWith("/uploads/")
+    ) {
+      // If it's an existing image path, we need to tell backend to keep it
+      // You can either pass it as a string or let backend handle it from the existing sale
+      formDataToSend.append("existing_exchange_image", formData.exchange_details.image);
+    }
+  }
+
+  // Append other fields
+  if (formData.sale_note) {
+    formDataToSend.append("sale_note", formData.sale_note);
+  }
+
+  const shippingCost = parseFloat(formData.shipping_cost) || 0;
+  formDataToSend.append("shipping_cost", shippingCost.toString());
+
+  const discount = parseFloat(formData.discount) || 0;
+  formDataToSend.append("discount", discount.toString());
+
+  // Append calculated totals
+  formDataToSend.append("subtotal", calculated.subtotal.toString());
+  formDataToSend.append("total_tax", calculated.totalTax.toString());
+  formDataToSend.append("total_amount", calculated.grandTotal.toString());
+
+  // Append status fields - use status for frontend, sale_status for backend
+  formDataToSend.append("status", formData.status || "draft");
+  formDataToSend.append("payment_status", formData.payment_status || "pending");
+
+  // DEBUG: Log all FormData entries
+  console.log("=== DEBUG: FormData being sent ===");
+  console.log("Form fields:");
+  for (let [key, value] of formDataToSend.entries()) {
+    if (value instanceof File) {
+      console.log(
+        `${key}: [File: ${value.name}, size: ${value.size} bytes, type: ${value.type}]`
+      );
+    } else if (key === "items") {
+      try {
+        console.log(`${key}:`, JSON.parse(value));
+      } catch (e) {
+        console.log(`${key}:`, value);
+      }
+    } else {
+      console.log(`${key}:`, value);
+    }
+  }
+  console.log("=== END DEBUG ===");
+
+  // Call onSave with FormData
+  onSave(formDataToSend);
+};
 
   const handleClose = () => {
     setFormData({
@@ -616,6 +961,16 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
       is_exchange: false,
       exchange_amount: 0,
       exchange_note: "",
+      exchange_details: {
+        item_name: "",
+        weight: "",
+        unit: "",
+        weight_in_gram: "",
+        actual_rate: "",
+        calculated_value: "",
+        image: null,
+      },
+      exchange_item_image_preview: null,
       sale_note: "",
       shipping_cost: 0,
       discount: 0,
@@ -637,7 +992,8 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     loadingCustomers ||
     loadingItems ||
     loadingBranches ||
-    loadingEmployees;
+    loadingEmployees ||
+    loadingUnits;
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -647,17 +1003,8 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
     })}`;
   };
 
-  // Calculate the total before exchange for display
-  const calculateBeforeExchangeTotal = () => {
-    const itemTotal = formData.items
-      .filter((item) => item.product_id)
-      .reduce((total, item) => total + (item.final_total || 0), 0);
-
-    const shippingCost = parseFloat(formData.shipping_cost) || 0;
-    const discount = parseFloat(formData.discount) || 0;
-
-    return itemTotal + shippingCost - discount;
-  };
+  // Get current calculated totals for display
+  const currentTotals = getCalculatedTotals();
 
   return (
     <div
@@ -768,7 +1115,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                       </option>
                     ) : (
                       branches?.map((branch) => (
-                        <option key={branch._id} value={branch.id}>
+                        <option key={branch.id} value={branch.id}>
                           {branch.branch_name} ({branch.branch_code})
                           {branch.is_warehouse && " - Warehouse"}
                         </option>
@@ -796,11 +1143,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                       </option>
                     ) : (
                       employees?.map((employee) => (
-                        <option
-                          key={employee._id}
-                          value={employee._id}
-                          selected={formData.sold_by === employee._id}
-                        >
+                        <option key={employee._id} value={employee._id}>
                           {employee.name}
                           {employee.employee_code
                             ? ` (${employee.employee_code})`
@@ -940,7 +1283,8 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                   </div>
 
                   <div className="row">
-                    <div className="col-md-6 mb-3">
+                    {/* Exchange Amount */}
+                    <div className="col-md-4 mb-3">
                       <label className="form-label fw-medium">
                         Exchange Amount <span className="text-danger">*</span>
                       </label>
@@ -970,7 +1314,247 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                       </div>
                     </div>
 
-                    <div className="col-md-6 mb-3">
+                    {/* Item Name */}
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label fw-medium">
+                        Item Name <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className={`form-control ${
+                          errors.exchange_details?.item_name ? "is-invalid" : ""
+                        }`}
+                        name="item_name"
+                        value={formData.exchange_details.item_name}
+                        onChange={handleExchangeDetailChange}
+                        disabled={isDisabled}
+                        placeholder="Enter item name (e.g., Gold Ring, Silver Chain)"
+                      />
+                      {errors.exchange_details?.item_name && (
+                        <div className="invalid-feedback">
+                          {errors.exchange_details.item_name}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Weight with Unit */}
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label fw-medium">
+                        Weight <span className="text-danger">*</span>
+                      </label>
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          className={`form-control ${
+                            errors.exchange_details?.weight ? "is-invalid" : ""
+                          }`}
+                          name="weight"
+                          value={formData.exchange_details.weight}
+                          onChange={handleExchangeDetailChange}
+                          disabled={isDisabled}
+                          min="0"
+                          step="0.001"
+                          placeholder="0.000"
+                        />
+                        <select
+                          className={`form-select ${
+                            errors.exchange_details?.unit ? "is-invalid" : ""
+                          }`}
+                          name="unit"
+                          value={formData.exchange_details.unit}
+                          onChange={handleExchangeDetailChange}
+                          disabled={isDisabled || loadingUnits}
+                          style={{ maxWidth: "120px" }}
+                        >
+                          <option value="">Select Unit</option>
+                          {loadingUnits ? (
+                            <option value="" disabled>
+                              Loading units...
+                            </option>
+                          ) : (
+                            units?.map((unit) => (
+                              <option key={unit._id} value={unit._id}>
+                                {unit.unit_name || unit.name} (
+                                {unit.unit_code || unit.code})
+                              </option>
+                            ))
+                          )}
+                        </select>
+                      </div>
+                      {(errors.exchange_details?.weight ||
+                        errors.exchange_details?.unit) && (
+                        <div className="invalid-feedback d-block">
+                          {errors.exchange_details?.weight ||
+                            errors.exchange_details?.unit}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="row">
+                    {/* Actual Rate */}
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label fw-medium">
+                        Actual Rate (per gram){" "}
+                        <span className="text-danger">*</span>
+                      </label>
+                      <div className="input-group">
+                        <span className="input-group-text">₹</span>
+                        <input
+                          type="number"
+                          className={`form-control ${
+                            errors.exchange_details?.actual_rate
+                              ? "is-invalid"
+                              : ""
+                          }`}
+                          name="actual_rate"
+                          value={formData.exchange_details.actual_rate}
+                          onChange={handleExchangeDetailChange}
+                          disabled={isDisabled}
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                        />
+                        <span className="input-group-text">/g</span>
+                      </div>
+                      {errors.exchange_details?.actual_rate && (
+                        <div className="invalid-feedback">
+                          {errors.exchange_details.actual_rate}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Calculated Value */}
+                    {/* <div className="col-md-4 mb-3">
+                      <label className="form-label fw-medium">
+                        Calculated Value
+                      </label>
+                      <div className="input-group">
+                        <span className="input-group-text">₹</span>
+                        <input
+                          type="text"
+                          className="form-control bg-light"
+                          value={formatCurrency(
+                            formData.exchange_details.calculated_value,
+                          )}
+                          readOnly
+                          disabled
+                        />
+                      </div>
+                      <div className="form-text">
+                        Calculated as: Weight × Rate
+                      </div>
+                    </div> */}
+
+                    {/* Image Upload */}
+                    <div className="col-md-4 mb-3">
+                      <label className="form-label fw-medium">
+                        Item Image (Optional)
+                      </label>
+                      <div className="d-flex align-items-center gap-3">
+                        <div>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="d-none"
+                            onChange={handleImageUpload}
+                            accept="image/*"
+                            disabled={isDisabled}
+                            id="exchange-item-image"
+                          />
+                          <label
+                            htmlFor="exchange-item-image"
+                            className="btn btn-outline-secondary d-flex align-items-center gap-2"
+                            style={{ cursor: "pointer" }}
+                          >
+                            <FiCamera size={16} />
+                            {formData.exchange_item_image_preview
+                              ? "Change Image"
+                              : "Choose Image"}
+                          </label>
+                        </div>
+
+                        {/* Show preview if we have a data URL */}
+                        {formData.exchange_item_image_preview && (
+                          <div className="position-relative">
+                            <img
+                              src={formData.exchange_item_image_preview}
+                              alt="Exchange item"
+                              className="img-thumbnail"
+                              style={{
+                                width: "60px",
+                                height: "60px",
+                                objectFit: "cover",
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle"
+                              style={{
+                                padding: "2px 6px",
+                                fontSize: "10px",
+                                transform: "translate(50%, -50%)",
+                              }}
+                              onClick={removeImage}
+                              title="Remove image"
+                            >
+                              <FiX size={10} />
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Show existing image if no preview but we have an image path */}
+                        {formData.exchange_details.image &&
+                          !formData.exchange_item_image_preview &&
+                          typeof formData.exchange_details.image === "string" &&
+                          formData.exchange_details.image.startsWith(
+                            "/uploads/",
+                          ) && (
+                            <div className="position-relative">
+                              <img
+                                src={`${process.env.NEXT_PUBLIC_API_URL || ""}${formData.exchange_details.image}`}
+                                alt="Exchange item"
+                                className="img-thumbnail"
+                                style={{
+                                  width: "60px",
+                                  height: "60px",
+                                  objectFit: "cover",
+                                }}
+                                onError={(e) => {
+                                  e.target.style.display = "none";
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-danger position-absolute top-0 end-0 translate-middle"
+                                style={{
+                                  padding: "2px 6px",
+                                  fontSize: "10px",
+                                  transform: "translate(50%, -50%)",
+                                }}
+                                onClick={removeImage}
+                                title="Remove image"
+                              >
+                                <FiX size={10} />
+                              </button>
+                            </div>
+                          )}
+                      </div>
+
+                      <div className="form-text">
+                        Upload image of the exchange item (max 5MB)
+                      </div>
+                      {errors.exchange_item_image && (
+                        <div className="text-danger small mt-1">
+                          {errors.exchange_item_image}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="row">
+                    {/* Exchange Note */}
+                    <div className="col-md-8 mb-3">
                       <label className="form-label fw-medium">
                         Exchange Note (Optional)
                       </label>
@@ -984,18 +1568,71 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                         disabled={isDisabled}
                       ></textarea>
                     </div>
+
+                    {/* Weight in Grams */}
+                    {/* <div className="col-md-4 mb-3">
+                      <label className="form-label fw-medium">
+                        Weight in Grams
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        name="weight_in_gram"
+                        value={formData.exchange_details.weight_in_gram}
+                        onChange={handleExchangeDetailChange}
+                        disabled={isDisabled}
+                        min="0"
+                        step="0.001"
+                        placeholder="0.000"
+                      />
+                      <div className="form-text">Weight converted to grams</div>
+                    </div> */}
                   </div>
 
-                  <div className="alert alert-info mb-0">
-                    <div className="d-flex align-items-center">
-                      <FiInfo className="me-2" size={18} />
-                      <div>
-                        <strong>Calculation:</strong> Grand Total = (Item Total
-                        + Shipping - Discount) - Exchange Amount
-                        <br />
-                        <small>
-                          Exchange amount will be deducted from the final total.
-                        </small>
+                  {/* Calculation Summary */}
+                  <div className="row mt-3">
+                    <div className="col-12">
+                      <div className="alert alert-info mb-0">
+                        <div className="d-flex align-items-center">
+                          <FiInfo className="me-2" size={18} />
+                          <div className="flex-grow-1">
+                            <strong>Exchange Calculation:</strong>
+                            {formData.exchange_details.weight &&
+                              formData.exchange_details.actual_rate && (
+                                <div className="mt-1">
+                                  <span>
+                                    Weight: {formData.exchange_details.weight}{" "}
+                                    {formData.exchange_details.unit || "g"}
+                                  </span>
+                                  <span className="mx-2">×</span>
+                                  <span>
+                                    Rate:{" "}
+                                    {formatCurrency(
+                                      formData.exchange_details.actual_rate,
+                                    )}
+                                    /g
+                                  </span>
+                                  <span className="mx-2">=</span>
+                                  <span className="fw-bold">
+                                    Value:{" "}
+                                    {formatCurrency(
+                                      formData.exchange_details
+                                        .calculated_value,
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                            <div className="mt-2">
+                              <strong>Sale Calculation:</strong> Grand Total =
+                              (Item Total + Shipping - Discount) - Exchange
+                              Amount
+                            </div>
+                            <small className="d-block mt-1">
+                              Exchange amount will be deducted from the final
+                              total.
+                            </small>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1076,7 +1713,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                                   <div className="small text-muted mt-1">
                                     Price:{" "}
                                     {formatCurrency(
-                                      displayInfo.price_before_tax
+                                      displayInfo.price_before_tax,
                                     )}{" "}
                                     + GST:{" "}
                                     {formatCurrency(displayInfo.gst_amount)} =
@@ -1142,156 +1779,149 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {formData.items
-                        .filter((item) => item.product_id)
-                        .map((item, index) => {
-                          const originalIndex = formData.items.findIndex(
-                            (i) => i.product_id === item.product_id
-                          );
+                      {currentTotals.itemsCalculated.map((item, index) => {
+                        const originalIndex = formData.items.findIndex(
+                          (i) => i.product_id === item.product_id,
+                        );
 
-                          // Calculate per unit GST and Selling Total
-                          const perUnitGST = item.gst_amount || 0;
-                          const perUnitSellingTotal = item.selling_total || 0;
+                        // Calculate per unit GST and Selling Total
+                        const perUnitGST = item.gst_amount || 0;
+                        const perUnitSellingTotal = item.selling_total || 0;
 
-                          return (
-                            <tr key={originalIndex}>
-                              <td>
-                                <div className="d-flex align-items-center">
-                                  <div className="flex-grow-1">
-                                    <div className="fw-medium">
-                                      {item.product_name}
-                                    </div>
-                                    <div className="small text-muted">
-                                      {item.product_code}
-                                    </div>
+                        return (
+                          <tr key={item.product_id}>
+                            <td>
+                              <div className="d-flex align-items-center">
+                                <div className="flex-grow-1">
+                                  <div className="fw-medium">
+                                    {item.product_name}
                                   </div>
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-secondary ms-2 flex-shrink-0"
-                                    onClick={() => clearItem(originalIndex)}
-                                    disabled={isDisabled}
-                                    title="Clear item"
-                                  >
-                                    <FiX size={14} />
-                                  </button>
-                                </div>
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  className={`form-control ${
-                                    errors[`items[${originalIndex}].quantity`]
-                                      ? "is-invalid"
-                                      : ""
-                                  }`}
-                                  placeholder="Quantity"
-                                  value={item.quantity}
-                                  onChange={(e) =>
-                                    handleQuantityChange(
-                                      originalIndex,
-                                      e.target.value
-                                    )
-                                  }
-                                  onBlur={(e) => {
-                                    // Auto-correct on blur if empty or invalid
-                                    const value = e.target.value;
-                                    if (!value || parseFloat(value) <= 0) {
-                                      handleQuantityChange(originalIndex, "1");
-                                    }
-                                  }}
-                                  disabled={!item.product_id || isDisabled}
-                                  min="1"
-                                  step="1"
-                                />
-                                {errors[`items[${originalIndex}].quantity`] && (
-                                  <div className="invalid-feedback d-block">
-                                    {errors[`items[${originalIndex}].quantity`]}
+                                  <div className="small text-muted">
+                                    {item.product_code}
                                   </div>
-                                )}
-                              </td>
-                              <td>
-                                <div className="input-group">
-                                  <span className="input-group-text">₹</span>
-                                  <input
-                                    type="text"
-                                    className="form-control bg-light"
-                                    value={formatCurrency(
-                                      item.price_before_tax
-                                    )}
-                                    readOnly
-                                    disabled
-                                  />
                                 </div>
-                              </td>
-                              <td>
-                                <div className="input-group">
-                                  <span className="input-group-text">₹</span>
-                                  <input
-                                    type="text"
-                                    className="form-control bg-light"
-                                    value={formatCurrency(perUnitGST)}
-                                    readOnly
-                                    disabled
-                                  />
-                                </div>
-                                <div className="small text-muted text-center">
-                                  (Per unit)
-                                </div>
-                              </td>
-                              <td>
-                                <div className="input-group">
-                                  <span className="input-group-text">₹</span>
-                                  <input
-                                    type="text"
-                                    className="form-control bg-light"
-                                    value={formatCurrency(perUnitSellingTotal)}
-                                    readOnly
-                                    disabled
-                                  />
-                                </div>
-                                <div className="small text-muted text-center">
-                                  Price + GST
-                                </div>
-                              </td>
-
-                              <td>
-                                <div className="input-group">
-                                  <span className="input-group-text">₹</span>
-                                  <input
-                                    type="text"
-                                    className="form-control bg-light fw-medium"
-                                    value={formatCurrency(
-                                      item.final_total || 0
-                                    )}
-                                    readOnly
-                                  />
-                                </div>
-                                <div className="small text-muted text-center">
-                                  (Selling Total × Qty)
-                                </div>
-                              </td>
-                              <td className="text-center">
                                 <button
                                   type="button"
-                                  className="btn btn-sm btn-outline-danger"
-                                  onClick={() => removeItem(originalIndex)}
-                                  disabled={
-                                    isDisabled ||
-                                    formData.items.filter((i) => i.product_id)
-                                      .length === 1
-                                  }
-                                  title="Remove item"
+                                  className="btn btn-sm btn-outline-secondary ms-2 flex-shrink-0"
+                                  onClick={() => clearItem(originalIndex)}
+                                  disabled={isDisabled}
+                                  title="Clear item"
                                 >
-                                  <FiTrash2 size={14} />
+                                  <FiX size={14} />
                                 </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                              </div>
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className={`form-control ${
+                                  errors[`items[${originalIndex}].quantity`]
+                                    ? "is-invalid"
+                                    : ""
+                                }`}
+                                placeholder="Quantity"
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleQuantityChange(
+                                    originalIndex,
+                                    e.target.value,
+                                  )
+                                }
+                                onBlur={(e) => {
+                                  // Auto-correct on blur if empty or invalid
+                                  const value = e.target.value;
+                                  if (!value || parseFloat(value) <= 0) {
+                                    handleQuantityChange(originalIndex, "1");
+                                  }
+                                }}
+                                disabled={!item.product_id || isDisabled}
+                                min="1"
+                                step="1"
+                              />
+                              {errors[`items[${originalIndex}].quantity`] && (
+                                <div className="invalid-feedback d-block">
+                                  {errors[`items[${originalIndex}].quantity`]}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <div className="input-group">
+                                <span className="input-group-text">₹</span>
+                                <input
+                                  type="text"
+                                  className="form-control bg-light"
+                                  value={formatCurrency(item.price_before_tax)}
+                                  readOnly
+                                  disabled
+                                />
+                              </div>
+                            </td>
+                            <td>
+                              <div className="input-group">
+                                <span className="input-group-text">₹</span>
+                                <input
+                                  type="text"
+                                  className="form-control bg-light"
+                                  value={formatCurrency(perUnitGST)}
+                                  readOnly
+                                  disabled
+                                />
+                              </div>
+                              <div className="small text-muted text-center">
+                                (Per unit)
+                              </div>
+                            </td>
+                            <td>
+                              <div className="input-group">
+                                <span className="input-group-text">₹</span>
+                                <input
+                                  type="text"
+                                  className="form-control bg-light"
+                                  value={formatCurrency(perUnitSellingTotal)}
+                                  readOnly
+                                  disabled
+                                />
+                              </div>
+                              <div className="small text-muted text-center">
+                                Price + GST
+                              </div>
+                            </td>
+
+                            <td>
+                              <div className="input-group">
+                                <span className="input-group-text">₹</span>
+                                <input
+                                  type="text"
+                                  className="form-control bg-light fw-medium"
+                                  value={formatCurrency(item.final_total || 0)}
+                                  readOnly
+                                />
+                              </div>
+                              <div className="small text-muted text-center">
+                                (Selling Total × Qty)
+                              </div>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => removeItem(originalIndex)}
+                                disabled={
+                                  isDisabled ||
+                                  formData.items.filter((i) => i.product_id)
+                                    .length === 1
+                                }
+                                title="Remove item"
+                              >
+                                <FiTrash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
 
                       {/* Empty state */}
-                      {formData.items.filter((item) => item.product_id)
-                        .length === 0 && (
+                      {currentTotals.itemsCalculated.length === 0 && (
                         <tr>
                           <td
                             colSpan="8"
@@ -1337,7 +1967,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                               Subtotal (Selling Total × Qty):
                             </span>
                             <span className="float-end fw-medium">
-                              {formatCurrency(formData.subtotal || 0)}
+                              {formatCurrency(currentTotals.subtotal || 0)}
                             </span>
                           </div>
                           <div className="mb-2">
@@ -1345,7 +1975,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                               Total GST (Per unit × Qty):
                             </span>
                             <span className="float-end fw-medium">
-                              {formatCurrency(formData.total_tax || 0)}
+                              {formatCurrency(currentTotals.totalTax || 0)}
                             </span>
                           </div>
                           <div className="mb-2">
@@ -1377,7 +2007,11 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                           <div className="mb-2">
                             <span className="fw-bold fs-5">Grand Total:</span>
                             <span className="float-end fw-bold fs-5 text-primary">
-                              {formatCurrency(formData.total_amount || 0)}
+                              {formatCurrency(
+                                currentTotals.grandTotal > 0
+                                  ? currentTotals.grandTotal
+                                  : 0,
+                              )}
                             </span>
                           </div>
 
@@ -1388,7 +2022,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                                 <span>Before Exchange:</span>
                                 <span className="float-end">
                                   {formatCurrency(
-                                    calculateBeforeExchangeTotal()
+                                    currentTotals.beforeExchangeTotal,
                                   )}
                                 </span>
                               </div>
@@ -1397,7 +2031,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
                                 <span className="float-end text-warning">
                                   -
                                   {formatCurrency(
-                                    formData.exchange_amount || 0
+                                    formData.exchange_amount || 0,
                                   )}
                                 </span>
                               </div>

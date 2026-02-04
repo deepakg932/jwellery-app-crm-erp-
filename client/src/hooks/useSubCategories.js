@@ -79,7 +79,7 @@ export default function useSubCategories() {
         name: subCat.name || "",
         category_id: subCat.category_id || "",
         categoryName: categoryMap[subCat.category_id] || "Unknown Category",
-        imageUrl: subCat.fullImageUrl || subCat.image || "", // Use fullImageUrl if available
+        imageUrl: subCat.fullImageUrl ||  "", // Use fullImageUrl if available
       }));
       
       console.log("Fetched sub-categories with enriched data:", mappedSubCategories);

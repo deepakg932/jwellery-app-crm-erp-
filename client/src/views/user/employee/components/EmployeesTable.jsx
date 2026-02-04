@@ -64,6 +64,9 @@ const EmployeeTable = () => {
     indexOfLastItem
   );
 
+
+  console.log(currentEmployees)
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";

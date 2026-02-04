@@ -6,9 +6,13 @@ export default function useCustomOrders() {
   const [customOrders, setCustomOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [customerGroups, setCustomerGroups] = useState([]);
-  const [units, setUnits] = useState([]); // Add units state
+  const [units, setUnits] = useState([]);
+  const [metalTypes, setMetalTypes] = useState([]);
+  const [purities, setPurities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  console.log(purities);
 
   // Fetch units
   const fetchUnits = useCallback(async () => {
@@ -51,6 +55,90 @@ export default function useCustomOrders() {
     }
   }, []);
 
+  // Fetch metal types
+  const fetchMetalTypes = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_ENDPOINTS.getMetals());
+
+      let metalsData = [];
+
+      if (Array.isArray(response.data)) {
+        metalsData = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        metalsData = response.data.data;
+      } else if (Array.isArray(response.data.metals)) {
+        metalsData = response.data.metals;
+      } else if (response.data?.success && Array.isArray(response.data.data)) {
+        metalsData = response.data.data;
+      }
+
+      const mappedMetals = metalsData.map((metal) => ({
+        _id: metal._id || metal.id,
+        name: metal.name || "",
+        code: metal.code || "",
+        is_active: metal.is_active !== false,
+      }));
+
+      console.log("Fetched metal types:", mappedMetals);
+      setMetalTypes(mappedMetals);
+      return mappedMetals;
+    } catch (err) {
+      console.error("Fetch metal types error:", err);
+      setError("Failed to load metal types");
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch purities
+  const fetchPurities = async () => {
+    try {
+      setLoading(true);
+
+      const response = await axios.get(API_ENDPOINTS.getPurities());
+      console.log("Purities API Response:", response.data);
+
+      let purityData = [];
+
+      console.log("000000000000000000000000000000000000000000000", purityData);
+
+      if (response.data?.success && Array.isArray(response.data.purity)) {
+        purityData = response.data.purity;
+      } else if (response.data?.purity && Array.isArray(response.data.purity)) {
+        purityData = response.data.purity;
+      } else if (Array.isArray(response.data.purity)) {
+        purityData = response.purity;
+      } else if (response.data?.success && Array.isArray(response.data.data)) {
+        purityData = response.data.data;
+      }
+
+      const mappedPurities = purityData.map((purity) => ({
+        _id: purity._id || purity.id,
+        purity_name: purity.purity_name || purity.name || "",
+        metal_type: purity.metal_type || purity.metal_type_id || "",
+        metal_type_id: purity.metal_type_id || purity.metal_type || "",
+        percentage: purity.percentage || 0,
+        karat: purity.karat || "",
+        is_active: purity.is_active !== false,
+      }));
+
+      console.log(
+        "Fetched purities............................:",
+        mappedPurities,
+      );
+      setPurities(mappedPurities);
+      return mappedPurities;
+    } catch (err) {
+      console.error("Fetch purities error:", err);
+      setError("Failed to load purities");
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchCustomerGroups = async () => {
     try {
       const url = API_ENDPOINTS.getCustomerGroups();
@@ -58,7 +146,6 @@ export default function useCustomOrders() {
 
       let groupsData = [];
 
-      // Handle response structure
       if (res.data?.data && Array.isArray(res.data.data)) {
         groupsData = res.data.data;
       } else if (Array.isArray(res.data)) {
@@ -112,60 +199,48 @@ export default function useCustomOrders() {
     }
   };
 
-  // Fetch all custom orders
-  const fetchCustomOrders = async () => {
-    try {
-      setLoading(true);
-      setError("");
+// Fetch all custom orders - ULTRA SIMPLE VERSION
+const fetchCustomOrders = async () => {
+  try {
+    setLoading(true);
+    setError("");
 
-      const url = API_ENDPOINTS.getCustomOrders();
-      console.log("Fetching custom orders from:", url);
+    const res = await axios.get(API_ENDPOINTS.getCustomOrders());
+    const ordersData = res.data?.data || [];
 
-      const res = await axios.get(url);
-      console.log("Custom Orders API Response:", res.data);
+    const mappedOrders = ordersData.map((order) => ({
+      _id: order._id,
+      order_number: order.order_number,
+      customer_id: order.customer_id?._id || order.customer_id,
+      customer_name: order.customer_id?.name || "",
+      customer_mobile: order.customer_id?.mobile || "",
+      weight: order.weight || 0,
+      unit_id: order.unit_id?._id || order.unit_id,
+      unit_name: order.unit_id?.name || "",
+      metal_type_id: order.metal_type_id?._id || order.metal_type_id,
+      metal_type_name: order.metal_type_id?.name || "",
+      purity_id: order.purity_id?._id || order.purity_id,
+      purity_name: order.purity_id?.purity_name,
+      purity_percentage: 0,
+      delivery_date: order.delivery_date,
+      status: order.status || "pending",
+      notes: order.notes || "",
+      images: order.images || [],
+      order_date: order.order_date,
+      created_at: order.createdAt,
+      updated_at: order.updatedAt,
+    }));
 
-      let ordersData = [];
-
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        ordersData = res.data.data;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        ordersData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        ordersData = res.data;
-      }
-
-      const mappedOrders = ordersData.map((order) => ({
-        _id: order._id || order.id,
-        order_number:
-          order.order_number || `ORD-${order._id?.slice(-6) || Date.now()}`,
-        customer_id: order.customer_id?._id || order.customer_id || "",
-        customer_name: order.customer_id?.name || order.customer_name || "",
-        customer_mobile:
-          order.customer_id?.mobile || order.customer_mobile || "",
-        weight: order.weight || 0,
-        unit_id: order.unit_id?._id || order.unit_id || "", // Add unit_id
-        unit_name: order.unit_id?.name || order.unit_name || "", // Add unit_name for display
-        unit_code: order.unit_id?.code || order.unit_code || "", // Add unit_code for display
-        purity: order.purity || "",
-        delivery_date: order.delivery_date || "",
-        status: order.status || "pending",
-        notes: order.notes || "",
-        created_at:
-          order.createdAt || order.created_at || new Date().toISOString(),
-        updated_at:
-          order.updatedAt || order.updated_at || new Date().toISOString(),
-      }));
-
-      setCustomOrders(mappedOrders);
-      return mappedOrders;
-    } catch (err) {
-      console.error("Fetch custom orders error:", err);
-      setError(err.response?.data?.message || "Failed to load custom orders");
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  };
+    setCustomOrders(mappedOrders);
+    return mappedOrders;
+  } catch (err) {
+    console.error("Fetch custom orders error:", err);
+    setError(err.response?.data?.message || "Failed to load custom orders");
+    return [];
+  } finally {
+    setLoading(false);
+  }
+};
 
   // add customer
   const addCustomer = async (customerData) => {
@@ -189,7 +264,7 @@ export default function useCustomOrders() {
         const responseData = res.data.data;
 
         const customerGroup = customerGroups.find(
-          (group) => group._id === customerData.customer_group_id
+          (group) => group._id === customerData.customer_group_id,
         );
 
         const newCustomer = {
@@ -238,7 +313,6 @@ export default function useCustomOrders() {
   };
 
   // Add a new custom order
-  // Update the addCustomOrder function in useCustomOrders hook:
   const addCustomOrder = async (orderData) => {
     try {
       setLoading(true);
@@ -247,22 +321,18 @@ export default function useCustomOrders() {
       const url = API_ENDPOINTS.createCustomOrder();
       console.log("Adding custom order at:", url, "Data:", orderData);
 
-      // Check if we have FormData (with images)
       let formDataToSend;
       let config = {};
 
       if (orderData.images instanceof FormData) {
-        // We have FormData with files
         formDataToSend = orderData.images;
 
-        // Set proper headers for FormData
         config = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
         };
       } else {
-        // Regular JSON data (no images or images are URLs)
         formDataToSend = {
           order_number:
             orderData.order_number ||
@@ -270,11 +340,12 @@ export default function useCustomOrders() {
           customer_id: orderData.customer_id || "",
           weight: parseFloat(orderData.weight) || 0,
           unit_id: orderData.unit_id || "",
-          purity: orderData.purity || "",
+          metal_type_id: orderData.metal_type_id || "",
+          purity_id: orderData.purity_id || "",
           delivery_date: orderData.delivery_date || "",
           status: orderData.status || "pending",
           notes: orderData.notes || "",
-          images: orderData.existingImages || [], // Include existing image URLs if any
+          images: orderData.existingImages || [],
         };
       }
 
@@ -282,12 +353,12 @@ export default function useCustomOrders() {
 
       let res;
       if (formDataToSend instanceof FormData) {
-        // Append other fields if they're not already in FormData
         if (!formDataToSend.has("customer_id")) {
           formDataToSend.append("customer_id", orderData.customer_id || "");
           formDataToSend.append("weight", parseFloat(orderData.weight) || 0);
           formDataToSend.append("unit_id", orderData.unit_id || "");
-          formDataToSend.append("purity", orderData.purity || "");
+          formDataToSend.append("metal_type_id", orderData.metal_type_id || "");
+          formDataToSend.append("purity_id", orderData.purity_id || "");
           formDataToSend.append("delivery_date", orderData.delivery_date || "");
           formDataToSend.append("status", orderData.status || "pending");
           formDataToSend.append("notes", orderData.notes || "");
@@ -303,10 +374,10 @@ export default function useCustomOrders() {
       if (res.data?.success && res.data.data) {
         const responseData = res.data.data;
 
-        // Find customer for display
         const customer = customers.find((c) => c._id === orderData.customer_id);
-        // Find unit for display
         const unit = units.find((u) => u._id === orderData.unit_id);
+        const metal = metalTypes.find((m) => m._id === orderData.metal_type_id);
+        const purity = purities.find((p) => p._id === orderData.purity_id);
 
         const newOrder = {
           _id: responseData._id || responseData.id,
@@ -319,7 +390,15 @@ export default function useCustomOrders() {
           unit_id: responseData.unit_id || orderData.unit_id || "",
           unit_name: unit?.name || responseData.unit_name || "",
           unit_code: unit?.code || responseData.unit_code || "",
-          purity: responseData.purity || orderData.purity || "",
+          metal_type_id:
+            responseData.metal_type_id || orderData.metal_type_id || "",
+          metal_type_name: metal?.name || responseData.metal_type_name || "",
+          purity_id: responseData.purity_id || orderData.purity_id || "",
+          purity_name:
+            purity?.purity_name ||
+            purity?.name ||
+            responseData.purity_name ||
+            "",
           delivery_date:
             responseData.delivery_date || orderData.delivery_date || "",
           status: responseData.status || "pending",
@@ -331,10 +410,8 @@ export default function useCustomOrders() {
 
         console.log("New order created:", newOrder);
 
-        // Update state
         setCustomOrders((prev) => [...prev, newOrder]);
 
-        // Refresh the orders list
         setTimeout(() => {
           fetchCustomOrders();
         }, 300);
@@ -359,7 +436,6 @@ export default function useCustomOrders() {
     }
   };
 
-  // Similarly update the updateCustomOrder function:
   const updateCustomOrder = async (id, orderData) => {
     try {
       setLoading(true);
@@ -368,40 +444,36 @@ export default function useCustomOrders() {
       const url = API_ENDPOINTS.updateCustomOrder(id);
       console.log("Updating custom order at:", url, "Data:", orderData);
 
-      // Check if we have FormData (with images)
       let formDataToSend;
       let config = {};
 
       if (orderData.images instanceof FormData) {
-        // We have FormData with files
         formDataToSend = orderData.images;
 
-        // Append ID and existing images
         formDataToSend.append("id", id);
         if (orderData.existingImages && orderData.existingImages.length > 0) {
           formDataToSend.append(
             "existingImages",
-            JSON.stringify(orderData.existingImages)
+            JSON.stringify(orderData.existingImages),
           );
         }
 
-        // Set proper headers for FormData
         config = {
           headers: {
             "Content-Type": "multipart/form-data",
           },
         };
       } else {
-        // Regular JSON data
         formDataToSend = {
           customer_id: orderData.customer_id || "",
           weight: parseFloat(orderData.weight) || 0,
           unit_id: orderData.unit_id || "",
-          purity: orderData.purity || "",
+          metal_type_id: orderData.metal_type_id || "",
+          purity_id: orderData.purity_id || "",
           delivery_date: orderData.delivery_date || "",
           status: orderData.status || "pending",
           notes: orderData.notes || "",
-          existingImages: orderData.existingImages || [], // Include existing images
+          existingImages: orderData.existingImages || [],
         };
       }
 
@@ -419,10 +491,10 @@ export default function useCustomOrders() {
       if (res.data?.success && res.data.data) {
         const responseData = res.data.data;
 
-        // Find customer for display
         const customer = customers.find((c) => c._id === orderData.customer_id);
-        // Find unit for display
         const unit = units.find((u) => u._id === orderData.unit_id);
+        const metal = metalTypes.find((m) => m._id === orderData.metal_type_id);
+        const purity = purities.find((p) => p._id === orderData.purity_id);
 
         const updatedData = {
           _id: responseData._id || id,
@@ -435,7 +507,15 @@ export default function useCustomOrders() {
           unit_id: responseData.unit_id || orderData.unit_id || "",
           unit_name: unit?.name || responseData.unit_name || "",
           unit_code: unit?.code || responseData.unit_code || "",
-          purity: responseData.purity || orderData.purity || "",
+          metal_type_id:
+            responseData.metal_type_id || orderData.metal_type_id || "",
+          metal_type_name: metal?.name || responseData.metal_type_name || "",
+          purity_id: responseData.purity_id || orderData.purity_id || "",
+          purity_name:
+            purity?.purity_name ||
+            purity?.name ||
+            responseData.purity_name ||
+            "",
           delivery_date:
             responseData.delivery_date || orderData.delivery_date || "",
           status: responseData.status || orderData.status || "pending",
@@ -449,8 +529,8 @@ export default function useCustomOrders() {
 
         setCustomOrders((prev) =>
           prev.map((item) =>
-            item._id === id ? { ...item, ...updatedData } : item
-          )
+            item._id === id ? { ...item, ...updatedData } : item,
+          ),
         );
 
         setTimeout(() => {
@@ -507,7 +587,9 @@ export default function useCustomOrders() {
   useEffect(() => {
     // Fetch all data
     const fetchData = async () => {
-      await fetchUnits(); // Fetch units first
+      await fetchUnits();
+      await fetchMetalTypes();
+      await fetchPurities();
       await fetchCustomerGroups();
       await fetchCustomers();
       await fetchCustomOrders();
@@ -520,7 +602,9 @@ export default function useCustomOrders() {
     customOrders,
     customers,
     customerGroups,
-    units, // Export units
+    units,
+    metalTypes,
+    purities,
     loading,
     error,
     addCustomer,
@@ -530,6 +614,8 @@ export default function useCustomOrders() {
     fetchCustomOrders,
     fetchCustomers,
     fetchCustomerGroups,
-    fetchUnits, // Export fetchUnits
+    fetchUnits,
+    fetchMetalTypes,
+    fetchPurities,
   };
 }

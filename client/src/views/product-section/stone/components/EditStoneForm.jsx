@@ -13,13 +13,15 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
   const fileInputRef = useRef(null);
   const modalRef = useRef(null);
 
+  console.log(stone)
+
   // Reset form when stone changes
   useEffect(() => {
     if (stone) {
       setStoneData({
         stone_type: stone.stone_type || "",
       });
-      const imageUrl = stone.stone_image || "";
+      const imageUrl = stone.fullImageUrl || "";
       setImagePreview(imageUrl ? imageUrl : null);
       setImageFile(null);
       setError("");
@@ -120,7 +122,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
-    setImagePreview(stone?.stone_image || null);
+    setImagePreview(stone?.fullImageUrl || null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -210,7 +212,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
                     <div className="text-center">
                       <div className="position-relative d-inline-block">
                         <img
-                          src={`https://cvhjrjvd-5000.inc1.devtunnels.ms${imagePreview}`}
+                          src={imagePreview}
                           alt="Preview"
                           className="img-thumbnail rounded border"
                           style={{

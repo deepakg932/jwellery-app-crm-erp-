@@ -38,7 +38,7 @@ export default function useStonesType() {
       const mappedStones = stonesData.map((s) => ({
         _id: s._id || s.id,
         stone_type: s.stone_type || s.name || "",
-        stone_image: s.stone_image || s.image || s.imageUrl || "",
+        fullImageUrl: s.fullImageUrl || "",
       }));
       
       console.log("Fetched stone types:", mappedStones);
@@ -124,20 +124,20 @@ export default function useStonesType() {
         updatedData = {
           _id: res.data.stone._id || id,
           stone_type: res.data.stone.stone_type || data.stone_type,
-          stone_image: res.data.stone.stone_image || "",
+          fullImageUrl: res.data.stone.fullImageUrl || "",
         };
       } else if (res.data) {
         updatedData = {
           _id: res.data._id || id,
           stone_type: res.data.stone_type || data.stone_type,
-          stone_image: res.data.stone_image || "",
+          fullImageUrl: res.data.fullImageUrl || "",
         };
       } else {
         // Fallback
         updatedData = {
           _id: id,
           stone_type: data.stone_type,
-          stone_image: "",
+          fullImageUrl: "",
         };
       }
       

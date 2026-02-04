@@ -7,6 +7,7 @@ import {
   FiMapPin,
   FiFileText,
   FiRefreshCw,
+  FiFile,
 } from "react-icons/fi";
 import { AiOutlineFileExcel } from "react-icons/ai";
 import { GrDocumentPdf } from "react-icons/gr";
@@ -33,24 +34,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
-  };
-
-  // Get customer name
-  const getCustomerName = (customer) => {
-    if (!customer) return "N/A";
-    return customer.name || customer.customer_name || "Unknown Customer";
-  };
-
-  // Get branch name
-  const getBranchName = (branch) => {
-    if (!branch) return "N/A";
-    return branch.branch_name || branch.name || "Unknown Branch";
-  };
-
-  // Get employee name
-  const getEmployeeName = (employee) => {
-    if (!employee) return "N/A";
-    return employee.name || employee.employee_name || "Unknown Employee";
   };
 
   // Get status badge class
@@ -88,33 +71,63 @@ const ViewSaleModal = ({ sale, onClose }) => {
     }
   };
 
-  // Calculate item totals
-  const calculateItemTotals = (items) => {
-    if (!items || !Array.isArray(items))
-      return { totalQuantity: 0, totalAmount: 0 };
+  // Calculate item totals from the sale items
+  const calculateItemTotals = () => {
+    if (!sale.items || !Array.isArray(sale.items)) {
+      return { totalQuantity: 0, itemsTotal: 0 };
+    }
 
-    return items.reduce(
+    const totals = sale.items.reduce(
       (acc, item) => {
         const quantity = parseFloat(item.quantity) || 0;
         const finalTotal = parseFloat(item.final_total) || 0;
 
         return {
           totalQuantity: acc.totalQuantity + quantity,
-          totalAmount: acc.totalAmount + finalTotal,
+          itemsTotal: acc.itemsTotal + finalTotal,
         };
       },
-      { totalQuantity: 0, totalAmount: 0 }
+      { totalQuantity: 0, itemsTotal: 0 },
     );
+
+    return totals;
+  };
+
+  // Calculate payment information from sale data
+  const calculatePaymentInfo = () => {
+    const totalAmount = sale.total_amount || 0;
+    const paidAmount = sale.paid_amount || sale.current_paid || 0;
+    const balanceAmount = sale.balance_amount || totalAmount - paidAmount;
+
+    return {
+      totalAmount,
+      paidAmount,
+      balanceAmount,
+      paymentPercentage: totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0,
+    };
   };
 
   // Handle PDF download
   const handleDownloadPDF = () => {
-    if (!sale.invoice_number && !sale.reference_no) {
-      alert("No invoice available for download");
+    if (!sale.reference_no) {
+      alert("No sale reference available for download");
       return;
     }
 
     setPdfLoading(true);
+
+    // Extract customer information from the sale object
+    const customerName = sale.customer_name || "Unknown Customer";
+    const customerMobile = sale.customer_mobile || "";
+    const customerCode = sale.customer_code || "";
+
+    // Extract branch information
+    const branchName = sale.branch_name || "Unknown Branch";
+    const branchCode = sale.branch_code || "";
+
+    // Extract sold by information
+    const soldByName =
+      sale.sold_by_name || sale.sold_by?.name || "Unknown Employee";
 
     // Create a printable HTML invoice
     const invoiceHTML = `
@@ -250,86 +263,73 @@ const ViewSaleModal = ({ sale, onClose }) => {
           <div class="header">
             <div class="company-name">SALES MANAGEMENT SYSTEM</div>
             <div class="invoice-title">TAX INVOICE</div>
-            <div class="invoice-number">Invoice: ${
-              sale.invoice_number || sale.reference_no || "N/A"
-            }</div>
+            ${
+              sale.invoice_number
+                ? `
+              <div class="invoice-number">
+                Invoice No: ${sale.invoice_number}<br>
+                Reference No: ${sale.reference_no}
+              </div>
+            `
+                : `
+              <div class="invoice-number">Reference: ${sale.reference_no}</div>
+            `
+            }
             <div>Date: ${formatDate(sale.sale_date)}</div>
           </div>
           
           <div class="details-grid">
             <div class="detail-section">
               <h3>Sale Details</h3>
+              ${
+                sale.invoice_number
+                  ? `
+                <div class="detail-item">
+                  <span class="detail-label">Invoice No:</span> ${sale.invoice_number}
+                </div>
+              `
+                  : ""
+              }
               <div class="detail-item">
-                <span class="detail-label">Reference No:</span> ${
-                  sale.reference_no || "N/A"
-                }
+                <span class="detail-label">Reference No:</span> ${sale.reference_no}
               </div>
               <div class="detail-item">
-                <span class="detail-label">Sale Date:</span> ${formatDate(
-                  sale.sale_date
-                )}
+                <span class="detail-label">Sale Date:</span> ${formatDate(sale.sale_date)}
               </div>
               <div class="detail-item">
-                <span class="detail-label">Status:</span> ${
-                  sale.status || sale.sale_status || "N/A"
-                }
+                <span class="detail-label">Status:</span> ${sale.status}
               </div>
               <div class="detail-item">
-                <span class="detail-label">Payment Status:</span> ${
-                  sale.payment_status || "Pending"
-                }
+                <span class="detail-label">Payment Status:</span> ${sale.payment_status}
               </div>
               <div class="detail-item">
-                <span class="detail-label">Branch:</span> ${getBranchName(
-                  sale.branch_id
-                )}
+                <span class="detail-label">Branch:</span> ${branchName}
+                ${branchCode ? ` (${branchCode})` : ""}
               </div>
               <div class="detail-item">
-                <span class="detail-label">Sold By:</span> ${getEmployeeName(
-                  sale.sold_by
-                )}
+                <span class="detail-label">Sold By:</span> ${soldByName}
               </div>
             </div>
             
             <div class="detail-section">
               <h3>Customer Details</h3>
               <div class="detail-item">
-                <span class="detail-label">Name:</span> ${getCustomerName(
-                  sale.customer_id
-                )}
+                <span class="detail-label">Name:</span> ${customerName}
               </div>
               ${
-                sale.customer_id?.mobile
+                customerMobile
                   ? `
                 <div class="detail-item">
-                  <span class="detail-label">Mobile:</span> ${sale.customer_id.mobile}
+                  <span class="detail-label">Mobile:</span> ${customerMobile}
                 </div>
               `
                   : ""
               }
               ${
-                sale.customer_id?.phone
+                customerCode
                   ? `
                 <div class="detail-item">
-                  <span class="detail-label">Phone:</span> ${sale.customer_id.phone}
-                </div>
-              `
-                  : ""
-              }
-              ${
-                sale.customer_id?.email
-                  ? `
-                <div class="detail-item">
-                  <span class="detail-label">Email:</span> ${sale.customer_id.email}
-                </div>
-              `
-                  : ""
-              }
-              ${
-                sale.customer_id?.customer_code
-                  ? `
-                <div class="detail-item">
-                  <span class="detail-label">Customer Code:</span> ${sale.customer_id.customer_code}
+                  <span class="detail-label">Customer Code:</span> ${customerCode}
                 </div>
               `
                   : ""
@@ -342,12 +342,11 @@ const ViewSaleModal = ({ sale, onClose }) => {
               ? `
             <div class="exchange-info">
               <h3 style="margin-top: 0; color: #856404;">
-                <FiRefreshCw style="display: inline-block; margin-right: 5px;" />
                 Exchange Sale
               </h3>
               <div class="detail-item">
                 <span class="detail-label">Exchange Amount:</span> ₹${parseFloat(
-                  sale.exchange_amount || 0
+                  sale.exchange_amount || 0,
                 ).toLocaleString("en-IN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -372,8 +371,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
               <tr>
                 <th>#</th>
                 <th>Product Name</th>
-                <th>Code</th>
-                <th>Qty</th>
+                <th>Quantity</th>
                 <th>Price (before tax)</th>
                 <th>GST Rate</th>
                 <th>GST Amount</th>
@@ -386,24 +384,20 @@ const ViewSaleModal = ({ sale, onClose }) => {
                 sale.items
                   ?.map(
                     (item, index) => `
-                   <tr>
+                <tr>
                   <td>${index + 1}</td>
-                  <td>${
-                    item.product_name || item.product_id?.name || "N/A"
-                  }</td>
-                  <td>${item.product_code || "N/A"}</td>
+                  <td>${item.product_name || "N/A"}</td>
                   <td>${item.quantity}</td>
                   <td>${formatCurrency(item.price_before_tax)}</td>
                   <td>${item.gst_rate ? `${item.gst_rate}%` : "0%"}</td>
                   <td>${formatCurrency(item.gst_amount)}</td>
-                   <td>${formatCurrency(item.selling_total)}</td>
+                  <td>${formatCurrency(item.selling_total)}</td>
                   <td>${formatCurrency(item.final_total)}</td>
                 </tr>
-                
-              `
+              `,
                   )
                   .join("") ||
-                '<tr><td colspan="9" style="text-align: center;">No items in this sale</td></tr>'
+                '<tr><td colspan="8" style="text-align: center;">No items in this sale</td></tr>'
               }
             </tbody>
           </table>
@@ -433,38 +427,31 @@ const ViewSaleModal = ({ sale, onClose }) => {
                 <span class="total-label">Before Exchange:</span>
                 <span>${formatCurrency(
                   parseFloat(sale.subtotal || 0) +
+                    parseFloat(sale.total_tax || 0) +
                     parseFloat(sale.shipping_cost || 0) -
-                    parseFloat(sale.discount || 0)
+                    parseFloat(sale.discount || 0),
                 )}</span>
               </div>
               <div class="total-row">
                 <span class="total-label" style="color: #856404;">Exchange Deduction:</span>
-                <span style="color: #856404;">-${formatCurrency(
-                  sale.exchange_amount
-                )}</span>
+                <span style="color: #856404;">-${formatCurrency(sale.exchange_amount)}</span>
               </div>
             `
                 : ""
             }
             
             <div class="total-row grand-total">
-              <span class="total-label">Grand Total:</span>
+              <span class="total-label">Total Amount:</span>
               <span>${formatCurrency(sale.total_amount)}</span>
             </div>
             <div class="total-row">
               <span class="total-label">Paid Amount:</span>
-              <span>${formatCurrency(
-                sale.paid_amount || sale.current_paid || 0
-              )}</span>
+              <span>${formatCurrency(sale.paid_amount || sale.current_paid || 0)}</span>
             </div>
             <div class="total-row">
-              <span class="total-label">Balance Due:</span>
+              <span class="total-label">Balance Amount:</span>
               <span style="color: #e74c3c; font-weight: bold;">
-                ${formatCurrency(
-                  sale.balance_amount ||
-                    parseFloat(sale.total_amount || 0) -
-                      parseFloat(sale.paid_amount || 0)
-                )}
+                ${formatCurrency(sale.balance_amount)}
               </span>
             </div>
           </div>
@@ -485,10 +472,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
             <p>This is a computer-generated invoice. No signature required.</p>
             <p>Generated on: ${new Date().toLocaleDateString()}</p>
           </div>
-          
-          <div class="print-button">
-            <button onclick="window.print()">Print Invoice</button>
-          </div>
         </div>
         
         <script>
@@ -496,9 +479,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
           window.onload = function() {
             setTimeout(function() {
               window.print();
-              setTimeout(function() {
-                window.close();
-              }, 1000);
             }, 500);
           };
         </script>
@@ -522,37 +502,29 @@ const ViewSaleModal = ({ sale, onClose }) => {
     try {
       // Create sale data for CSV
       const saleData = {
-        reference_no: sale.reference_no,
         invoice_number: sale.invoice_number,
+        reference_no: sale.reference_no,
         sale_date: formatDate(sale.sale_date),
-        customer: getCustomerName(sale.customer_id),
-        customer_mobile:
-          sale.customer_id?.mobile || sale.customer_id?.phone || "",
-        branch: getBranchName(sale.branch_id),
-        sold_by: getEmployeeName(sale.sold_by),
-        status: sale.status || sale.sale_status,
+        customer: sale.customer_name,
+        customer_mobile: sale.customer_mobile,
+        customer_code: sale.customer_code,
+        branch: sale.branch_name,
+        branch_code: sale.branch_code,
+        sold_by: sale.sold_by_name,
+        status: sale.status,
         payment_status: sale.payment_status,
         is_exchange: sale.is_exchange ? "Yes" : "No",
         exchange_amount: sale.exchange_amount || 0,
         exchange_note: sale.exchange_note || "",
-        items:
-          sale.items?.map((item) => ({
-            product_name: item.product_name,
-            product_code: item.product_code,
-            quantity: item.quantity,
-            price_before_tax: item.price_before_tax,
-            gst_rate: `${item.gst_rate}%`,
-            gst_amount: item.gst_amount,
-            selling_total: item.selling_total,
-            final_total: item.final_total,
-          })) || [],
+        items: sale.items || [],
         subtotal: sale.subtotal,
         shipping_cost: sale.shipping_cost,
         discount: sale.discount,
         total_tax: sale.total_tax,
         total_amount: sale.total_amount,
-        paid_amount: sale.paid_amount || sale.current_paid,
+        current_paid: sale.current_paid,
         balance_amount: sale.balance_amount,
+        paid_amount: sale.paid_amount,
         sale_note: sale.sale_note,
         created_at: formatDate(sale.created_at),
         updated_at: formatDate(sale.updated_at),
@@ -564,12 +536,14 @@ const ViewSaleModal = ({ sale, onClose }) => {
       // Add headers
       csvContent += "SALE DETAILS\r\n\r\n";
       csvContent += "Field,Value\r\n";
-      csvContent += `Reference No,${saleData.reference_no}\r\n`;
       csvContent += `Invoice No,${saleData.invoice_number || "N/A"}\r\n`;
+      csvContent += `Reference No,${saleData.reference_no}\r\n`;
       csvContent += `Sale Date,${saleData.sale_date}\r\n`;
       csvContent += `Customer,${saleData.customer}\r\n`;
       csvContent += `Customer Mobile,${saleData.customer_mobile}\r\n`;
+      csvContent += `Customer Code,${saleData.customer_code}\r\n`;
       csvContent += `Branch,${saleData.branch}\r\n`;
+      csvContent += `Branch Code,${saleData.branch_code}\r\n`;
       csvContent += `Sold By,${saleData.sold_by}\r\n`;
       csvContent += `Status,${saleData.status}\r\n`;
       csvContent += `Payment Status,${saleData.payment_status}\r\n`;
@@ -582,20 +556,22 @@ const ViewSaleModal = ({ sale, onClose }) => {
 
       // Add items
       csvContent += `ITEMS\r\n`;
-      csvContent += `Product Name,Product Code,Quantity,Price Before Tax,GST Rate,GST Amount,Selling Total,Final Total\r\n`;
+      csvContent += `Product Name,Quantity,Price Before Tax,GST Rate,GST Amount,Selling Total,Final Total\r\n`;
       saleData.items.forEach((item) => {
-        csvContent += `${item.product_name},${item.product_code},${item.quantity},${item.price_before_tax},${item.gst_rate},${item.gst_amount},${item.selling_total},${item.final_total}\r\n`;
+        csvContent += `${item.product_name},${item.quantity},${item.price_before_tax},${item.gst_rate},${item.gst_amount},${item.selling_total},${item.final_total}\r\n`;
       });
 
       csvContent += `\r\n`;
 
       // Add totals
-      csvContent += `TOTALS\r\n`;
+      csvContent += `FINANCIAL SUMMARY\r\n`;
       csvContent += `Subtotal,${saleData.subtotal}\r\n`;
       csvContent += `Shipping Cost,${saleData.shipping_cost}\r\n`;
       csvContent += `Discount,${saleData.discount}\r\n`;
       csvContent += `Total GST,${saleData.total_tax}\r\n`;
+      csvContent += `Exchange Amount,${saleData.exchange_amount}\r\n`;
       csvContent += `Total Amount,${saleData.total_amount}\r\n`;
+      csvContent += `Current Paid,${saleData.current_paid}\r\n`;
       csvContent += `Paid Amount,${saleData.paid_amount}\r\n`;
       csvContent += `Balance Amount,${saleData.balance_amount}\r\n`;
       csvContent += `\r\n`;
@@ -609,9 +585,9 @@ const ViewSaleModal = ({ sale, onClose }) => {
       link.setAttribute("href", encodedUri);
       link.setAttribute(
         "download",
-        `Sale_${sale.reference_no || "Details"}_${
+        `${sale.invoice_number || sale.reference_no}_Sale_${
           new Date().toISOString().split("T")[0]
-        }.csv`
+        }.csv`,
       );
       document.body.appendChild(link);
       link.click();
@@ -624,23 +600,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
     }
   };
 
-  // Calculate payment information
-  const calculatePaymentInfo = () => {
-    const totalAmount = sale.total_amount || 0;
-    const paidAmount = sale.paid_amount || sale.current_paid || 0;
-    const balanceAmount = sale.balance_amount || totalAmount - paidAmount;
-
-    return {
-      totalAmount,
-      paidAmount,
-      balanceAmount,
-      paymentPercentage: totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0,
-    };
-  };
-
-  const { totalQuantity, totalAmount: itemsTotal } = calculateItemTotals(
-    sale.items
-  );
+  const { totalQuantity, itemsTotal } = calculateItemTotals();
   const paymentInfo = calculatePaymentInfo();
 
   return (
@@ -664,9 +624,10 @@ const ViewSaleModal = ({ sale, onClose }) => {
           >
             <div className="d-flex justify-content-between align-items-center w-100">
               <h5 className="modal-title fw-bold fs-5 mb-0">
-                Sale Details - {sale.reference_no || "N/A"}
-                {sale.invoice_number && (
-                  <span className="ms-3 badge bg-primary">
+                Sale Details - {sale.reference_no}
+                {sale.has_invoice && sale.invoice_number && (
+                  <span className="ms-2 badge bg-success">
+                    <FiFile className="me-1" size={14} />
                     Invoice: {sale.invoice_number}
                   </span>
                 )}
@@ -737,21 +698,18 @@ const ViewSaleModal = ({ sale, onClose }) => {
                       <div className="col-12 mb-2">
                         <small className="text-muted">Reference No:</small>
                         <div className="fw-medium text-primary">
-                          {sale.reference_no || "N/A"}
+                          {sale.reference_no}
                         </div>
                       </div>
-                      <div className="col-12 mb-2">
-                        <small className="text-muted">Invoice No:</small>
-                        <div className="fw-medium">
-                          {sale.invoice_number ? (
-                            <span className="text-success">
-                              {sale.invoice_number}
-                            </span>
-                          ) : (
-                            <span className="text-muted">Not Generated</span>
-                          )}
+                      {sale.has_invoice && sale.invoice_number && (
+                        <div className="col-12 mb-2">
+                          <small className="text-muted">Invoice No:</small>
+                          <div className="fw-medium text-success">
+                            <FiFile className="me-1" size={14} />
+                            {sale.invoice_number}
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="col-12 mb-2">
                         <small className="text-muted">Sale Date:</small>
                         <div className="fw-medium">
@@ -764,30 +722,17 @@ const ViewSaleModal = ({ sale, onClose }) => {
                         <div>
                           <span
                             className={`badge ${getStatusBadgeClass(
-                              sale.status || sale.sale_status
+                              sale.status,
                             )} fw-medium`}
                           >
-                            {(sale.status || sale.sale_status || "draft")
-                              .charAt(0)
-                              .toUpperCase() +
-                              (
-                                sale.status ||
-                                sale.sale_status ||
-                                "draft"
-                              ).slice(1)}
+                            {(sale.status || "draft").charAt(0).toUpperCase() +
+                              (sale.status || "draft").slice(1)}
                           </span>
                         </div>
                       </div>
                       <div className="col-12 mb-2">
                         <small className="text-muted">Sold By:</small>
-                        <div className="fw-medium">
-                          {getEmployeeName(sale.sold_by)}
-                          {sale.sold_by?.employee_code && (
-                            <small className="text-muted ms-2">
-                              ({sale.sold_by.employee_code})
-                            </small>
-                          )}
-                        </div>
+                        <div className="fw-medium">{sale.sold_by_name}</div>
                       </div>
                     </div>
                   </div>
@@ -809,28 +754,18 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           </div>
                           <div>
                             <div className="fw-medium fs-6">
-                              {getCustomerName(sale.customer_id)}
+                              {sale.customer_name}
                             </div>
-                            {sale.customer_id?.customer_code && (
+                            {sale.customer_code && (
                               <small className="text-muted">
-                                Code: {sale.customer_id.customer_code}
+                                Code: {sale.customer_code}
                               </small>
                             )}
                           </div>
                         </div>
-                        {sale.customer_id?.mobile && (
+                        {sale.customer_mobile && (
                           <div className="text-muted small">
-                            <strong>Mobile:</strong> {sale.customer_id.mobile}
-                          </div>
-                        )}
-                        {sale.customer_id?.phone && (
-                          <div className="text-muted small">
-                            <strong>Phone:</strong> {sale.customer_id.phone}
-                          </div>
-                        )}
-                        {sale.customer_id?.email && (
-                          <div className="text-muted small">
-                            <strong>Email:</strong> {sale.customer_id.email}
+                            <strong>Mobile:</strong> {sale.customer_mobile}
                           </div>
                         )}
                       </div>
@@ -853,21 +788,14 @@ const ViewSaleModal = ({ sale, onClose }) => {
                             <FiMapPin className="text-info" size={18} />
                           </div>
                           <div>
-                            <div className="fw-medium">
-                              {getBranchName(sale.branch_id)}
-                            </div>
-                            {sale.branch_id?.branch_code && (
+                            <div className="fw-medium">{sale.branch_name}</div>
+                            {sale.branch_code && (
                               <small className="text-muted">
-                                Code: {sale.branch_id.branch_code}
+                                Code: {sale.branch_code}
                               </small>
                             )}
                           </div>
                         </div>
-                        {sale.branch_id?.address && (
-                          <div className="text-muted small">
-                            <strong>Address:</strong> {sale.branch_id.address}
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -903,8 +831,9 @@ const ViewSaleModal = ({ sale, onClose }) => {
                         <div className="d-flex align-items-center">
                           <FiRefreshCw className="me-2" size={18} />
                           <div>
-                            <strong>Calculation:</strong> Grand Total = (Item
-                            Total + Shipping - Discount) - Exchange Amount
+                            <strong>Calculation:</strong> Total Amount =
+                            (Subtotal + Shipping + Tax - Discount) - Exchange
+                            Amount
                             <br />
                             <small>
                               Exchange amount has been deducted from the final
@@ -936,7 +865,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           </small>
                           <span
                             className={`badge ${getPaymentStatusBadgeClass(
-                              sale.payment_status
+                              sale.payment_status,
                             )} fw-medium fs-6 px-3 py-2`}
                           >
                             {sale.payment_status
@@ -983,7 +912,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           <div className="col-4 text-center">
                             <div className="border rounded p-3">
                               <small className="text-muted d-block">
-                                Balance Due
+                                Balance Amount
                               </small>
                               <div
                                 className={`fw-bold fs-5 ${
@@ -994,11 +923,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
                               >
                                 {formatCurrency(paymentInfo.balanceAmount)}
                               </div>
-                              {sale.payment_date && (
-                                <small className="text-muted">
-                                  Paid on: {formatDate(sale.payment_date)}
-                                </small>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1025,12 +949,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
                     <FiPackage className="me-2" />
                     Sale Items ({totalQuantity} items)
                   </h6>
-                  <div className="text-muted">
-                    Items Total:{" "}
-                    <span className="fw-bold">
-                      {formatCurrency(itemsTotal)}
-                    </span>
-                  </div>
                 </div>
                 <div className="table-responsive">
                   <table className="table table-bordered align-middle">
@@ -1038,7 +956,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
                       <tr>
                         <th>#</th>
                         <th>Product</th>
-                        <th>Product Code</th>
                         <th>Quantity</th>
                         <th className="text-end">Price (before tax)</th>
                         <th className="text-end">GST Rate</th>
@@ -1056,9 +973,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
                               <div className="fw-medium">
                                 {item.product_name || "N/A"}
                               </div>
-                            </td>
-                            <td>
-                              <code>{item.product_code || "N/A"}</code>
                             </td>
                             <td>{item.quantity}</td>
                             <td className="text-end">
@@ -1081,7 +995,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
                       ) : (
                         <tr>
                           <td
-                            colSpan="9"
+                            colSpan="8"
                             className="text-center py-4 text-muted"
                           >
                             No items in this sale
@@ -1089,16 +1003,6 @@ const ViewSaleModal = ({ sale, onClose }) => {
                         </tr>
                       )}
                     </tbody>
-                    <tfoot className="table-light">
-                      <tr>
-                        <td colSpan="8" className="text-end fw-bold">
-                          Items Total:
-                        </td>
-                        <td className="text-end fw-bold">
-                          {formatCurrency(itemsTotal)}
-                        </td>
-                      </tr>
-                    </tfoot>
                   </table>
                 </div>
               </div>
@@ -1150,8 +1054,9 @@ const ViewSaleModal = ({ sale, onClose }) => {
                                 <span className="fw-medium">
                                   {formatCurrency(
                                     parseFloat(sale.subtotal || 0) +
+                                      parseFloat(sale.total_tax || 0) +
                                       parseFloat(sale.shipping_cost || 0) -
-                                      parseFloat(sale.discount || 0)
+                                      parseFloat(sale.discount || 0),
                                   )}
                                 </span>
                               </div>
@@ -1169,9 +1074,23 @@ const ViewSaleModal = ({ sale, onClose }) => {
 
                           <hr />
                           <div className="d-flex justify-content-between">
-                            <span className="fw-bold fs-5">Grand Total:</span>
+                            <span className="fw-bold fs-5">Total Amount:</span>
                             <span className="fw-bold fs-5 text-primary">
                               {formatCurrency(sale.total_amount)}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mt-2">
+                            <span className="fw-bold">Current Paid:</span>
+                            <span className="fw-bold text-success">
+                              {formatCurrency(sale.current_paid)}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mt-2">
+                            <span className="fw-bold">Balance Amount:</span>
+                            <span
+                              className={`fw-bold ${sale.balance_amount === 0 ? "text-success" : "text-danger"}`}
+                            >
+                              {formatCurrency(sale.balance_amount)}
                             </span>
                           </div>
                         </div>

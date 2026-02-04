@@ -84,7 +84,7 @@ export default function useEmployees() {
         role_id: item.role_id?._id || item.role_id || "",
         role_name: item.role_id?.role_name || item.role_name || "",
         basic_salary: item.basic_salary || 0,
-        image: item.image || item.profile_image || "",
+        image: item.fullImageUrl ||  "",
         status: item.status === "active",
         createdAt: item.createdAt || "",
       }));
@@ -244,7 +244,7 @@ export default function useEmployees() {
           role_id: responseData.role_id || employeeData.role_id,
           role_name: role?.role_name || employeeData.role_name || "",
           basic_salary: responseData.basic_salary || employeeData.basic_salary,
-          image: responseData.image || employeeData.image || "",
+          image: responseData.fullImageUrl || employeeData.fullImageUrl || "",
           status: responseData.status === "active",
           updatedAt: responseData.updatedAt || new Date().toISOString(),
         };

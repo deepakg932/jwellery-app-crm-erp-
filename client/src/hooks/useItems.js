@@ -102,7 +102,7 @@ const useItems = () => {
 
     console.warn(
       `Could not extract array data for ${endpointName}:`,
-      responseData
+      responseData,
     );
     return [];
   };
@@ -156,7 +156,7 @@ const useItems = () => {
         } else {
           console.error(
             `Error fetching ${endpointName}:`,
-            promiseResult.reason
+            promiseResult.reason,
           );
           return [];
         }
@@ -291,7 +291,7 @@ const useItems = () => {
       setError(null);
 
       const response = await axios.get(
-        `${API_ENDPOINTS.getAllItems()}?page=${page}&limit=${limit}`
+        `${API_ENDPOINTS.getAllItems()}?page=${page}&limit=${limit}`,
       );
 
       console.log("Fetch items response:", response.data);
@@ -348,7 +348,7 @@ const useItems = () => {
     } catch (err) {
       console.error("Error fetching items:", err);
       setError(
-        err.response?.data?.message || err.message || "Failed to fetch items"
+        err.response?.data?.message || err.message || "Failed to fetch items",
       );
       setItems([]);
     } finally {
@@ -357,43 +357,46 @@ const useItems = () => {
   }, []);
 
   // Fetch hallmarks by metal type
-  const fetchHallmarksByMetal = useCallback(async (metalId) => {
-    try {
-      if (!metalId) {
-        console.log("No metal ID provided for hallmark fetch");
-        return [];
-      }
+  const fetchHallmarksByMetal = useCallback(
+    async (metalId) => {
+      try {
+        if (!metalId) {
+          console.log("No metal ID provided for hallmark fetch");
+          return [];
+        }
 
-      console.log(`Fetching hallmarks for metal: ${metalId}`);
+        console.log(`Fetching hallmarks for metal: ${metalId}`);
 
-      const response = await axios.get(
-        API_ENDPOINTS.getHallmarksByMetal(metalId)
-      );
-
-      if (response.data && response.data.success) {
-        const hallmarks = response.data.hallmarks || response.data.data || [];
-        console.log(
-          `Found ${hallmarks.length} hallmarks for metal ${metalId}`,
-          hallmarks
+        const response = await axios.get(
+          API_ENDPOINTS.getHallmarksByMetal(metalId),
         );
-        return hallmarks;
-      }
 
-      console.log("No hallmarks found or invalid response");
-      return [];
-    } catch (err) {
-      console.error("Error fetching hallmarks by metal:", err);
-      // Fallback: filter from existing hallmarks
-      const filtered = dropdownData.hallmarks.filter(
-        (hallmark) =>
-          String(hallmark.metal_type) === String(metalId) ||
-          String(hallmark.metal_type?._id) === String(metalId) ||
-          String(hallmark.metal_type?.id) === String(metalId)
-      );
-      console.log(`Fallback found ${filtered.length} hallmarks`);
-      return filtered;
-    }
-  }, [dropdownData.hallmarks]);
+        if (response.data && response.data.success) {
+          const hallmarks = response.data.hallmarks || response.data.data || [];
+          console.log(
+            `Found ${hallmarks.length} hallmarks for metal ${metalId}`,
+            hallmarks,
+          );
+          return hallmarks;
+        }
+
+        console.log("No hallmarks found or invalid response");
+        return [];
+      } catch (err) {
+        console.error("Error fetching hallmarks by metal:", err);
+        // Fallback: filter from existing hallmarks
+        const filtered = dropdownData.hallmarks.filter(
+          (hallmark) =>
+            String(hallmark.metal_type) === String(metalId) ||
+            String(hallmark.metal_type?._id) === String(metalId) ||
+            String(hallmark.metal_type?.id) === String(metalId),
+        );
+        console.log(`Fallback found ${filtered.length} hallmarks`);
+        return filtered;
+      }
+    },
+    [dropdownData.hallmarks],
+  );
 
   // Create new item - UPDATED WITH HALLMARK
   const createItem = async (itemData) => {
@@ -425,7 +428,7 @@ const useItems = () => {
       // Markup
       formData.append(
         "markup_percentage",
-        parseFloat(itemData.markup_percentage) || 15
+        parseFloat(itemData.markup_percentage) || 15,
       );
 
       // GST information
@@ -444,12 +447,12 @@ const useItems = () => {
           unit: metal.unit || "g",
           rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
         };
-        
+
         // Add hallmark if selected
         if (metal.hallmark) {
           metalObj.hallmark_id = metal.hallmark;
         }
-        
+
         return metalObj;
       });
       formData.append("metals", JSON.stringify(metalsPayload));
@@ -480,23 +483,28 @@ const useItems = () => {
       formData.append("materials", JSON.stringify(materialsPayload));
 
       // Price making costs
-      const priceMakingCostsPayload = (itemData.making_charges || []).map((cost) => {
-        return {
-          price_making_id: cost.price_making_id || cost.id,
-          cost_type: cost.cost_type || "",
-          stage_name: cost.stage_name || "",
-          sub_stage_name: cost.sub_stage_name || "",
-          cost_amount: parseFloat(cost.cost_amount) || 0,
-          unit_name: cost.unit_name || "",
-        };
-      });
-      formData.append("price_making_costs", JSON.stringify(priceMakingCostsPayload));
+      const priceMakingCostsPayload = (itemData.making_charges || []).map(
+        (cost) => {
+          return {
+            price_making_id: cost.price_making_id || cost.id,
+            cost_type: cost.cost_type || "",
+            stage_name: cost.stage_name || "",
+            sub_stage_name: cost.sub_stage_name || "",
+            cost_amount: parseFloat(cost.cost_amount) || 0,
+            unit_name: cost.unit_name || "",
+          };
+        },
+      );
+      formData.append(
+        "price_making_costs",
+        JSON.stringify(priceMakingCostsPayload),
+      );
 
       // Images
-      if (itemData.images && Array.isArray(itemData.images)) {
-        itemData.images.forEach((file) => {
+      if (itemData.image && Array.isArray(itemData.image)) {
+        itemData.image.forEach((file) => {
           if (file instanceof File) {
-            formData.append("images", file);
+            formData.append("image", file);
           }
         });
       }
@@ -534,95 +542,96 @@ const useItems = () => {
   };
 
   // Update item - UPDATED WITH HALLMARK
-  const updateItem = async (id, itemData) => {
-    try {
-      setLoading((prev) => ({ ...prev, items: true }));
+const updateItem = async (id, itemData) => {
+  try {
+    setLoading((prev) => ({ ...prev, items: true }));
 
-      const formData = new FormData();
+    const formData = new FormData();
 
-      // Basic information
-      formData.append("product_name", itemData.product_name || "");
-      formData.append("article_no", itemData.article_no || "");
+    // Basic information
+    formData.append("product_name", itemData.product_name || "");
+    formData.append("article_no", itemData.article_no || "");
 
-      // Send IDs
-      if (itemData.product_brand) {
-        formData.append("product_brand", itemData.product_brand);
-      }
+    // Send IDs
+    if (itemData.product_brand) {
+      formData.append("product_brand", itemData.product_brand);
+    }
 
-      if (itemData.product_category) {
-        formData.append("product_category", itemData.product_category);
-      }
+    if (itemData.product_category) {
+      formData.append("product_category", itemData.product_category);
+    }
 
-      if (itemData.product_subcategory) {
-        formData.append("product_subcategory", itemData.product_subcategory);
-      }
+    if (itemData.product_subcategory) {
+      formData.append("product_subcategory", itemData.product_subcategory);
+    }
 
-      formData.append(
-        "markup_percentage",
-        parseFloat(itemData.markup_percentage) || 15
-      );
+    formData.append(
+      "markup_percentage",
+      parseFloat(itemData.markup_percentage) || 15,
+    );
 
-      // GST information
-      const formatGSTValue = (value) => {
-        if (!value) return "0%";
-        if (typeof value === "string" && value.includes("%")) return value;
-        return `${parseFloat(value) || 0}%`;
+    // GST information
+    const formatGSTValue = (value) => {
+      if (!value) return "0%";
+      if (typeof value === "string" && value.includes("%")) return value;
+      return `${parseFloat(value) || 0}%`;
+    };
+
+    formData.append("gst_rate", formatGSTValue(itemData.gst_rate));
+    formData.append("cgst_rate", formatGSTValue(itemData.cgst_rate));
+    formData.append("sgst_rate", formatGSTValue(itemData.sgst_rate));
+    formData.append("igst_rate", formatGSTValue(itemData.igst_rate));
+    formData.append("utgst_rate", formatGSTValue(itemData.utgst_rate));
+
+    // Metals data - INCLUDING HALLMARK
+    const metalsPayload = (itemData.metals || []).map((metal) => {
+      const metalObj = {
+        metal_type: metal.metal_type,
+        purity: metal.purity,
+        weight: parseFloat(metal.weight) || 0,
+        unit: metal.unit || "g",
+        making_charge_type: metal.making_charge_type || "Fixed",
+        making_charge_value: parseFloat(metal.making_charge_value) || 0,
+        rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
       };
 
-      formData.append("gst_rate", formatGSTValue(itemData.gst_rate));
-      formData.append("cgst_rate", formatGSTValue(itemData.cgst_rate));
-      formData.append("sgst_rate", formatGSTValue(itemData.sgst_rate));
-      formData.append("igst_rate", formatGSTValue(itemData.igst_rate));
-      formData.append("utgst_rate", formatGSTValue(itemData.utgst_rate));
+      // Add hallmark if selected
+      if (metal.hallmark) {
+        metalObj.hallmark_id = metal.hallmark;
+      }
 
-      // Metals data - INCLUDING HALLMARK
-      const metalsPayload = (itemData.metals || []).map((metal) => {
-        const metalObj = {
-          metal_type: metal.metal_type,
-          purity: metal.purity,
-          weight: parseFloat(metal.weight) || 0,
-          unit: metal.unit || "g",
-          making_charge_type: metal.making_charge_type || "Fixed",
-          making_charge_value: parseFloat(metal.making_charge_value) || 0,
-          rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
-        };
-        
-        // Add hallmark if selected
-        if (metal.hallmark) {
-          metalObj.hallmark_id = metal.hallmark;
-        }
-        
-        return metalObj;
-      });
-      formData.append("metals", JSON.stringify(metalsPayload));
+      return metalObj;
+    });
+    formData.append("metals", JSON.stringify(metalsPayload));
 
-      // Stones data
-      const stonesPayload = (itemData.stones || []).map((stone) => {
-        return {
-          stone_type: stone.stone_type,
-          stone_purity: stone.stone_purity,
-          size: parseFloat(stone.size) || 0,
-          quantity: parseInt(stone.quantity) || 0,
-          weight: parseFloat(stone.weight) || 0,
-          price_per_carat: parseFloat(stone.price_per_carat) || 0,
-        };
-      });
-      formData.append("stones", JSON.stringify(stonesPayload));
+    // Stones data
+    const stonesPayload = (itemData.stones || []).map((stone) => {
+      return {
+        stone_type: stone.stone_type,
+        stone_purity: stone.stone_purity,
+        size: parseFloat(stone.size) || 0,
+        quantity: parseInt(stone.quantity) || 0,
+        weight: parseFloat(stone.weight) || 0,
+        price_per_carat: parseFloat(stone.price_per_carat) || 0,
+      };
+    });
+    formData.append("stones", JSON.stringify(stonesPayload));
 
-      // Materials data
-      const materialsPayload = (itemData.materials || []).map((material) => {
-        return {
-          wastage_type: material.wastage_type,
-          material_type: material.material_type,
-          weight: parseFloat(material.weight) || 0,
-          unit: material.unit || "g",
-          rate_per_unit: parseFloat(material.rate_per_unit) || 0,
-        };
-      });
-      formData.append("materials", JSON.stringify(materialsPayload));
+    // Materials data
+    const materialsPayload = (itemData.materials || []).map((material) => {
+      return {
+        wastage_type: material.wastage_type,
+        material_type: material.material_type,
+        weight: parseFloat(material.weight) || 0,
+        unit: material.unit || "g",
+        rate_per_unit: parseFloat(material.rate_per_unit) || 0,
+      };
+    });
+    formData.append("materials", JSON.stringify(materialsPayload));
 
-      // Price making costs
-      const priceMakingCostsPayload = (itemData.price_making_costs || []).map((cost) => {
+    // Price making costs
+    const priceMakingCostsPayload = (itemData.price_making_costs || []).map(
+      (cost) => {
         return {
           price_making_id: cost.price_making_id || cost.id,
           cost_type: cost.cost_type || "",
@@ -630,52 +639,72 @@ const useItems = () => {
           sub_stage_name: cost.sub_stage_name || "",
           cost_amount: parseFloat(cost.cost_amount) || 0,
           unit_name: cost.unit_name || "",
+          is_active: cost.is_active !== undefined ? cost.is_active : true,
         };
-      });
-      formData.append("price_making_costs", JSON.stringify(priceMakingCostsPayload));
+      },
+    );
+    formData.append(
+      "price_making_costs",
+      JSON.stringify(priceMakingCostsPayload),
+    );
 
-      // Status if updating
-      if (itemData.status) {
-        formData.append("status", itemData.status);
-      }
-
-      // Images
-      if (itemData.images && Array.isArray(itemData.images)) {
-        itemData.images.forEach((file) => {
-          if (file instanceof File) {
-            formData.append("images", file);
-          }
-        });
-      }
-
-      console.log("FormData entries for update:");
-      for (let pair of formData.entries()) {
-        console.log(pair[0] + ": ", pair[1]);
-      }
-
-      const response = await axios.put(API_ENDPOINTS.updateItem(id), formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data && response.data.success) {
-        await fetchItems(pagination.currentPage, pagination.limit);
-        return response.data.product || response.data.data;
-      } else {
-        throw new Error(response.data?.message || "Failed to update item");
-      }
-    } catch (err) {
-      console.error("Error updating item:", err);
-      const errorMsg =
-        err.response?.data?.message || err.message || "Failed to update item";
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    } finally {
-      setLoading((prev) => ({ ...prev, items: false }));
+    // Status if updating
+    if (itemData.status) {
+      formData.append("status", itemData.status);
     }
-  };
 
+    // FIXED: Handle images correctly
+    // 1. Append new images
+    if (itemData.image && Array.isArray(itemData.image)) {
+      itemData.image.forEach((file, index) => {
+        if (file instanceof File) {
+          formData.append("image", file);
+          console.log(`Appending image ${index + 1}:`, file.name);
+        } else {
+          console.warn(`Item ${index} is not a File object:`, file);
+        }
+      });
+    } else {
+      console.log("No new images to append");
+    }
+
+    // 2. Append images to delete
+    if (itemData.imagesToDelete && Array.isArray(itemData.imagesToDelete)) {
+      formData.append("images_to_delete", JSON.stringify(itemData.imagesToDelete));
+      console.log("Images to delete:", itemData.imagesToDelete);
+    }
+
+    console.log("FormData entries for update:");
+    for (let pair of formData.entries()) {
+      if (pair[0] === "image") {
+        console.log(`${pair[0]}: [File - ${pair[1].name}]`);
+      } else {
+        console.log(`${pair[0]}:`, pair[1]);
+      }
+    }
+
+    const response = await axios.put(API_ENDPOINTS.updateItem(id), formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    if (response.data && response.data.success) {
+      await fetchItems(pagination.currentPage, pagination.limit);
+      return response.data.product || response.data.data;
+    } else {
+      throw new Error(response.data?.message || "Failed to update item");
+    }
+  } catch (err) {
+    console.error("Error updating item:", err);
+    const errorMsg =
+      err.response?.data?.message || err.message || "Failed to update item";
+    setError(errorMsg);
+    throw new Error(errorMsg);
+  } finally {
+    setLoading((prev) => ({ ...prev, items: false }));
+  }
+};
   // Delete item
   const deleteItem = async (id) => {
     try {
@@ -705,7 +734,7 @@ const useItems = () => {
     try {
       setLoading((prev) => ({ ...prev, items: true }));
       const response = await axios.put(
-        `${API_ENDPOINTS.updateItem(productId)}/toggle-status`
+        `${API_ENDPOINTS.updateItem(productId)}/toggle-status`,
       );
 
       if (response.data.success) {
@@ -731,7 +760,7 @@ const useItems = () => {
       setLoading((prev) => ({ ...prev, items: true }));
       const response = await axios.put(
         `${API_ENDPOINTS.updateItem(productId)}/update-status`,
-        { status }
+        { status },
       );
 
       if (response.data.success) {
@@ -757,7 +786,7 @@ const useItems = () => {
       setLoading((prev) => ({ ...prev, items: true }));
       const response = await axios.put(
         `${API_ENDPOINTS.getAllItems()}/bulk-status`,
-        { productIds, status }
+        { productIds, status },
       );
 
       if (response.data.success) {
@@ -985,7 +1014,7 @@ const useItems = () => {
           name: sub.sub_category_name || sub.name || "",
         }));
     },
-    [dropdownData?.subCategories]
+    [dropdownData?.subCategories],
   );
 
   // Generate product code
@@ -1022,6 +1051,8 @@ const useItems = () => {
 
     initialize();
   }, [fetchDropdownData, fetchItems]);
+
+console.log(items)
 
   return {
     // Items and pagination

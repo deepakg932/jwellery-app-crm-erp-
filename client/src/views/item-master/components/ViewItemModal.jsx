@@ -18,6 +18,8 @@ const ViewItemModal = ({ show, onHide, item, formData = {} }) => {
       (item.id && item.id.toString() === id.toString()) ||
       (item._id && item._id.toString() === id.toString())
     );
+
+    console.log(item)
     
     return found ? 
       found.name || 
@@ -147,9 +149,9 @@ const ViewItemModal = ({ show, onHide, item, formData = {} }) => {
             </div>
 
             {/* Images */}
-            {item.images && item.images.length > 0 ? (
+            {item.fullImageUrls && item.fullImageUrls.length > 0 ? (
               <div className="row mb-4">
-                {item.images.map((img, index) => (
+                {item.fullImageUrls.map((img, index) => (
                   <div className="col-md-4 mb-3" key={index}>
                     <div className="border rounded-3" style={{ height: '150px' }}>
                       <img

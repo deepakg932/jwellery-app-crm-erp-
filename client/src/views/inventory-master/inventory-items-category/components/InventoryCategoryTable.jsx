@@ -819,7 +819,6 @@ const InventoryCategoryTable = () => {
                 <th>#</th>
                 <th>Category Name</th>
                 <th>Description</th>
-                <th>Category Code</th>
                 <th>Status</th>
                 <th>Created Date</th>
                 <th className="text-end">Actions</th>
@@ -858,11 +857,7 @@ const InventoryCategoryTable = () => {
                         {category.description || "No description"}
                       </span>
                     </td>
-                    <td>
-                      <span className="badge bg-light text-dark fw-semibold">
-                        {category.category_code || "N/A"}
-                      </span>
-                    </td>
+                  
                     <td>
                       <span className={`badge fw-semibold ${category.status ? 'bg-success' : 'bg-danger'}`}>
                         {category.status ? "Active" : "Inactive"}
