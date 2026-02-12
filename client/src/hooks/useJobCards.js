@@ -39,7 +39,7 @@ export default function useJobCards() {
         allQuotationsData = res.data.data;
       }
 
-      console.log("Total quotations found:", allQuotationsData.length);
+      console.log("Total quotations found:", allQuotationsData);
 
       // Simple mapping - no filtering here
       const mappedQuotations = allQuotationsData.map((quotation) => {
@@ -210,6 +210,8 @@ export default function useJobCards() {
         jobCardsData = res.data.data;
       }
 
+      console.log(jobCardsData)
+
       const mappedJobCards = jobCardsData.map((jobCard) => {
         const customer = jobCard.customer_id || jobCard.customer || {};
         const customerName =
@@ -248,6 +250,7 @@ export default function useJobCards() {
           balance_amount: balanceAmount,
           assigned_to: assignedTo,
           assigned_name: assignedName,
+          images:jobCard.images,
           // ADD QUOTATION INFO
           quotation_id: jobCard.quotation_id || null,
           quotation_number: jobCard.quotation_number || null,

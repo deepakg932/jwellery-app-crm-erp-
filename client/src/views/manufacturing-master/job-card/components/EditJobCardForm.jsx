@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   FiUpload,
   FiTrash2,
   FiX,
-  FiPlus,
   FiCalendar,
   FiUser,
   FiAlertCircle,
@@ -12,8 +11,8 @@ import {
   FiPackage,
   FiShoppingCart,
   FiEdit2,
-  FiLock,
-  FiUnlock,
+  FiImage,
+  FiCamera,
 } from "react-icons/fi";
 import useJobCards from "@/hooks/useJobCards";
 
@@ -45,36 +44,21 @@ const EditJobCardForm = ({
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
 
-  // Determine initial source based on job card data
-  const getInitialSource = (jobCard) => {
-    if (!jobCard) return "none";
-    
-    // Check if job card has quotation_id or quotation_number
-    if (jobCard.quotation_id || jobCard.quotation_number) {
-      console.log("Job Card has quotation data:", {
-        quotation_id: jobCard.quotation_id,
-        quotation_number: jobCard.quotation_number
-      });
-      return "quotation";
-    }
-    
-    // Check if job card has items
-    if (jobCard.items && jobCard.items.length > 0) {
-      console.log("Job Card has items, no quotation data");
-      return "products";
-    }
-    
-    return "none";
-  };
+  // Image upload state
+  const [imageFiles, setImageFiles] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [existingImages, setExistingImages] = useState([]);
 
+  // Item source type (quotation or products)
   const [itemSource, setItemSource] = useState("none");
   const [activeTab, setActiveTab] = useState("products");
-  const [isSourceLocked, setIsSourceLocked] = useState(true); // Lock source initially
 
   // Refs
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
   const productSearchRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     _id: "",
@@ -95,8 +79,6 @@ const EditJobCardForm = ({
     priority: "medium",
     status: "pending",
     total_amount: 0,
-    advance_amount: 0,
-    balance_amount: 0,
     assigned_to: "",
   });
 
@@ -121,52 +103,137 @@ const EditJobCardForm = ({
     { value: "cancelled", label: "Cancelled", color: "danger" },
   ];
 
+  // Image handling functions
+  const handleImageUpload = async (files) => {
+    if (!files || files.length === 0) return;
+
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "image/webp",
+      "image/gif",
+    ];
+    const maxSize = 2 * 1024 * 1024; // 2MB
+
+    setUploadingImages(true);
+
+    const newImageFiles = [];
+    const newImagePreviews = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      // Check file type
+      if (!validTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          images: `File ${file.name} is not a valid image type`,
+        }));
+        continue;
+      }
+
+      // Check file size
+      if (file.size > maxSize) {
+        setErrors((prev) => ({
+          ...prev,
+          images: `File ${file.name} exceeds 2MB limit`,
+        }));
+        continue;
+      }
+
+      newImageFiles.push(file);
+
+      // Create preview
+      const reader = new FileReader();
+      const promise = new Promise((resolve) => {
+        reader.onloadend = () => {
+          newImagePreviews.push(reader.result);
+          resolve();
+        };
+        reader.readAsDataURL(file);
+      });
+      await promise;
+    }
+
+    // Update states
+    setImageFiles((prev) => [...prev, ...newImageFiles]);
+    setImagePreviews((prev) => [...prev, ...newImagePreviews]);
+    setUploadingImages(false);
+
+    // Clear any existing error
+    if (errors.images) {
+      setErrors((prev) => ({ ...prev, images: "" }));
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    handleImageUpload(files);
+
+    // Clear file input
+    e.target.value = "";
+  };
+
+  const handleRemoveImage = (index) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+
+    if (errors.images) {
+      setErrors((prev) => ({ ...prev, images: "" }));
+    }
+  };
+
+  const handleRemoveExistingImage = (index) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const clearAllImages = () => {
+    setImageFiles([]);
+    setImagePreviews([]);
+
+    if (errors.images) {
+      setErrors((prev) => ({ ...prev, images: "" }));
+    }
+  };
+
   // Initialize form with job card data
   useEffect(() => {
     if (jobCardData) {
       const jobCard = jobCardData.data?.[0] || jobCardData;
       
       console.log("Job Card Data for Edit:", jobCard);
-      console.log("Quotation Data:", {
-        quotation_id: jobCard.quotation_id,
-        quotation_number: jobCard.quotation_number,
-        hasItems: jobCard.items?.length > 0
-      });
       
       // Format items from API response
       const formattedItems = (jobCard.items || []).map((item) => ({
         product_id: item.product_id?._id || item.product_id || "",
-        product_code: item.product_id?.product_code || item.product_id?.article_no || "",
+        article_no: item.product_id?.product_code || item.product_id?.article_no || "",
         product_name: item.product_name || item.product_id?.product_name || "",
-        description: item.description || "",
         quantity: (item.quantity || 1).toString(),
         unit_price: item.unit_price || 0,
         total_amount: item.total_amount || 0,
-        notes: item.notes || "",
-        // Store product details for display
-        product_details: item.product_id,
       }));
 
-      const initialSource = getInitialSource(jobCard);
-      console.log("Initial source determined:", initialSource);
-
-      // Set active tab based on source
-      let initialActiveTab = "products";
-      if (initialSource === "quotation") {
-        initialActiveTab = "quotation";
-        
-        // If from quotation, we need to find and set the quotation
-        if (jobCard.quotation_id && allQuotations.length > 0) {
-          const foundQuotation = allQuotations.find(q => q._id === jobCard.quotation_id);
-          if (foundQuotation) {
-            console.log("Found quotation in list:", foundQuotation);
-            setSelectedQuotation(foundQuotation);
-            setSearchTerm(foundQuotation.quotation_number || "");
-          }
-        }
+      // Determine source
+      let initialSource = "none";
+      if (jobCard.quotation_id || jobCard.quotation_number) {
+        initialSource = "quotation";
+      } else if (formattedItems.length > 0) {
+        initialSource = "products";
       }
-      
-      console.log("Active tab set to:", initialActiveTab);
+
+      // Set existing images if any
+      if (jobCard.images && Array.isArray(jobCard.images)) {
+        setExistingImages(jobCard.images);
+      }
 
       // Set form data
       setFormData({
@@ -192,45 +259,25 @@ const EditJobCardForm = ({
         priority: jobCard.priority || "medium",
         status: jobCard.status || "pending",
         total_amount: jobCard.total_amount || 0,
-        advance_amount: jobCard.advance_amount || 0,
-        balance_amount: jobCard.balance_amount || 0,
         assigned_to: jobCard.assigned_to?._id || jobCard.assigned_to || "",
       });
 
-      // Set item source and active tab
+      // Set source and active tab
       setItemSource(initialSource);
-      setActiveTab(initialActiveTab);
+      setActiveTab(initialSource === "quotation" ? "quotation" : "products");
 
-      console.log("Form initialized with source:", initialSource, "and tab:", initialActiveTab);
-    }
-  }, [jobCardData, allQuotations]);
-
-  // Auto-fetch quotation if job card has quotation data
-  useEffect(() => {
-    if (jobCardData && !selectedQuotation) {
-      const jobCard = jobCardData.data?.[0] || jobCardData;
-      
-      if (jobCard.quotation_id) {
-        console.log("Auto-fetching quotation for job card:", jobCard.quotation_id);
-        
-        // Try to find in already loaded quotations
-        if (allQuotations.length > 0) {
-          const foundQuotation = allQuotations.find(q => q._id === jobCard.quotation_id);
-          if (foundQuotation) {
-            console.log("Found quotation in loaded list:", foundQuotation);
-            setSelectedQuotation(foundQuotation);
-            setSearchTerm(foundQuotation.quotation_number || jobCard.quotation_number || "");
-          } else {
-            console.log("Quotation not found in loaded list, fetching...");
-            fetchQuotations();
-          }
-        } else {
-          console.log("No quotations loaded yet, fetching...");
-          fetchQuotations();
+      // Set quotation if exists
+      if (jobCard.quotation_id && allQuotations.length > 0) {
+        const foundQuotation = allQuotations.find(q => q._id === jobCard.quotation_id);
+        if (foundQuotation) {
+          setSelectedQuotation(foundQuotation);
+          setSearchTerm(foundQuotation.quotation_number || "");
         }
       }
+
+      calculateTotals();
     }
-  }, [jobCardData, selectedQuotation, allQuotations, fetchQuotations]);
+  }, [jobCardData, allQuotations]);
 
   // Filter quotations based on search term
   useEffect(() => {
@@ -243,7 +290,6 @@ const EditJobCardForm = ({
     const searchTermLower = searchTerm.toLowerCase();
 
     const filtered = allQuotations.filter((quotation) => {
-      // Check if quotation is already selected
       if (selectedQuotation && quotation._id === selectedQuotation._id) {
         return false;
       }
@@ -281,15 +327,10 @@ const EditJobCardForm = ({
         ?.toLowerCase()
         .includes(searchTermLower);
 
-      const matchProductCode = product.product_code
+      const matchProductCode = product.article_no
         ?.toLowerCase()
         .includes(searchTermLower);
-
-      const matchDescription = product.description
-        ?.toLowerCase()
-        .includes(searchTermLower);
-
-      return matchProductName || matchProductCode || matchDescription;
+      return matchProductName || matchProductCode;
     });
 
     setFilteredProducts(filtered.slice(0, 10));
@@ -326,26 +367,8 @@ const EditJobCardForm = ({
     };
   }, [showQuotationDropdown, showProductDropdown]);
 
-  // Toggle source lock
-  const toggleSourceLock = () => {
-    if (isSourceLocked) {
-      // Only allow unlocking if no items are selected
-      if (formData.items.some(item => item.product_id)) {
-        alert("Please clear all items before changing source");
-        return;
-      }
-    }
-    setIsSourceLocked(!isSourceLocked);
-  };
-
-  // Handle product selection from search - FOR PRODUCTS SOURCE
+  // Handle product selection from search
   const handleProductSelect = (product) => {
-    // Allow in products mode OR when source is unlocked
-    if (itemSource !== "products" && isSourceLocked) {
-      alert("Please switch to products mode or unlock source to add products");
-      return;
-    }
-
     const existingIndex = formData.items.findIndex(
       (item) => item.product_id === product._id
     );
@@ -365,9 +388,8 @@ const EditJobCardForm = ({
     } else {
       const newItem = {
         product_id: product._id,
-        product_code: product.product_code || product.article_no || "",
+        article_no: product.article_no || "",
         product_name: product.product_name || "",
-        description: product.description || "",
         quantity: "1",
         unit_price:
           product.selling_price_with_gst ||
@@ -379,7 +401,6 @@ const EditJobCardForm = ({
           product.selling_price ||
           product.unit_price ||
           0,
-        notes: "",
         price_info: {
           base_price: product.grand_total || 0,
           gst_amount: product.gst_amount || 0,
@@ -394,30 +415,23 @@ const EditJobCardForm = ({
       }));
     }
 
+    setItemSource("products");
     setProductSearch("");
     setShowProductDropdown(false);
+
     setTimeout(calculateTotals, 100);
   };
 
-  // Handle quotation selection - FOR QUOTATION SOURCE
+  // Handle quotation selection
   const handleQuotationSelect = (quotation) => {
-    // Allow in quotation mode OR when source is unlocked
-    if (itemSource !== "quotation" && isSourceLocked) {
-      alert("Please switch to quotation mode or unlock source to select quotation");
-      return;
-    }
-
     const customer = quotation.customer_id || {};
-
     const jobCardItems = (quotation.items || []).map((item) => ({
       product_id: item.product_id?._id || item.product_id || "",
-      product_code: item.product_code || "",
+      article_no: item.article_no || "",
       product_name: item.product_name || "",
-      description: item.description || "",
       quantity: (item.quantity || 1).toString(),
       unit_price: item.unit_price || item.net_price || 0,
       total_amount: item.subtotal || item.net_price || 0,
-      notes: item.notes || "",
     }));
 
     const totalAmount = jobCardItems.reduce(
@@ -445,10 +459,6 @@ const EditJobCardForm = ({
       customer_mobile: customer.mobile || customer.phone || "",
       items: jobCardItems,
       total_amount: totalAmount,
-      balance_amount: totalAmount,
-      note:
-        `Created from Quotation: ${quotation.quotation_number || ""}` +
-        (quotation.note ? `\nQuotation Note: ${quotation.note}` : ""),
       instructions: quotation.terms_conditions || "",
       expected_delivery_date: expectedDelivery.toISOString().split("T")[0],
       job_card_date: jobCardDate,
@@ -459,8 +469,6 @@ const EditJobCardForm = ({
     setSelectedQuotation(quotation);
     setShowQuotationDropdown(false);
     setSearchTerm(quotation.quotation_number || "");
-    
-    // Set source to quotation
     setItemSource("quotation");
     setActiveTab("quotation");
 
@@ -498,15 +506,11 @@ const EditJobCardForm = ({
 
   // Clear quotation selection
   const clearQuotationSelection = () => {
-    if (isSourceLocked && hasItems) {
-      alert("Cannot clear quotation while items exist. Clear items first or unlock source.");
-      return;
-    }
-
     setSelectedQuotation(null);
     setSearchTerm("");
     setFilteredQuotations([]);
     setShowQuotationDropdown(false);
+    setItemSource("none");
 
     setFormData((prev) => ({
       ...prev,
@@ -515,17 +519,12 @@ const EditJobCardForm = ({
       customer_mobile: "",
       items: [],
       total_amount: 0,
-      balance_amount: 0,
       note: "",
       instructions: "",
       quotation_id: "",
       quotation_number: "",
     }));
 
-    // Switch to products mode
-    setItemSource("products");
-    setActiveTab("products");
-    
     calculateTotals();
   };
 
@@ -535,52 +534,20 @@ const EditJobCardForm = ({
       ...prev,
       items: [],
       total_amount: 0,
-      balance_amount: 0,
     }));
+    setItemSource("none");
     calculateTotals();
   };
 
   // Switch to products tab
   const switchToProductsTab = () => {
-    if (isSourceLocked && itemSource === "quotation") {
-      alert("Source is locked. Please unlock first to switch from quotation to products.");
-      return;
-    }
-
-    if (hasItems && itemSource === "quotation") {
-      alert("Cannot switch to products while quotation items exist. Clear items first.");
-      return;
-    }
-
     setActiveTab("products");
-    if (!isSourceLocked) {
-      setItemSource("products");
-    }
-    
-    // Clear quotation selection when switching to products
-    setSelectedQuotation(null);
-    setSearchTerm("");
-    setFilteredQuotations([]);
-    
     clearAllItems();
   };
 
   // Switch to quotation tab
   const switchToQuotationTab = () => {
-    if (isSourceLocked && itemSource === "products") {
-      alert("Source is locked. Please unlock first to switch from products to quotation.");
-      return;
-    }
-
-    if (hasItems && itemSource === "products") {
-      alert("Cannot switch to quotation while product items exist. Clear items first.");
-      return;
-    }
-
     setActiveTab("quotation");
-    if (!isSourceLocked) {
-      setItemSource("quotation");
-    }
     clearAllItems();
   };
 
@@ -588,8 +555,7 @@ const EditJobCardForm = ({
   const validateForm = () => {
     const newErrors = {};
 
-    // Customer validation depends on source
-    if (itemSource === "quotation" && !formData.customer_id) {
+    if (itemSource !== "products" && !formData.customer_id) {
       newErrors.customer_id = "Customer is required";
     }
 
@@ -604,6 +570,19 @@ const EditJobCardForm = ({
     const selectedItems = formData.items.filter((item) => item.product_id);
     if (selectedItems.length === 0) {
       newErrors.items = "At least one item is required";
+    }
+
+    // Validate images
+    if (imageFiles.length > 10) {
+      newErrors.images = "Maximum 10 images allowed";
+    }
+
+    const totalImageSize = imageFiles.reduce(
+      (total, file) => total + file.size,
+      0
+    );
+    if (totalImageSize > 20 * 1024 * 1024) {
+      newErrors.images = "Total image size should be less than 20MB";
     }
 
     setErrors(newErrors);
@@ -631,9 +610,6 @@ const EditJobCardForm = ({
       0
     );
 
-    const advance = parseFloat(formData.advance_amount) || 0;
-    const balance = Math.max(0, itemTotal - advance);
-
     setFormData((prev) => ({
       ...prev,
       items: prev.items.map((item) => {
@@ -643,7 +619,6 @@ const EditJobCardForm = ({
         return calculatedItem ? calculatedItem : item;
       }),
       total_amount: itemTotal,
-      balance_amount: balance,
     }));
   };
 
@@ -658,17 +633,6 @@ const EditJobCardForm = ({
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-
-    if (name === "advance_amount") {
-      const total = parseFloat(formData.total_amount) || 0;
-      const advance = parseFloat(value) || 0;
-      const balance = Math.max(0, total - advance);
-      
-      setFormData((prev) => ({
-        ...prev,
-        balance_amount: balance,
-      }));
     }
   };
 
@@ -698,6 +662,10 @@ const EditJobCardForm = ({
       }));
 
       setTimeout(calculateTotals, 0);
+
+      if (updatedItems.filter((item) => item.product_id).length === 0) {
+        setItemSource("none");
+      }
     } else {
       clearItem(index);
     }
@@ -708,13 +676,11 @@ const EditJobCardForm = ({
     const updatedItems = [...formData.items];
     updatedItems[index] = {
       product_id: "",
-      product_code: "",
+      article_no: "",
       product_name: "",
-      description: "",
       quantity: "1",
       unit_price: 0,
       total_amount: 0,
-      notes: "",
     };
 
     setFormData((prev) => ({
@@ -722,33 +688,11 @@ const EditJobCardForm = ({
       items: updatedItems,
     }));
 
-    setTimeout(calculateTotals, 0);
-  };
-
-  // Add new empty item row - FOR PRODUCTS SOURCE
-  const addNewItemRow = () => {
-    // Allow in products mode OR when source is unlocked
-    if (itemSource !== "products" && isSourceLocked) {
-      alert("Can only add empty rows in products mode");
-      return;
+    if (updatedItems.filter((item) => item.product_id).length === 0) {
+      setItemSource("none");
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          product_id: "",
-          product_code: "",
-          product_name: "",
-          description: "",
-          quantity: "1",
-          unit_price: 0,
-          total_amount: 0,
-          notes: "",
-        },
-      ],
-    }));
+    setTimeout(calculateTotals, 0);
   };
 
   const handleSubmit = (e) => {
@@ -756,49 +700,87 @@ const EditJobCardForm = ({
     if (!validateForm()) return;
 
     const totalAmount = parseFloat(formData.total_amount) || 0;
-    const advanceAmount = parseFloat(formData.advance_amount) || 0;
-    const balanceAmount = Math.max(0, totalAmount - advanceAmount);
 
-    const payload = {
-      _id: formData._id,
-      job_card_date: formData.job_card_date,
-      expected_delivery_date: formData.expected_delivery_date,
-      delivery_date: formData.delivery_date || null,
-      items: formData.items
-        .filter((item) => item.product_id)
-        .map((item) => ({
-          product_id: item.product_id,
-          product_code: item.product_code,
-          product_name: item.product_name,
-          description: item.description,
-          quantity: parseFloat(item.quantity) || 1,
-          unit_price: parseFloat(item.unit_price) || 0,
-          total_amount: parseFloat(item.total_amount) || 0,
-          notes: item.notes,
-        })),
-      note: formData.note,
-      instructions: formData.instructions,
-      priority: formData.priority,
-      status: formData.status,
-      total_amount: totalAmount,
-      advance_amount: advanceAmount,
-      balance_amount: balanceAmount,
-      assigned_to: formData.assigned_to || null,
-    };
+    // Always use FormData for file upload
+    const formDataToSend = new FormData();
 
-    // Add customer data if from quotation
-    if (itemSource === "quotation" && formData.customer_id) {
-      payload.customer_id = formData.customer_id;
+    // Append all form data as fields
+    formDataToSend.append("_id", formData._id);
+    formDataToSend.append("job_card_date", formData.job_card_date);
+    formDataToSend.append(
+      "expected_delivery_date",
+      formData.expected_delivery_date
+    );
+    if (formData.delivery_date) {
+      formDataToSend.append("delivery_date", formData.delivery_date);
     }
 
-    // Add quotation data if available
+    // Append items as JSON string
+    const itemsToSend = formData.items
+      .filter((item) => item.product_id)
+      .map((item) => ({
+        product_id: item.product_id,
+        product_code: item.article_no, // Match backend field name
+        product_name: item.product_name,
+        quantity: parseFloat(item.quantity) || 1,
+        unit_price: parseFloat(item.unit_price) || 0,
+        total_amount: parseFloat(item.total_amount) || 0,
+      }));
+
+    formDataToSend.append("items", JSON.stringify(itemsToSend));
+
+    // Append other fields
+    formDataToSend.append("note", formData.note);
+    formDataToSend.append("instructions", formData.instructions);
+    formDataToSend.append("priority", formData.priority);
+    formDataToSend.append("status", formData.status);
+    formDataToSend.append("total_amount", totalAmount);
+
+    if (formData.assigned_to) {
+      formDataToSend.append("assigned_to", formData.assigned_to);
+    }
+
+    // Handle customer data
+    if (itemSource !== "products") {
+      if (formData.customer_id) {
+        formDataToSend.append("customer_id", formData.customer_id);
+      }
+      if (formData.customer_name) {
+        formDataToSend.append("customer_name", formData.customer_name);
+      }
+      if (formData.customer_mobile) {
+        formDataToSend.append("customer_mobile", formData.customer_mobile);
+      }
+    }
+
+    // Handle quotation data
     if (formData.quotation_id) {
-      payload.quotation_id = formData.quotation_id;
-      payload.quotation_number = formData.quotation_number;
+      formDataToSend.append("quotation_id", formData.quotation_id);
+      formDataToSend.append("quotation_number", formData.quotation_number);
     }
 
-    console.log("Updating job card data:", payload);
-    onSave(payload);
+    // Append existing images (URLs)
+    formDataToSend.append("existing_images", JSON.stringify(existingImages));
+
+    // Append new image files (actual File objects)
+    imageFiles.forEach((file, index) => {
+      formDataToSend.append("images", file); // Use "images" as field name
+    });
+
+    console.log("Updating job card with FormData:", {
+      hasImages: imageFiles.length > 0,
+      imageCount: imageFiles.length,
+      existingImagesCount: existingImages.length,
+      hasQuotation: !!formData.quotation_id,
+      itemsCount: itemsToSend.length,
+    });
+
+    // Log FormData contents for debugging
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(`${key}:`, value);
+    }
+
+    onSave(formDataToSend);
   };
 
   const handleClose = () => {
@@ -821,8 +803,6 @@ const EditJobCardForm = ({
       priority: "medium",
       status: "pending",
       total_amount: 0,
-      advance_amount: 0,
-      balance_amount: 0,
       assigned_to: "",
     });
     setErrors({});
@@ -835,12 +815,24 @@ const EditJobCardForm = ({
     setShowProductDropdown(false);
     setItemSource("none");
     setActiveTab("products");
-    setIsSourceLocked(true);
+
+    // Reset image states
+    setImageFiles([]);
+    setImagePreviews([]);
+    setExistingImages([]);
+    setUploadingImages(false);
+
     onClose();
   };
 
   const isDisabled =
-    loading || loadingEmployees || loadingQuotations || loadingProducts;
+    loading ||
+    loadingEmployees ||
+    loadingQuotations ||
+    loadingProducts ||
+    uploadingImages;
+
+  const isSourceSelectionDisabled = hasItems;
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -859,53 +851,6 @@ const EditJobCardForm = ({
         {priorityOption?.label || priority}
       </span>
     );
-  };
-
-  // Render product details for existing items
-  const renderProductDetails = (item) => {
-    if (!item.product_details) return null;
-
-    const product = item.product_details;
-    return (
-      <div className="small text-muted mt-1">
-        {product.metals && product.metals.length > 0 && (
-          <div>
-            Metal: {product.metals[0].metal_type} ({product.metals[0].purity})
-          </div>
-        )}
-        {product.stones && product.stones.length > 0 && (
-          <div>Stone: {product.stones[0].stone_type}</div>
-        )}
-        {product.selling_price_with_gst && (
-          <div className="text-success">(Includes GST)</div>
-        )}
-      </div>
-    );
-  };
-
-  // Get source badge
-  const getSourceBadge = () => {
-    if (itemSource === "quotation") {
-      return (
-        <span className="badge bg-success">
-          <FiShoppingCart className="me-1" />
-          From Quotation: {formData.quotation_number}
-        </span>
-      );
-    } else if (itemSource === "products") {
-      return (
-        <span className="badge bg-primary">
-          <FiPackage className="me-1" />
-          Manual Products
-        </span>
-      );
-    } else {
-      return (
-        <span className="badge bg-secondary">
-          No Source Selected
-        </span>
-      );
-    }
   };
 
   return (
@@ -956,31 +901,15 @@ const EditJobCardForm = ({
                 <div className="d-flex align-items-center justify-content-between">
                   <div>
                     <strong>Job Card Number:</strong> {formData.job_card_no}
-                    <div className="small mt-1">
-                      {getSourceBadge()}
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-warning ms-3"
-                        onClick={toggleSourceLock}
-                        title={isSourceLocked ? "Unlock to change source" : "Lock current source"}
-                      >
-                        {isSourceLocked ? (
-                          <>
-                            <FiLock className="me-1" />
-                            Source Locked
-                          </>
-                        ) : (
-                          <>
-                            <FiUnlock className="me-1" />
-                            Source Unlocked
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    {formData.quotation_number && (
+                      <div className="small mt-1">
+                        <strong>Quotation:</strong> {formData.quotation_number}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <span className="badge bg-primary me-2">
-                      Source: {itemSource === "quotation" ? "Quotation" : "Products"}
+                      Source: {itemSource === "quotation" ? "Quotation" : itemSource === "products" ? "Products" : "None"}
                     </span>
                     <span className="badge bg-secondary">
                       Status: {formData.status}
@@ -989,123 +918,90 @@ const EditJobCardForm = ({
                 </div>
               </div>
 
-              {/* Source Selection Tabs - Only show if source is unlocked */}
-              {!isSourceLocked ? (
-                <div className="card mb-4">
-                  <div className="card-body p-3">
-                    <div className="d-flex mb-3 align-items-center">
-                      <div className="btn-group" role="group">
-                        <button
-                          type="button"
-                          className={`btn btn-${
-                            itemSource === "products"
-                              ? "primary"
-                              : "outline-primary"
-                          } d-flex align-items-center gap-2`}
-                          onClick={() => {
-                            if (hasItems && itemSource === "quotation") {
-                              alert("Cannot switch to products while quotation items exist. Clear items first.");
-                              return;
-                            }
-                            setItemSource("products");
-                            setActiveTab("products");
-                            setSelectedQuotation(null);
-                            setSearchTerm("");
-                          }}
-                          disabled={isDisabled}
-                        >
-                          <FiPackage size={16} />
-                          Products Mode
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn btn-${
-                            itemSource === "quotation"
-                              ? "primary"
-                              : "outline-primary"
-                          } d-flex align-items-center gap-2`}
-                          onClick={() => {
-                            if (hasItems && itemSource === "products") {
-                              alert("Cannot switch to quotation while product items exist. Clear items first.");
-                              return;
-                            }
-                            setItemSource("quotation");
-                            setActiveTab("quotation");
-                          }}
-                          disabled={isDisabled}
-                        >
-                          <FiShoppingCart size={16} />
-                          Quotation Mode
-                        </button>
-                      </div>
-                      
-                      <div className="ms-3">
-                        <small className="text-warning">
-                          Source unlocked - you can switch between quotation/products
-                        </small>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="card mb-4">
-                  <div className="card-body p-3">
-                    <div className="alert alert-warning mb-0">
-                      <div className="d-flex align-items-center">
-                        <FiLock className="me-2" />
-                        <div>
-                          <strong>Source Locked</strong>
-                          <div className="small">
-                            Current source: {itemSource === "quotation" ? "Quotation" : "Products"}
-                            {isSourceLocked && " (Cannot change source while items exist)"}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-warning ms-auto"
-                          onClick={toggleSourceLock}
-                          disabled={hasItems}
-                          title={hasItems ? "Clear items to unlock source" : "Unlock source"}
-                        >
-                          {hasItems ? (
-                            <>
-                              <FiLock className="me-1" />
-                              Clear Items to Unlock
-                            </>
-                          ) : (
-                            <>
-                              <FiUnlock className="me-1" />
-                              Unlock Source
-                            </>
+              {/* Source Selection Tabs */}
+              <div className="card mb-4">
+                <div className="card-body p-3">
+                  <div className="d-flex mb-3">
+                    <div className="btn-group" role="group">
+                      <button
+                        type="button"
+                        className={`btn btn-${
+                          activeTab === "products"
+                            ? "primary"
+                            : "outline-primary"
+                        } d-flex align-items-center gap-2`}
+                        onClick={switchToProductsTab}
+                        disabled={
+                          isDisabled ||
+                          (isSourceSelectionDisabled &&
+                            itemSource !== "products")
+                        }
+                      >
+                        <FiPackage size={16} />
+                        Add Products Directly
+                        {isSourceSelectionDisabled &&
+                          itemSource !== "products" && (
+                            <span className="ms-1 text-warning">
+                              (Disabled - Items already added)
+                            </span>
                           )}
-                        </button>
-                      </div>
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-${
+                          activeTab === "quotation"
+                            ? "primary"
+                            : "outline-primary"
+                        } d-flex align-items-center gap-2`}
+                        onClick={switchToQuotationTab}
+                        disabled={
+                          isDisabled ||
+                          (isSourceSelectionDisabled &&
+                            itemSource !== "quotation")
+                        }
+                      >
+                        <FiShoppingCart size={16} />
+                        Use Quotation
+                        {isSourceSelectionDisabled &&
+                          itemSource !== "quotation" && (
+                            <span className="ms-1 text-warning">
+                              (Disabled - Items already added)
+                            </span>
+                          )}
+                      </button>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* Quotation Section - Show only if in quotation mode */}
-              {itemSource === "quotation" && (
-                <div className="card mb-4">
-                  <div className="card-body">
-                    <h6 className="fw-bold mb-3">Quotation Information</h6>
+                  {activeTab === "quotation" ? (
+                    // Quotation Search Section
                     <div className="row align-items-center">
                       <div className="col-md-8 position-relative">
                         <label className="form-label fw-medium mb-1">
                           <FiSearch className="me-2" />
-                          {selectedQuotation ? "Change Quotation" : "Select Quotation"}
+                          Search Quotation
+                          {itemSource === "products" && (
+                            <span className="text-danger ms-2">
+                              (Disabled - Items already added from Products)
+                            </span>
+                          )}
                         </label>
                         <div className="input-group" ref={searchInputRef}>
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="Search by quotation number, customer name or mobile..."
+                            placeholder={
+                              itemSource === "products"
+                                ? "Clear items first to use quotations"
+                                : "Search by quotation number, customer name or mobile..."
+                            }
                             value={searchTerm}
                             onChange={handleSearchChange}
-                            disabled={isDisabled}
+                            disabled={isDisabled || itemSource === "products"}
                             onFocus={() => {
-                              if (searchTerm.length >= 2) {
+                              if (
+                                searchTerm.length >= 2 &&
+                                itemSource !== "products"
+                              ) {
                                 setShowQuotationDropdown(true);
                               }
                             }}
@@ -1123,73 +1019,116 @@ const EditJobCardForm = ({
                         </div>
 
                         {/* Quotation Dropdown */}
-                        {showQuotationDropdown && filteredQuotations.length > 0 && (
-                          <div
-                            ref={dropdownRef}
-                            className="position-absolute bg-white border rounded shadow-sm mt-1"
-                            style={{
-                              zIndex: 1050,
-                              width: "calc(100% - 12px)",
-                              maxHeight: "300px",
-                              overflowY: "auto",
-                              top: "100%",
-                              left: "6px",
-                            }}
-                          >
-                            <div className="p-2">
-                              {filteredQuotations.map((quotation) => (
-                                <div
-                                  key={quotation._id}
-                                  className="p-2 border-bottom hover-bg-light cursor-pointer"
-                                  onClick={() => handleQuotationSelect(quotation)}
-                                  onMouseEnter={(e) =>
-                                    (e.currentTarget.style.backgroundColor = "#f8f9fa")
-                                  }
-                                  onMouseLeave={(e) =>
-                                    (e.currentTarget.style.backgroundColor = "")
-                                  }
-                                >
-                                  <div className="d-flex justify-content-between align-items-center">
-                                    <div>
-                                      <div className="fw-bold">
-                                        {quotation.quotation_number}
+                        {showQuotationDropdown &&
+                          filteredQuotations.length > 0 && (
+                            <div
+                              ref={dropdownRef}
+                              className="position-absolute bg-white border rounded shadow-sm mt-1"
+                              style={{
+                                zIndex: 1050,
+                                width: "calc(100% - 12px)",
+                                maxHeight: "300px",
+                                overflowY: "auto",
+                                top: "100%",
+                                left: "6px",
+                              }}
+                            >
+                              <div className="p-2">
+                                {filteredQuotations.map((quotation) => (
+                                  <div
+                                    key={quotation._id}
+                                    className="p-2 border-bottom hover-bg-light cursor-pointer"
+                                    onClick={() =>
+                                      itemSource !== "products" &&
+                                      handleQuotationSelect(quotation)
+                                    }
+                                    onMouseEnter={(e) =>
+                                      itemSource !== "products" &&
+                                      (e.currentTarget.style.backgroundColor =
+                                        "#f8f9fa")
+                                    }
+                                    onMouseLeave={(e) =>
+                                      (e.currentTarget.style.backgroundColor =
+                                        "")
+                                    }
+                                    style={{
+                                      cursor:
+                                        itemSource === "products"
+                                          ? "not-allowed"
+                                          : "pointer",
+                                      opacity:
+                                        itemSource === "products" ? 0.6 : 1,
+                                    }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-center">
+                                      <div>
+                                        <div className="fw-bold">
+                                          {quotation.quotation_number}
+                                        </div>
+                                        <div className="small text-muted">
+                                          Customer: {quotation.customer_name}
+                                        </div>
+                                        <div className="small text-muted">
+                                          Mobile: {quotation.customer_mobile}
+                                        </div>
+                                        {itemSource === "products" && (
+                                          <div className="small text-danger mt-1">
+                                            Clear products first to select
+                                            quotation
+                                          </div>
+                                        )}
                                       </div>
-                                      <div className="small text-muted">
-                                        Customer: {quotation.customer_name}
-                                      </div>
-                                      <div className="small text-muted">
-                                        Mobile: {quotation.customer_mobile}
-                                      </div>
-                                    </div>
-                                    <div className="text-end">
-                                      <div className="fw-bold">
-                                        {formatCurrency(quotation.grand_total)}
-                                      </div>
-                                      <div className="small text-muted">
-                                        {quotation.quotation_date
-                                          ? new Date(quotation.quotation_date).toLocaleDateString()
-                                          : "N/A"}
-                                      </div>
-                                      <div className="small">
-                                        <span
-                                          className={`badge bg-${
-                                            quotation.status === "accepted"
-                                              ? "success"
-                                              : quotation.status === "pending"
-                                              ? "warning"
-                                              : "secondary"
-                                          }`}
-                                        >
-                                          {quotation.status}
-                                        </span>
+                                      <div className="text-end">
+                                        <div className="fw-bold">
+                                          {formatCurrency(
+                                            quotation.grand_total
+                                          )}
+                                        </div>
+                                        <div className="small text-muted">
+                                          {quotation.quotation_date
+                                            ? new Date(
+                                                quotation.quotation_date
+                                              ).toLocaleDateString()
+                                            : "N/A"}
+                                        </div>
+                                        <div className="small">
+                                          <span
+                                            className={`badge bg-${
+                                              quotation.status === "accepted"
+                                                ? "success"
+                                                : quotation.status === "pending"
+                                                ? "warning"
+                                                : "secondary"
+                                            }`}
+                                          >
+                                            {quotation.status}
+                                          </span>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                        {loadingQuotations &&
+                          !selectedQuotation &&
+                          itemSource !== "products" && (
+                            <div className="text-muted small mt-1">
+                              <span className="spinner-border spinner-border-sm me-1" />
+                              Loading quotations...
+                            </div>
+                          )}
+
+                        {!loadingQuotations &&
+                          searchTerm.length >= 2 &&
+                          filteredQuotations.length === 0 &&
+                          itemSource !== "products" && (
+                            <div className="text-muted small mt-1">
+                              No quotations found for "{searchTerm}"
+                            </div>
+                          )}
                       </div>
 
                       <div className="col-md-4">
@@ -1202,7 +1141,22 @@ const EditJobCardForm = ({
                                 {selectedQuotation.quotation_number}
                                 <div className="small">
                                   Customer: {selectedQuotation.customer_name} |
-                                  Total: {formatCurrency(selectedQuotation.grand_total)}
+                                  Total:{" "}
+                                  {formatCurrency(
+                                    selectedQuotation.grand_total
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : itemSource === "products" ? (
+                          <div className="alert alert-warning mb-0">
+                            <div className="d-flex align-items-center">
+                              <FiAlertCircle className="me-2" />
+                              <div>
+                                <strong>Products Selected</strong>
+                                <div className="small">
+                                  Clear items first to select quotation
                                 </div>
                               </div>
                             </div>
@@ -1221,13 +1175,14 @@ const EditJobCardForm = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="alert alert-warning mb-0">
+                          <div className="alert alert-info mb-0">
                             <div className="d-flex align-items-center">
-                              <FiAlertCircle className="me-2" />
+                              <FiShoppingCart className="me-2" />
                               <div>
-                                <strong>No Quotation Selected</strong>
+                                <strong>Select Quotation</strong>
                                 <div className="small">
-                                  Search and select a quotation
+                                  Search and select a quotation to auto-fill
+                                  items
                                 </div>
                               </div>
                             </div>
@@ -1235,31 +1190,36 @@ const EditJobCardForm = ({
                         )}
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Products Section - Show only if in products mode */}
-              {itemSource === "products" && (
-                <div className="card mb-4">
-                  <div className="card-body">
-                    <h6 className="fw-bold mb-3">Products Information</h6>
+                  ) : (
+                    // Product Search Section
                     <div className="row align-items-center">
                       <div className="col-md-8 position-relative">
                         <label className="form-label fw-medium mb-1">
                           <FiSearch className="me-2" />
                           Search Products
+                          {itemSource === "quotation" && (
+                            <span className="text-danger ms-2">
+                              (Disabled - Items already added from Quotation)
+                            </span>
+                          )}
                         </label>
                         <div className="input-group" ref={productSearchRef}>
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="Search by product name, code or description..."
+                            placeholder={
+                              itemSource === "quotation"
+                                ? "Clear quotation first to add products"
+                                : "Search by product name, code or description..."
+                            }
                             value={productSearch}
                             onChange={handleProductSearchChange}
-                            disabled={isDisabled}
+                            disabled={isDisabled || itemSource === "quotation"}
                             onFocus={() => {
-                              if (productSearch.length >= 2) {
+                              if (
+                                productSearch.length >= 2 &&
+                                itemSource !== "quotation"
+                              ) {
                                 setShowProductDropdown(true);
                               }
                             }}
@@ -1298,33 +1258,61 @@ const EditJobCardForm = ({
                                 <div
                                   key={product._id}
                                   className="p-2 border-bottom hover-bg-light cursor-pointer"
-                                  onClick={() => handleProductSelect(product)}
+                                  onClick={() =>
+                                    itemSource !== "quotation" &&
+                                    handleProductSelect(product)
+                                  }
                                   onMouseEnter={(e) =>
-                                    (e.currentTarget.style.backgroundColor = "#f8f9fa")
+                                    itemSource !== "quotation" &&
+                                    (e.currentTarget.style.backgroundColor =
+                                      "#f8f9fa")
                                   }
                                   onMouseLeave={(e) =>
                                     (e.currentTarget.style.backgroundColor = "")
                                   }
+                                  style={{
+                                    cursor:
+                                      itemSource === "quotation"
+                                        ? "not-allowed"
+                                        : "pointer",
+                                    opacity:
+                                      itemSource === "quotation" ? 0.6 : 1,
+                                  }}
                                 >
                                   <div className="d-flex justify-content-between align-items-center">
                                     <div>
                                       <div className="fw-bold">
-                                        {product.product_name || "Unnamed Product"}
+                                        {product.product_name ||
+                                          "Unnamed Product"}
                                       </div>
                                       <div className="small text-muted">
-                                        Code: {product.product_code || product.article_no || "N/A"}
+                                        Code: {product.article_no || "N/A"}
                                       </div>
                                       <div className="small text-muted">
-                                        Category: {product.category || product.product_category || "N/A"}
+                                        Category:{" "}
+                                        {product.category ||
+                                          product.product_category ||
+                                          "N/A"}
                                       </div>
                                       {product.selling_price_with_gst && (
                                         <div className="small">
                                           <div>
-                                            Base: ₹{product.grand_total?.toLocaleString("en-IN") || 0}
+                                            Base: ₹
+                                            {product.grand_total?.toLocaleString(
+                                              "en-IN"
+                                            ) || 0}
                                           </div>
                                           <div>
-                                            GST: ₹{product.gst_amount?.toLocaleString("en-IN") || 0}
+                                            GST: ₹
+                                            {product.gst_amount?.toLocaleString(
+                                              "en-IN"
+                                            ) || 0}
                                           </div>
+                                        </div>
+                                      )}
+                                      {itemSource === "quotation" && (
+                                        <div className="small text-danger mt-1">
+                                          Clear quotation first to add products
                                         </div>
                                       )}
                                     </div>
@@ -1348,7 +1336,9 @@ const EditJobCardForm = ({
                                       <div className="small">
                                         <span
                                           className={`badge bg-${
-                                            product.status === "active" ? "success" : "secondary"
+                                            product.status === "active"
+                                              ? "success"
+                                              : "secondary"
                                           }`}
                                         >
                                           {product.status || "active"}
@@ -1362,62 +1352,80 @@ const EditJobCardForm = ({
                           </div>
                         )}
 
-                        {loadingProducts && (
+                        {loadingProducts && itemSource !== "quotation" && (
                           <div className="text-muted small mt-1">
                             <span className="spinner-border spinner-border-sm me-1" />
                             Loading products...
                           </div>
                         )}
 
-                        {!loadingProducts && productSearch.length >= 2 && filteredProducts.length === 0 && (
-                          <div className="text-muted small mt-1">
-                            No products found for "{productSearch}"
-                          </div>
-                        )}
+                        {!loadingProducts &&
+                          productSearch.length >= 2 &&
+                          filteredProducts.length === 0 &&
+                          itemSource !== "quotation" && (
+                            <div className="text-muted small mt-1">
+                              No products found for "{productSearch}"
+                            </div>
+                          )}
                       </div>
 
                       <div className="col-md-4">
-                        <div className="alert alert-info mb-0">
-                          <div className="d-flex align-items-center">
-                            <FiPackage className="me-2" />
-                            <div>
-                              <strong>Products Mode</strong>
-                              <div className="small">
-                                Search and select products to add or edit
+                        {itemSource === "quotation" ? (
+                          <div className="alert alert-warning mb-0">
+                            <div className="d-flex align-items-center">
+                              <FiAlertCircle className="me-2" />
+                              <div>
+                                <strong>Quotation Selected</strong>
+                                <div className="small">
+                                  Clear quotation first to add products
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="alert alert-info mb-0">
+                            <div className="d-flex align-items-center">
+                              <FiPackage className="me-2" />
+                              <div>
+                                <strong>Add Products Manually</strong>
+                                <div className="small">
+                                  Search and select products to add to job card
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
+                  )}
 
-                    {/* Quick Actions */}
-                    <div className="d-flex gap-2 mt-3">
+                  {/* Quick Actions */}
+                  <div className="d-flex gap-2 mt-3">
+                    {hasItems && (
                       <button
                         type="button"
-                        className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                        onClick={addNewItemRow}
+                        className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
+                        onClick={clearAllItems}
                         disabled={isDisabled}
                       >
-                        <FiPlus size={14} />
-                        Add Empty Item Row
+                        <FiTrash2 size={14} />
+                        Clear All Items
                       </button>
+                    )}
 
-                      {hasItems && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
-                          onClick={clearAllItems}
-                          disabled={isDisabled}
-                        >
-                          <FiTrash2 size={14} />
-                          Clear All Items
-                        </button>
-                      )}
-                    </div>
+                    {hasItems && (
+                      <div className="ms-auto">
+                        <span className="badge bg-info">
+                          Items Source:{" "}
+                          {itemSource === "quotation"
+                            ? "Quotation"
+                            : "Manual Products"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Basic Information */}
               <div className="row mb-4">
@@ -1494,11 +1502,11 @@ const EditJobCardForm = ({
                   </div>
                 </div>
 
-                {/* Customer section - Show for quotation source or when customer exists */}
-                {(itemSource === "quotation" || formData.customer_id) && (
+                {/* Customer section - Only show when NOT adding products or when quotation is selected */}
+                {itemSource !== "products" && (
                   <div className="col-md-3 mb-3">
                     <label className="form-label fw-medium">
-                      Customer {itemSource === "quotation" && <span className="text-danger">*</span>}
+                      Customer <span className="text-danger">*</span>
                     </label>
                     <div className="input-group">
                       <span className="input-group-text">
@@ -1512,9 +1520,9 @@ const EditJobCardForm = ({
                         value={formData.customer_name || ""}
                         readOnly
                         placeholder={
-                          itemSource === "quotation"
+                          selectedQuotation || formData.quotation_id
                             ? "Auto-filled from quotation"
-                            : "Customer from job card"
+                            : "Enter customer name"
                         }
                       />
                     </div>
@@ -1531,6 +1539,191 @@ const EditJobCardForm = ({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* IMAGE UPLOAD SECTION */}
+              <div className="row mb-4">
+                <div className="col-md-12">
+                  <div className="card">
+                    <div className="card-body">
+                      <label className="form-label fw-medium d-flex align-items-center gap-2 mb-3">
+                        <FiImage size={18} />
+                        Job Card Images
+                        {(existingImages.length > 0 || imagePreviews.length > 0) && (
+                          <span className="badge bg-primary ms-2">
+                            {existingImages.length + imagePreviews.length} image(s)
+                          </span>
+                        )}
+                      </label>
+
+                      {/* Hidden file input */}
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="d-none"
+                        accept="image/*"
+                        multiple
+                        onChange={handleFileSelect}
+                        disabled={isDisabled}
+                      />
+
+                      <div className="d-flex align-items-start gap-4 mb-4">
+                        {/* Upload button */}
+                        <div className="flex-shrink-0">
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary d-flex align-items-center gap-2 px-4"
+                            onClick={triggerFileInput}
+                            disabled={isDisabled || uploadingImages}
+                          >
+                            {uploadingImages ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <FiCamera size={18} />
+                                Upload New Images
+                              </>
+                            )}
+                          </button>
+
+                          <div className="form-text mt-2">
+                            Max 10 images • 2MB each • JPEG, PNG, JPG, WEBP, GIF
+                          </div>
+
+                          {errors.images && (
+                            <div className="text-danger small mt-2 d-flex align-items-center gap-1">
+                              <FiAlertCircle size={14} />
+                              {errors.images}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Clear all button */}
+                        {imagePreviews.length > 0 && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger d-flex align-items-center gap-2"
+                            onClick={clearAllImages}
+                            disabled={isDisabled}
+                          >
+                            <FiTrash2 size={16} />
+                            Clear New Images
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Existing images */}
+                      {existingImages.length > 0 && (
+                        <div className="mb-4">
+                          <h6 className="fw-medium mb-3">Existing Images:</h6>
+                          <div className="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+                            {existingImages.map((imageUrl, index) => (
+                              <div key={index} className="col">
+                                <div className="border rounded p-2 bg-light position-relative">
+                                  <img
+                                    src={imageUrl}
+                                    alt={`Existing ${index + 1}`}
+                                    className="rounded w-100"
+                                    style={{
+                                      height: "120px",
+                                      objectFit: "cover",
+                                    }}
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = "https://via.placeholder.com/150?text=Image+Error";
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger position-absolute top-0 end-0"
+                                    onClick={() => handleRemoveExistingImage(index)}
+                                    disabled={isDisabled}
+                                    style={{
+                                      transform: "translate(30%, -30%)",
+                                      borderRadius: "50%",
+                                      width: "30px",
+                                      height: "30px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                    }}
+                                  >
+                                    <FiX size={14} />
+                                  </button>
+                                  <div className="small text-muted text-center mt-1">
+                                    Existing Image {index + 1}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* New image previews grid */}
+                      {imagePreviews.length > 0 && (
+                        <div>
+                          <h6 className="fw-medium mb-3">New Images:</h6>
+                          <div className="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+                            {imagePreviews.map((preview, index) => (
+                              <div key={index} className="col">
+                                <div className="border rounded p-2 bg-light position-relative">
+                                  <img
+                                    src={preview}
+                                    alt={`Preview ${index + 1}`}
+                                    className="rounded w-100"
+                                    style={{
+                                      height: "120px",
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger position-absolute top-0 end-0"
+                                    onClick={() => handleRemoveImage(index)}
+                                    disabled={isDisabled}
+                                    style={{
+                                      transform: "translate(30%, -30%)",
+                                      borderRadius: "50%",
+                                      width: "30px",
+                                      height: "30px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                    }}
+                                  >
+                                    <FiX size={14} />
+                                  </button>
+                                  <div className="small text-muted text-center mt-1">
+                                    New Image {index + 1}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* No images placeholder */}
+                      {existingImages.length === 0 && imagePreviews.length === 0 && (
+                        <div className="border rounded d-flex align-items-center justify-content-center p-5 bg-light">
+                          <div className="text-center text-muted">
+                            <FiImage size={48} className="mb-3" />
+                            <div className="fw-medium mb-1">
+                              No images uploaded
+                            </div>
+                            <div className="small">
+                              Click "Upload New Images" to add job card images
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Additional Information */}
@@ -1609,10 +1802,14 @@ const EditJobCardForm = ({
                           </span>
                         )}
                       </div>
-                    ) : (
+                    ) : itemSource === "products" ? (
                       <div className="d-flex align-items-center">
                         <FiPackage className="me-2 text-primary" />
                         <span className="fw-medium">Manual Products</span>
+                      </div>
+                    ) : (
+                      <div className="d-flex align-items-center">
+                        <span className="fw-medium text-muted">No Source Selected</span>
                       </div>
                     )}
                   </div>
@@ -1625,23 +1822,11 @@ const EditJobCardForm = ({
                   <h6 className="fw-bold mb-0">
                     Job Card Items
                     <span className="text-muted ms-2 fs-6">
-                      ({formData.items.filter((item) => item.product_id).length} items)
-                      {itemSource === "quotation" && " - From Quotation"}
+                      ({formData.items.filter((item) => item.product_id).length}{" "}
+                      items)
+                      {selectedQuotation && " - From Quotation"}
                     </span>
                   </h6>
-                  <div className="d-flex gap-2">
-                    {itemSource === "products" && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                        onClick={addNewItemRow}
-                        disabled={isDisabled}
-                      >
-                        <FiPlus size={14} />
-                        Add Item Row
-                      </button>
-                    )}
-                  </div>
                 </div>
 
                 {/* Items Table */}
@@ -1653,11 +1838,9 @@ const EditJobCardForm = ({
                     <thead className="table-light">
                       <tr>
                         <th style={{ width: "25%" }}>Product</th>
-                        <th style={{ width: "20%" }}>Description</th>
                         <th style={{ width: "10%" }}>Quantity</th>
                         <th style={{ width: "15%" }}>Unit Price</th>
                         <th style={{ width: "15%" }}>Total</th>
-                        <th style={{ width: "10%" }}>Notes</th>
                         <th style={{ width: "5%" }}>Action</th>
                       </tr>
                     </thead>
@@ -1673,9 +1856,8 @@ const EditJobCardForm = ({
                                     {item.product_name || "Unknown Product"}
                                   </div>
                                   <div className="small text-muted">
-                                    Code: {item.product_code}
+                                    Code: {item.article_no}
                                   </div>
-                                  {renderProductDetails(item)}
                                 </div>
                                 <button
                                   type="button"
@@ -1689,24 +1871,16 @@ const EditJobCardForm = ({
                               </div>
                             </td>
                             <td>
-                              <textarea
-                                className="form-control"
-                                rows={2}
-                                value={item.description}
-                                onChange={(e) =>
-                                  handleItemChange(index, "description", e.target.value)
-                                }
-                                disabled={isDisabled}
-                                placeholder="Description"
-                              />
-                            </td>
-                            <td>
                               <input
                                 type="number"
                                 className="form-control"
                                 value={item.quantity}
                                 onChange={(e) =>
-                                  handleItemChange(index, "quantity", e.target.value)
+                                  handleItemChange(
+                                    index,
+                                    "quantity",
+                                    e.target.value
+                                  )
                                 }
                                 disabled={isDisabled}
                                 min="1"
@@ -1721,7 +1895,11 @@ const EditJobCardForm = ({
                                   className="form-control"
                                   value={item.unit_price}
                                   onChange={(e) =>
-                                    handleItemChange(index, "unit_price", e.target.value)
+                                    handleItemChange(
+                                      index,
+                                      "unit_price",
+                                      e.target.value
+                                    )
                                   }
                                   disabled={isDisabled}
                                   min="0"
@@ -1731,10 +1909,16 @@ const EditJobCardForm = ({
                               {item.price_info && (
                                 <div className="small text-muted mt-1">
                                   <div>
-                                    Base: ₹{item.price_info.base_price?.toLocaleString("en-IN") || 0}
+                                    Base: ₹
+                                    {item.price_info.base_price?.toLocaleString(
+                                      "en-IN"
+                                    ) || 0}
                                   </div>
                                   <div>
-                                    GST: ₹{item.price_info.gst_amount?.toLocaleString("en-IN") || 0}
+                                    GST: ₹
+                                    {item.price_info.gst_amount?.toLocaleString(
+                                      "en-IN"
+                                    ) || 0}
                                   </div>
                                 </div>
                               )}
@@ -1750,18 +1934,6 @@ const EditJobCardForm = ({
                                 />
                               </div>
                             </td>
-                            <td>
-                              <textarea
-                                className="form-control"
-                                rows={2}
-                                value={item.notes}
-                                onChange={(e) =>
-                                  handleItemChange(index, "notes", e.target.value)
-                                }
-                                disabled={isDisabled}
-                                placeholder="Notes"
-                              />
-                            </td>
                             <td className="text-center">
                               <button
                                 type="button"
@@ -1769,7 +1941,8 @@ const EditJobCardForm = ({
                                 onClick={() => removeItem(index)}
                                 disabled={
                                   isDisabled ||
-                                  formData.items.filter((i) => i.product_id).length === 1
+                                  formData.items.filter((i) => i.product_id)
+                                    .length === 1
                                 }
                                 title="Remove item"
                               >
@@ -1780,26 +1953,20 @@ const EditJobCardForm = ({
                         ))}
 
                       {/* Empty state */}
-                      {formData.items.filter((item) => item.product_id).length === 0 && (
+                      {formData.items.filter((item) => item.product_id)
+                        .length === 0 && (
                         <tr>
-                          <td colSpan="7" className="text-center py-5 text-muted">
+                          <td
+                            colSpan="5"
+                            className="text-center py-5 text-muted"
+                          >
                             <div className="d-flex flex-column align-items-center">
                               <FiAlertCircle className="mb-2" size={32} />
                               <span className="fs-6">
-                                {itemSource === "quotation"
+                                {selectedQuotation
                                   ? "No items found in quotation"
                                   : "No items added to job card"}
                               </span>
-                              {itemSource === "products" && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-primary mt-3"
-                                  onClick={addNewItemRow}
-                                >
-                                  <FiPlus className="me-1" />
-                                  Add First Item
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -1843,13 +2010,14 @@ const EditJobCardForm = ({
                     <div className="bg-light p-4 rounded-3">
                       <h6 className="fw-bold mb-3">Job Summary</h6>
 
-                      {itemSource === "quotation" && selectedQuotation && (
+                      {selectedQuotation && (
                         <div className="alert alert-info mb-3">
                           <div className="small">
                             <strong>Quotation Reference:</strong>{" "}
                             {selectedQuotation.quotation_number}
                             <div className="mt-1">
-                              Original Total: {formatCurrency(selectedQuotation.grand_total)}
+                              Original Total:{" "}
+                              {formatCurrency(selectedQuotation.grand_total)}
                             </div>
                           </div>
                         </div>
@@ -1870,7 +2038,11 @@ const EditJobCardForm = ({
                           </div>
                           <div className="col-6">
                             <span className="fw-medium">
-                              {statusOptions.find((s) => s.value === formData.status)?.label}
+                              {
+                                statusOptions.find(
+                                  (s) => s.value === formData.status
+                                )?.label
+                              }
                             </span>
                           </div>
                         </div>
@@ -1881,7 +2053,9 @@ const EditJobCardForm = ({
                           <div className="col-6">
                             <span className="fw-medium">
                               {formData.assigned_to
-                                ? employees.find((e) => e._id === formData.assigned_to)?.name || "N/A"
+                                ? employees.find(
+                                    (e) => e._id === formData.assigned_to
+                                  )?.name || "N/A"
                                 : "Not Assigned"}
                             </span>
                           </div>
@@ -1892,7 +2066,19 @@ const EditJobCardForm = ({
                           </div>
                           <div className="col-6">
                             <span className="fw-medium">
-                              {itemSource === "quotation" ? "Quotation" : "Manual Products"}
+                              {itemSource === "quotation"
+                                ? "Quotation"
+                                : "Manual"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="row mb-2">
+                          <div className="col-6">
+                            <span className="text-muted">Images:</span>
+                          </div>
+                          <div className="col-6">
+                            <span className="fw-medium">
+                              {existingImages.length + imagePreviews.length} total
                             </span>
                           </div>
                         </div>
@@ -1905,30 +2091,7 @@ const EditJobCardForm = ({
                             {formatCurrency(formData.total_amount || 0)}
                           </span>
                         </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span className="text-muted">Advance Amount:</span>
-                          <div className="input-group input-group-sm w-50">
-                            <span className="input-group-text">₹</span>
-                            <input
-                              type="number"
-                              className="form-control"
-                              name="advance_amount"
-                              value={formData.advance_amount}
-                              onChange={handleChange}
-                              disabled={isDisabled}
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
                         <hr />
-                        <div className="d-flex justify-content-between">
-                          <span className="fw-bold fs-5">Balance Amount:</span>
-                          <span className="fw-bold fs-5 text-primary">
-                            {formatCurrency(formData.balance_amount || 0)}
-                          </span>
-                        </div>
                         <div className="small text-muted mt-2">
                           Expected Delivery: {formData.expected_delivery_date}
                           {formData.delivery_date && (

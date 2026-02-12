@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
 import {
   FiUser,
   FiBox,
@@ -42,6 +43,7 @@ import {
   FiArchive,
   FiShoppingCart,
   FiDatabase as FiDatabaseIcon,
+  FiUsers,
 } from "react-icons/fi";
 
 const UpdateCastingStage = ({
@@ -49,6 +51,7 @@ const UpdateCastingStage = ({
   employees = [],
   materials = [],
   units = [],
+  laborCosts = [],
   onUpdate,
   onClose,
   loading = false,
@@ -60,7 +63,9 @@ const UpdateCastingStage = ({
   const [availableMaterials, setAvailableMaterials] = useState([]);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [purityOptions, setPurityOptions] = useState([]);
-  console.log(selectedMaterial);
+  const [selectedLaborCosts, setSelectedLaborCosts] = useState([]);
+  const [laborBreakdown, setLaborBreakdown] = useState([]);
+  
   const [formData, setFormData] = useState({
     assigned_to: "",
     status: "",
@@ -121,7 +126,7 @@ const UpdateCastingStage = ({
     file_status: "draft",
     backup_location: "",
   });
-
+console.log(laborCosts)
   const [formErrors, setFormErrors] = useState({});
   const fileInputRef = useRef(null);
   const [expandedSections, setExpandedSections] = useState({
@@ -129,11 +134,12 @@ const UpdateCastingStage = ({
     material: false,
     process: false,
     quality: false,
-    cost: false,
+    cost: true,
     time: false,
     files: false,
   });
 
+  // Status options
   const statusOptions = [
     {
       value: "not_started",
@@ -163,6 +169,7 @@ const UpdateCastingStage = ({
     { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
   ];
 
+  // Wastage type options
   const wastageTypeOptions = [
     {
       value: "normal",
@@ -190,6 +197,7 @@ const UpdateCastingStage = ({
     },
   ];
 
+  // Casting method options
   const castingMethodOptions = [
     { value: "lost_wax", label: "Lost Wax Casting", icon: "🕯️" },
     { value: "vacuum_cast", label: "Vacuum Casting", icon: "💨" },
@@ -199,6 +207,7 @@ const UpdateCastingStage = ({
     { value: "investment", label: "Investment Casting", icon: "🫧" },
   ];
 
+  // Mold type options
   const moldTypeOptions = [
     { value: "rubber", label: "Rubber Mold", icon: "🔴" },
     { value: "silicone", label: "Silicone Mold", icon: "🔵" },
@@ -207,6 +216,7 @@ const UpdateCastingStage = ({
     { value: "metal", label: "Metal Mold", icon: "⚙️" },
   ];
 
+  // Surface quality options
   const surfaceQualityOptions = [
     { value: "excellent", label: "Excellent", color: "success" },
     { value: "good", label: "Good", color: "info" },
@@ -214,6 +224,7 @@ const UpdateCastingStage = ({
     { value: "poor", label: "Poor", color: "danger" },
   ];
 
+  // Dimensional accuracy options
   const dimensionalAccuracyOptions = [
     { value: "within_tolerance", label: "Within Tolerance", color: "success" },
     { value: "slight_deviation", label: "Slight Deviation", color: "warning" },
@@ -224,6 +235,7 @@ const UpdateCastingStage = ({
     },
   ];
 
+  // Porosity level options
   const porosityLevelOptions = [
     { value: "none", label: "None", color: "success" },
     { value: "low", label: "Low", color: "info" },
@@ -231,6 +243,7 @@ const UpdateCastingStage = ({
     { value: "high", label: "High", color: "danger" },
   ];
 
+  // Next stage options
   const defaultNextStageOptions = [
     { value: "cad", label: "CAD Creation", icon: "🖥️" },
     { value: "casting", label: "Casting", icon: "🔥" },
@@ -244,6 +257,8 @@ const UpdateCastingStage = ({
   ];
 
   const nextStageOptions = defaultNextStageOptions;
+  
+  // Cost status options
   const costStatusOptions = [
     { value: "estimated", label: "Estimated", color: "warning", icon: "📊" },
     { value: "calculated", label: "Calculated", color: "info", icon: "🧮" },
@@ -251,6 +266,7 @@ const UpdateCastingStage = ({
     { value: "approved", label: "Approved", color: "success", icon: "👍" },
   ];
 
+  // File status options
   const fileStatusOptions = [
     { value: "draft", label: "Draft", icon: "📄" },
     { value: "work_in_progress", label: "Work in Progress", icon: "⚙️" },
@@ -259,6 +275,77 @@ const UpdateCastingStage = ({
     { value: "final", label: "Final", icon: "✅" },
     { value: "archived", label: "Archived", icon: "📦" },
   ];
+
+  // Prepare options for React Select - ONLY LABOR COSTS (no karigar)
+  const getLaborCostOptions = () => {
+    if (!laborCosts || laborCosts.length === 0) return [];
+
+    // Filter out any karigar costs that might have slipped through
+    const filteredCosts = laborCosts.filter((cost) => {
+      const costName = (cost.cost_name || "").toLowerCase();
+      return !costName.includes("karigar");
+    });
+
+    return filteredCosts.map((cost) => ({
+      value: cost._id,
+      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      originalData: cost,
+    }));
+  };
+
+  // Handle labor cost selection change
+  const handleLaborCostsChange = (selectedOptions) => {
+    const selectedItems = selectedOptions
+      ? selectedOptions.map((option) => option.originalData)
+      : [];
+    setSelectedLaborCosts(selectedItems);
+
+    // Calculate total labor cost based on selected items
+    calculateLaborCostFromSelection(selectedItems);
+  };
+
+  // Calculate labor cost from selected items
+  const calculateLaborCostFromSelection = (selectedItems) => {
+    if (selectedItems.length === 0) {
+      setFormData((prev) => ({ ...prev, labour_cost: "0.00" }));
+      setLaborBreakdown([]);
+      calculateTotalCost();
+      return;
+    }
+
+    // Calculate breakdown for selected items
+    const breakdown = selectedItems.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || cost.cost_name_id?.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+
+    setLaborBreakdown(breakdown);
+
+    // Calculate total labor cost
+    const totalLaborCost = breakdown.reduce(
+      (sum, item) => sum + parseFloat(item.total_cost),
+      0,
+    );
+
+    // Update form data with calculated labor cost
+    setFormData((prev) => ({
+      ...prev,
+      labour_cost: totalLaborCost.toFixed(2),
+    }));
+
+    // Recalculate total cost
+    calculateTotalCost();
+  };
 
   // Initialize dynamic purity options
   useEffect(() => {
@@ -283,111 +370,163 @@ const UpdateCastingStage = ({
       setAvailableMaterials(jewelryMaterials);
     }
   }, [materials]);
+  
 
   // Initialize form data
-  useEffect(() => {
-    if (selectedStage) {
-      const initialData = {
-        assigned_to: selectedStage.assigned_to || "",
-        status: selectedStage.status || "",
-        start_date: selectedStage.start_date
-          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-          : "",
-        end_date: selectedStage.end_date
-          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-          : "",
-        material_id: selectedStage.material_id || "",
-        material_type: selectedStage.material_type || "",
-        material_item_code: selectedStage.material_item_code || "",
-        material_issued_qty: selectedStage.material_issued_qty || "",
-        material_used_qty: selectedStage.material_used_qty || "",
-        material_returned_qty: selectedStage.material_returned_qty || "",
-        material_wastage_qty: selectedStage.material_wastage_qty || "",
-        material_wastage_type: selectedStage.material_wastage_type || "normal",
-        purity: selectedStage.purity || "",
-        material_unit: selectedStage.material_unit || "",
-        material_unit_id: selectedStage.material_unit_id || "",
-        casting_method: selectedStage.casting_method || "lost_wax",
-        mold_type: selectedStage.mold_type || "rubber",
-        tree_size: selectedStage.tree_size || "",
-        burnout_time: selectedStage.burnout_time || "",
-        casting_temperature: selectedStage.casting_temperature || "",
-        pressure_applied: selectedStage.pressure_applied || "",
-        vacuum_level: selectedStage.vacuum_level || "",
-        surface_quality: selectedStage.surface_quality || "good",
-        dimensional_accuracy:
-          selectedStage.dimensional_accuracy || "within_tolerance",
-        porosity_level: selectedStage.porosity_level || "low",
-        defects: selectedStage.defects || "",
-        rework_required: selectedStage.rework_required || false,
-        rework_reason: selectedStage.rework_reason || "",
-        labour_hours: selectedStage.labour_hours || "",
-        actual_hours: selectedStage.actual_hours || "",
-        next_stage: selectedStage.next_stage || "",
-        stage: selectedStage.next_stage || selectedStage.stage || "",
-        remarks: selectedStage.remarks || "",
-        material_cost: selectedStage.material_cost || "",
-        labour_cost: selectedStage.labour_cost || "",
-        equipment_cost: selectedStage.equipment_cost || "",
-        consumables_cost: selectedStage.consumables_cost || "",
-        gas_cost: selectedStage.gas_cost || "",
-        other_costs: selectedStage.other_costs || "",
-        total_cost: selectedStage.total_cost || "",
-        cost_currency: selectedStage.cost_currency || "INR",
-        cost_status: selectedStage.cost_status || "estimated",
-        markup_percentage: selectedStage.markup_percentage || "25",
-        final_price: selectedStage.final_price || "",
-        preparation_time: selectedStage.preparation_time || "",
-        mold_making_time: selectedStage.mold_making_time || "",
-        burnout_time_track: selectedStage.burnout_time_track || "",
-        casting_time: selectedStage.casting_time || "",
-        finishing_time: selectedStage.finishing_time || "",
-        quality_check_time: selectedStage.quality_check_time || "",
-        total_time_spent: selectedStage.total_time_spent || "",
-        time_breakdown: selectedStage.time_breakdown || "",
-        file_version: selectedStage.file_version || "1.0",
-        file_revisions: selectedStage.file_revisions || 0,
-        source_files: selectedStage.source_files || [],
-        output_files: selectedStage.output_files || [],
-        file_status: selectedStage.file_status || "draft",
-        backup_location: selectedStage.backup_location || "",
-      };
+  // useEffect(() => {
+  //   if (selectedStage) {
+  //     const initialData = {
+  //       assigned_to: selectedStage.assigned_to || "",
+  //       status: selectedStage.status || "",
+  //       start_date: selectedStage.start_date
+  //         ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+  //         : "",
+  //       end_date: selectedStage.end_date
+  //         ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+  //         : "",
+  //       material_id: selectedStage.material_id || "",
+  //       material_type: selectedStage.material_type || "",
+  //       material_item_code: selectedStage.material_item_code || "",
+  //       material_issued_qty: selectedStage.material_issued_qty || "",
+  //       material_used_qty: selectedStage.material_used_qty || "",
+  //       material_returned_qty: selectedStage.material_returned_qty || "",
+  //       material_wastage_qty: selectedStage.material_wastage_qty || "",
+  //       material_wastage_type: selectedStage.material_wastage_type || "normal",
+  //       purity: selectedStage.purity || "",
+  //       material_unit: selectedStage.material_unit || "",
+  //       material_unit_id: selectedStage.material_unit_id || "",
+  //       casting_method: selectedStage.casting_method || "lost_wax",
+  //       mold_type: selectedStage.mold_type || "rubber",
+  //       tree_size: selectedStage.tree_size || "",
+  //       burnout_time: selectedStage.burnout_time || "",
+  //       casting_temperature: selectedStage.casting_temperature || "",
+  //       pressure_applied: selectedStage.pressure_applied || "",
+  //       vacuum_level: selectedStage.vacuum_level || "",
+  //       surface_quality: selectedStage.surface_quality || "good",
+  //       dimensional_accuracy:
+  //         selectedStage.dimensional_accuracy || "within_tolerance",
+  //       porosity_level: selectedStage.porosity_level || "low",
+  //       defects: selectedStage.defects || "",
+  //       rework_required: selectedStage.rework_required || false,
+  //       rework_reason: selectedStage.rework_reason || "",
+  //       labour_hours: selectedStage.labour_hours || "",
+  //       actual_hours: selectedStage.actual_hours || "",
+  //       next_stage: selectedStage.next_stage || "",
+  //       stage: selectedStage.next_stage || selectedStage.stage || "",
+  //       remarks: selectedStage.remarks || "",
+  //       material_cost: selectedStage.material_cost || "",
+  //       labour_cost: selectedStage.labour_cost || "",
+  //       equipment_cost: selectedStage.equipment_cost || "",
+  //       consumables_cost: selectedStage.consumables_cost || "",
+  //       gas_cost: selectedStage.gas_cost || "",
+  //       other_costs: selectedStage.other_costs || "",
+  //       total_cost: selectedStage.total_cost || "",
+  //       cost_currency: selectedStage.cost_currency || "INR",
+  //       cost_status: selectedStage.cost_status || "estimated",
+  //       markup_percentage: selectedStage.markup_percentage || "25",
+  //       final_price: selectedStage.final_price || "",
+  //       preparation_time: selectedStage.preparation_time || "",
+  //       mold_making_time: selectedStage.mold_making_time || "",
+  //       burnout_time_track: selectedStage.burnout_time_track || "",
+  //       casting_time: selectedStage.casting_time || "",
+  //       finishing_time: selectedStage.finishing_time || "",
+  //       quality_check_time: selectedStage.quality_check_time || "",
+  //       total_time_spent: selectedStage.total_time_spent || "",
+  //       time_breakdown: selectedStage.time_breakdown || "",
+  //       file_version: selectedStage.file_version || "1.0",
+  //       file_revisions: selectedStage.file_revisions || 0,
+  //       source_files: selectedStage.source_files || [],
+  //       output_files: selectedStage.output_files || [],
+  //       file_status: selectedStage.file_status || "draft",
+  //       backup_location: selectedStage.backup_location || "",
+  //     };
 
-      setFormData(initialData);
+  //     setFormData(initialData);
 
-      if (initialData.material_id && materials.length > 0) {
-        const material = materials.find(
-          (m) =>
-            m._id === initialData.material_id ||
-            m.material_id === initialData.material_id,
-        );
-        if (material) {
-          setSelectedMaterial(material);
-        }
+  //     if (initialData.material_id && materials.length > 0) {
+  //       const material = materials.find(
+  //         (m) =>
+  //           m._id === initialData.material_id ||
+  //           m.material_id === initialData.material_id,
+  //       );
+  //       if (material) {
+  //         setSelectedMaterial(material);
+  //       }
+  //     }
+
+  //     // Initialize selected labor costs from existing data
+  //     if (selectedStage.selected_labor_costs && Array.isArray(selectedStage.selected_labor_costs)) {
+  //       setSelectedLaborCosts(selectedStage.selected_labor_costs);
+  //       calculateLaborCostFromSelection(selectedStage.selected_labor_costs);
+  //     }
+
+  //     if (selectedStage.files && Array.isArray(selectedStage.files)) {
+  //       const existingFiles = selectedStage.files
+  //         .filter((file) => file.isExisting)
+  //         .map((file) => ({
+  //           ...file,
+  //           id: file.id || file._id || Math.random().toString(36).substr(2, 9),
+  //           isExisting: true,
+  //           file: null,
+  //           category: file.category || "output",
+  //           version: file.version || "1.0",
+  //         }));
+  //       setCastingFiles(existingFiles);
+  //     } else {
+  //       setCastingFiles([]);
+  //     }
+
+  //     setFormErrors({});
+  //     calculateMaterialBalance();
+  //     calculateTotalCost();
+  //     calculateTotalTime();
+  //   }
+  // }, [selectedStage, materials]);
+
+
+  // Initialize selected labor costs from existing data
+useEffect(() => {
+  if (selectedStage && laborCosts.length > 0) {
+    if (selectedStage.selected_labor_costs && Array.isArray(selectedStage.selected_labor_costs)) {
+      // Map the IDs to actual labor cost objects
+      const initialSelectedCosts = laborCosts.filter(cost => 
+        selectedStage.selected_labor_costs.includes(cost._id)
+      );
+      
+      if (initialSelectedCosts.length > 0) {
+        setSelectedLaborCosts(initialSelectedCosts);
+        calculateLaborCostFromSelection(initialSelectedCosts);
       }
-
-      if (selectedStage.files && Array.isArray(selectedStage.files)) {
-        const existingFiles = selectedStage.files
-          .filter((file) => file.isExisting)
-          .map((file) => ({
-            ...file,
-            id: file.id || file._id || Math.random().toString(36).substr(2, 9),
-            isExisting: true,
-            file: null,
-            category: file.category || "output",
-            version: file.version || "1.0",
-          }));
-        setCastingFiles(existingFiles);
-      } else {
-        setCastingFiles([]);
-      }
-
-      setFormErrors({});
-      calculateMaterialBalance();
-      calculateTotalCost();
-      calculateTotalTime();
     }
-  }, [selectedStage, materials]);
+  }
+}, [selectedStage, laborCosts]);
+
+
+useEffect(() => {
+  calculateTotalTime();
+}, [
+  formData.preparation_time,
+  formData.mold_making_time,
+  formData.burnout_time_track,
+  formData.casting_time,
+  formData.finishing_time,
+  formData.quality_check_time,
+]);
+
+
+// Auto-recalculate total cost when individual costs change
+useEffect(() => {
+  calculateTotalCost();
+}, [
+  formData.material_cost,
+  formData.equipment_cost,
+  formData.consumables_cost,
+  formData.gas_cost,
+  formData.other_costs,
+  formData.markup_percentage,
+  formData.labour_cost, // This will auto-update when labor costs are selected
+]);
+
 
   // Handle material selection
   const handleMaterialChange = (materialId) => {
@@ -414,22 +553,11 @@ const UpdateCastingStage = ({
 
         const materialCost = (issued - returned) * unitCost;
 
-        // Also recalculate total cost
-        const labour = Number(updatedData.labour_cost) || 0;
-        const equipment = Number(updatedData.equipment_cost) || 0;
-        const consumables = Number(updatedData.consumables_cost) || 0;
-        const gas = Number(updatedData.gas_cost) || 0;
-        const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage) || 25;
-
-        const total =
-          materialCost + labour + equipment + consumables + gas + other;
-        const markupAmount = (total * markup) / 100;
-        const finalPrice = total + markupAmount;
-
+        // Update material cost
         updatedData.material_cost = materialCost.toFixed(2);
-        updatedData.total_cost = total.toFixed(2);
-        updatedData.final_price = finalPrice.toFixed(2);
+
+        // Recalculate total cost
+        calculateTotalCost();
 
         return updatedData;
       });
@@ -465,26 +593,6 @@ const UpdateCastingStage = ({
   };
 
   // Calculate total cost
-  // const calculateTotalCost = () => {
-  //   const material = parseFloat(formData.material_cost) || 0;
-  //   const labour = parseFloat(formData.labour_cost) || 0;
-  //   const equipment = parseFloat(formData.equipment_cost) || 0;
-  //   const consumables = parseFloat(formData.consumables_cost) || 0;
-  //   const gas = parseFloat(formData.gas_cost) || 0;
-  //   const other = parseFloat(formData.other_costs) || 0;
-
-  //   const total = material + labour + equipment + consumables + gas + other;
-
-  //   const markup = parseFloat(formData.markup_percentage) || 25;
-  //   const finalPrice = total * (1 + markup / 100);
-
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     total_cost: total.toFixed(2),
-  //     final_price: finalPrice.toFixed(2),
-  //   }));
-  // };
-
   const calculateTotalCost = () => {
     // Material cost calculate करें: (issued - returned) × unit cost
     const issued = Number(formData.material_issued_qty) || 0;
@@ -520,6 +628,7 @@ const UpdateCastingStage = ({
       final_price: finalPrice.toFixed(2),
     }));
   };
+
   // Calculate total time
   const calculateTotalTime = () => {
     const prep = parseFloat(formData.preparation_time) || 0;
@@ -565,73 +674,26 @@ const UpdateCastingStage = ({
 
       // Calculate totals if cost or markup changed
       if (name.includes("_cost") || name === "markup_percentage") {
-        const issued = Number(updatedData.material_issued_qty) || 0;
-        const returned = Number(updatedData.material_returned_qty) || 0;
-        const unitCost = Number(selectedMaterial?.cost) || 0;
-
-        const materialCost = (issued - returned) * unitCost;
-        const labour = Number(updatedData.labour_cost) || 0;
-        const equipment = Number(updatedData.equipment_cost) || 0;
-        const consumables = Number(updatedData.consumables_cost) || 0;
-        const gas = Number(updatedData.gas_cost) || 0;
-        const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage) || 25;
-
-        console.log("CASTING COST CALCULATION IN HANDLE CHANGE:", {
-          materialCost,
-          labour,
-          equipment,
-          consumables,
-          gas,
-          other,
-          markup,
-        });
-
-        const total =
-          materialCost + labour + equipment + consumables + gas + other;
-        const markupAmount = (total * markup) / 100;
-        const finalPrice = total + markupAmount;
-
-        updatedData.material_cost = materialCost.toFixed(2);
-        updatedData.total_cost = total.toFixed(2);
-        updatedData.final_price = finalPrice.toFixed(2);
+        calculateTotalCost();
       }
 
       // Calculate totals if time field changed
       if (name.includes("_time") || name === "burnout_time_track") {
-        const prep = parseFloat(updatedData.preparation_time) || 0;
-        const mold = parseFloat(updatedData.mold_making_time) || 0;
-        const burnout = parseFloat(updatedData.burnout_time_track) || 0;
-        const casting = parseFloat(updatedData.casting_time) || 0;
-        const finishing = parseFloat(updatedData.finishing_time) || 0;
-        const quality = parseFloat(updatedData.quality_check_time) || 0;
-
-        const total = prep + mold + burnout + casting + finishing + quality;
-
-        updatedData.total_time_spent = total.toFixed(1);
-        updatedData.labour_hours = total.toFixed(1);
-        updatedData.actual_hours = total.toFixed(1);
+        calculateTotalTime();
       }
 
       // Calculate material balance if material quantities changed
       if (name.includes("material_")) {
-        const issued = parseFloat(updatedData.material_issued_qty) || 0;
-        const used = parseFloat(updatedData.material_used_qty) || 0;
-        const returned = parseFloat(updatedData.material_returned_qty) || 0;
-        const wastage = parseFloat(updatedData.material_wastage_qty) || 0;
+        calculateMaterialBalance();
+        
+        // Also recalculate material cost
+        if (selectedMaterial && (name.includes("_qty"))) {
+          const issued = Number(updatedData.material_issued_qty) || 0;
+          const returned = Number(updatedData.material_returned_qty) || 0;
+          const unitCost = Number(selectedMaterial.cost) || 0;
 
-        if (issued > 0 && used > 0 && wastage === 0) {
-          const calculatedWastage = issued - used - returned;
-          if (calculatedWastage >= 0) {
-            updatedData.material_wastage_qty = calculatedWastage.toFixed(2);
-          }
-        }
-
-        if (issued > 0 && used > 0 && wastage > 0 && returned === 0) {
-          const calculatedReturned = issued - used - wastage;
-          if (calculatedReturned >= 0) {
-            updatedData.material_returned_qty = calculatedReturned.toFixed(2);
-          }
+          const materialCost = (issued - returned) * unitCost;
+          updatedData.material_cost = materialCost.toFixed(2);
         }
       }
 
@@ -672,10 +734,6 @@ const UpdateCastingStage = ({
 
     if (!formData.start_date) {
       errors.start_date = "Start date is required";
-    }
-
-    if (!formData.material_id) {
-      errors.material_id = "Material is required";
     }
 
     if (!formData.material_issued_qty) {
@@ -997,17 +1055,23 @@ const UpdateCastingStage = ({
         file_status: formData.file_status || "draft",
         backup_location: formData.backup_location || "",
         files: castingFiles,
+        selected_labor_costs: selectedLaborCosts,
+        labor_cost_breakdown: laborBreakdown,
       };
 
       if (onUpdate) {
-        const success = await onUpdate(
+        const result = await onUpdate(
           selectedStage._id,
           updateData,
           filesToUpload,
         );
 
-        if (success) {
+        if (result === true || (result && result.success === true)) {
           onClose();
+        } else {
+          const errorMsg =
+            result?.error || result?.message || "Failed to update Casting stage";
+          setUploadError(errorMsg);
         }
       }
     } catch (error) {
@@ -1015,7 +1079,7 @@ const UpdateCastingStage = ({
       setUploadError("Failed to update.");
     }
   };
-  console.log(selectedStage);
+
   // Render section header
   const renderSectionHeader = (title, sectionKey, icon, badgeCount = null) => (
     <div
@@ -1040,7 +1104,7 @@ const UpdateCastingStage = ({
 
   const isDisabled = loading || uploading;
 
-  // Calculate efficiency (fixed formula)
+  // Calculate efficiency
   const efficiency =
     formData.estimated_hours && formData.total_time_spent
       ? (
@@ -1050,6 +1114,7 @@ const UpdateCastingStage = ({
         ).toFixed(1)
       : "0";
 
+  // Calculate material usage percentage
   const materialUsagePercent =
     formData.material_issued_qty && formData.material_used_qty
       ? (
@@ -1059,6 +1124,13 @@ const UpdateCastingStage = ({
         ).toFixed(1)
       : "0";
 
+  // Calculate total labor from breakdown
+  const totalCalculatedLabor = laborBreakdown.reduce(
+    (sum, item) => sum + parseFloat(item.total_cost || 0),
+    0,
+  );
+
+  // Get available stock
   const getAvailableStock = () => {
     if (!selectedMaterial) return { quantity: 0, weight: 0, unit: "" };
 
@@ -1077,7 +1149,6 @@ const UpdateCastingStage = ({
       };
     }
   };
-  console.log(selectedMaterial);
 
   return (
     <div
@@ -1089,7 +1160,7 @@ const UpdateCastingStage = ({
       tabIndex="-1"
     >
       <div className="modal-dialog modal-dialog-centered modal-xl">
-        <div className="modal-content rounded-3" style={{ maxHeight: "90vh" }}>
+        <div className="modal-content rounded-3" style={{ maxHeight: "100vh" }}>
           <div
             className="modal-header border-bottom pb-3 sticky-top bg-white"
             style={{ zIndex: 1050 }}
@@ -1173,20 +1244,15 @@ const UpdateCastingStage = ({
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <h6 className="text-muted mb-1">Time Tracking</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="me-2">
-                              <FiTrendingUp className="text-success" />
-                            </span>
-                            <h4 className="mb-0">
-                              {formData.total_time_spent || "0"} hrs
-                            </h4>
-                          </div>
+                          <h6 className="text-muted mb-1">Labor Cost</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.labour_cost || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            {selectedLaborCosts.length} type(s) selected
+                          </small>
                         </div>
-                        <FiClock className="text-info" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Labour: {formData.labour_hours || "0"} hrs
+                        <FiUsers className="text-warning" size={24} />
                       </div>
                     </div>
                   </div>
@@ -1197,24 +1263,15 @@ const UpdateCastingStage = ({
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <h6 className="text-muted mb-1">Cost Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="badge bg-warning me-2">
-                              {
-                                costStatusOptions.find(
-                                  (c) => c.value === formData.cost_status,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">
-                              ₹ {formData.final_price || "0.00"}
-                            </h4>
-                          </div>
+                          <h6 className="text-muted mb-1">Final Price</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.final_price || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            Markup: {formData.markup_percentage || "25"}%
+                          </small>
                         </div>
-                        <FiDollarSign className="text-warning" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Total: ₹{formData.total_cost || "0"}
+                        <FiDollarSign className="text-success" size={24} />
                       </div>
                     </div>
                   </div>
@@ -1287,7 +1344,7 @@ const UpdateCastingStage = ({
                               (emp) =>
                                 emp.role_id?.role_name?.includes("Casting") ||
                                 emp.role_id?.role_name?.includes("Karigar") ||
-                                emp.role_id?.role_name?.includes("Technician"),
+                                emp.role_id?.role_name?.includes("Designer"),
                             )
                             .map((emp) => (
                               <option key={emp._id} value={emp._id}>
@@ -1866,7 +1923,6 @@ const UpdateCastingStage = ({
                 )}
               </div>
 
-              {/* Rest of the sections remain the same */}
               {/* Casting Process Section */}
               <div className="card mb-4">
                 {renderSectionHeader(
@@ -2335,6 +2391,7 @@ const UpdateCastingStage = ({
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
+                  selectedLaborCosts.length,
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
@@ -2360,7 +2417,7 @@ const UpdateCastingStage = ({
                     </div>
 
                     <div className="row g-2">
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Material Cost
                         </label>
@@ -2381,28 +2438,7 @@ const UpdateCastingStage = ({
                         <div className="form-text x-small">Metal cost</div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
-                        <label className="form-label fw-medium small">
-                          Labour Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="labour_cost"
-                            className="form-control"
-                            value={formData.labour_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">Karigar wages</div>
-                      </div>
-
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Equipment Cost
                         </label>
@@ -2423,7 +2459,7 @@ const UpdateCastingStage = ({
                         <div className="form-text x-small">Machine usage</div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Consumables
                         </label>
@@ -2446,7 +2482,7 @@ const UpdateCastingStage = ({
                         </div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Gas Cost
                         </label>
@@ -2469,7 +2505,7 @@ const UpdateCastingStage = ({
                         </div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Other Costs
                         </label>
@@ -2490,7 +2526,7 @@ const UpdateCastingStage = ({
                         <div className="form-text x-small">Miscellaneous</div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           <FiPercent className="me-1" /> Markup %
                         </label>
@@ -2512,19 +2548,254 @@ const UpdateCastingStage = ({
                       </div>
                     </div>
 
+                    {/* Labor Cost Selection */}
+                    <div className="row mt-3">
+                      <div className="col-md-12 mb-3">
+                        <label className="form-label fw-medium">
+                          <FiUsers className="me-1" /> Labor Cost Types
+                        </label>
+                        <Select
+                          isMulti
+                          options={getLaborCostOptions()}
+                          value={getLaborCostOptions().filter((option) =>
+                            selectedLaborCosts.some(
+                              (cost) => cost._id === option.value,
+                            ),
+                          )}
+                          onChange={handleLaborCostsChange}
+                          placeholder={
+                            laborCosts.length === 0
+                              ? "Loading labor cost types..."
+                              : "Select labor cost types (Labor costs only - Karigar costs excluded)"
+                          }
+                          isDisabled={isDisabled || laborCosts.length === 0}
+                          className="react-select-container"
+                          classNamePrefix="react-select"
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: formErrors.labor_cost
+                                ? "#dc3545"
+                                : "#dee2e6",
+                              "&:hover": {
+                                borderColor: formErrors.labor_cost
+                                  ? "#dc3545"
+                                  : "#ced4da",
+                              },
+                              backgroundColor: state.isDisabled
+                                ? "#e9ecef"
+                                : "white",
+                              minHeight: "42px",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            multiValue: (base) => ({
+                              ...base,
+                              backgroundColor: "#e3f2fd",
+                            }),
+                            multiValueLabel: (base) => ({
+                              ...base,
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }),
+                          }}
+                        />
+                        <div className="form-text">
+                          Select one or more labor cost types (Karigar costs are
+                          excluded). The total labor cost will be calculated
+                          automatically.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Selected Labor Costs Breakdown */}
+                    {selectedLaborCosts.length > 0 && (
+                      <div className="row mt-2">
+                        <div className="col-md-12">
+                          <div className="card border">
+                            <div className="card-header bg-light py-2">
+                              <h6 className="mb-0 small fw-bold">
+                                Selected Labor Cost Breakdown
+                                <span className="badge bg-primary ms-2">
+                                  {selectedLaborCosts.length}
+                                </span>
+                              </h6>
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="table-responsive">
+                                <table className="table table-sm mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th className="small">Type</th>
+                                      <th className="small">Cost Type</th>
+                                      <th className="small">Amount</th>
+                                      <th className="small">Unit</th>
+                                      <th className="small text-end">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {laborBreakdown.map((item) => (
+                                      <tr key={item.id}>
+                                        <td className="small">
+                                          <strong>{item.name}</strong>
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-secondary">
+                                            {item.type}
+                                          </span>
+                                        </td>
+                                        <td className="small">
+                                          ₹{item.cost_amount}
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-info">
+                                            {item.unit}
+                                          </span>
+                                        </td>
+                                        <td className="small text-end fw-bold">
+                                          ₹{item.total_cost}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="table-active">
+                                      <td colSpan="4" className="small fw-bold">
+                                        Total Labor Cost
+                                      </td>
+                                      <td className="small text-end fw-bold fs-6">
+                                        ₹ {totalCalculatedLabor.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Total Cost Summary */}
+                    <div className="row mt-3">
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Labor Cost (Auto)
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="labour_cost"
+                            className="form-control bg-light"
+                            value={formData.labour_cost}
+                            readOnly
+                            title="Automatically calculated from selected labor cost types"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() =>
+                              calculateLaborCostFromSelection(
+                                selectedLaborCosts,
+                              )
+                            }
+                            disabled={isDisabled}
+                            title="Recalculate labor cost"
+                          >
+                            <FiRefreshCw size={14} />
+                          </button>
+                        </div>
+                        <div className="form-text x-small">
+                          Auto-calculated from {selectedLaborCosts.length}{" "}
+                          selected type(s)
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Total Cost
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="text"
+                            className="form-control bg-light"
+                            value={formData.total_cost || "0.00"}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Final Price
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="text"
+                            className="form-control bg-success text-white"
+                            value={formData.final_price || "0.00"}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Cost Summary */}
                     <div className="border rounded-3 p-3 bg-light mt-3">
                       <h6 className="fw-bold mb-3">Cost Summary</h6>
                       <div className="row">
                         <div className="col-md-6">
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Total Cost:</span>
+                            <span>Material Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.material_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Labor Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.labour_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Equipment Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.equipment_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Consumables Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.consumables_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Gas Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.gas_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Other Costs:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.other_costs || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Subtotal:</span>
                             <span className="fw-bold">
                               ₹ {formData.total_cost || "0.00"}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Markup ({formData.markup_percentage}%):</span>
+                            <span>
+                              Markup ({formData.markup_percentage || "25"}%):
+                            </span>
                             <span className="fw-bold">
                               ₹{" "}
                               {(
@@ -2546,7 +2817,7 @@ const UpdateCastingStage = ({
                           <div className="progress" style={{ height: "20px" }}>
                             <div
                               className="progress-bar bg-primary"
-                                  style={{
+                              style={{
                                 width: `${((parseFloat(formData.material_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Material Cost"
@@ -2554,44 +2825,44 @@ const UpdateCastingStage = ({
                               Material
                             </div>
                             <div
-                              className="progress-bar bg-success"
-                                  style={{
+                              className="progress-bar bg-warning"
+                              style={{
                                 width: `${((parseFloat(formData.labour_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
-                              title="Labour Cost"
+                              title="Labor Cost"
                             >
-                              Labour
+                              Labor
                             </div>
                             <div
-                              className="progress-bar bg-warning"
-                                  style={{
+                              className="progress-bar bg-info"
+                              style={{
                                 width: `${((parseFloat(formData.equipment_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Equipment Cost"
                             >
                               Equipment
                             </div>
-                              <div
-                                className="progress-bar bg-info"
-                                 style={{
-                                  width: `${((parseFloat(formData.consumables_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                                }}
-                                title="Consumables  Costs"
-                              >
-                                Consumables 
-                              </div>
-                              <div
-                              className="progress-bar bg-black"
-                               style={{
+                            <div
+                              className="progress-bar bg-secondary"
+                              style={{
+                                width: `${((parseFloat(formData.consumables_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Consumables Cost"
+                            >
+                              Consumables
+                            </div>
+                            <div
+                              className="progress-bar bg-dark"
+                              style={{
                                 width: `${((parseFloat(formData.gas_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
-                              title="Gas Costs"
+                              title="Gas Cost"
                             >
                               Gas
                             </div>
                             <div
-                              className="progress-bar bg-secondary"
-                               style={{
+                              className="progress-bar bg-black"
+                              style={{
                                 width: `${((parseFloat(formData.other_costs || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Other Costs"
@@ -2869,12 +3140,12 @@ const UpdateCastingStage = ({
                                   100
                                 }%`,
                               }}
-                              title="Finishing "
+                              title="Finishing"
                             >
-                              Finishing 
+                              Finishing
                             </div>
                             <div
-                              className="progress-bar bg-secondary "
+                              className="progress-bar bg-secondary"
                               style={{
                                 width: `${
                                   (parseFloat(formData.quality_check_time || 0) /
@@ -2884,9 +3155,9 @@ const UpdateCastingStage = ({
                                   100
                                 }%`,
                               }}
-                              title="Quality "
+                              title="Quality"
                             >
-                              Quality 
+                              Quality
                             </div>
                           </div>
                         </div>
@@ -3231,9 +3502,18 @@ const UpdateCastingStage = ({
             <div className="modal-footer border-top pt-3 bg-white">
               <div className="d-flex justify-content-between w-100 align-items-center">
                 <div className="text-muted small">
-                  <span className="me-3">⚖️ Material tracking</span>
-                  <span className="me-3">🔍 Quality metrics</span>
-                  <span>📊 Process parameters</span>
+                  <span className="me-3">
+                    <FiUsers className="me-1" />
+                    Labor cost: ₹{formData.labour_cost || "0.00"}
+                  </span>
+                  <span className="me-3">
+                    <FiClock className="me-1" />
+                    {formData.total_time_spent || "0"} hrs
+                  </span>
+                  <span>
+                    <FiDollarSign className="me-1" />
+                    Final: ₹{formData.final_price || "0.00"}
+                  </span>
                 </div>
                 <div className="d-flex gap-2">
                   <button

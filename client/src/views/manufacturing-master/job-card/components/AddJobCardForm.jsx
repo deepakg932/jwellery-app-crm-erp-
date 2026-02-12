@@ -75,8 +75,6 @@ const AddJobCardForm = ({
     priority: "medium",
     status: "pending",
     total_amount: 0,
-    advance_amount: 0,
-    balance_amount: 0,
     assigned_to: "",
     images: [], // Added images array field
   });
@@ -250,12 +248,7 @@ const AddJobCardForm = ({
       const matchProductCode = product.article_no
         ?.toLowerCase()
         .includes(searchTermLower);
-
-      const matchDescription = product.description
-        ?.toLowerCase()
-        .includes(searchTermLower);
-
-      return matchProductName || matchProductCode || matchDescription;
+      return matchProductName || matchProductCode;
     });
 
     setFilteredProducts(filtered.slice(0, 10));
@@ -315,7 +308,6 @@ const AddJobCardForm = ({
         product_id: product._id,
         article_no: product.article_no || "",
         product_name: product.product_name || "",
-        description: product.description || "",
         quantity: "1",
         unit_price:
           product.selling_price_with_gst ||
@@ -327,7 +319,6 @@ const AddJobCardForm = ({
           product.selling_price ||
           product.unit_price ||
           0,
-        notes: "",
         price_info: {
           base_price: product.grand_total || 0,
           gst_amount: product.gst_amount || 0,
@@ -358,11 +349,9 @@ const AddJobCardForm = ({
       product_id: item.product_id?._id || item.product_id || "",
       article_no: item.article_no || "",
       product_name: item.product_name || "",
-      description: item.description || "",
       quantity: (item.quantity || 1).toString(),
       unit_price: item.unit_price || item.net_price || 0,
       total_amount: item.subtotal || item.net_price || 0,
-      notes: item.notes || "",
     }));
 
     const totalAmount = jobCardItems.reduce(
@@ -390,7 +379,6 @@ const AddJobCardForm = ({
       customer_mobile: customer.mobile || customer.phone || "",
       items: jobCardItems,
       total_amount: totalAmount,
-      balance_amount: totalAmount,
       instructions: quotation.terms_conditions || "",
       expected_delivery_date: expectedDelivery.toISOString().split("T")[0],
       job_card_date: jobCardDate,
@@ -451,7 +439,6 @@ const AddJobCardForm = ({
       customer_mobile: "",
       items: [],
       total_amount: 0,
-      balance_amount: 0,
       note: "",
       instructions: "",
       quotation_id: undefined,
@@ -467,7 +454,6 @@ const AddJobCardForm = ({
       ...prev,
       items: [],
       total_amount: 0,
-      balance_amount: 0,
     }));
     setItemSource("none");
     calculateTotals();
@@ -557,7 +543,6 @@ const AddJobCardForm = ({
         return calculatedItem ? calculatedItem : item;
       }),
       total_amount: itemTotal,
-      balance_amount: balance,
     }));
   };
 
@@ -574,16 +559,6 @@ const AddJobCardForm = ({
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
 
-    if (name === "advance_amount") {
-      const total = parseFloat(formData.total_amount) || 0;
-      const advance = parseFloat(value) || 0;
-      const balance = Math.max(0, total - advance);
-
-      setFormData((prev) => ({
-        ...prev,
-        balance_amount: balance,
-      }));
-    }
   };
 
   // Handle item field changes
@@ -628,11 +603,9 @@ const AddJobCardForm = ({
       product_id: "",
       article_no: "",
       product_name: "",
-      description: "",
       quantity: "1",
       unit_price: 0,
       total_amount: 0,
-      notes: "",
     };
 
     setFormData((prev) => ({
@@ -647,35 +620,11 @@ const AddJobCardForm = ({
     setTimeout(calculateTotals, 0);
   };
 
-  // Add new empty item row
-  const addNewItemRow = () => {
-    if (itemSource === "products" || itemSource === "none") {
-      setFormData((prev) => ({
-        ...prev,
-        items: [
-          ...prev.items,
-          {
-            product_id: "",
-            article_no: "",
-            product_name: "",
-            description: "",
-            quantity: "1",
-            unit_price: 0,
-            total_amount: 0,
-            notes: "",
-          },
-        ],
-      }));
-    }
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     const totalAmount = parseFloat(formData.total_amount) || 0;
-    const advanceAmount = parseFloat(formData.advance_amount) || 0;
-    const balanceAmount = Math.max(0, totalAmount - advanceAmount);
 
     // Always use FormData for file upload
     const formDataToSend = new FormData();
@@ -697,11 +646,9 @@ const AddJobCardForm = ({
         product_id: item.product_id,
         product_code: item.article_no, // Match backend field name
         product_name: item.product_name,
-        description: item.description,
         quantity: parseFloat(item.quantity) || 1,
         unit_price: parseFloat(item.unit_price) || 0,
         total_amount: parseFloat(item.total_amount) || 0,
-        notes: item.notes,
       }));
 
     formDataToSend.append("items", JSON.stringify(itemsToSend));
@@ -712,8 +659,6 @@ const AddJobCardForm = ({
     formDataToSend.append("priority", formData.priority);
     formDataToSend.append("status", formData.status);
     formDataToSend.append("total_amount", totalAmount);
-    formDataToSend.append("advance_amount", advanceAmount);
-    formDataToSend.append("balance_amount", balanceAmount);
 
     if (formData.assigned_to) {
       formDataToSend.append("assigned_to", formData.assigned_to);
@@ -774,8 +719,6 @@ const AddJobCardForm = ({
       priority: "medium",
       status: "pending",
       total_amount: 0,
-      advance_amount: 0,
-      balance_amount: 0,
       assigned_to: "",
     });
     setErrors({});
@@ -1339,17 +1282,7 @@ const AddJobCardForm = ({
 
                   {/* Quick Actions */}
                   <div className="d-flex gap-2 mt-3">
-                    {itemSource === "products" && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                        onClick={addNewItemRow}
-                        disabled={isDisabled}
-                      >
-                        <FiPlus size={14} />
-                        Add Empty Item Row
-                      </button>
-                    )}
+        
 
                     {hasItems && (
                       <button
@@ -1722,17 +1655,7 @@ const AddJobCardForm = ({
                       {selectedQuotation && " - From Quotation"}
                     </span>
                   </h6>
-                  <div className="d-flex gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
-                      onClick={addNewItemRow}
-                      disabled={isDisabled}
-                    >
-                      <FiPlus size={14} />
-                      Add Item Row
-                    </button>
-                  </div>
+              
                 </div>
 
                 {/* Items Table */}
@@ -1744,11 +1667,9 @@ const AddJobCardForm = ({
                     <thead className="table-light">
                       <tr>
                         <th style={{ width: "25%" }}>Product</th>
-                        <th style={{ width: "20%" }}>Description</th>
                         <th style={{ width: "10%" }}>Quantity</th>
                         <th style={{ width: "15%" }}>Unit Price</th>
                         <th style={{ width: "15%" }}>Total</th>
-                        <th style={{ width: "10%" }}>Notes</th>
                         <th style={{ width: "5%" }}>Action</th>
                       </tr>
                     </thead>
@@ -1778,22 +1699,7 @@ const AddJobCardForm = ({
                                 </button>
                               </div>
                             </td>
-                            <td>
-                              <textarea
-                                className="form-control"
-                                rows={2}
-                                value={item.description}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "description",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled}
-                                placeholder="Description"
-                              />
-                            </td>
+                          
                             <td>
                               <input
                                 type="number"
@@ -1858,7 +1764,7 @@ const AddJobCardForm = ({
                                 />
                               </div>
                             </td>
-                            <td>
+                            {/* <td>
                               <textarea
                                 className="form-control"
                                 rows={2}
@@ -1873,7 +1779,7 @@ const AddJobCardForm = ({
                                 disabled={isDisabled}
                                 placeholder="Notes"
                               />
-                            </td>
+                            </td> */}
                             <td className="text-center">
                               <button
                                 type="button"
@@ -1907,16 +1813,7 @@ const AddJobCardForm = ({
                                   ? "No items found in quotation"
                                   : "No items added to job card"}
                               </span>
-                              {!selectedQuotation && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-primary mt-3"
-                                  onClick={addNewItemRow}
-                                >
-                                  <FiPlus className="me-1" />
-                                  Add First Item
-                                </button>
-                              )}
+                            
                             </div>
                           </td>
                         </tr>
@@ -2041,30 +1938,9 @@ const AddJobCardForm = ({
                             {formatCurrency(formData.total_amount || 0)}
                           </span>
                         </div>
-                        <div className="d-flex justify-content-between mb-2">
-                          <span className="text-muted">Advance Amount:</span>
-                          <div className="input-group input-group-sm w-50">
-                            <span className="input-group-text">₹</span>
-                            <input
-                              type="number"
-                              className="form-control"
-                              name="advance_amount"
-                              value={formData.advance_amount}
-                              onChange={handleChange}
-                              disabled={isDisabled}
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
+                    
                         <hr />
-                        <div className="d-flex justify-content-between">
-                          <span className="fw-bold fs-5">Balance Amount:</span>
-                          <span className="fw-bold fs-5 text-primary">
-                            {formatCurrency(formData.balance_amount || 0)}
-                          </span>
-                        </div>
+                    
                         <div className="small text-muted mt-2">
                           Expected Delivery: {formData.expected_delivery_date}
                         </div>

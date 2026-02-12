@@ -7,10 +7,11 @@ export default function useCastingStages() {
   const [materials, setMaterials] = useState([]);
   const [units, setUnits] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [laborCosts, setLaborCosts] = useState([]); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  console.log(castingStages);
+  console.log(laborCosts);
 
   // Fetch Casting stages
   const fetchCastingStages = useCallback(async () => {
@@ -86,6 +87,12 @@ export default function useCastingStages() {
             markup_percentage: data.markup_percentage || "25",
             cost_currency: data.cost_currency || "INR",
             cost_status: data.cost_status || "estimated",
+            
+       
+            selected_labor_costs: data.selected_labor_costs || [],
+            labor_cost_breakdown: data.labor_cost_breakdown || [],
+            labor_cost_breakdown_raw: data.labor_cost_breakdown_raw || [],
+            
             preparation_time: data.preparation_time || "0",
             mold_making_time: data.mold_making_time || "0",
             burnout_time_track: data.burnout_time_track || "0",
@@ -131,6 +138,104 @@ export default function useCastingStages() {
       setEmployees([]);
       return [];
     }
+  };
+
+  // Fetch labor costs from price making API - FILTER OUT KARIGAR COSTS
+  const fetchLaborCosts = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_ENDPOINTS.getPriceMakings());
+
+      console.log("Price making API Response:", response.data);
+
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        // Filter ONLY labor costs (exclude karigar costs)
+        const laborCostData = response.data.data.filter((item) => {
+          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
+          const lowerCaseName = costName.toLowerCase();
+          // Include only "labor" costs, exclude "karigar" costs
+          return (
+            lowerCaseName.includes("labor") &&
+            !lowerCaseName.includes("karigar")
+          );
+        });
+
+        // Process and format labor costs - using fixed amounts (not hourly)
+        const processedCosts = laborCostData.map((item) => {
+          return {
+            ...item,
+            _id: item._id,
+            cost_name:
+              item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
+            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || "unit",
+            stage_name: item.making_stage_id?.stage_name || "General",
+            sub_stage_name:
+              item.making_sub_stage_id?.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          };
+        });
+
+        console.log(
+          "Processed labor costs (LABOR ONLY - no karigar):",
+          processedCosts,
+        );
+        setLaborCosts(processedCosts);
+        return processedCosts;
+      }
+
+      setLaborCosts([]);
+      return [];
+    } catch (err) {
+      console.error("Error fetching labor costs:", err);
+      setLaborCosts([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate total labor cost based on selected labor cost items
+  const calculateTotalLaborCost = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return 0;
+
+    let totalLaborCost = 0;
+
+    // Sum up the cost_amount from each selected labor cost
+    selectedLaborCosts.forEach((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+      totalLaborCost += costAmount;
+    });
+
+    console.log(
+      "Calculated total labor cost:",
+      totalLaborCost,
+      "from",
+      selectedLaborCosts.length,
+      "items",
+    );
+    return totalLaborCost;
+  };
+
+  // Calculate labor breakdown for selected items
+  const calculateLaborBreakdown = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return [];
+
+    return selectedLaborCosts.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
   };
 
   // Fetch materials from stock movements API
@@ -241,21 +346,52 @@ export default function useCastingStages() {
       setLoading(true);
       setError("");
 
+      // Calculate labor cost from selected labor costs if provided
+      let finalUpdateData = { ...updateData };
+
+      // If selected_labor_costs is provided, calculate total labor cost
+      if (
+        updateData.selected_labor_costs &&
+        Array.isArray(updateData.selected_labor_costs)
+      ) {
+        const totalLaborCost = calculateTotalLaborCost(
+          updateData.selected_labor_costs,
+        );
+
+        // Update labor cost in data
+        finalUpdateData.labour_cost = totalLaborCost.toFixed(2);
+
+        // Recalculate totals with new labor cost
+        const material = parseFloat(updateData.material_cost) || 0;
+        const equipment = parseFloat(updateData.equipment_cost) || 0;
+        const consumables = parseFloat(updateData.consumables_cost) || 0;
+        const gas = parseFloat(updateData.gas_cost) || 0;
+        const other = parseFloat(updateData.other_costs) || 0;
+        const markup = parseFloat(updateData.markup_percentage) || 25;
+
+        const total = material + totalLaborCost + equipment + consumables + gas + other;
+        const markupAmount = (total * markup) / 100;
+        const finalPrice = total + markupAmount;
+
+        finalUpdateData.total_cost = total.toFixed(2);
+        finalUpdateData.final_price = finalPrice.toFixed(2);
+      }
+
       const url = API_ENDPOINTS.updateCastingStage(stageId);
 
       const formData = new FormData();
 
-      Object.keys(updateData).forEach((key) => {
+      Object.keys(finalUpdateData).forEach((key) => {
         if (key !== "files" && key !== "material_name" && key !== "unit_name") {
-          const value = updateData[key];
+          const value = finalUpdateData[key];
           if (value !== null && value !== undefined) {
             formData.append(key, value);
           }
         }
       });
 
-      if (updateData.files && Array.isArray(updateData.files)) {
-        const existingFiles = updateData.files
+      if (finalUpdateData.files && Array.isArray(finalUpdateData.files)) {
+        const existingFiles = finalUpdateData.files
           .filter((file) => file.isExisting)
           .map((file) => ({
             id: file.id,
@@ -270,10 +406,50 @@ export default function useCastingStages() {
         formData.append("files", JSON.stringify(existingFiles));
       }
 
+      // Append selected labor costs as JSON array of IDs
+      if (
+        finalUpdateData.selected_labor_costs &&
+        Array.isArray(finalUpdateData.selected_labor_costs)
+      ) {
+        formData.append(
+          "selected_labor_costs",
+          JSON.stringify(
+            finalUpdateData.selected_labor_costs.map((cost) => cost._id),
+          ),
+        );
+      }
+
+      // Append labor breakdown as JSON
+      if (
+        finalUpdateData.labor_cost_breakdown &&
+        Array.isArray(finalUpdateData.labor_cost_breakdown)
+      ) {
+        formData.append(
+          "labor_cost_breakdown",
+          JSON.stringify(finalUpdateData.labor_cost_breakdown),
+        );
+      }
+
       if (filesToUpload.length > 0) {
         filesToUpload.forEach((file, index) => {
           formData.append(`uploaded_files`, file);
         });
+      }
+
+      // Debug
+      console.log("📤 Sending Casting update data:");
+      for (let [key, value] of formData.entries()) {
+        if (key === "uploaded_files") {
+          console.log(`${key}: File - ${value.name}`);
+        } else if (
+          key === "files" ||
+          key === "selected_labor_costs" ||
+          key === "labor_cost_breakdown"
+        ) {
+          console.log(`${key}: ${value.substring(0, 100)}...`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
       }
 
       const res = await axios.put(url, formData, {
@@ -334,6 +510,7 @@ export default function useCastingStages() {
         fetchEmployees(),
         fetchMaterials(),
         fetchUnits(),
+        fetchLaborCosts(), 
       ]);
     } catch (error) {
       console.error("Error fetching all data:", error);
@@ -353,6 +530,7 @@ export default function useCastingStages() {
     materials,
     units,
     employees,
+    laborCosts, 
     loading,
     error,
     getPurityOptions,
@@ -360,6 +538,9 @@ export default function useCastingStages() {
     fetchEmployees,
     fetchMaterials,
     fetchUnits,
+    fetchLaborCosts, 
+    calculateTotalLaborCost,
+    calculateLaborBreakdown,
     updateCastingStageWithFiles,
     fetchAllData,
   };

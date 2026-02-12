@@ -111,193 +111,198 @@ export default function useStones() {
   }, []);
 
   // Fetch all stones
-  const fetchStones = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
-      
-      const url = API_ENDPOINTS.getAllStones();
-      console.log("Fetching complete stones from:", url);
-      
-      const res = await axios.get(url);
-      console.log("Stones API Response:", res.data);
-      
-      const stonesData = normalizeResponseData(res.data, 'stones');
-      
-      const mappedStones = stonesData.map((s) => ({
-        _id: s._id || s.id,
-        stone_name: s.stone_name || "",
-        stone_type: s.stone_type || "",
-        stone_purity: s.stone_purity || "",
-        stone_price: s.stone_price || s.selling_price || s.cost_price || 0,
-        stone_image: s.fullImageUrl || "",
-      }));
-      
-      console.log("Fetched stones:", mappedStones);
-      setStones(mappedStones);
-      return mappedStones;
-    } catch (err) {
-      console.error("Fetch stones error:", err);
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to load stones";
-      setError(errorMsg);
-      setStones([]); // Set empty array on error
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [normalizeResponseData]);
+const fetchStones = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError("");
+    
+    const url = API_ENDPOINTS.getAllStones();
+    console.log("Fetching complete stones from:", url);
+    
+    const res = await axios.get(url);
+    console.log("Stones API Response:", res.data);
+    
+    const stonesData = normalizeResponseData(res.data, 'stones');
+    
+    const mappedStones = stonesData.map((s) => ({
+      _id: s._id || s.id,
+      stone_name: s.stone_name || "",
+      stone_type: s.stone_type || "",
+      stone_purity: s.stone_purity || "",
+      stone_price: s.stone_price || s.selling_price || s.cost_price || 0,
+      // IMPORTANT: Use fullImageUrl from response, map to stone_image
+      stone_image: s.fullImageUrl || "",
+    }));
+    
+    console.log("Fetched stones:", mappedStones);
+    setStones(mappedStones);
+    return mappedStones;
+  } catch (err) {
+    console.error("Fetch stones error:", err);
+    const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to load stones";
+    setError(errorMsg);
+    setStones([]); // Set empty array on error
+    return [];
+  } finally {
+    setLoading(false);
+  }
+}, [normalizeResponseData]);
 
   // Add new stone
-  const addStone = useCallback(async (stoneData, imageFile) => {
-    const formData = new FormData();
-    formData.append("stone_name", stoneData.stone_name);
-    formData.append("stone_type", stoneData.stone_type);
-    formData.append("stone_purity", stoneData.stone_purity);
-    formData.append("stone_price", stoneData.stone_price);
-    
-    if (imageFile) {
-      formData.append("stone_image", imageFile);
-    }
+const addStone = useCallback(async (stoneData, imageFile) => {
+  const formData = new FormData();
+  formData.append("stone_name", stoneData.stone_name);
+  formData.append("stone_type", stoneData.stone_type);
+  formData.append("stone_purity", stoneData.stone_purity);
+  formData.append("stone_price", stoneData.stone_price);
+  
+  if (imageFile) {
+    formData.append("stone_image", imageFile);
+  }
 
-    try {
-      setLoading(true);
-      setError("");
-      
-      const url = API_ENDPOINTS.createStone();
-      console.log("Adding stone to:", url);
-      console.log("Stone data:", stoneData);
-      
-      const res = await axios.post(url, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      console.log("Add response:", res.data);
-      
-      let newStone = {};
-      if (res.data && res.data.success && res.data.stone) {
-        const stoneFromApi = res.data.stone;
-        newStone = {
-          _id: stoneFromApi._id,
-          stone_name: stoneFromApi.stone_name || stoneData.stone_name,
-          stone_type: stoneFromApi.stone_type || stoneData.stone_type,
-          stone_purity: stoneFromApi.stone_purity || stoneData.stone_purity,
-          stone_price: stoneFromApi.stone_price || stoneData.stone_price,
-          stone_image: stoneFromApi.stone_image || "",
-        };
-      } else if (res.data && res.data.success) {
-        newStone = {
-          _id: res.data._id || `temp-${Date.now()}`,
-          stone_name: res.data.stone_name || stoneData.stone_name,
-          stone_type: res.data.stone_type || stoneData.stone_type,
-          stone_purity: res.data.stone_purity || stoneData.stone_purity,
-          stone_price: res.data.stone_price || stoneData.stone_price,
-          stone_image: res.data.stone_image || "",
-        };
-      } else {
-        // Fallback
-        newStone = {
-          _id: `temp-${Date.now()}`,
-          stone_name: stoneData.stone_name,
-          stone_type: stoneData.stone_type,
-          stone_purity: stoneData.stone_purity,
-          stone_price: stoneData.stone_price,
-          stone_image: "",
-        };
-      }
-      
-      console.log("New stone added:", newStone);
-      setStones(prev => [...prev, newStone]);
-      
-      // Refresh dropdown data after adding
-      await fetchStonePurities();
-      await fetchStoneTypes();
-      
-      return newStone;
-    } catch (err) {
-      console.error("Add error:", err.response?.data || err.message);
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to add stone";
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    setError("");
+    
+    const url = API_ENDPOINTS.createStone();
+    console.log("Adding stone to:", url);
+    console.log("Stone data:", stoneData);
+    
+    const res = await axios.post(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    
+    console.log("Add response:", res.data);
+    
+    let newStone = {};
+    if (res.data && res.data.success && res.data.stone) {
+      const stoneFromApi = res.data.stone;
+      newStone = {
+        _id: stoneFromApi._id,
+        stone_name: stoneFromApi.stone_name || stoneData.stone_name,
+        stone_type: stoneFromApi.stone_type || stoneData.stone_type,
+        stone_purity: stoneFromApi.stone_purity || stoneData.stone_purity,
+        stone_price: stoneFromApi.stone_price || stoneData.stone_price,
+        // IMPORTANT: Use fullImageUrl from response, map to stone_image
+        stone_image: stoneFromApi.fullImageUrl || stoneFromApi.stone_image || "",
+      };
+    } else if (res.data && res.data.success) {
+      newStone = {
+        _id: res.data._id || `temp-${Date.now()}`,
+        stone_name: res.data.stone_name || stoneData.stone_name,
+        stone_type: res.data.stone_type || stoneData.stone_type,
+        stone_purity: res.data.stone_purity || stoneData.stone_purity,
+        stone_price: res.data.stone_price || stoneData.stone_price,
+        // IMPORTANT: Use fullImageUrl from response, map to stone_image
+        stone_image: res.data.fullImageUrl || res.data.stone_image || "",
+      };
+    } else {
+      // Fallback
+      newStone = {
+        _id: `temp-${Date.now()}`,
+        stone_name: stoneData.stone_name,
+        stone_type: stoneData.stone_type,
+        stone_purity: stoneData.stone_purity,
+        stone_price: stoneData.stone_price,
+        stone_image: "",
+      };
     }
-  }, [fetchStonePurities, fetchStoneTypes]);
+    
+    console.log("New stone added:", newStone);
+    setStones(prev => [...prev, newStone]);
+    
+    // Refresh dropdown data after adding
+    await fetchStonePurities();
+    await fetchStoneTypes();
+    
+    return newStone;
+  } catch (err) {
+    console.error("Add error:", err.response?.data || err.message);
+    const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to add stone";
+    setError(errorMsg);
+    throw new Error(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+}, [fetchStonePurities, fetchStoneTypes]);
 
   // Update stone
-  const updateStone = useCallback(async (id, data) => {
-    const formData = new FormData();
-    formData.append("stone_name", data.stone_name);
-    formData.append("stone_type", data.stone_type);
-    formData.append("stone_purity", data.stone_purity);
-    formData.append("stone_price", data.stone_price);
-    
-    if (data.imageFile) {
-      formData.append("stone_image", data.imageFile);
-    }
+const updateStone = useCallback(async (id, data) => {
+  const formData = new FormData();
+  formData.append("stone_name", data.stone_name);
+  formData.append("stone_type", data.stone_type);
+  formData.append("stone_purity", data.stone_purity);
+  formData.append("stone_price", data.stone_price);
+  
+  if (data.imageFile) {
+    formData.append("stone_image", data.imageFile);
+  }
 
-    try {
-      setLoading(true);
-      setError("");
-      
-      const url = API_ENDPOINTS.updateStone(id);
-      console.log("Updating stone at:", url);
-      console.log("Update data:", data);
-      
-      const res = await axios.put(url, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      console.log("Update response:", res.data);
-      
-      let updatedData = {};
-      if (res.data && res.data.success && res.data.stone) {
-        const stoneFromApi = res.data.stone;
-        updatedData = {
-          _id: stoneFromApi._id || id,
-          stone_name: stoneFromApi.stone_name || data.stone_name,
-          stone_type: stoneFromApi.stone_type || data.stone_type,
-          stone_purity: stoneFromApi.stone_purity || data.stone_purity,
-          stone_price: stoneFromApi.stone_price || data.stone_price,
-          stone_image: stoneFromApi.fullImageUrl || "",
-        };
-      } else if (res.data && res.data.success) {
-        updatedData = {
-          _id: res.data._id || id,
-          stone_name: res.data.stone_name || data.stone_name,
-          stone_type: res.data.stone_type || data.stone_type,
-          stone_purity: res.data.stone_purity || data.stone_purity,
-          stone_price: res.data.stone_price || data.stone_price,
-          stone_image: res.data.fullImageUrl || "",
-        };
-      } else {
-        // Fallback
-        updatedData = {
-          _id: id,
-          stone_name: data.stone_name,
-          stone_type: data.stone_type,
-          stone_purity: data.stone_purity,
-          stone_price: data.stone_price,
-          stone_image: "",
-        };
-      }
-      
-      console.log("Updated stone:", updatedData);
-      setStones(prev => prev.map(s => (s._id === id ? updatedData : s)));
-      
-      // Refresh dropdown data after updating
-      await fetchStonePurities();
-      await fetchStoneTypes();
-      
-      return updatedData;
-    } catch (err) {
-      console.error("Update error:", err);
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to update stone";
-      setError(errorMsg);
-      throw new Error(errorMsg);
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    setError("");
+    
+    const url = API_ENDPOINTS.updateStone(id);
+    console.log("Updating stone at:", url);
+    console.log("Update data:", data);
+    
+    const res = await axios.put(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    
+    console.log("Update response:", res.data);
+    
+    let updatedData = {};
+    if (res.data && res.data.success && res.data.stone) {
+      const stoneFromApi = res.data.stone;
+      updatedData = {
+        _id: stoneFromApi._id || id,
+        stone_name: stoneFromApi.stone_name || data.stone_name,
+        stone_type: stoneFromApi.stone_type || data.stone_type,
+        stone_purity: stoneFromApi.stone_purity || data.stone_purity,
+        stone_price: stoneFromApi.stone_price || data.stone_price,
+        // IMPORTANT: Use fullImageUrl from response, map to stone_image
+        stone_image: stoneFromApi.fullImageUrl || stoneFromApi.stone_image || "",
+      };
+    } else if (res.data && res.data.success) {
+      updatedData = {
+        _id: res.data._id || id,
+        stone_name: res.data.stone_name || data.stone_name,
+        stone_type: res.data.stone_type || data.stone_type,
+        stone_purity: res.data.stone_purity || data.stone_purity,
+        stone_price: res.data.stone_price || data.stone_price,
+        // IMPORTANT: Use fullImageUrl from response, map to stone_image
+        stone_image: res.data.fullImageUrl || res.data.stone_image || "",
+      };
+    } else {
+      // Fallback
+      updatedData = {
+        _id: id,
+        stone_name: data.stone_name,
+        stone_type: data.stone_type,
+        stone_purity: data.stone_purity,
+        stone_price: data.stone_price,
+        stone_image: "",
+      };
     }
-  }, [fetchStonePurities, fetchStoneTypes]);
+    
+    console.log("Updated stone:", updatedData);
+    setStones(prev => prev.map(s => (s._id === id ? updatedData : s)));
+    
+    // Refresh dropdown data after updating
+    await fetchStonePurities();
+    await fetchStoneTypes();
+    
+    return updatedData;
+  } catch (err) {
+    console.error("Update error:", err);
+    const errorMsg = err.response?.data?.error || err.response?.data?.message || "Failed to update stone";
+    setError(errorMsg);
+    throw new Error(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+}, [fetchStonePurities, fetchStoneTypes]);
 
   // Delete stone
   const deleteStone = useCallback(async (id) => {

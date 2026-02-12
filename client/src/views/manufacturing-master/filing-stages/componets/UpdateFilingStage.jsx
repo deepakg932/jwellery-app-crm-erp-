@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
 import {
   FiUser,
   FiBox,
@@ -23,16 +24,20 @@ import {
   FiChevronUp,
   FiSave,
   FiTrendingUp,
+  FiTrendingDown,
+  FiActivity,
   FiX,
   FiShield,
   FiImage,
   FiArchive,
   FiAward,
+  FiUsers,
 } from "react-icons/fi";
 
 const UpdateFilingStage = ({
   selectedStage,
   employees = [],
+  laborCosts = [],
   onUpdate,
   onClose,
   loading = false,
@@ -41,7 +46,12 @@ const UpdateFilingStage = ({
   const [uploadError, setUploadError] = useState("");
   const [filingFiles, setFilingFiles] = useState([]);
   const [selectedFilingTools, setSelectedFilingTools] = useState([]);
-  console.log(selectedStage);
+  const [selectedLaborCosts, setSelectedLaborCosts] = useState([]);
+  const [laborBreakdown, setLaborBreakdown] = useState([]);
+  
+  console.log("Selected stage:", selectedStage);
+  console.log("Labor costs received:", laborCosts);
+
   // Static filing tools data (jewellery filing tools)
   const filingToolsData = [
     {
@@ -172,9 +182,9 @@ const UpdateFilingStage = ({
     start_date: "",
     end_date: "",
 
-    // Filing tools tracking (instead of material tracking)
-    filing_tools_used: [], // List of tool IDs used
-    tool_wastage: "0.1", // Default wastage in grams (gold dust from filing)
+    // Filing tools tracking
+    filing_tools_used: [],
+    tool_wastage: "0.1",
     tool_wastage_type: "normal",
 
     // Filing specific
@@ -183,6 +193,7 @@ const UpdateFilingStage = ({
     roughness_level: "fine",
     tolerance_level: "standard",
     rework_required: false,
+    defects_removed: "",
 
     // Time tracking
     labour_hours: "",
@@ -203,11 +214,11 @@ const UpdateFilingStage = ({
     remarks: "",
 
     // Cost tracking
-    tool_cost: "", // Cost of filing tools used
+    tool_cost: "",
     labour_cost: "",
     equipment_cost: "",
-    consumables_cost: "", // Sandpaper, compounds, etc.
-    wastage_cost: "", // Cost of gold dust wastage
+    consumables_cost: "",
+    wastage_cost: "",
     other_costs: "",
     total_cost: "",
     cost_currency: "INR",
@@ -229,9 +240,7 @@ const UpdateFilingStage = ({
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     tools: false,
-    process: false,
-    quality: false,
-    cost: false,
+    cost: true,
     time: false,
     files: false,
   });
@@ -348,152 +357,89 @@ const UpdateFilingStage = ({
     { value: "archived", label: "Archived", icon: "📦" },
   ];
 
-  // Initialize form data
-  useEffect(() => {
-    if (selectedStage) {
-      const initialData = {
-        assigned_to: selectedStage.assigned_to || "",
-        status: selectedStage.status || "",
-        start_date: selectedStage.start_date
-          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-          : "",
-        end_date: selectedStage.end_date
-          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-          : "",
+  // Prepare options for React Select - FILING LABOR COSTS (INCLUDING KARIGAR)
+  const getLaborCostOptions = () => {
+    if (!laborCosts || laborCosts.length === 0) return [];
 
-        // Filing tools tracking
-        filing_tools_used: selectedStage.filing_tools_used || [],
-        tool_wastage: selectedStage.tool_wastage || "0.1",
-        tool_wastage_type: selectedStage.tool_wastage_type || "normal",
-
-        // Filing specific
-        filing_type: selectedStage.filing_type || "manual",
-        surface_finish: selectedStage.surface_finish || "smooth",
-        roughness_level: selectedStage.roughness_level || "fine",
-        tolerance_level: selectedStage.tolerance_level || "standard",
-        rework_required: selectedStage.rework_required || false,
-
-        // Time tracking
-        labour_hours: selectedStage.labour_hours || "",
-        actual_hours: selectedStage.actual_hours || "",
-        preparation_time: selectedStage.preparation_time || "",
-        rough_filing_time: selectedStage.rough_filing_time || "",
-        fine_filing_time: selectedStage.fine_filing_time || "",
-        polishing_time: selectedStage.polishing_time || "",
-        quality_check_time: selectedStage.quality_check_time || "",
-        total_time_spent: selectedStage.total_time_spent || "",
-        time_breakdown: selectedStage.time_breakdown || "",
-
-        // Next stage
-        next_stage: selectedStage.next_stage || "",
-        stage: selectedStage.next_stage || selectedStage.stage || "",
-
-        // Remarks
-        remarks: selectedStage.remarks || "",
-
-        // Cost tracking
-        tool_cost: selectedStage.tool_cost || "",
-        labour_cost: selectedStage.labour_cost || "",
-        equipment_cost: selectedStage.equipment_cost || "",
-        consumables_cost: selectedStage.consumables_cost || "",
-        wastage_cost: selectedStage.wastage_cost || "",
-        other_costs: selectedStage.other_costs || "",
-        total_cost: selectedStage.total_cost || "",
-        cost_currency: selectedStage.cost_currency || "INR",
-        cost_status: selectedStage.cost_status || "estimated",
-        markup_percentage: selectedStage.markup_percentage || "25",
-        final_price: selectedStage.final_price || "",
-
-        // File tracking
-        file_version: selectedStage.file_version || "1.0",
-        file_revisions: selectedStage.file_revisions || 0,
-        source_files: selectedStage.source_files || [],
-        output_files: selectedStage.output_files || [],
-        file_status: selectedStage.file_status || "draft",
-        backup_location: selectedStage.backup_location || "",
-      };
-
-      setFormData(initialData);
-      setSelectedFilingTools(initialData.filing_tools_used || []);
-
-      if (selectedStage.files && Array.isArray(selectedStage.files)) {
-        const existingFiles = selectedStage.files
-          .filter((file) => file.isExisting)
-          .map((file) => ({
-            ...file,
-            id: file.id || file._id || Math.random().toString(36).substr(2, 9),
-            isExisting: true,
-            file: null,
-            category: file.category || "output",
-            version: file.version || "1.0",
-          }));
-        setFilingFiles(existingFiles);
-      } else {
-        setFilingFiles([]);
-      }
-
-      setFormErrors({});
-      calculateTotalCost();
-      calculateTotalTime();
-    }
-  }, [selectedStage]);
-
-  // Handle tool selection
-  // Handle tool selection
-  const handleToolToggle = (toolId) => {
-    setSelectedFilingTools((prev) => {
-      const isSelected = prev.includes(toolId);
-      const newTools = isSelected
-        ? prev.filter((id) => id !== toolId)
-        : [...prev, toolId];
-
-      // Calculate tool cost when tools are selected
-      const totalToolCost = newTools.reduce((total, toolId) => {
-        const tool = filingToolsData.find((t) => t._id === toolId);
-        return total + (tool?.unit_cost || 0);
-      }, 0);
-
-      setFormData((prevData) => {
-        const updatedData = {
-          ...prevData,
-          filing_tools_used: newTools,
-          tool_cost: totalToolCost.toFixed(2),
-        };
-
-        // Recalculate total cost when tool cost changes
-        const tool = totalToolCost;
-        const labour = Number(updatedData.labour_cost) || 0;
-        const equipment = Number(updatedData.equipment_cost) || 0;
-        const consumables = Number(updatedData.consumables_cost) || 0;
-        const wastage = Number(updatedData.wastage_cost) || 0;
-        const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage) || 25;
-
-        const total = tool + labour + equipment + consumables + wastage + other;
-        const markupAmount = (total * markup) / 100;
-        const finalPrice = total + markupAmount;
-
-        updatedData.total_cost = total.toFixed(2);
-        updatedData.final_price = finalPrice.toFixed(2);
-
-        return updatedData;
-      });
-
-      return newTools;
+    // Filter for filing-related labor costs
+    const filteredCosts = laborCosts.filter((cost) => {
+      const costName = (cost.cost_name || "").toLowerCase();
+      const stageName = (cost.stage_name || "").toLowerCase();
+      const subStageName = (cost.sub_stage_name || "").toLowerCase();
+      
+      // Include labor and karigar costs relevant to filing
+      return (
+        costName.includes("labor") ||
+        costName.includes("karigar") ||
+        costName.includes("craftsman") ||
+        costName.includes("worker") ||
+        costName.includes("filing") ||
+        stageName.includes("filing") ||
+        subStageName.includes("filing") ||
+        stageName.includes("production") ||
+        costName.includes("कारीगर") ||
+        costName.includes("करिगर")
+      );
     });
+
+    return filteredCosts.map((cost) => ({
+      value: cost._id,
+      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      originalData: cost,
+    }));
   };
 
-  // Calculate tool cost based on selected tools
-  const calculateToolCost = (tools) => {
-    const totalToolCost = tools.reduce((total, toolId) => {
-      const tool = filingToolsData.find((t) => t._id === toolId);
-      return total + (tool?.unit_cost || 0);
-    }, 0);
+  // Handle labor cost selection change
+  const handleLaborCostsChange = (selectedOptions) => {
+    const selectedItems = selectedOptions
+      ? selectedOptions.map((option) => option.originalData)
+      : [];
+    setSelectedLaborCosts(selectedItems);
 
+    // Calculate total labor cost based on selected items
+    calculateLaborCostFromSelection(selectedItems);
+  };
+
+  // Calculate labor cost from selected items
+  const calculateLaborCostFromSelection = (selectedItems) => {
+    if (selectedItems.length === 0) {
+      setFormData((prev) => ({ ...prev, labour_cost: "0.00" }));
+      setLaborBreakdown([]);
+      return;
+    }
+
+    // Calculate breakdown for selected items
+    const breakdown = selectedItems.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || cost.cost_name_id?.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+
+    setLaborBreakdown(breakdown);
+
+    // Calculate total labor cost
+    const totalLaborCost = breakdown.reduce(
+      (sum, item) => sum + parseFloat(item.total_cost),
+      0
+    );
+
+    // Update form data with calculated labor cost
     setFormData((prev) => ({
       ...prev,
-      tool_cost: totalToolCost.toFixed(2),
+      labour_cost: totalLaborCost.toFixed(2),
     }));
+
+    // Recalculate total cost
+    calculateTotalCost();
   };
 
   // Calculate total cost
@@ -545,17 +491,259 @@ const UpdateFilingStage = ({
     }));
   };
 
-  // Handle form input change
+  // Initialize form data
+  // useEffect(() => {
+  //   if (selectedStage) {
+  //     // Parse selected labor costs if they exist in the stage data
+  //     let parsedSelectedLaborCosts = [];
+  //     if (selectedStage.selected_labor_costs) {
+  //       if (Array.isArray(selectedStage.selected_labor_costs)) {
+  //         parsedSelectedLaborCosts = selectedStage.selected_labor_costs;
+  //       } else if (typeof selectedStage.selected_labor_costs === "string") {
+  //         try {
+  //           parsedSelectedLaborCosts = JSON.parse(selectedStage.selected_labor_costs);
+  //         } catch {
+  //           parsedSelectedLaborCosts = [];
+  //         }
+  //       }
+  //     }
+
+  //     // Parse labor breakdown if it exists
+  //     let parsedLaborBreakdown = [];
+  //     if (selectedStage.labor_cost_breakdown) {
+  //       if (Array.isArray(selectedStage.labor_cost_breakdown)) {
+  //         parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
+  //       } else if (typeof selectedStage.labor_cost_breakdown === "string") {
+  //         try {
+  //           parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
+  //         } catch {
+  //           parsedLaborBreakdown = [];
+  //         }
+  //       }
+  //     }
+
+  //     const initialData = {
+  //       assigned_to: selectedStage.assigned_to || "",
+  //       status: selectedStage.status || "",
+  //       start_date: selectedStage.start_date
+  //         ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+  //         : "",
+  //       end_date: selectedStage.end_date
+  //         ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+  //         : "",
+
+  //       // Filing tools tracking
+  //       filing_tools_used: selectedStage.filing_tools_used || [],
+  //       tool_wastage: selectedStage.tool_wastage || "0.1",
+  //       tool_wastage_type: selectedStage.tool_wastage_type || "normal",
+
+  //       // Filing specific
+  //       filing_type: selectedStage.filing_type || "manual",
+  //       surface_finish: selectedStage.surface_finish || "smooth",
+  //       roughness_level: selectedStage.roughness_level || "fine",
+  //       tolerance_level: selectedStage.tolerance_level || "standard",
+  //       rework_required: selectedStage.rework_required || false,
+  //       defects_removed: selectedStage.defects_removed || "",
+
+  //       // Time tracking
+  //       labour_hours: selectedStage.labour_hours || "",
+  //       actual_hours: selectedStage.actual_hours || "",
+  //       preparation_time: selectedStage.preparation_time || "",
+  //       rough_filing_time: selectedStage.rough_filing_time || "",
+  //       fine_filing_time: selectedStage.fine_filing_time || "",
+  //       polishing_time: selectedStage.polishing_time || "",
+  //       quality_check_time: selectedStage.quality_check_time || "",
+  //       total_time_spent: selectedStage.total_time_spent || "",
+  //       time_breakdown: selectedStage.time_breakdown || "",
+
+  //       // Next stage
+  //       next_stage: selectedStage.next_stage || "",
+  //       stage: selectedStage.next_stage || selectedStage.stage || "",
+
+  //       // Remarks
+  //       remarks: selectedStage.remarks || "",
+
+  //       // Cost tracking
+  //       tool_cost: selectedStage.tool_cost || "",
+  //       labour_cost: selectedStage.labour_cost || "",
+  //       equipment_cost: selectedStage.equipment_cost || "",
+  //       consumables_cost: selectedStage.consumables_cost || "",
+  //       wastage_cost: selectedStage.wastage_cost || "",
+  //       other_costs: selectedStage.other_costs || "",
+  //       total_cost: selectedStage.total_cost || "",
+  //       cost_currency: selectedStage.cost_currency || "INR",
+  //       cost_status: selectedStage.cost_status || "estimated",
+  //       markup_percentage: selectedStage.markup_percentage || "25",
+  //       final_price: selectedStage.final_price || "",
+
+  //       // File tracking
+  //       file_version: selectedStage.file_version || "1.0",
+  //       file_revisions: selectedStage.file_revisions || 0,
+  //       source_files: selectedStage.source_files || [],
+  //       output_files: selectedStage.output_files || [],
+  //       file_status: selectedStage.file_status || "draft",
+  //       backup_location: selectedStage.backup_location || "",
+  //     };
+
+  //     console.log("Initializing form data:", initialData);
+
+  //     setFormData(initialData);
+  //     setSelectedFilingTools(initialData.filing_tools_used || []);
+  //     setSelectedLaborCosts(parsedSelectedLaborCosts);
+  //     setLaborBreakdown(parsedLaborBreakdown);
+
+  //     if (selectedStage.files && Array.isArray(selectedStage.files)) {
+  //       const existingFiles = selectedStage.files
+  //         .filter((file) => file.isExisting)
+  //         .map((file) => ({
+  //           ...file,
+  //           id: file.id || file._id || Math.random().toString(36).substr(2, 9),
+  //           isExisting: true,
+  //           file: null,
+  //           category: file.category || "output",
+  //           version: file.version || "1.0",
+  //         }));
+  //       setFilingFiles(existingFiles);
+  //     } else {
+  //       setFilingFiles([]);
+  //     }
+
+  //     setFormErrors({});
+  //     calculateTotalCost();
+  //     calculateTotalTime();
+  //   }
+  // }, [selectedStage]);
+
+  // Initialize form data
+useEffect(() => {
+  if (selectedStage && laborCosts.length > 0) {
+    // Parse selected labor costs if they exist in the stage data
+    let parsedSelectedLaborCosts = [];
+    if (selectedStage.selected_labor_costs) {
+      if (Array.isArray(selectedStage.selected_labor_costs)) {
+        // Map the IDs to actual labor cost objects
+        parsedSelectedLaborCosts = laborCosts.filter(cost => 
+          selectedStage.selected_labor_costs.includes(cost._id)
+        );
+      } else if (typeof selectedStage.selected_labor_costs === "string") {
+        try {
+          const ids = JSON.parse(selectedStage.selected_labor_costs);
+          parsedSelectedLaborCosts = laborCosts.filter(cost => 
+            ids.includes(cost._id)
+          );
+        } catch {
+          parsedSelectedLaborCosts = [];
+        }
+      }
+    }
+
+    // Parse labor breakdown if it exists
+    let parsedLaborBreakdown = [];
+    if (selectedStage.labor_cost_breakdown) {
+      if (Array.isArray(selectedStage.labor_cost_breakdown)) {
+        parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
+      } else if (typeof selectedStage.labor_cost_breakdown === "string") {
+        try {
+          parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
+        } catch {
+          parsedLaborBreakdown = [];
+        }
+      }
+    }
+
+    
+    setSelectedLaborCosts(parsedSelectedLaborCosts);
+    setLaborBreakdown(parsedLaborBreakdown);
+    
+    // Calculate labor cost from selected items
+    if (parsedSelectedLaborCosts.length > 0) {
+      calculateLaborCostFromSelection(parsedSelectedLaborCosts);
+    }
+
+  }
+}, [selectedStage, laborCosts]); // Add laborCosts as dependency
+
+  // Auto-recalculate total time when time fields change
+useEffect(() => {
+  calculateTotalTime();
+}, [
+  formData.preparation_time,
+  formData.rough_filing_time,
+  formData.fine_filing_time,
+  formData.polishing_time,
+  formData.quality_check_time,
+]);
+
+// Auto-recalculate total cost when individual costs change
+useEffect(() => {
+  calculateTotalCost();
+}, [
+  formData.tool_cost,
+  formData.labour_cost,
+  formData.equipment_cost,
+  formData.consumables_cost,
+  formData.wastage_cost,
+  formData.other_costs,
+  formData.markup_percentage,
+]);
+
+// Auto-calculate labor cost whenever selected labor costs change
+useEffect(() => {
+  calculateLaborCostFromSelection(selectedLaborCosts);
+}, [selectedLaborCosts]);
+
+  // Handle tool selection
+  const handleToolToggle = (toolId) => {
+    setSelectedFilingTools((prev) => {
+      const isSelected = prev.includes(toolId);
+      const newTools = isSelected
+        ? prev.filter((id) => id !== toolId)
+        : [...prev, toolId];
+
+      // Calculate tool cost when tools are selected
+      const totalToolCost = newTools.reduce((total, toolId) => {
+        const tool = filingToolsData.find((t) => t._id === toolId);
+        return total + (tool?.unit_cost || 0);
+      }, 0);
+
+      setFormData((prevData) => {
+        const updatedData = {
+          ...prevData,
+          filing_tools_used: newTools,
+          tool_cost: totalToolCost.toFixed(2),
+        };
+
+        // Recalculate total cost when tool cost changes
+        const tool = totalToolCost;
+        const labour = Number(updatedData.labour_cost) || 0;
+        const equipment = Number(updatedData.equipment_cost) || 0;
+        const consumables = Number(updatedData.consumables_cost) || 0;
+        const wastage = Number(updatedData.wastage_cost) || 0;
+        const other = Number(updatedData.other_costs) || 0;
+        const markup = Number(updatedData.markup_percentage) || 25;
+
+        const total = tool + labour + equipment + consumables + wastage + other;
+        const markupAmount = (total * markup) / 100;
+        const finalPrice = total + markupAmount;
+
+        updatedData.total_cost = total.toFixed(2);
+        updatedData.final_price = finalPrice.toFixed(2);
+
+        return updatedData;
+      });
+
+      return newTools;
+    });
+  };
+
   // Handle form input change
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     const val = type === "checkbox" ? checked : value;
 
     setFormData((prev) => {
-      // Create updated form data with the new value
       const updatedData = { ...prev };
 
-      // Handle special cases for numbers
       if (name.includes("_cost") || name === "markup_percentage") {
         updatedData[name] = value === "" ? "" : value;
       } else if (
@@ -578,16 +766,6 @@ const UpdateFilingStage = ({
         const wastage = Number(updatedData.wastage_cost) || 0;
         const other = Number(updatedData.other_costs) || 0;
         const markup = Number(updatedData.markup_percentage) || 25;
-
-        console.log("FILING COST CALCULATION IN HANDLE CHANGE:", {
-          tool,
-          labour,
-          equipment,
-          consumables,
-          wastage,
-          other,
-          markup,
-        });
 
         const total = tool + labour + equipment + consumables + wastage + other;
         const markupAmount = (total * markup) / 100;
@@ -616,7 +794,6 @@ const UpdateFilingStage = ({
         updatedData.actual_hours = total.toFixed(1);
       }
 
-      // Update next_stage when stage changes
       if (name === "stage") {
         updatedData.next_stage = val;
       }
@@ -624,7 +801,6 @@ const UpdateFilingStage = ({
       return updatedData;
     });
 
-    // Clear error if exists
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -659,8 +835,8 @@ const UpdateFilingStage = ({
       errors.filing_tools = "At least one filing tool must be selected";
     }
 
-    if (!formData.labour_hours) {
-      errors.labour_hours = "Labour hours are required";
+    if (selectedLaborCosts.length === 0) {
+      errors.labor_costs = "At least one labor cost type must be selected";
     }
 
     if (
@@ -687,7 +863,7 @@ const UpdateFilingStage = ({
       setUploadError(
         `Some files exceed 100MB limit: ${oversizedFiles
           .map((f) => f.name)
-          .join(", ")}`,
+          .join(", ")}`
       );
       return [];
     }
@@ -710,12 +886,12 @@ const UpdateFilingStage = ({
     ];
 
     const invalidFiles = fileList.filter(
-      (file) => !allowedTypes.includes(file.type),
+      (file) => !allowedTypes.includes(file.type)
     );
 
     if (invalidFiles.length > 0) {
       setUploadError(
-        `Invalid file types: ${invalidFiles.map((f) => f.name).join(", ")}`,
+        `Invalid file types: ${invalidFiles.map((f) => f.name).join(", ")}`
       );
       return [];
     }
@@ -885,6 +1061,7 @@ const UpdateFilingStage = ({
         roughness_level: formData.roughness_level || "fine",
         tolerance_level: formData.tolerance_level || "standard",
         rework_required: formData.rework_required || false,
+        defects_removed: formData.defects_removed || "",
 
         // Time tracking
         preparation_time: formData.preparation_time || "0",
@@ -914,17 +1091,36 @@ const UpdateFilingStage = ({
         file_status: formData.file_status || "draft",
         backup_location: formData.backup_location || "",
         files: filingFiles,
+
+        // Labor cost tracking
+        selected_labor_costs: selectedLaborCosts,
+        labor_cost_breakdown: laborBreakdown,
       };
 
+      console.log("🚀 Submitting Filing stage update:", {
+        filingStageId: selectedStage._id,
+        data: updateData,
+        selectedLaborCostsCount: selectedLaborCosts.length,
+        laborBreakdownCount: laborBreakdown.length,
+      });
+
       if (onUpdate) {
-        const success = await onUpdate(
+        const result = await onUpdate(
           selectedStage._id,
           updateData,
-          filesToUpload,
+          filesToUpload
         );
 
-        if (success) {
+        console.log("Modal received result:", result);
+
+        if (result === true || (result && result.success === true)) {
+          console.log("✅ Update successful, closing modal");
           onClose();
+        } else {
+          console.log("❌ Update failed, not closing");
+          const errorMsg =
+            result?.error || result?.message || "Failed to update Filing stage";
+          setUploadError(errorMsg);
         }
       }
     } catch (error) {
@@ -953,11 +1149,31 @@ const UpdateFilingStage = ({
     </div>
   );
 
+  // Filter employees for filing karigar
+  const filteredEmployees = employees.filter((emp) => {
+    if (!emp.role_id) return false;
+    
+    const roleName = emp.role_id.role_name?.toLowerCase() || "";
+    const department = emp.department?.toLowerCase() || "";
+    
+    return (
+      roleName.includes("filing") ||
+      roleName.includes("karigar") ||
+      roleName.includes("craftsman") ||
+      roleName.includes("worker") ||
+      roleName.includes("करिगर") ||
+      roleName.includes("कारीगर") ||
+      department.includes("filing") ||
+      department.includes("production") ||
+      department.includes("manufacturing")
+    );
+  });
+
   if (!selectedStage) return null;
 
   const isDisabled = loading || uploading;
 
-  // Calculate efficiency (fixed formula)
+  // Calculate efficiency
   const efficiency =
     formData.labour_hours && formData.total_time_spent
       ? (
@@ -966,6 +1182,12 @@ const UpdateFilingStage = ({
           100
         ).toFixed(1)
       : "0";
+
+  // Calculate total labor from breakdown
+  const totalCalculatedLabor = laborBreakdown.reduce(
+    (sum, item) => sum + parseFloat(item.total_cost || 0),
+    0
+  );
 
   return (
     <div
@@ -996,12 +1218,9 @@ const UpdateFilingStage = ({
                     <FiTool className="me-1" /> Tools Used:{" "}
                     {selectedFilingTools.length}
                   </span>
-                  <span className="badge bg-dark">
-                    {/* <FiSettingsIcon className="me-1" />  */}
-                    Type:{" "}
-                    {filingTypeOptions.find(
-                      (opt) => opt.value === formData.filing_type,
-                    )?.label || formData.filing_type}
+                  <span className="badge bg-success">
+                    <FiUsers className="me-1" /> Labor Types:{" "}
+                    {selectedLaborCosts.length}
                   </span>
                 </div>
               )}
@@ -1027,6 +1246,25 @@ const UpdateFilingStage = ({
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
+                          <h6 className="text-muted mb-1">Labor Cost</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.labour_cost || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            {selectedLaborCosts.length} type(s) selected
+                          </small>
+                        </div>
+                        <FiUsers className="text-warning" size={24} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-3">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-body p-3">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
                           <h6 className="text-muted mb-1">Tools & Wastage</h6>
                           <div className="d-flex align-items-center">
                             <span
@@ -1045,10 +1283,29 @@ const UpdateFilingStage = ({
                             </h4>
                           </div>
                         </div>
-                        <FiTool className="text-warning" size={24} />
+                        <FiTool className="text-primary" size={24} />
                       </div>
                       <div className="small text-muted mt-1">
                         Tools Selected • Gold Dust Wastage
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-3">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-body p-3">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <h6 className="text-muted mb-1">Final Price</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.final_price || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            Markup: {formData.markup_percentage || "0"}%
+                          </small>
+                        </div>
+                        <FiDollarSign className="text-success" size={24} />
                       </div>
                     </div>
                   </div>
@@ -1072,71 +1329,7 @@ const UpdateFilingStage = ({
                         <FiClock className="text-info" size={24} />
                       </div>
                       <div className="small text-muted mt-1">
-                        Labour: {formData.labour_hours || "0"} hrs
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body p-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <h6 className="text-muted mb-1">Cost Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="badge bg-warning me-2">
-                              {
-                                costStatusOptions.find(
-                                  (c) => c.value === formData.cost_status,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">
-                              ₹ {formData.final_price || "0.00"}
-                            </h4>
-                          </div>
-                        </div>
-                        <FiDollarSign className="text-warning" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Total: ₹{formData.total_cost || "0"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body p-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <h6 className="text-muted mb-1">Quality Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span
-                              className={`badge ${
-                                formData.surface_finish === "mirror"
-                                  ? "bg-success"
-                                  : formData.surface_finish === "very_smooth"
-                                    ? "bg-info"
-                                    : formData.surface_finish === "smooth"
-                                      ? "bg-warning"
-                                      : "bg-secondary"
-                              } me-2`}
-                            >
-                              {
-                                surfaceFinishOptions.find(
-                                  (q) => q.value === formData.surface_finish,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">{formData.tolerance_level}</h4>
-                          </div>
-                        </div>
-                        <FiAward className="text-success" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Finish: {formData.surface_finish}
+                        Efficiency: {efficiency}%
                       </div>
                     </div>
                   </div>
@@ -1148,7 +1341,7 @@ const UpdateFilingStage = ({
                 {renderSectionHeader(
                   "👤 Basic Information",
                   "basic",
-                  <FiUser />,
+                  <FiUser />
                 )}
                 {expandedSections.basic && (
                   <div className="card-body">
@@ -1158,6 +1351,7 @@ const UpdateFilingStage = ({
                           <FiUser className="me-1" /> Assigned Karigar{" "}
                           <span className="text-danger">*</span>
                         </label>
+                        
                         <select
                           name="assigned_to"
                           className={`form-select ${
@@ -1168,17 +1362,32 @@ const UpdateFilingStage = ({
                           disabled={isDisabled}
                         >
                           <option value="">Select Filing Karigar</option>
-                          {employees
-                            .filter((emp) =>
-                              emp.role_id?.role_name?.includes("filing"),
-                            )
-                            .map((emp) => (
+                          
+                          {filteredEmployees.length === 0 ? (
+                            <option value="" disabled>
+                              No filing karigars available
+                            </option>
+                          ) : (
+                            filteredEmployees.map((emp) => (
                               <option key={emp._id} value={emp._id}>
-                                {emp.name} (
-                                {emp.role_id?.role_name || "No Role"})
+                                {emp.name} - {emp.role_id?.role_name || "No Role"} 
+                                {emp.department ? ` (${emp.department})` : ""}
                               </option>
-                            ))}
+                            ))
+                          )}
+                          
+                          {filteredEmployees.length === 0 && employees.length > 0 && (
+                            <>
+                              <option disabled>--- All Employees ---</option>
+                              {employees.map((emp) => (
+                                <option key={emp._id} value={emp._id}>
+                                  {emp.name} - {emp.role_id?.role_name || "No Role"}
+                                </option>
+                              ))}
+                            </>
+                          )}
                         </select>
+                        
                         {formErrors.assigned_to && (
                           <div className="invalid-feedback d-flex align-items-center">
                             <FiAlertCircle className="me-1" />{" "}
@@ -1372,7 +1581,7 @@ const UpdateFilingStage = ({
                                   type="checkbox"
                                   id={`tool-${tool._id}`}
                                   checked={selectedFilingTools.includes(
-                                    tool._id,
+                                    tool._id
                                   )}
                                   onChange={() => handleToolToggle(tool._id)}
                                   disabled={isDisabled}
@@ -1445,14 +1654,13 @@ const UpdateFilingStage = ({
                         <div className="form-text x-small">
                           {
                             wastageTypeOptions.find(
-                              (w) => w.value === formData.tool_wastage_type,
+                              (w) => w.value === formData.tool_wastage_type
                             )?.description
                           }
                         </div>
                       </div>
                     </div>
 
-                    {/* Tools Summary */}
                     <div className="border rounded-3 p-3 bg-light mt-3">
                       <h6 className="fw-bold mb-3">Filing Tools Summary</h6>
                       <div className="row">
@@ -1506,232 +1714,506 @@ const UpdateFilingStage = ({
                 )}
               </div>
 
-              {/* Filing Process Section */}
-              {/* <div className="card mb-4">
+              {/* Cost Tracking Section */}
+              <div className="card mb-4">
                 {renderSectionHeader(
-                  "⚙️ Filing Process",
-                  "process",
-                  <FiTool />
+                  "💰 Cost Tracking",
+                  "cost",
+                  <FiDollarSign />,
+                  selectedLaborCosts.length
                 )}
-                {expandedSections.process && (
+                {expandedSections.cost && (
                   <div className="card-body">
                     <div className="row mb-3">
-                      <div className="col-md-6 mb-3">
+                      <div className="col-md-12">
                         <label className="form-label fw-medium">
-                          Filing Type
+                          Cost Status
                         </label>
                         <select
-                          name="filing_type"
+                          name="cost_status"
                           className="form-select"
-                          value={formData.filing_type}
+                          value={formData.cost_status}
                           onChange={handleInputChange}
                           disabled={isDisabled}
                         >
-                          {filingTypeOptions.map((option) => (
+                          {costStatusOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.icon} {option.label}
                             </option>
                           ))}
                         </select>
                       </div>
-
-                      <div className="col-md-6 mb-3">
-                        <label className="form-label fw-medium">
-                          Surface Finish
-                        </label>
-                        <select
-                          name="surface_finish"
-                          className="form-select"
-                          value={formData.surface_finish}
-                          onChange={handleInputChange}
-                          disabled={isDisabled}
-                        >
-                          {surfaceFinishOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
 
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label className="form-label fw-medium">
-                          Roughness Level
+                    <div className="row g-2">
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Tool Cost
                         </label>
-                        <select
-                          name="roughness_level"
-                          className="form-select"
-                          value={formData.roughness_level}
-                          onChange={handleInputChange}
-                          disabled={isDisabled}
-                        >
-                          {roughnessLevelOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="col-md-6">
-                        <label className="form-label fw-medium">
-                          Tolerance Level
-                        </label>
-                        <select
-                          name="tolerance_level"
-                          className="form-select"
-                          value={formData.tolerance_level}
-                          onChange={handleInputChange}
-                          disabled={isDisabled}
-                        >
-                          {toleranceLevelOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="row mb-3">
-                      <div className="col-md-12">
-                        <label className="form-label fw-medium">
-                          Defects Removed
-                        </label>
-                        <textarea
-                          name="defects_removed"
-                          className="form-control"
-                          rows={3}
-                          value={formData.defects_removed}
-                          onChange={handleInputChange}
-                          placeholder="Describe defects that were removed during filing (scratches, burrs, uneven surfaces, casting marks, etc.)"
-                          disabled={isDisabled}
-                        ></textarea>
-                      </div>
-                    </div>
-
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <div className="form-check">
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
                           <input
-                            className="form-check-input"
-                            type="checkbox"
-                            name="rework_required"
-                            id="rework_required"
-                            checked={formData.rework_required}
+                            type="number"
+                            name="tool_cost"
+                            className="form-control bg-light"
+                            value={formData.tool_cost}
+                            readOnly
+                          />
+                        </div>
+                        <div className="form-text x-small">
+                          Auto-calculated from tools selected
+                        </div>
+                      </div>
+
+                      {/* Labor Cost Selection */}
+                      <div className="col-md-12 mb-3">
+                        <label className="form-label fw-medium">
+                          <FiUsers className="me-1" /> Labor Cost Types{" "}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <Select
+                          isMulti
+                          options={getLaborCostOptions()}
+                          value={getLaborCostOptions().filter((option) =>
+                            selectedLaborCosts.some(
+                              (cost) => cost._id === option.value
+                            )
+                          )}
+                          onChange={handleLaborCostsChange}
+                          placeholder={
+                            laborCosts.length === 0
+                              ? "Loading labor cost types..."
+                              : "Select labor cost types (Karigar/Labor costs)"
+                          }
+                          isDisabled={isDisabled || laborCosts.length === 0}
+                          className="react-select-container"
+                          classNamePrefix="react-select"
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: formErrors.labor_costs
+                                ? "#dc3545"
+                                : "#dee2e6",
+                              "&:hover": {
+                                borderColor: formErrors.labor_costs
+                                  ? "#dc3545"
+                                  : "#ced4da",
+                              },
+                              backgroundColor: state.isDisabled
+                                ? "#e9ecef"
+                                : "white",
+                              minHeight: "42px",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            multiValue: (base) => ({
+                              ...base,
+                              backgroundColor: "#e3f2fd",
+                            }),
+                            multiValueLabel: (base) => ({
+                              ...base,
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }),
+                          }}
+                        />
+                        {formErrors.labor_costs && (
+                          <div className="invalid-feedback d-block">
+                            <FiAlertCircle className="me-1" />{" "}
+                            {formErrors.labor_costs}
+                          </div>
+                        )}
+                        <div className="form-text">
+                          Select one or more labor cost types (Karigar costs are
+                          included). The total labor cost will be calculated
+                          automatically.
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Equipment Cost
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="equipment_cost"
+                            className="form-control"
+                            value={formData.equipment_cost}
                             onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
                             disabled={isDisabled}
                           />
-                          <label className="form-check-label fw-medium" htmlFor="rework_required">
-                            Rework Required
-                          </label>
+                        </div>
+                        <div className="form-text x-small">
+                          Machine usage cost
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Consumables Cost
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="consumables_cost"
+                            className="form-control"
+                            value={formData.consumables_cost}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            disabled={isDisabled}
+                          />
+                        </div>
+                        <div className="form-text x-small">
+                          Sandpaper, compounds, etc.
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Wastage Cost
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="wastage_cost"
+                            className="form-control"
+                            value={formData.wastage_cost}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            disabled={isDisabled}
+                          />
+                        </div>
+                        <div className="form-text x-small">
+                          Gold dust wastage cost
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Other Costs
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="other_costs"
+                            className="form-control"
+                            value={formData.other_costs}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            disabled={isDisabled}
+                          />
+                        </div>
+                        <div className="form-text x-small">
+                          Miscellaneous costs
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          <FiPercent className="me-1" /> Markup %
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <input
+                            type="number"
+                            name="markup_percentage"
+                            className="form-control"
+                            value={formData.markup_percentage}
+                            onChange={handleInputChange}
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            placeholder="25"
+                            disabled={isDisabled}
+                          />
+                          <span className="input-group-text">%</span>
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Labor Cost (Auto)
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="labour_cost"
+                            className="form-control bg-light"
+                            value={formData.labour_cost}
+                            readOnly
+                            title="Automatically calculated from selected labor cost types"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() =>
+                              calculateLaborCostFromSelection(selectedLaborCosts)
+                            }
+                            disabled={isDisabled}
+                            title="Recalculate labor cost"
+                          >
+                            <FiRefreshCw size={14} />
+                          </button>
+                        </div>
+                        <div className="form-text x-small">
+                          Auto-calculated from {selectedLaborCosts.length}{" "}
+                          selected type(s)
                         </div>
                       </div>
                     </div>
 
-                    {formData.rework_required && (
-                      <div className="row mb-3">
+                    {/* Selected Labor Costs Breakdown */}
+                    {selectedLaborCosts.length > 0 && (
+                      <div className="row mt-3">
                         <div className="col-md-12">
-                          <label className="form-label fw-medium">
-                            Rework Reason
-                          </label>
-                          <textarea
-                            name="rework_reason"
-                            className="form-control"
-                            rows={2}
-                            value={formData.rework_reason}
-                            onChange={handleInputChange}
-                            placeholder="Explain why rework is required..."
-                            disabled={isDisabled}
-                          ></textarea>
+                          <div className="card border">
+                            <div className="card-header bg-light py-2">
+                              <h6 className="mb-0 small fw-bold">
+                                Selected Labor Cost Breakdown
+                                <span className="badge bg-primary ms-2">
+                                  {selectedLaborCosts.length}
+                                </span>
+                              </h6>
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="table-responsive">
+                                <table className="table table-sm mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th className="small">Type</th>
+                                      <th className="small">Cost Type</th>
+                                      <th className="small">Amount</th>
+                                      <th className="small">Unit</th>
+                                      <th className="small text-end">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {laborBreakdown.map((item) => (
+                                      <tr key={item.id}>
+                                        <td className="small">
+                                          <strong>{item.name}</strong>
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-secondary">
+                                            {item.type}
+                                          </span>
+                                        </td>
+                                        <td className="small">
+                                          ₹{item.cost_amount}
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-info">
+                                            {item.unit}
+                                          </span>
+                                        </td>
+                                        <td className="small text-end fw-bold">
+                                          ₹{item.total_cost}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="table-active">
+                                      <td colSpan="4" className="small fw-bold">
+                                        Total Labor Cost
+                                      </td>
+                                      <td className="small text-end fw-bold fs-6">
+                                        ₹ {totalCalculatedLabor.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
-              </div> */}
 
-              {/* Quality Metrics Section */}
-              {/* <div className="card mb-4">
-                {renderSectionHeader(
-                  "🎯 Quality Metrics",
-                  "quality",
-                  <FiAward />
-                )}
-                {expandedSections.quality && (
-                  <div className="card-body">
-                    Quality Summary
-                    <div className="border rounded-3 p-3 bg-light mb-3">
-                      <h6 className="fw-bold mb-3">Quality Assessment</h6>
+                    {/* Total Cost Summary */}
+                    <div className="row mt-3">
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Total Cost
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="text"
+                            className="form-control bg-light"
+                            value={formData.total_cost || "0.00"}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Final Price
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="text"
+                            className="form-control bg-success text-white"
+                            value={formData.final_price || "0.00"}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cost Summary Chart */}
+                    <div className="border rounded-3 p-3 bg-light mt-3">
+                      <h6 className="fw-bold mb-3">Cost Summary</h6>
                       <div className="row">
                         <div className="col-md-6">
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Surface Finish:</span>
-                            <span className={`fw-bold ${
-                              formData.surface_finish === 'mirror' ? 'text-success' :
-                              formData.surface_finish === 'very_smooth' ? 'text-info' :
-                              formData.surface_finish === 'smooth' ? 'text-warning' : 'text-secondary'
-                            }`}>
-                              {surfaceFinishOptions.find(q => q.value === formData.surface_finish)?.label}
+                            <span>Tool Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.tool_cost || "0.00"}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Roughness Level:</span>
-                            <span className={`fw-bold ${
-                              formData.roughness_level === 'very_fine' ? 'text-success' :
-                              formData.roughness_level === 'fine' ? 'text-info' :
-                              formData.roughness_level === 'medium' ? 'text-warning' : 'text-secondary'
-                            }`}>
-                              {roughnessLevelOptions.find(d => d.value === formData.roughness_level)?.label}
+                            <span>Labor Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.labour_cost || "0.00"}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Tolerance Level:</span>
-                            <span className={`fw-bold ${
-                              formData.tolerance_level === 'precision' ? 'text-success' :
-                              formData.tolerance_level === 'fine' ? 'text-info' :
-                              formData.tolerance_level === 'standard' ? 'text-warning' : 'text-secondary'
-                            }`}>
-                              {toleranceLevelOptions.find(p => p.value === formData.tolerance_level)?.label}
+                            <span>Equipment Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.equipment_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Consumables Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.consumables_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Wastage Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.wastage_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Other Costs:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.other_costs || "0.00"}
+                            </span>
+                          </div>
+                          <hr />
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Subtotal:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.total_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>
+                              Markup ({formData.markup_percentage || "25"}%):
+                            </span>
+                            <span className="fw-bold">
+                              ₹{" "}
+                              {(
+                                (parseFloat(formData.total_cost || 0) *
+                                  parseFloat(formData.markup_percentage || 0)) /
+                                100
+                              ).toFixed(2)}
                             </span>
                           </div>
                           <hr />
                           <div className="d-flex justify-content-between mb-2">
-                            <span className="fw-bold">Overall Status:</span>
-                            <span className={`fw-bold ${
-                              formData.rework_required ? 'text-danger' : 'text-success'
-                            }`}>
-                              {formData.rework_required ? 'REWORK REQUIRED' : 'PASSED'}
+                            <span className="fw-bold">Final Price:</span>
+                            <span className="fw-bold fs-5 text-success">
+                              ₹ {formData.final_price || "0.00"}
                             </span>
                           </div>
                         </div>
                         <div className="col-md-6">
-                          <div className="text-center">
-                            <div className="mb-2">
-                              <div className={`display-6 ${
-                                formData.rework_required ? 'text-danger' :
-                                formData.surface_finish === 'mirror' && 
-                                formData.tolerance_level === 'precision' ? 'text-success' : 'text-warning'
-                              }`}>
-                                {formData.rework_required ? '⚠️' :
-                                 formData.surface_finish === 'mirror' && 
-                                 formData.tolerance_level === 'precision' ? '✅' : '⚠️'}
-                              </div>
+                          <div className="progress" style={{ height: "20px" }}>
+                            <div
+                              className="progress-bar bg-primary"
+                              style={{
+                                width: `${((parseFloat(formData.tool_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Tool Cost"
+                            >
+                              Tools
                             </div>
-                            <div className="small text-muted">
-                              {formData.rework_required 
-                                ? 'Quality issues detected. Rework required.' 
-                                : 'Quality parameters within acceptable limits.'}
+                            <div
+                              className="progress-bar bg-warning"
+                              style={{
+                                width: `${((parseFloat(formData.labour_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Labor Cost"
+                            >
+                              Labor
                             </div>
+                            <div
+                              className="progress-bar bg-info"
+                              style={{
+                                width: `${((parseFloat(formData.equipment_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Equipment Cost"
+                            >
+                              Equip
+                            </div>
+                            <div
+                              className="progress-bar bg-secondary"
+                              style={{
+                                width: `${((parseFloat(formData.consumables_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Consumables Cost"
+                            >
+                              Cons
+                            </div>
+                            <div
+                              className="progress-bar bg-dark"
+                              style={{
+                                width: `${((parseFloat(formData.wastage_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Wastage Cost"
+                            >
+                              Waste
+                            </div>
+                            <div
+                              className="progress-bar bg-danger"
+                              style={{
+                                width: `${((parseFloat(formData.other_costs || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Other Costs"
+                            >
+                              Other
+                            </div>
+                          </div>
+                          <div className="mt-2 small text-muted">
+                            Cost breakdown visualization
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
-              </div> */}
+              </div>
 
               {/* Time Tracking Section */}
               <div className="card mb-4">
@@ -1871,7 +2353,6 @@ const UpdateFilingStage = ({
                       </div>
                     </div>
 
-                    {/* Time Breakdown Notes */}
                     <div className="mt-3">
                       <label className="form-label fw-medium small">
                         Time Breakdown Details
@@ -1887,7 +2368,6 @@ const UpdateFilingStage = ({
                       ></textarea>
                     </div>
 
-                    {/* Time Summary */}
                     <div className="border rounded-3 p-3 bg-light mt-3">
                       <h6 className="fw-bold mb-3 small">Time Allocation</h6>
                       <div className="row">
@@ -1902,7 +2382,7 @@ const UpdateFilingStage = ({
                                 width: `${
                                   (parseFloat(formData.preparation_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1,
+                                      formData.total_time_spent || 1
                                     )) *
                                   100
                                 }%`,
@@ -1917,7 +2397,7 @@ const UpdateFilingStage = ({
                                 width: `${
                                   (parseFloat(formData.rough_filing_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1,
+                                      formData.total_time_spent || 1
                                     )) *
                                   100
                                 }%`,
@@ -1932,7 +2412,7 @@ const UpdateFilingStage = ({
                                 width: `${
                                   (parseFloat(formData.fine_filing_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1,
+                                      formData.total_time_spent || 1
                                     )) *
                                   100
                                 }%`,
@@ -1947,7 +2427,7 @@ const UpdateFilingStage = ({
                                 width: `${
                                   (parseFloat(formData.polishing_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1,
+                                      formData.total_time_spent || 1
                                     )) *
                                   100
                                 }%`,
@@ -1956,21 +2436,20 @@ const UpdateFilingStage = ({
                             >
                               Polish
                             </div>
-
                             <div
-                              className="progress-bar bg-secondary "
+                              className="progress-bar bg-secondary"
                               style={{
                                 width: `${
                                   (parseFloat(
-                                    formData.quality_check_time || 0,
+                                    formData.quality_check_time || 0
                                   ) /
                                     parseFloat(
-                                      formData.total_time_spent || 1,
+                                      formData.total_time_spent || 1
                                     )) *
                                   100
                                 }%`,
                               }}
-                              title="Quality "
+                              title="Quality"
                             >
                               Quality
                             </div>
@@ -1990,295 +2469,13 @@ const UpdateFilingStage = ({
                 )}
               </div>
 
-              {/* Cost Tracking Section */}
-              <div className="card mb-4">
-                {renderSectionHeader(
-                  "💰 Cost Tracking",
-                  "cost",
-                  <FiDollarSign />,
-                )}
-                {expandedSections.cost && (
-                  <div className="card-body">
-                    <div className="row mb-3">
-                      <div className="col-md-12">
-                        <label className="form-label fw-medium">
-                          Cost Status
-                        </label>
-                        <select
-                          name="cost_status"
-                          className="form-select"
-                          value={formData.cost_status}
-                          onChange={handleInputChange}
-                          disabled={isDisabled}
-                        >
-                          {costStatusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.icon} {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="row g-2">
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Tool Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="tool_cost"
-                            className="form-control bg-light"
-                            value={formData.tool_cost}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-text x-small">
-                          Cost of filing tools used
-                        </div>
-                      </div>
-
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Labour Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="labour_cost"
-                            className="form-control"
-                            value={formData.labour_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">Karigar wages</div>
-                      </div>
-
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Equipment Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="equipment_cost"
-                            className="form-control"
-                            value={formData.equipment_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">
-                          Machine usage cost
-                        </div>
-                      </div>
-
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Consumables Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="consumables_cost"
-                            className="form-control"
-                            value={formData.consumables_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">
-                          Sandpaper, compounds, etc.
-                        </div>
-                      </div>
-
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Wastage Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="wastage_cost"
-                            className="form-control"
-                            value={formData.wastage_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">
-                          Gold dust wastage cost
-                        </div>
-                      </div>
-
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Other Costs
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="other_costs"
-                            className="form-control"
-                            value={formData.other_costs}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">
-                          Miscellaneous costs
-                        </div>
-                      </div>
-
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          <FiPercent className="me-1" /> Markup %
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <input
-                            type="number"
-                            name="markup_percentage"
-                            className="form-control"
-                            value={formData.markup_percentage}
-                            onChange={handleInputChange}
-                            min="0"
-                            max="100"
-                            step="0.5"
-                            placeholder="25"
-                            disabled={isDisabled}
-                          />
-                          <span className="input-group-text">%</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Cost Summary */}
-                    <div className="border rounded-3 p-3 bg-light mt-3">
-                      <h6 className="fw-bold mb-3">Cost Summary</h6>
-                      <div className="row">
-                        <div className="col-md-6">
-                          <div className="d-flex justify-content-between mb-2 small">
-                            <span>Total Cost:</span>
-                            <span className="fw-bold">
-                              ₹ {formData.total_cost || "0.00"}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mb-2 small">
-                            <span>Markup ({formData.markup_percentage}%):</span>
-                            <span className="fw-bold">
-                              ₹{" "}
-                              {(
-                                (parseFloat(formData.total_cost || 0) *
-                                  parseFloat(formData.markup_percentage || 0)) /
-                                100
-                              ).toFixed(2)}
-                            </span>
-                          </div>
-                          <hr />
-                          <div className="d-flex justify-content-between mb-2">
-                            <span className="fw-bold">Final Price:</span>
-                            <span className="fw-bold fs-5 text-success">
-                              ₹ {formData.final_price || "0.00"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="col-md-6">
-                          <div className="progress" style={{ height: "20px" }}>
-                            <div
-                              className="progress-bar bg-primary"
-                              style={{
-                                width: `${((parseFloat(formData.tool_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Tool Cost"
-                            >
-                              Tools
-                            </div>
-                            <div
-                              className="progress-bar bg-success"
-                              style={{
-                                width: `${((parseFloat(formData.labour_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Labour Cost"
-                            >
-                              Labour
-                            </div>
-                            <div
-                              className="progress-bar bg-warning"
-                              style={{
-                                width: `${((parseFloat(formData.equipment_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Equipment & Consumables"
-                            >
-                              Equipment
-                            </div>
-                            <div
-                              className="progress-bar bg-info"
-                              style={{
-                                width: `${((parseFloat(formData.consumables_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Consumables Costs"
-                            >
-                              Consumables
-                            </div>
-                            <div
-                              className="progress-bar bg-black"
-                              style={{
-                                width: `${((parseFloat(formData.wastage_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Wastage  Costs"
-                            >
-                              Wastage
-                            </div>
-                            <div
-                              className="progress-bar bg-secondary "
-                              style={{
-                                width: `${((parseFloat(formData.other_costs || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Other Costs"
-                            >
-                              Other
-                            </div>
-                          </div>
-                          <div className="mt-2 small text-muted">
-                            Cost breakdown visualization
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* File Tracking Section */}
               <div className="card mb-4">
                 {renderSectionHeader(
                   "📎 File Tracking",
                   "files",
                   <FiFile />,
-                  filingFiles.length,
+                  filingFiles.length
                 )}
                 {expandedSections.files && (
                   <div className="card-body">
@@ -2342,7 +2539,6 @@ const UpdateFilingStage = ({
                       </div>
                     </div>
 
-                    {/* File Upload Sections */}
                     <div className="row">
                       <div className="col-md-6">
                         <div className="card border">
@@ -2350,11 +2546,7 @@ const UpdateFilingStage = ({
                             <h6 className="mb-0 small fw-bold">
                               Source Files (Before Filing)
                               <span className="badge bg-light text-dark ms-2">
-                                {
-                                  filingFiles.filter(
-                                    (f) => f.category === "source",
-                                  ).length
-                                }
+                                {getFilesByCategory("source").length}
                               </span>
                             </h6>
                           </div>
@@ -2383,8 +2575,7 @@ const UpdateFilingStage = ({
                               </p>
                             </div>
 
-                            {filingFiles.filter((f) => f.category === "source")
-                              .length > 0 && (
+                            {getFilesByCategory("source").length > 0 && (
                               <div className="mt-2">
                                 <div className="table-responsive">
                                   <table className="table table-sm mb-0">
@@ -2398,9 +2589,8 @@ const UpdateFilingStage = ({
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {filingFiles
-                                        .filter((f) => f.category === "source")
-                                        .map((file) => (
+                                      {getFilesByCategory("source").map(
+                                        (file) => (
                                           <tr key={file.id}>
                                             <td>
                                               <div className="d-flex align-items-center">
@@ -2426,7 +2616,7 @@ const UpdateFilingStage = ({
                                                   onClick={() =>
                                                     window.open(
                                                       file.url,
-                                                      "_blank",
+                                                      "_blank"
                                                     )
                                                   }
                                                   title="Open"
@@ -2447,7 +2637,8 @@ const UpdateFilingStage = ({
                                               </div>
                                             </td>
                                           </tr>
-                                        ))}
+                                        )
+                                      )}
                                     </tbody>
                                   </table>
                                 </div>
@@ -2463,11 +2654,7 @@ const UpdateFilingStage = ({
                             <h6 className="mb-0 small fw-bold">
                               Output Files (After Filing)
                               <span className="badge bg-light text-dark ms-2">
-                                {
-                                  filingFiles.filter(
-                                    (f) => f.category === "output",
-                                  ).length
-                                }
+                                {getFilesByCategory("output").length}
                               </span>
                             </h6>
                           </div>
@@ -2500,8 +2687,7 @@ const UpdateFilingStage = ({
                               </p>
                             </div>
 
-                            {filingFiles.filter((f) => f.category === "output")
-                              .length > 0 && (
+                            {getFilesByCategory("output").length > 0 && (
                               <div className="mt-2">
                                 <div className="table-responsive">
                                   <table className="table table-sm mb-0">
@@ -2518,9 +2704,8 @@ const UpdateFilingStage = ({
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {filingFiles
-                                        .filter((f) => f.category === "output")
-                                        .map((file) => (
+                                      {getFilesByCategory("output").map(
+                                        (file) => (
                                           <tr key={file.id}>
                                             <td>
                                               <div className="d-flex align-items-center">
@@ -2552,7 +2737,7 @@ const UpdateFilingStage = ({
                                                   onClick={() =>
                                                     window.open(
                                                       file.url,
-                                                      "_blank",
+                                                      "_blank"
                                                     )
                                                   }
                                                   title="Open"
@@ -2573,7 +2758,8 @@ const UpdateFilingStage = ({
                                               </div>
                                             </td>
                                           </tr>
-                                        ))}
+                                        )
+                                      )}
                                     </tbody>
                                   </table>
                                 </div>
@@ -2598,9 +2784,22 @@ const UpdateFilingStage = ({
             <div className="modal-footer border-top pt-3 bg-white">
               <div className="d-flex justify-content-between w-100 align-items-center">
                 <div className="text-muted small">
-                  <span className="me-3">🔧 Filing tools</span>
-                  <span className="me-3">⏱️ Time tracking</span>
-                  <span>💰 Cost tracking</span>
+                  <span className="me-3">
+                    <FiUsers className="me-1" />
+                    Labor: ₹{formData.labour_cost || "0.00"}
+                  </span>
+                  <span className="me-3">
+                    <FiTool className="me-1" />
+                    Tools: {selectedFilingTools.length}
+                  </span>
+                  <span className="me-3">
+                    <FiClock className="me-1" />
+                    {formData.total_time_spent || "0"} hrs
+                  </span>
+                  <span>
+                    <FiDollarSign className="me-1" />
+                    Final: ₹{formData.final_price || "0.00"}
+                  </span>
                 </div>
                 <div className="d-flex gap-2">
                   <button

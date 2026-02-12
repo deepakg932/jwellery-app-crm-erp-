@@ -282,7 +282,7 @@ export default function StoneTablePage() {
                     {/* IMAGE PREVIEW */}
                     <td>
                       <SafeImage
-                        src={item.fullImageUrl || ""}
+                        src={item.stone_image || ""}
                         alt={item.stone_type}
                         width="45"
                         height="45"

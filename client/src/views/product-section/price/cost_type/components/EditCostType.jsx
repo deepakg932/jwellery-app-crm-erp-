@@ -7,26 +7,43 @@ const EditCostType = ({
   costType,
   loading = false,
   costNames = [], // Array of { _id, cost_name }
-  makingSubStages = [],
 }) => {
   const [formData, setFormData] = useState({
     cost_type: "",
-    cost_name: "", // Store cost name TEXT
-    sub_stage_name: "" // Store sub-stage name TEXT
+    cost_name_id: "", // Store ID
+    cost_name: "", // For display
   });
   const [error, setError] = useState("");
+
+  // Find cost name by ID
+  const getCostNameById = (id) => {
+    const cost = costNames.find(cost => cost._id === id);
+    return cost ? cost.cost_name : '';
+  };
 
   // Reset form when costType changes
   useEffect(() => {
     if (costType) {
+      // If costType has cost_name_id, use it directly
+      // If not, find the ID from costNames using the cost_name text
+      let costNameId = costType.cost_name_id || '';
+      
+      if (!costNameId && costType.cost_name) {
+        // Find the ID by matching cost_name text
+        const matchedCost = costNames.find(cost => cost.cost_name === costType.cost_name);
+        if (matchedCost) {
+          costNameId = matchedCost._id;
+        }
+      }
+
       setFormData({
         cost_type: costType.cost_type || "",
-        cost_name: costType.cost_name || "", // Use TEXT value
-        sub_stage_name: costType.sub_stage_name || "" // Use TEXT value
+        cost_name_id: costNameId,
+        cost_name: costType.cost_name || "",
       });
       setError("");
     }
-  }, [costType]);
+  }, [costType, costNames]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,17 +53,16 @@ const EditCostType = ({
       return;
     }
 
-    if (!formData.cost_name.trim()) {
+    if (!formData.cost_name_id) {
       setError("Please select a cost name");
       return;
     }
 
     try {
-      // Prepare data for API - send TEXT values
+      // Prepare data for API - send ID
       const submitData = {
         cost_type: formData.cost_type.trim(),
-        cost_name: formData.cost_name.trim(), // Send TEXT
-        sub_stage_name: formData.sub_stage_name.trim() || "", // Send TEXT
+        cost_name_id: formData.cost_name_id, // Send ID
         is_active: true,
       };
 
@@ -60,9 +76,30 @@ const EditCostType = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'cost_name_id') {
+      // When cost name ID changes, update display name too
+      const selectedCostName = getCostNameById(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        cost_name: selectedCostName,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+    
+    setError("");
+  };
+
+  const handleCostTypeChange = (e) => {
+    const { value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      cost_type: value,
     }));
     setError("");
   };
@@ -70,19 +107,18 @@ const EditCostType = ({
   const handleClose = useCallback(() => {
     setFormData({
       cost_type: "",
+      cost_name_id: "",
       cost_name: "",
-      sub_stage_name: ""
     });
     setError("");
     onHide();
   }, [onHide]);
 
-  // Get selected sub-stage for display
-  const selectedSubStage = makingSubStages.find(
-    subStage => subStage.sub_stage_name === formData.sub_stage_name
-  );
-  
-  const selectedStageName = selectedSubStage?.stage_name || "";
+  // Debug info
+  useEffect(() => {
+    console.log("EditCostType formData:", formData);
+    console.log("EditCostType costType prop:", costType);
+  }, [formData, costType]);
 
   // Don't render if not shown
   if (!show) return null;
@@ -97,7 +133,12 @@ const EditCostType = ({
         <div className="modal-content rounded-3">
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Edit Cost Type</h5>
+            <div>
+              <h5 className="modal-title fw-bold fs-5">Edit Cost Type</h5>
+              {costType && costType._id && (
+                <div className="small text-muted">ID: {costType._id}</div>
+              )}
+            </div>
             <button
               type="button"
               className="btn-close"
@@ -128,32 +169,35 @@ const EditCostType = ({
                   placeholder="e.g., Direct Cost, Indirect Cost, Labor Cost"
                   name="cost_type"
                   value={formData.cost_type}
-                  onChange={handleChange}
+                  onChange={handleCostTypeChange}
                   required
                   disabled={loading}
                 />
               </div>
 
-              {/* Cost Name Dropdown */}
+              {/* Cost Name Dropdown - Using IDs */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
                   Cost Name <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-lg"
-                  name="cost_name"
-                  value={formData.cost_name}
+                  name="cost_name_id"
+                  value={formData.cost_name_id}
                   onChange={handleChange}
                   required
                   disabled={loading || costNames.length === 0}
                 >
                   <option value="">Select cost name</option>
                   {costNames.map((cost) => (
-                    <option key={cost._id} value={cost.cost_name}>
+                    <option key={cost._id} value={cost._id}>
                       {cost.cost_name}
                     </option>
                   ))}
                 </select>
+                
+              
+                
                 {costNames.length === 0 && !loading && (
                   <div className="text-danger small mt-1">
                     No cost names available
@@ -161,39 +205,7 @@ const EditCostType = ({
                 )}
               </div>
 
-              {/* Making Sub-Stage Dropdown */}
-              <div className="mb-3">
-                <label className="form-label fw-medium">
-                  Making Sub-Stage
-                </label>
-                <select
-                  className="form-select form-select-lg"
-                  name="sub_stage_name"
-                  value={formData.sub_stage_name}
-                  onChange={handleChange}
-                  disabled={loading || makingSubStages.length === 0}
-                >
-                  <option value="">Select sub-stage (optional)</option>
-                  {makingSubStages.map((subStage) => {
-                    // Handle different property names
-                    const subStageName = subStage.sub_stage_name || subStage.name || "";
-                    const stageName = subStage.stage_name || subStage.makingStageName || "";
-                    
-                    return (
-                      <option key={subStage._id} value={subStageName}>
-                        {subStageName}
-                        {stageName && ` (${stageName})`}
-                      </option>
-                    );
-                  })}
-                </select>
-                {makingSubStages.length === 0 && !loading && (
-                  <div className="text-danger small mt-1">
-                    No sub-stages available
-                  </div>
-                )}
-                
-              </div>
+             
             </div>
 
             {/* Action Buttons */}
@@ -211,7 +223,7 @@ const EditCostType = ({
                 className="btn btn-primary"
                 disabled={
                   !formData.cost_type.trim() ||
-                  !formData.cost_name.trim() ||
+                  !formData.cost_name_id ||
                   loading
                 }
               >

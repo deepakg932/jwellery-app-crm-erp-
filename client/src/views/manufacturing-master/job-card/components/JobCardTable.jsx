@@ -14,6 +14,7 @@ import {
   FiAlertCircle,
   FiPackage,
   FiShoppingCart,
+  FiX,
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import AddJobCardForm from "./AddJobCardForm";
@@ -35,6 +36,8 @@ const JobCardTable = () => {
     loadingQuotations,
   } = useJobCards();
 
+  console.log(jobCards);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
@@ -49,6 +52,8 @@ const JobCardTable = () => {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  console.log(selectedItem);
 
   // Status options
   const statusOptions = [
@@ -104,9 +109,9 @@ const JobCardTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentJobCards = filteredJobCards.slice(
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   );
-console.log(jobCards)
+  console.log(jobCards);
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -149,15 +154,15 @@ console.log(jobCards)
             diffDays < 0
               ? "text-danger"
               : diffDays === 0
-              ? "text-warning"
-              : "text-success"
+                ? "text-warning"
+                : "text-success"
           }
         >
           {diffDays < 0
             ? `${Math.abs(diffDays)} days overdue`
             : diffDays === 0
-            ? "Due Today"
-            : `${diffDays} days left`}
+              ? "Due Today"
+              : `${diffDays} days left`}
         </small>
       </div>
     );
@@ -510,6 +515,38 @@ console.log(jobCards)
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Images Section - Add this after the table */}
+                  {selectedItem.images && selectedItem.images.length > 0 && (
+                    <div className="mt-4">
+                      <h6 className="fw-bold mb-3">Job Card Images</h6>
+                      <div className="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+                        {selectedItem.images.map((imageUrl, index) => (
+                          <div key={index} className="col">
+                            <div className="border rounded p-2 bg-light position-relative">
+                              <img
+                                src={imageUrl}
+                                alt={`Job Card Image ${index + 1}`}
+                                className="rounded w-100"
+                                style={{
+                                  height: "120px",
+                                  objectFit: "cover",
+                                }}
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src =
+                                    "https://via.placeholder.com/150?text=Image+Error";
+                                }}
+                              />
+                              <div className="small text-muted text-center mt-1">
+                                Image {index + 1}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -888,21 +925,29 @@ console.log(jobCards)
                       jobCard.status === "delivered"
                         ? "table-success"
                         : jobCard.quotation_number
-                        ? ""
-                        : "table-light"
+                          ? ""
+                          : "table-light"
                     }
                   >
                     <td>{indexOfFirstItem + index + 1}</td>
-                    
+
                     <td className="fw-bold">
-                      <span className={jobCard.quotation_number ? "text-primary" : "text-secondary"}>
+                      <span
+                        className={
+                          jobCard.quotation_number
+                            ? "text-primary"
+                            : "text-secondary"
+                        }
+                      >
                         {jobCard.job_card_number}
                       </span>
                       {!jobCard.quotation_number && (
-                        <span className="badge bg-light text-dark ms-2 small">Product</span>
+                        <span className="badge bg-light text-dark ms-2 small">
+                          Product
+                        </span>
                       )}
                     </td>
-                    
+
                     {/* CUSTOMER COLUMN - UPDATED */}
                     <td>
                       {jobCard.quotation_number ? (
@@ -919,7 +964,8 @@ console.log(jobCards)
                           )}
                           <div className="small text-info mt-1 d-flex align-items-center">
                             <FiShoppingCart size={12} className="me-1" />
-                            QT-{jobCard.quotation_number?.split("-").pop() || ""}
+                            QT-
+                            {jobCard.quotation_number?.split("-").pop() || ""}
                           </div>
                         </div>
                       ) : (
@@ -935,31 +981,29 @@ console.log(jobCards)
                         </div>
                       )}
                     </td>
-                    
+
                     <td>
-                      <span className="fw-semibold ">
-                        {jobCard.stage}
-                      </span>
+                      <span className="fw-semibold ">{jobCard.stage}</span>
                     </td>
-                    
+
                     <td>
                       {formatDeliveryDate(
                         jobCard.expected_delivery_date,
                         jobCard.delivery_date,
-                        jobCard.status
+                        jobCard.status,
                       )}
                     </td>
-                    
+
                     <td>{getPriorityBadge(jobCard.priority)}</td>
-                    
+
                     <td>{getStatusBadge(jobCard.status)}</td>
-                    
+
                     <td>
                       <small className="text-muted">
                         {jobCard.assigned_name || "Unassigned"}
                       </small>
                     </td>
-                    
+
                     <td className="text-end fw-bold">
                       {formatCurrency(jobCard.total_amount)}
                     </td>
@@ -1007,7 +1051,7 @@ console.log(jobCards)
                             </>
                           )}
                         </button>
-{/* 
+                        {/* 
                         <button
                           className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
                           onClick={() => {

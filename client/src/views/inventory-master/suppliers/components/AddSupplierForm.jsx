@@ -171,25 +171,25 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
     onSave(payload);
 
     // Reset form
-    const resetCountry = countries.find((c) => c.value === "IN")?.value || "";
-    setFormData({
-      supplier_name: "",
-      company_name: "",
-      contact_person: "",
-      contact_person_number:"",
-      payment_terms: "Net 30 days",
-      payment_type: "bank_transfer",
-      tax_number: "",
-      gst_number: "",
-      country: resetCountry,
-      state: "",
-      city: "",
-      pincode: "",
-      phone: "",
-      email: "",
-      address: "",
-      status: true,
-    });
+    // const resetCountry = countries.find((c) => c.value === "IN")?.value || "";
+    // setFormData({
+    //   supplier_name: "",
+    //   company_name: "",
+    //   contact_person: "",
+    //   contact_person_number:"",
+    //   payment_terms: "Net 30 days",
+    //   payment_type: "bank_transfer",
+    //   tax_number: "",
+    //   gst_number: "",
+    //   country: resetCountry,
+    //   state: "",
+    //   city: "",
+    //   pincode: "",
+    //   phone: "",
+    //   email: "",
+    //   address: "",
+    //   status: true,
+    // });
     setErrors({});
   };
 

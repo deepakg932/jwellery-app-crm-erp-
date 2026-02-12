@@ -11,6 +11,9 @@ import {
   FiSearch,
   FiX,
   FiPlus,
+  FiImage, // Add this icon
+  FiTrash2, // Add this icon
+  FiCamera
 } from "react-icons/fi";
 import { BsTools } from "react-icons/bs";
 import AddCustomerForm from "@/views/user/customer/components/AddCustomerForm";
@@ -19,12 +22,12 @@ const EditRepairForm = ({
   repair,
   onClose, 
   onSave, 
-  onAddCustomer, // Add this prop
+  onAddCustomer,
   loading = false,
   customers = [],
-  customerGroups = [], // Add this prop
+  customerGroups = [],
   employees = [],
-  saleItems = [], // Add this prop
+  saleItems = [],
   statusOptions = [],
   accountOptions = []
 }) => {
@@ -42,19 +45,26 @@ const EditRepairForm = ({
     status: "pending",
     account: "cash",
     note: "",
-    product_type: "existing", // 'existing' or 'manual'
-    selected_product_id: "", // For existing products
+    product_type: "existing",
+    selected_product_id: "",
     product_code: "",
     sale_item_id: null,
+    repair_images: [], // Add this field
   });
+
+  // console.log(repair)
 
   const [errors, setErrors] = useState({});
   const [isInitialized, setIsInitialized] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [productType, setProductType] = useState("existing"); // 'existing' or 'manual'
+  const [productType, setProductType] = useState("existing");
+  const [previewImages, setPreviewImages] = useState([]);
+  const [existingImages, setExistingImages] = useState([]); // For existing images from repair
+  const [deletedImageIds, setDeletedImageIds] = useState([]); // Track deleted images
   const searchRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [addingCustomer, setAddingCustomer] = useState(false);
 
@@ -77,6 +87,15 @@ const EditRepairForm = ({
         selectedSaleItem = saleItems.find(item => item._id === repair.sale_item_id);
       }
 
+      // Handle existing images
+      const repairImages = repair.repair_images || [];
+      const existingImagePreviews = repairImages.map(img => ({
+        url: img.url || img,
+        id: img._id || img,
+        name: img.filename || img.originalname || `image_${repairImages.indexOf(img)}`,
+        isExisting: true
+      }));
+
       const initialFormData = {
         product_name: repair.product_name || "",
         product_module: repair.product_module || "",
@@ -97,11 +116,14 @@ const EditRepairForm = ({
         product_id: repair.product_id || null,
         sale_item_id: repair.sale_item_id || null,
         is_custom_product: repair.is_custom_product || false,
+        repair_images: [], // Will be empty for existing, we'll handle new uploads separately
       };
 
       console.log("Initial form data:", initialFormData);
       setFormData(initialFormData);
       setProductType(repairProductType);
+      setExistingImages(existingImagePreviews);
+      setPreviewImages([]); // Start with empty for new uploads
       
       // Set search query if product is from sales
       if (selectedSaleItem) {
@@ -167,6 +189,111 @@ const EditRepairForm = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Handle new image upload
+  const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files);
+    
+    // Validate file types
+    const validFiles = files.filter(file => {
+      const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+      return validTypes.includes(file.type);
+    });
+
+    // Validate file size (max 5MB each)
+    const sizeValidFiles = validFiles.filter(file => {
+      return file.size <= 5 * 1024 * 1024; // 5MB
+    });
+
+    if (sizeValidFiles.length === 0) {
+      alert('Please select valid image files (JPEG, PNG, GIF, WebP) under 5MB');
+      return;
+    }
+
+    // Create preview URLs for new files
+    const newPreviewUrls = sizeValidFiles.map(file => ({
+      file: file,
+      preview: URL.createObjectURL(file),
+      name: file.name,
+      size: (file.size / (1024 * 1024)).toFixed(2) + ' MB',
+      isNew: true
+    }));
+
+    // Update form data with new files
+    setFormData(prev => ({
+      ...prev,
+      repair_images: [...prev.repair_images, ...sizeValidFiles]
+    }));
+
+    // Add to preview images
+    setPreviewImages(prev => [...prev, ...newPreviewUrls]);
+
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove new image (not yet uploaded)
+  const removeNewImage = (index) => {
+    // Revoke object URL to prevent memory leak
+    if (previewImages[index] && previewImages[index].preview) {
+      URL.revokeObjectURL(previewImages[index].preview);
+    }
+
+    // Find the actual file index in previewImages
+    const newImages = previewImages.filter((_, i) => i !== index);
+    const newFiles = newImages.filter(img => img.isNew).map(img => img.file);
+
+    // Update form data
+    setFormData(prev => ({
+      ...prev,
+      repair_images: newFiles
+    }));
+
+    // Update preview images
+    setPreviewImages(newImages);
+  };
+
+  // Remove existing image
+  const removeExistingImage = (imageId) => {
+    // Add to deleted images list
+    setDeletedImageIds(prev => [...prev, imageId]);
+    
+    // Remove from existing images display
+    setExistingImages(prev => prev.filter(img => img.id !== imageId));
+  };
+
+  // Restore deleted existing image
+  const restoreExistingImage = (imageId) => {
+    // Remove from deleted images list
+    setDeletedImageIds(prev => prev.filter(id => id !== imageId));
+    
+    // Restore to existing images (you might need to fetch the original image data)
+    const imageToRestore = repair.repair_images?.find(img => 
+      img._id === imageId || img === imageId
+    );
+    if (imageToRestore) {
+      const restoredImage = {
+        url: imageToRestore.url || imageToRestore,
+        id: imageToRestore._id || imageToRestore,
+        name: imageToRestore.filename || imageToRestore.originalname || 'Restored Image',
+        isExisting: true
+      };
+      setExistingImages(prev => [...prev, restoredImage]);
+    }
+  };
+
+  // Clean up preview URLs on component unmount
+  useEffect(() => {
+    return () => {
+      previewImages.forEach(image => {
+        if (image.preview && image.isNew) {
+          URL.revokeObjectURL(image.preview);
+        }
+      });
+    };
+  }, [previewImages]);
 
   // Handle product selection from search
   const handleProductSelect = (item) => {
@@ -329,6 +456,7 @@ const EditRepairForm = ({
       product_code: formData.product_code || "",
       is_custom_product: productType === "manual",
       sale_item_id: productType === "existing" ? formData.sale_item_id : null,
+      repair_images: formData.repair_images, // New images
     };
 
     console.log("Updating repair data:", payload);
@@ -336,6 +464,13 @@ const EditRepairForm = ({
   };
 
   const handleClose = () => {
+    // Clean up preview URLs
+    previewImages.forEach(image => {
+      if (image.preview && image.isNew) {
+        URL.revokeObjectURL(image.preview);
+      }
+    });
+
     setFormData({
       product_name: "",
       product_module: "",
@@ -354,10 +489,14 @@ const EditRepairForm = ({
       selected_product_id: "",
       product_code: "",
       sale_item_id: null,
+      repair_images: [],
     });
     setErrors({});
     setSearchQuery("");
     setSearchResults([]);
+    setPreviewImages([]);
+    setExistingImages([]);
+    setDeletedImageIds([]);
     setShowSearchResults(false);
     setProductType("existing");
     setIsInitialized(false);
@@ -395,7 +534,7 @@ const EditRepairForm = ({
         style={{
           backgroundColor: "rgba(0,0,0,0.5)",
           overflowY: "auto",
-          maxHeight: "100vh",
+          minHeight: "100vh",
         }}
         tabIndex="-1"
       >
@@ -439,7 +578,7 @@ const EditRepairForm = ({
       <div className="modal-dialog modal-dialog-centered modal-lg">
         <div
           className="modal-content rounded-3"
-          style={{ maxHeight: "95vh", overflow: "hidden" }}
+          style={{ maxHeight: "100vh", overflow: "hidden" }}
         >
           <div
             className="modal-header border-bottom pb-3 sticky-top bg-white"
@@ -500,7 +639,7 @@ const EditRepairForm = ({
                 </div>
               </div>
 
-              {/* Product Information - Updated */}
+              {/* Product Information */}
               <div className="card border mb-4">
                 <div className="card-header bg-light">
                   <h6 className="fw-bold mb-0">
@@ -788,6 +927,191 @@ const EditRepairForm = ({
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* NEW: Repair Images Section */}
+              <div className="card border mb-4">
+                <div className="card-header bg-light">
+                  <h6 className="fw-bold mb-0">
+                    <FiImage className="me-2" />
+                    Repair Images
+                  </h6>
+                </div>
+                <div className="card-body">
+                  {/* Existing Images */}
+                  {existingImages.length > 0 && (
+                    <div className="mb-4">
+                      <h6 className="fw-medium mb-3">Existing Images</h6>
+                      <div className="row g-3">
+                        {existingImages.map((image, index) => (
+                          <div key={`existing-${index}`} className="col-md-4 col-6">
+                            <div className="card border">
+                              <div className="card-img-top position-relative">
+                                <img
+                                  src={image.url}
+                                  alt={`Existing repair image ${index + 1}`}
+                                  className="img-fluid"
+                                  style={{
+                                    height: "120px",
+                                    width: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                                {isEditable && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                                    onClick={() => removeExistingImage(image.id)}
+                                    disabled={isDisabled}
+                                    style={{
+                                      width: "30px",
+                                      height: "30px",
+                                      borderRadius: "50%",
+                                      padding: "0",
+                                    }}
+                                  >
+                                    <FiTrash2 size={14} />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="card-body p-2">
+                                <div className="small text-truncate">
+                                  {image.name}
+                                </div>
+                                <div className="small text-success">
+                                  ✓ Existing Image
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Deleted Images (if any) */}
+                  {deletedImageIds.length > 0 && isEditable && (
+                    <div className="alert alert-warning mb-4">
+                      <h6 className="fw-medium">
+                        <FiTrash2 className="me-2" />
+                        {deletedImageIds.length} image(s) marked for deletion
+                      </h6>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => {
+                          // Restore all deleted images
+                          deletedImageIds.forEach(id => restoreExistingImage(id));
+                          setDeletedImageIds([]);
+                        }}
+                      >
+                        Restore All
+                      </button>
+                    </div>
+                  )}
+
+                  {/* New Image Upload */}
+                  {isEditable && (
+                    <div className="mb-3">
+                      <label className="form-label fw-medium">
+                        Add New Images (Optional)
+                      </label>
+                      <div className="border rounded p-4 text-center">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleImageUpload}
+                          className="d-none"
+                          id="repair-images-upload"
+                          multiple
+                          accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                          disabled={isDisabled}
+                        />
+                        <label
+                          htmlFor="repair-images-upload"
+                          className="btn btn-outline-primary d-flex flex-column align-items-center justify-content-center py-4 cursor-pointer"
+                          style={{ minHeight: "150px" }}
+                        >
+                          <FiCamera size={48} className="mb-3 text-muted" />
+                          <span className="fw-medium">Click to upload new images</span>
+                          <span className="text-muted small mt-2">
+                            Supports JPG, PNG, GIF, WebP (Max 5MB each)
+                          </span>
+                          <span className="text-muted small">
+                            You can select multiple images
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* New Image Previews */}
+                  {previewImages.length > 0 && isEditable && (
+                    <div className="mt-4">
+                      <h6 className="fw-medium mb-3">
+                        New Images to Upload ({previewImages.length})
+                      </h6>
+                      <div className="row g-3">
+                        {previewImages.map((image, index) => (
+                          <div key={`new-${index}`} className="col-md-4 col-6">
+                            <div className="card border">
+                              <div className="card-img-top position-relative">
+                                <img
+                                  src={image.preview}
+                                  alt={`New repair image ${index + 1}`}
+                                  className="img-fluid"
+                                  style={{
+                                    height: "120px",
+                                    width: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                                {isEditable && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                                    onClick={() => removeNewImage(index)}
+                                    disabled={isDisabled}
+                                    style={{
+                                      width: "30px",
+                                      height: "30px",
+                                      borderRadius: "50%",
+                                      padding: "0",
+                                    }}
+                                  >
+                                    <FiTrash2 size={14} />
+                                  </button>
+                                )}
+                              </div>
+                              <div className="card-body p-2">
+                                <div className="small text-truncate">
+                                  {image.name}
+                                </div>
+                                <div className="small text-muted">
+                                  {image.size}
+                                </div>
+                                <div className="small text-primary">
+                                  New Image
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Images Message */}
+                  {existingImages.length === 0 && previewImages.length === 0 && (
+                    <div className="text-center py-4 text-muted">
+                      <FiImage size={48} className="mb-3" />
+                      <p>No images uploaded for this repair yet.</p>
+                      {isEditable && (
+                        <p className="small">You can add images using the upload button above.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1147,6 +1471,15 @@ const EditRepairForm = ({
                           </span>
                         </div>
                       )}
+                      <div className="mb-2">
+                        <span className="text-muted">Total Images:</span>
+                        <span className="fw-medium ms-2">
+                          {existingImages.length + previewImages.length}
+                          <span className="text-muted ms-1">
+                            ({existingImages.length} existing, {previewImages.length} new)
+                          </span>
+                        </span>
+                      </div>
                     </div>
                     <div className="col-md-6">
                       <div className="mb-2">

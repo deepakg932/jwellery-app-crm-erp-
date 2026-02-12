@@ -1,48 +1,51 @@
 import React, { useState, useCallback, useEffect } from "react";
 
-const AddCostType = ({ 
-  onClose, 
-  onSave, 
-  loading = false, 
-  makingSubStages = [],
-  costNames = []
+const AddCostType = ({
+  onClose,
+  onSave,
+  loading = false,
+  costNames = [], // This should come from hook's costNames array
 }) => {
   const [formData, setFormData] = useState({
     cost_type: "",
-    cost_name: "",
-    sub_stage_name: ""
+    cost_name_id: "", // Changed to store ID
+    cost_name: "", // For display only
   });
   const [error, setError] = useState("");
-  
+
   // Debug: Log the props to see what data is being passed
   useEffect(() => {
     console.log("AddCostType Props:", {
-      makingSubStagesCount: makingSubStages.length,
-      makingSubStages: makingSubStages,
       costNamesCount: costNames.length,
-      costNames: costNames
+      costNames: costNames,
     });
-  }, [makingSubStages, costNames]);
+  }, [costNames]);
 
+  // Find cost name by ID for display
+  const getCostNameById = (id) => {
+    const cost = costNames.find(cost => cost._id === id);
+    return cost ? cost.cost_name : '';
+  };
+
+  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.cost_type.trim()) {
       setError("Please enter a cost type");
       return;
     }
 
-    if (!formData.cost_name.trim()) {
+    if (!formData.cost_name_id) {
       setError("Please select a cost name");
       return;
     }
 
-    // Prepare data for API - send TEXT values
+    // Prepare data for API - send ID
     const saveData = {
       cost_type: formData.cost_type.trim(),
-      cost_name: formData.cost_name.trim(),
-      sub_stage_name: formData.sub_stage_name.trim() || "",
+      cost_name_id: formData.cost_name_id, // Send ID
       is_active: true,
     };
 
@@ -50,33 +53,47 @@ const AddCostType = ({
     onSave(saveData);
   };
 
+  // Handle form changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    setFormData(prev => ({
+
+    if (name === 'cost_name_id') {
+      // When cost name ID changes, also update the display name
+      const selectedCostName = getCostNameById(value);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        cost_name: selectedCostName,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+
+    setError("");
+  };
+
+  // Handle manual cost type change
+  const handleCostTypeChange = (e) => {
+    const { value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      cost_type: value,
     }));
-    
     setError("");
   };
 
   const handleClose = useCallback(() => {
     setFormData({
       cost_type: "",
+      cost_name_id: "",
       cost_name: "",
-      sub_stage_name: ""
     });
     setError("");
     onClose();
   }, [onClose]);
-
-  // Get selected sub-stage for display
-  const selectedSubStage = makingSubStages.find(
-    subStage => subStage.sub_stage_name === formData.sub_stage_name
-  );
-  
-  const selectedStageName = selectedSubStage?.stage_name || "";
 
   return (
     <div
@@ -104,17 +121,6 @@ const AddCostType = ({
             </div>
           )}
 
-          {/* Debug Info - Remove in production */}
-          {/* <div className="px-3 pb-2 text-muted small">
-            <div>Cost Names: {costNames.length} items</div>
-            <div>Sub-Stages: {makingSubStages.length} items</div>
-            {makingSubStages.length > 0 && (
-              <div className="mt-1">
-                First sub-stage sample: {JSON.stringify(makingSubStages[0])}
-              </div>
-            )}
-          </div> */}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -129,38 +135,40 @@ const AddCostType = ({
                   placeholder="e.g., Direct Cost, Indirect Cost, Labor Cost"
                   name="cost_type"
                   value={formData.cost_type}
-                  onChange={handleChange}
+                  onChange={handleCostTypeChange}
                   required
                   disabled={loading}
                 />
               </div>
 
-              {/* Cost Name Dropdown */}
+              {/* Cost Name Dropdown - Using IDs */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
                   Cost Name <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-lg"
-                  name="cost_name"
-                  value={formData.cost_name}
+                  name="cost_name_id"
+                  value={formData.cost_name_id}
                   onChange={handleChange}
                   required
                   disabled={loading || costNames.length === 0}
                 >
                   <option value="">Select cost name</option>
-                  {costNames.map((cost, index) => {
-                    // Try different property names
-                    const costName = cost.cost_name || cost.name || "";
-                    const costId = cost._id || index;
-                    
+                  {costNames.map((cost) => {
+                    // Cost name object structure from hook
+                    const costId = cost._id;
+                    const costName = cost.cost_name || '';
+
                     return (
-                      <option key={costId} value={costName}>
+                      <option key={costId} value={costId}>
                         {costName}
                       </option>
                     );
                   })}
                 </select>
+               
+                
                 {costNames.length === 0 && !loading && (
                   <div className="text-danger small mt-1">
                     No cost names available. Please add costs first.
@@ -168,73 +176,7 @@ const AddCostType = ({
                 )}
               </div>
 
-              {/* Making Sub-Stage Dropdown */}
-              <div className="mb-3">
-                <label className="form-label fw-medium">
-                  Making Sub-Stage
-                </label>
-                <select
-                  className="form-select form-select-lg"
-                  name="sub_stage_name"
-                  value={formData.sub_stage_name}
-                  onChange={handleChange}
-                  disabled={loading || makingSubStages.length === 0}
-                >
-                  <option value="">Select sub-stage</option>
-                  {makingSubStages.map((subStage, index) => {
-                    // Try different property names for sub-stage
-                    const subStageName = subStage.sub_stage_name || subStage.name || "";
-                    const subStageId = subStage._id || index;
-                    
-                    // Try different property names for stage name
-                    let stageName = "";
-                    if (subStage.stage_name) {
-                      stageName = subStage.stage_name;
-                    } else if (subStage.stage_id?.stage_name) {
-                      stageName = subStage.stage_id.stage_name;
-                    } else if (subStage.makingStageName) {
-                      stageName = subStage.makingStageName;
-                    }
-                    
-                    return (
-                      <option key={subStageId} value={subStageName}>
-                        {subStageName}
-                        {/* {stageName && ` (${stageName})`} */}
-                      </option>
-                    );
-                  })}
-                </select>
-                {makingSubStages.length === 0 && !loading && (
-                  <div className="text-danger small mt-1">
-                    No sub-stages available. Please add making sub-stages first.
-                  </div>
-                )}
-              </div>
-
-              {/* Preview Section
-              {(formData.cost_type || formData.cost_name || formData.sub_stage_name) && (
-                <div className="border rounded p-3 bg-light">
-                  <h6 className="fw-medium mb-2">Preview:</h6>
-                  <div className="d-flex flex-column gap-2">
-                    {formData.cost_type && (
-                      <div>
-                        <span className="fw-medium">Cost Type:</span> {formData.cost_type}
-                      </div>
-                    )}
-                    {formData.cost_name && (
-                      <div>
-                        <span className="fw-medium">Cost Name:</span> {formData.cost_name}
-                      </div>
-                    )}
-                    {formData.sub_stage_name && (
-                      <div>
-                        <span className="fw-medium">Sub-Stage:</span> {formData.sub_stage_name}
-                        {selectedStageName && ` (${selectedStageName})`}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )} */}
+             
             </div>
 
             {/* Action Buttons */}
@@ -252,7 +194,7 @@ const AddCostType = ({
                 className="btn btn-primary"
                 disabled={
                   !formData.cost_type.trim() ||
-                  !formData.cost_name.trim() ||
+                  !formData.cost_name_id ||
                   loading ||
                   costNames.length === 0
                 }

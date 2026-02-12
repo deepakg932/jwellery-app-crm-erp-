@@ -192,107 +192,179 @@ export default function useRepair() {
   };
 
   // Fetch all repair quotations - using specific repair endpoint
-  const fetchRepairs = async () => {
-    try {
-      setLoadingRepairs(true);
-      setError("");
 
-      let url = API_ENDPOINTS.getRepairs();
+const fetchRepairs = async () => {
+  try {
+    setLoadingRepairs(true);
+    setError("");
 
-      console.log("Fetching repairs from:", url);
+    let url = API_ENDPOINTS.getRepairs();
 
-      const res = await axios.get(url);
-      console.log("Repairs API Response:", res.data);
+    console.log("Fetching repairs from:", url);
 
-      let repairsData = [];
+    const res = await axios.get(url);
+    console.log("Repairs API Response:", res.data);
 
-      // Extract repairs data from response
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        repairsData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        repairsData = res.data;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        repairsData = res.data.data;
-      }
+    let repairsData = [];
 
-      // Map to repair format
-      const mappedRepairs = repairsData.map((repair) => {
-        const customer = repair.customer_id || repair.customer || {};
-        const employee = repair.employee_id || repair.employee || {};
-        const invoice = repair.invoice || {};
-
-        // Calculate due amount if not provided
-        const repairCharge = parseFloat(repair.repair_charge) || 0;
-        const paidAmount = parseFloat(repair.paid_amount) || 0;
-        const dueAmount = invoice.due_amount || repairCharge - paidAmount;
-
-        return {
-          _id: repair._id,
-          repair_number:
-            repair.repair_number ||
-            `REP-${repair._id?.slice(-6) || Date.now()}`,
-          product_name: repair.product_name || "Unnamed Product",
-          product_module: repair.product_module || "",
-          problem_description: repair.problem_description || repair.note || "",
-          repair_charge: repairCharge,
-          paid_amount: paidAmount,
-          due_amount: dueAmount > 0 ? dueAmount : 0,
-          customer_id: customer._id || customer,
-          customer_name:
-            customer.name || customer.customer_name || "Unknown Customer",
-          customer_mobile: customer.mobile || customer.phone || "",
-          delivery_date: repair.delivery_date || null,
-          receiving_date:
-            repair.receiving_date ||
-            repair.created_at ||
-            new Date().toISOString(),
-          employee_id: employee._id || employee,
-          employee_name: employee.name || employee.employee_name || "",
-          status: repair.status || "pending",
-          account: repair.account || "cash",
-          note: repair.note || "",
-          product_type: repair.product_type || "manual",
-          product_id: repair.product_id || null,
-          product_code: repair.product_code || "",
-          is_custom_product: repair.is_custom_product || false,
-          // Invoice data - ONLY what you asked for
-          invoice_id: invoice._id,
-          invoice_number: invoice.invoice_number,
-          // Payment status
-          payment_status:
-            repair.payment_status || invoice.payment_status || "unpaid",
-          // Dates
-          created_at:
-            repair.created_at || repair.createdAt || new Date().toISOString(),
-          updated_at:
-            repair.updated_at || repair.updatedAt || new Date().toISOString(),
-          // Keep original sale_item_id
-          sale_item_id: repair.sale_item_id,
-        };
-      });
-
-      console.log("Mapped repairs with invoice:", mappedRepairs);
-      setRepairs(mappedRepairs);
-      return mappedRepairs;
-    } catch (err) {
-      console.error("Fetch repairs error:", err);
-
-      if (err.response) {
-        const errorMessage =
-          err.response.data?.message || `Server error: ${err.response.status}`;
-        setError(errorMessage);
-      } else if (err.request) {
-        setError("Network error. Please check your connection.");
-      } else {
-        setError("Failed to load repairs. Please try again.");
-      }
-
-      setRepairs([]);
-      return [];
-    } finally {
-      setLoadingRepairs(false);
+    // Extract repairs data from response based on your API structure
+    if (res.data?.success && Array.isArray(res.data.data)) {
+      repairsData = res.data.data;
+    } else if (Array.isArray(res.data)) {
+      repairsData = res.data;
+    } else if (res.data?.data && Array.isArray(res.data.data)) {
+      repairsData = res.data.data;
     }
-  };
+
+    // Map to repair format according to your response
+    const mappedRepairs = repairsData.map((repair) => {
+      const customer = repair.customer_id || {};
+      const employee = repair.employee_id || {};
+      const invoice = repair.invoice || {};
+
+      // Get repair images - handle both array of strings and array of objects
+      let repairImages = [];
+      if (repair.repair_images && Array.isArray(repair.repair_images)) {
+        repairImages = repair.repair_images.map(img => {
+          if (typeof img === 'string') {
+            return {
+              url: img,
+              filename: img.split('/').pop() || 'repair_image',
+              isExisting: true
+            };
+          } else if (typeof img === 'object') {
+            return {
+              url: img.url || img,
+              filename: img.filename || img.originalname || 'repair_image',
+              mimetype: img.mimetype,
+              size: img.size,
+              isExisting: true,
+              _id: img._id || img.id
+            };
+          }
+          return img;
+        });
+      }
+
+      // Calculate due amount - use repair.due_amount from response
+      const repairCharge = parseFloat(repair.repair_charge) || 0;
+      const paidAmount = parseFloat(repair.paid_amount) || 0;
+      const dueAmount = repair.due_amount || invoice.due_amount || repairCharge - paidAmount;
+
+      return {
+        _id: repair._id || repair.id,
+        repair_number: repair.repair_number || `RP-${repair._id?.slice(-6) || Date.now()}`,
+        product_name: repair.product_name || "Unnamed Product",
+        product_module: repair.product_module || "",
+        problem_description: repair.problem_description || repair.note || "",
+        repair_charge: repairCharge,
+        paid_amount: paidAmount,
+        due_amount: parseFloat(dueAmount) > 0 ? parseFloat(dueAmount) : 0,
+        customer_id: customer._id || customer,
+        customer_name: customer.name || "Unknown Customer",
+        customer_mobile: customer.mobile || "",
+        customer_email: customer.email || "",
+        customer_address: customer.address || "",
+        delivery_date: repair.delivery_date || null,
+        receiving_date: repair.receiving_date || repair.createdAt || new Date().toISOString(),
+        employee_id: employee._id || employee,
+        employee_name: employee.name || "",
+        employee_designation: employee.designation || "",
+        status: repair.status || "pending",
+        account: repair.account || "cash",
+        note: repair.note || "",
+        product_type: repair.product_type || (repair.product_id ? "existing" : "manual"),
+        product_id: repair.product_id || null,
+        product_code: repair.product_code || "",
+        is_custom_product: repair.is_custom_product || false,
+        
+        // Images data
+        repair_images: repairImages,
+        
+        // Sale item reference
+        sale_item_id: repair.sale_item_id,
+        
+        // Invoice data
+        invoice_id: invoice._id,
+        invoice_number: invoice.invoice_number || "",
+        invoice_total_amount: invoice.total_amount || repairCharge,
+        
+        // Payment status - use payment_status from repair or invoice
+        payment_status: repair.payment_status || invoice.payment_status || "unpaid",
+        
+        // Dates
+        created_at: repair.createdAt || repair.created_at || new Date().toISOString(),
+        updated_at: repair.updatedAt || repair.updated_at || new Date().toISOString(),
+        
+        // Additional fields from your response
+        __v: repair.__v || 0,
+        id: repair.id || repair._id,
+        
+        // Calculate status badge class
+        status_class: repair.status === "pending" ? "bg-warning" :
+                     repair.status === "in_progress" ? "bg-primary" :
+                     repair.status === "ready_for_delivery" ? "bg-info" :
+                     repair.status === "delivered" ? "bg-success" :
+                     repair.status === "cancelled" ? "bg-danger" : "bg-secondary",
+        
+        // Format dates for display
+        formatted_receiving_date: repair.receiving_date ? 
+          new Date(repair.receiving_date).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) : "",
+        
+        formatted_delivery_date: repair.delivery_date ? 
+          new Date(repair.delivery_date).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) : "",
+        
+        formatted_created_at: repair.createdAt ? 
+          new Date(repair.createdAt).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : "",
+        
+        // Payment status badge
+        payment_status_class: (repair.payment_status || invoice.payment_status) === "paid" ? "bg-success" :
+                             (repair.payment_status || invoice.payment_status) === "partial" ? "bg-warning" :
+                             "bg-danger",
+        
+        // Payment status text
+        payment_status_text: (repair.payment_status || invoice.payment_status) === "paid" ? "Paid" :
+                            (repair.payment_status || invoice.payment_status) === "partial" ? "Partial" :
+                            "Unpaid"
+      };
+    });
+
+    console.log("Mapped repairs with images and invoice:", mappedRepairs);
+    setRepairs(mappedRepairs);
+    return mappedRepairs;
+  } catch (err) {
+    console.error("Fetch repairs error:", err);
+
+    if (err.response) {
+      const errorMessage =
+        err.response.data?.message || `Server error: ${err.response.status}`;
+      setError(errorMessage);
+    } else if (err.request) {
+      setError("Network error. Please check your connection.");
+    } else {
+      setError("Failed to load repairs. Please try again.");
+    }
+
+    setRepairs([]);
+    return [];
+  } finally {
+    setLoadingRepairs(false);
+  }
+};
 
   // Add a new customer
   const addCustomer = async (customerData) => {
@@ -356,85 +428,144 @@ export default function useRepair() {
     }
   };
 
-  // Add a new repair - Updated with product_type
-  const addRepair = async (repairData) => {
-    try {
-      setLoading(true);
-      setError("");
 
-      const transformedData = {
-        repair_type: "repair",
-        product_name: repairData.product_name,
-        product_module: repairData.product_module,
-        problem_description: repairData.problem_description,
-        repair_charge: parseFloat(repairData.repair_charge) || 0,
-        paid_amount: parseFloat(repairData.paid_amount) || 0,
-        due_amount: parseFloat(repairData.due_amount) || 0,
-        customer_id: repairData.customer_id,
-        delivery_date: repairData.delivery_date,
-        receiving_date: repairData.receiving_date || new Date().toISOString(),
-        employee_id: repairData.employee_id,
-        status: repairData.status || "pending",
-        account: repairData.account || "cash",
-        note: repairData.note || "",
-        product_type: repairData.product_type || "manual",
-        product_id: repairData.product_id || null,
-        product_code: repairData.product_code || "",
-        is_custom_product: repairData.is_custom_product || false,
-        // Add reference to original sale if from sales
-        sale_item_id: repairData.sale_item_id || null,
-      };
+const addRepair = async (repairData) => {
+  try {
+    setLoading(true);
+    setError("");
 
-      console.log("Adding repair:", transformedData);
+    // Create FormData to handle file uploads
+    const formData = new FormData();
 
-      // Use createRepair endpoint if available, otherwise use quotation
-      let url;
-      try {
-        url = API_ENDPOINTS.createRepair
-          ? API_ENDPOINTS.createRepair()
-          : API_ENDPOINTS.createQuotation();
-      } catch {
-        url = API_ENDPOINTS.createQuotation();
-      }
+    // Add all form fields
+    formData.append('repair_type', 'repair');
+    formData.append('product_name', repairData.product_name);
+    formData.append('product_module', repairData.product_module || '');
+    formData.append('problem_description', repairData.problem_description);
+    formData.append('repair_charge', parseFloat(repairData.repair_charge) || 0);
+    formData.append('paid_amount', parseFloat(repairData.paid_amount) || 0);
+    formData.append('due_amount', parseFloat(repairData.due_amount) || 0);
+    formData.append('customer_id', repairData.customer_id);
+    formData.append('delivery_date', repairData.delivery_date || '');
+    formData.append('receiving_date', repairData.receiving_date || new Date().toISOString());
+    formData.append('employee_id', repairData.employee_id);
+    formData.append('status', repairData.status || 'pending');
+    formData.append('account', repairData.account || 'cash');
+    formData.append('note', repairData.note || '');
+    formData.append('product_type', repairData.product_type || 'manual');
+    formData.append('product_id', repairData.product_id || '');
+    formData.append('product_code', repairData.product_code || '');
+    formData.append('is_custom_product', repairData.is_custom_product || false);
+    formData.append('sale_item_id', repairData.sale_item_id || '');
 
-      const res = await axios.post(url, transformedData);
-      console.log("Add repair response:", res.data);
-
-      if (res.data?.success) {
-        const newRepair = res.data.data || res.data;
-
-        // Fetch updated list
-        await fetchRepairs();
-        return newRepair;
-      } else {
-        throw new Error(res.data?.message || "Failed to add repair");
-      }
-    } catch (err) {
-      console.error("Add repair error:", err);
-
-      if (err.response) {
-        const errorMessage =
-          err.response.data?.message || `Server error: ${err.response.status}`;
-        setError(errorMessage);
-        throw new Error(errorMessage);
-      } else if (err.request) {
-        setError("Network error. Please check your connection.");
-        throw new Error("Network error");
-      } else {
-        setError("Failed to add repair. Please try again.");
-        throw err;
-      }
-    } finally {
-      setLoading(false);
+    // Add images if present
+    if (repairData.repair_images && repairData.repair_images.length > 0) {
+      repairData.repair_images.forEach((file, index) => {
+        formData.append('repair_images', file);
+      });
     }
-  };
+
+    console.log("Adding repair with images:", repairData.repair_images?.length || 0, "images");
+
+    // Use createRepair endpoint if available, otherwise use quotation
+    let url =  API_ENDPOINTS.createRepair()
+  
+
+    const res = await axios.post(url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    console.log("Add repair response:", res.data);
+
+    if (res.data?.success) {
+      const newRepair = res.data.data || res.data;
+
+      // Fetch updated list
+      await fetchRepairs();
+      return newRepair;
+    } else {
+      throw new Error(res.data?.message || "Failed to add repair");
+    }
+  } catch (err) {
+    console.error("Add repair error:", err);
+
+    if (err.response) {
+      const errorMessage =
+        err.response.data?.message || `Server error: ${err.response.status}`;
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } else if (err.request) {
+      setError("Network error. Please check your connection.");
+      throw new Error("Network error");
+    } else {
+      setError("Failed to add repair. Please try again.");
+      throw err;
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Update a repair
-  const updateRepair = async (id, repairData) => {
-    try {
-      setLoading(true);
-      setError("");
 
+const updateRepair = async (id, repairData) => {
+  try {
+    setLoading(true);
+    setError("");
+
+    // Check if there are new images to upload
+    const hasNewImages = repairData.repair_images && repairData.repair_images.length > 0;
+
+    // If there are new images or deleted images, use FormData
+    if (hasNewImages) {
+      const formData = new FormData();
+
+      // Add all basic form fields
+      formData.append('product_name', repairData.product_name);
+      formData.append('product_module', repairData.product_module || '');
+      formData.append('problem_description', repairData.problem_description);
+      formData.append('repair_charge', parseFloat(repairData.repair_charge) || 0);
+      formData.append('paid_amount', parseFloat(repairData.paid_amount) || 0);
+      formData.append('due_amount', parseFloat(repairData.due_amount) || 0);
+      formData.append('customer_id', repairData.customer_id);
+      formData.append('delivery_date', repairData.delivery_date || '');
+      formData.append('receiving_date', repairData.receiving_date);
+      formData.append('employee_id', repairData.employee_id);
+      formData.append('status', repairData.status);
+      formData.append('account', repairData.account);
+      formData.append('note', repairData.note || '');
+      formData.append('product_type', repairData.product_type || 'manual');
+      formData.append('product_id', repairData.product_id || '');
+      formData.append('product_code', repairData.product_code || '');
+      formData.append('is_custom_product', repairData.is_custom_product || false);
+      formData.append('sale_item_id', repairData.sale_item_id || '');
+
+      // Add new images if present
+      if (hasNewImages) {
+        repairData.repair_images.forEach((file, index) => {
+          formData.append('repair_images', file);
+        });
+      }
+
+      const url = API_ENDPOINTS.updateRepair(id);
+      
+      const res = await axios.put(url, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log("Update repair with images response:", res.data);
+
+      if (res.data?.success) {
+        await fetchRepairs();
+        return res.data.data || res.data;
+      } else {
+        throw new Error(res.data?.message || "Failed to update repair");
+      }
+    } else {
+      // No images to upload, use regular JSON
       const transformedData = {
         product_name: repairData.product_name,
         product_module: repairData.product_module,
@@ -453,20 +584,13 @@ export default function useRepair() {
         product_id: repairData.product_id,
         product_code: repairData.product_code,
         is_custom_product: repairData.is_custom_product,
+        sale_item_id: repairData.sale_item_id || null,
       };
 
-      console.log("Updating repair:", id, transformedData);
+      console.log("Updating repair without images:", id, transformedData);
 
-      // Use updateRepair endpoint if available, otherwise use quotation
-      let url;
-      try {
-        url = API_ENDPOINTS.updateRepair
-          ? API_ENDPOINTS.updateRepair(id)
-          : API_ENDPOINTS.updateQuotation(id);
-      } catch {
-        url = API_ENDPOINTS.updateQuotation(id);
-      }
-
+      const url = API_ENDPOINTS.updateRepair(id);
+      
       const res = await axios.put(url, transformedData);
       console.log("Update repair response:", res.data);
 
@@ -476,14 +600,26 @@ export default function useRepair() {
       } else {
         throw new Error(res.data?.message || "Failed to update repair");
       }
-    } catch (err) {
-      console.error("Update repair error:", err);
-      setError("Failed to update repair");
-      throw err;
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error("Update repair error:", err);
+    
+    if (err.response) {
+      const errorMessage =
+        err.response.data?.message || `Server error: ${err.response.status}`;
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } else if (err.request) {
+      setError("Network error. Please check your connection.");
+      throw new Error("Network error");
+    } else {
+      setError("Failed to update repair. Please try again.");
+      throw err;
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Delete a repair
   const deleteRepair = async (id) => {
@@ -492,15 +628,8 @@ export default function useRepair() {
       setError("");
 
       // Use deleteRepair endpoint if available, otherwise use quotation
-      let url;
-      try {
-        url = API_ENDPOINTS.deleteRepair
-          ? API_ENDPOINTS.deleteRepair(id)
-          : API_ENDPOINTS.deleteQuotation(id);
-      } catch {
-        url = API_ENDPOINTS.deleteQuotation(id);
-      }
-
+      let url = API_ENDPOINTS.deleteRepair(id)
+   
       console.log("Deleting repair:", url);
 
       const res = await axios.delete(url);

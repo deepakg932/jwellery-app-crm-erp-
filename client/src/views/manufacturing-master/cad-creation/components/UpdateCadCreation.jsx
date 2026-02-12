@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
 import {
   FiUser,
   FiBox,
@@ -35,11 +36,13 @@ import {
   FiX,
   FiImage,
   FiArchive,
+  FiUsers,
 } from "react-icons/fi";
 
 const UpdateCadCreation = ({
   selectedStage,
   employees = [],
+  laborCosts = [],
   onUpdate,
   onClose,
   loading = false,
@@ -89,13 +92,15 @@ const UpdateCadCreation = ({
     backup_location: "",
   });
 
+  const [selectedLaborCosts, setSelectedLaborCosts] = useState([]);
   const [formErrors, setFormErrors] = useState({});
   const [previewFile, setPreviewFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [laborBreakdown, setLaborBreakdown] = useState([]);
   const fileInputRef = useRef(null);
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
-    cost: false,
+    cost: true, // Cost section expanded by default
     time: false,
     files: false,
   });
@@ -125,7 +130,6 @@ const UpdateCadCreation = ({
 
   // Next Stage Options
   const defaultNextStageOptions = [
-    { value: "cad", label: "CAD Creation", icon: "🖥️" },
     { value: "casting", label: "Casting", icon: "🔥" },
     { value: "filing", label: "Filing", icon: "🛠️" },
     { value: "setting", label: "Setting", icon: "🧱" },
@@ -213,6 +217,87 @@ const UpdateCadCreation = ({
     { value: "archived", label: "Archived", icon: "📦" },
   ];
 
+  // Prepare options for React Select - ONLY LABOR COSTS (no karigar)
+  const getLaborCostOptions = () => {
+    if (!laborCosts || laborCosts.length === 0) return [];
+
+    // Filter out any karigar costs that might have slipped through
+    const filteredCosts = laborCosts.filter((cost) => {
+      const costName = (cost.cost_name || "").toLowerCase();
+      return !costName.includes("karigar");
+    });
+
+    return filteredCosts.map((cost) => ({
+      value: cost._id,
+      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      originalData: cost,
+    }));
+  };
+
+  // Handle labor cost selection change
+  const handleLaborCostsChange = (selectedOptions) => {
+    const selectedItems = selectedOptions
+      ? selectedOptions.map((option) => option.originalData)
+      : [];
+    setSelectedLaborCosts(selectedItems);
+
+    // Calculate total labor cost based on selected items
+    calculateLaborCostFromSelection(selectedItems);
+  };
+
+  // Calculate labor cost from selected items
+  const calculateLaborCostFromSelection = (selectedItems) => {
+    if (selectedItems.length === 0) {
+      setFormData((prev) => ({ ...prev, labor_cost: "0.00" }));
+      setLaborBreakdown([]);
+      return;
+    }
+
+    // Calculate breakdown for selected items
+    const breakdown = selectedItems.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || cost.cost_name_id?.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+
+    setLaborBreakdown(breakdown);
+
+    // Calculate total labor cost
+    const totalLaborCost = breakdown.reduce(
+      (sum, item) => sum + parseFloat(item.total_cost),
+      0,
+    );
+
+    // Update form data with calculated labor cost
+    setFormData((prev) => ({
+      ...prev,
+      labor_cost: totalLaborCost.toFixed(2),
+    }));
+
+    // Recalculate total cost
+    calculateTotalCost();
+  };
+
+
+  useEffect(() => {
+  calculateTotalCost();
+}, [
+  formData.material_cost,
+  formData.software_cost,
+  formData.machine_cost,
+  formData.other_costs,
+  formData.markup_percentage,
+  formData.labor_cost, // This will auto-update when selectedLaborCosts change
+]);
   // Initialize form data when selectedStage changes
   useEffect(() => {
     if (selectedStage) {
@@ -262,6 +347,12 @@ const UpdateCadCreation = ({
         backup_location: selectedStage.backup_location || "",
       });
 
+      // Initialize selected labor costs
+      // You might want to load previously selected labor costs here
+      // For now, we'll start with empty
+      setSelectedLaborCosts([]);
+      setLaborBreakdown([]);
+
       // Initialize CAD files
       if (selectedStage.files && Array.isArray(selectedStage.files)) {
         const existingFiles = selectedStage.files
@@ -294,7 +385,7 @@ const UpdateCadCreation = ({
     const software = Number(formData.software_cost) || 0;
     const machine = Number(formData.machine_cost) || 0;
     const other = Number(formData.other_costs) || 0;
-    const markup = Number(formData.markup_percentage);
+    const markup = Number(formData.markup_percentage) || 0;
 
     console.log("CAD CALCULATING WITH:", {
       material,
@@ -315,6 +406,7 @@ const UpdateCadCreation = ({
       final_price: finalPrice.toFixed(2),
     }));
   };
+
   // Calculate total time
   const calculateTotalTime = () => {
     const design = parseFloat(formData.design_time) || 0;
@@ -328,7 +420,7 @@ const UpdateCadCreation = ({
     setFormData((prev) => ({
       ...prev,
       total_time_spent: total.toFixed(1),
-      estimated_hours: total.toFixed(1), // Match UpdateStageModal behavior
+      estimated_hours: total.toFixed(1),
     }));
   };
 
@@ -337,7 +429,6 @@ const UpdateCadCreation = ({
     const { name, value } = e.target;
 
     setFormData((prev) => {
-      // Create updated form data with the new value
       const updatedData = { ...prev };
 
       // Handle special cases for numbers
@@ -356,16 +447,7 @@ const UpdateCadCreation = ({
         const software = Number(updatedData.software_cost) || 0;
         const machine = Number(updatedData.machine_cost) || 0;
         const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage);
-
-        console.log("CAD CALCULATING WITH:", {
-          material,
-          labor,
-          software,
-          machine,
-          other,
-          markup,
-        });
+        const markup = Number(updatedData.markup_percentage) || 0;
 
         const total = material + labor + software + machine + other;
         const markupAmount = (total * markup) / 100;
@@ -590,12 +672,6 @@ const UpdateCadCreation = ({
     return cadFiles.filter((file) => file.category === category);
   };
 
-  // Preview file
-  const handlePreviewFile = (file) => {
-    setPreviewFile(file);
-    setPreviewUrl(file.url);
-  };
-
   // Download file
   const handleDownloadFile = (file) => {
     if (file.isExisting) {
@@ -677,7 +753,7 @@ const UpdateCadCreation = ({
         cad_software: formData.cad_software || "",
         complexity_level: formData.complexity_level || "",
         remarks: formData.remarks || "",
-        stage: formData.stage || "", // Added Next Stage
+        stage: formData.stage || "",
         department: "CAD",
 
         // Cost
@@ -709,22 +785,41 @@ const UpdateCadCreation = ({
 
         // Files
         files: cadFiles,
+
+        // Selected labor costs
+        selected_labor_costs: selectedLaborCosts,
+
+        // Labor breakdown
+        labor_cost_breakdown: laborBreakdown,
       };
 
       console.log("🚀 Submitting CAD stage update:", {
         cadStageId: selectedStage._id,
         data: updateData,
+        selectedLaborCostsCount: selectedLaborCosts.length,
+        laborBreakdownCount: laborBreakdown.length,
       });
 
       if (onUpdate) {
-        const success = await onUpdate(
+        const result = await onUpdate(
           selectedStage._id,
           updateData,
           filesToUpload,
         );
 
-        if (success) {
+        console.log("Modal received result:", result);
+        console.log("Result type:", typeof result);
+        console.log("Result.success:", result?.success);
+
+        // Check both boolean and object formats
+        if (result === true || (result && result.success === true)) {
+          console.log("✅ Update successful, closing modal");
           onClose();
+        } else {
+          console.log("❌ Update failed, not closing");
+          const errorMsg =
+            result?.error || result?.message || "Failed to update CAD stage";
+          setUploadError(errorMsg);
         }
       }
     } catch (error) {
@@ -746,6 +841,12 @@ const UpdateCadCreation = ({
           100
         ).toFixed(1)
       : "0";
+
+  // Calculate total labor from breakdown
+  const totalCalculatedLabor = laborBreakdown.reduce(
+    (sum, item) => sum + parseFloat(item.total_cost || 0),
+    0,
+  );
 
   // Render section header
   const renderSectionHeader = (title, sectionKey, icon, badgeCount = null) => (
@@ -830,21 +931,34 @@ const UpdateCadCreation = ({
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <h6 className="text-muted mb-1">Cost Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="badge bg-warning me-2">
-                              {
-                                costStatusOptions.find(
-                                  (c) => c.value === formData.cost_status,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">
-                              ₹ {formData.final_price || "0.00"}
-                            </h4>
-                          </div>
+                          <h6 className="text-muted mb-1">Labor Cost</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.labor_cost || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            {selectedLaborCosts.length} type(s) selected
+                          </small>
                         </div>
-                        <FiDollarSign className="text-warning" size={24} />
+                        <FiUsers className="text-warning" size={24} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-3">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-body p-3">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <h6 className="text-muted mb-1">Final Price</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.final_price || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            Markup: {formData.markup_percentage || "0"}%
+                          </small>
+                        </div>
+                        <FiDollarSign className="text-success" size={24} />
                       </div>
                     </div>
                   </div>
@@ -866,25 +980,6 @@ const UpdateCadCreation = ({
                           </div>
                         </div>
                         <FiClock className="text-info" size={24} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body p-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <h6 className="text-muted mb-1">File Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="badge bg-secondary me-2">
-                              v{formData.file_version}
-                            </span>
-                            <h4 className="mb-0">{cadFiles.length} files</h4>
-                          </div>
-                        </div>
-                        <FiFile className="text-primary" size={24} />
                       </div>
                     </div>
                   </div>
@@ -1174,6 +1269,7 @@ const UpdateCadCreation = ({
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
+                  selectedLaborCosts.length,
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
@@ -1220,27 +1316,6 @@ const UpdateCadCreation = ({
                         <div className="form-text x-small">
                           Prototyping materials
                         </div>
-                      </div>
-
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Labor Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="labor_cost"
-                            className="form-control"
-                            value={formData.labor_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">Designer time</div>
                       </div>
 
                       <div className="col-md-4 mb-2">
@@ -1327,6 +1402,205 @@ const UpdateCadCreation = ({
                           />
                           <span className="input-group-text">%</span>
                         </div>
+                        <div className="form-text x-small">Profit margin</div>
+                      </div>
+                    </div>
+
+                    {/* Labor Cost Selection */}
+                    <div className="row mt-3">
+                      <div className="col-md-12 mb-3">
+                        <label className="form-label fw-medium">
+                          <FiUsers className="me-1" /> Labor Cost Types{" "}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <Select
+                          isMulti
+                          options={getLaborCostOptions()}
+                          value={getLaborCostOptions().filter((option) =>
+                            selectedLaborCosts.some(
+                              (cost) => cost._id === option.value,
+                            ),
+                          )}
+                          onChange={handleLaborCostsChange}
+                          placeholder={
+                            laborCosts.length === 0
+                              ? "Loading labor cost types..."
+                              : "Select labor cost types (Labor costs only - Karigar costs excluded)"
+                          }
+                          isDisabled={isDisabled || laborCosts.length === 0}
+                          className="react-select-container"
+                          classNamePrefix="react-select"
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: formErrors.labor_cost
+                                ? "#dc3545"
+                                : "#dee2e6",
+                              "&:hover": {
+                                borderColor: formErrors.labor_cost
+                                  ? "#dc3545"
+                                  : "#ced4da",
+                              },
+                              backgroundColor: state.isDisabled
+                                ? "#e9ecef"
+                                : "white",
+                              minHeight: "42px",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            multiValue: (base) => ({
+                              ...base,
+                              backgroundColor: "#e3f2fd",
+                            }),
+                            multiValueLabel: (base) => ({
+                              ...base,
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }),
+                          }}
+                        />
+                        <div className="form-text">
+                          Select one or more labor cost types (Karigar costs are
+                          excluded). The total labor cost will be calculated
+                          automatically.
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Selected Labor Costs Breakdown */}
+                    {selectedLaborCosts.length > 0 && (
+                      <div className="row mt-2">
+                        <div className="col-md-12">
+                          <div className="card border">
+                            <div className="card-header bg-light py-2">
+                              <h6 className="mb-0 small fw-bold">
+                                Selected Labor Cost Breakdown
+                                <span className="badge bg-primary ms-2">
+                                  {selectedLaborCosts.length}
+                                </span>
+                              </h6>
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="table-responsive">
+                                <table className="table table-sm mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th className="small">Type</th>
+                                      <th className="small">Cost Type</th>
+                                      <th className="small">Amount</th>
+                                      <th className="small">Unit</th>
+                                      <th className="small text-end">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {laborBreakdown.map((item) => (
+                                      <tr key={item.id}>
+                                        <td className="small">
+                                          <strong>{item.name}</strong>
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-secondary">
+                                            {item.type}
+                                          </span>
+                                        </td>
+                                        <td className="small">
+                                          ₹{item.cost_amount}
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-info">
+                                            {item.unit}
+                                          </span>
+                                        </td>
+                                        <td className="small text-end fw-bold">
+                                          ₹{item.total_cost}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="table-active">
+                                      <td colSpan="4" className="small fw-bold">
+                                        Total Labor Cost
+                                      </td>
+                                      <td className="small text-end fw-bold fs-6">
+                                        ₹ {totalCalculatedLabor.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Total Cost Summary */}
+                    <div className="row mt-3">
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Labor Cost (Auto)
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="labor_cost"
+                            className="form-control bg-light"
+                            value={formData.labor_cost}
+                            readOnly
+                            title="Automatically calculated from selected labor cost types"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() =>
+                              calculateLaborCostFromSelection(
+                                selectedLaborCosts,
+                              )
+                            }
+                            disabled={isDisabled}
+                            title="Recalculate labor cost"
+                          >
+                            <FiRefreshCw size={14} />
+                          </button>
+                        </div>
+                        <div className="form-text x-small">
+                          Auto-calculated from {selectedLaborCosts.length}{" "}
+                          selected type(s)
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Total Cost
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="text"
+                            className="form-control bg-light"
+                            value={formData.total_cost || "0.00"}
+                            readOnly
+                          />
+                        </div>
+                      </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Final Price
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="text"
+                            className="form-control bg-success text-white"
+                            value={formData.final_price || "0.00"}
+                            readOnly
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -1336,13 +1610,45 @@ const UpdateCadCreation = ({
                       <div className="row">
                         <div className="col-md-6">
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Total Cost:</span>
+                            <span>Material Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.material_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Labor Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.labor_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Software Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.software_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Machine Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.machine_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Other Costs:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.other_costs || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Subtotal:</span>
                             <span className="fw-bold">
                               ₹ {formData.total_cost || "0.00"}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Markup ({formData.markup_percentage}%):</span>
+                            <span>
+                              Markup ({formData.markup_percentage || "0"}%):
+                            </span>
                             <span className="fw-bold">
                               ₹{" "}
                               {(
@@ -1364,7 +1670,7 @@ const UpdateCadCreation = ({
                           <div className="progress" style={{ height: "20px" }}>
                             <div
                               className="progress-bar bg-primary"
-                                 style={{
+                              style={{
                                 width: `${((parseFloat(formData.material_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Material Cost"
@@ -1372,8 +1678,8 @@ const UpdateCadCreation = ({
                               Material
                             </div>
                             <div
-                              className="progress-bar bg-success"
-                           style={{
+                              className="progress-bar bg-warning"
+                              style={{
                                 width: `${((parseFloat(formData.labor_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Labor Cost"
@@ -1381,35 +1687,32 @@ const UpdateCadCreation = ({
                               Labor
                             </div>
                             <div
-                              className="progress-bar bg-warning"
-                                 style={{
+                              className="progress-bar bg-info"
+                              style={{
                                 width: `${((parseFloat(formData.software_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Software Cost"
                             >
                               Software
                             </div>
-
-
                             <div
-                              className="progress-bar bg-info"
-                                  style={{
+                              className="progress-bar bg-secondary"
+                              style={{
+                                width: `${((parseFloat(formData.machine_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Machine Cost"
+                            >
+                              Machine
+                            </div>
+                            <div
+                              className="progress-bar bg-dark"
+                              style={{
                                 width: `${((parseFloat(formData.other_costs || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Other Costs"
                             >
                               Other
                             </div>
-     <div
-                              className="progress-bar bg-secondary "
-                                  style={{
-                                width: `${((parseFloat(formData.machine_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Machine  Costs"
-                            >
-                              Machine 
-                            </div>
-
                           </div>
                           <div className="mt-2 small text-muted">
                             Cost breakdown visualization
@@ -1986,9 +2289,18 @@ const UpdateCadCreation = ({
             <div className="modal-footer border-top pt-3 bg-white">
               <div className="d-flex justify-content-between w-100 align-items-center">
                 <div className="text-muted small">
-                  <span className="me-3">📊 Tracking enabled</span>
-                  <span className="me-3">🔄 Auto-calculations</span>
-                  <span>💾 Version: {formData.file_version}</span>
+                  <span className="me-3">
+                    <FiUsers className="me-1" />
+                    Labor cost: ₹{formData.labor_cost || "0.00"}
+                  </span>
+                  <span className="me-3">
+                    <FiClock className="me-1" />
+                    {formData.total_time_spent || "0"} hrs
+                  </span>
+                  <span>
+                    <FiDollarSign className="me-1" />
+                    Final: ₹{formData.final_price || "0.00"}
+                  </span>
                 </div>
                 <div className="d-flex gap-2">
                   <button

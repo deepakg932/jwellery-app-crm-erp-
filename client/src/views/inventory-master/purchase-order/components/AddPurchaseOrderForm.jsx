@@ -33,7 +33,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     ],
     notes: "",
     total_amount: 0,
-    vat: 0,
+    vat: "0", // Initialize with percentage format
     discount: 0,
     shipping_cost: 0,
     subtotal: 0,
@@ -59,22 +59,43 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     { code: "GBP", name: "British Pound", symbol: "£" },
   ];
 
-  // Add this function after other helper functions
-const isWeightUnit = (unitId) => {
-  if (!unitId) return false;
-  const unit = units.find((u) => u._id === unitId);
-  if (!unit) return false;
+  const isWeightUnit = (unitId) => {
+    if (!unitId) return false;
+    const unit = units.find((u) => u._id === unitId);
+    if (!unit) return false;
 
-  // Check unit property first, then fall back to name
-  if (unit.is_weight !== undefined) return unit.is_weight;
-  
-  const unitName = unit.name?.toLowerCase() || unit.code?.toLowerCase() || "";
-  const weightIndicators = [
-    "KG", "kg", "g", "gram", "kilo gram", "pound", "lb", "ton", "mg",
-    "milligram", "ounce", "oz", "tonne"
-  ];
-  return weightIndicators.some((indicator) => unitName.includes(indicator));
-};
+    // Check if unit has explicit weight property
+    if (unit.is_weight !== undefined) return unit.is_weight;
+
+    const unitName = (unit.name || "").toLowerCase();
+    const unitCode = (unit.code || "").toLowerCase();
+
+    // Weight units (including variations)
+    const weightUnits = [
+      "kg",
+      "kilogram",
+      "kilo",
+      "g",
+      "gram",
+      "gm",
+      "mg",
+      "milligram",
+      "pound",
+      "lb",
+      "lbs",
+      "ounce",
+      "oz",
+      "ton",
+      "tonne",
+      "tonnes",
+    ];
+
+    // Check if unit name or code contains any weight unit indicator
+    return weightUnits.some(
+      (weightUnit) =>
+        unitName.includes(weightUnit) || unitCode.includes(weightUnit),
+    );
+  };
 
   const isQuantityUnit = (unitId) => {
     if (!unitId) return false;
@@ -134,29 +155,29 @@ const isWeightUnit = (unitId) => {
       newErrors.items = "At least one item is required";
     }
 
-    // selectedItems.forEach((item, index) => {
-    //   const originalIndex = formData.items.findIndex(
-    //     (i) => i.inventory_item_id === item.inventory_item_id,
-    //   );
+    selectedItems.forEach((item, index) => {
+      const originalIndex = formData.items.findIndex(
+        (i) => i.inventory_item_id === item.inventory_item_id,
+      );
 
-    //   // Check for either quantity or weight field
-    //   const hasQuantity = item.quantity && parseFloat(item.quantity) > 0;
-    //   const hasWeight = item.weight && parseFloat(item.weight) > 0;
-    //   const hasUnit = item.unit_id;
+      // Check for either quantity or weight field
+      const hasQuantity = item.quantity && parseFloat(item.quantity) > 0;
+      const hasWeight = item.weight && parseFloat(item.weight) > 0;
+      const hasUnit = item.unit_id;
 
-    //   if (!hasQuantity && !hasWeight) {
-    //     newErrors[`items[${originalIndex}].quantity_weight`] =
-    //       "Quantity or Weight is required";
-    //   }
+      if (!hasQuantity && !hasWeight) {
+        newErrors[`items[${originalIndex}].quantity_weight`] =
+          "Quantity or Weight is required";
+      }
 
-    //   if (!hasUnit) {
-    //     newErrors[`items[${originalIndex}].unit_id`] = "Unit is required";
-    //   }
+      if (!hasUnit) {
+        newErrors[`items[${originalIndex}].unit_id`] = "Unit is required";
+      }
 
-    //   if (!item.rate || parseFloat(item.rate) <= 0) {
-    //     newErrors[`items[${originalIndex}].rate`] = "Valid rate is required";
-    //   }
-    // });
+      if (!item.rate || parseFloat(item.rate) <= 0) {
+        newErrors[`items[${originalIndex}].rate`] = "Valid rate is required";
+      }
+    });
 
     // In validateForm function, update the item validation part:
     selectedItems.forEach((item, index) => {
@@ -242,40 +263,75 @@ const isWeightUnit = (unitId) => {
     if (!unit) return 0;
 
     let amount = 0;
+    let isWeightBased = false;
 
     if (isWeightUnit(unitId)) {
-      amount = wt;
+      amount = wt || 0;
+      isWeightBased = true;
     } else if (isQuantityUnit(unitId)) {
-      amount = qty;
+      amount = qty || 0;
+      isWeightBased = false;
     } else {
       amount = qty > 0 ? qty : wt;
+      isWeightBased = wt > 0;
     }
 
     if (amount <= 0) return 0;
 
-    // Check if this is a weight unit that needs conversion
-    const unitName = unit.name?.toLowerCase() || unit.code?.toLowerCase() || "";
+    // DEBUG: Log unit information
+    console.log("Unit details:", {
+      unitId,
+      unitName: unit.name,
+      unitCode: unit.code,
+      isWeightUnit: isWeightUnit(unitId),
+      isWeightBased,
+      amount,
+      rate: rt,
+    });
 
-    // Handle different weight units
-    if (unitName.includes("kilo gram")) {
-      // If rate is per kg and amount is in kg, no conversion needed
-      return amount * rt;
-    } else if (unitName.includes("g") || unitName.includes("gram")) {
-      // If rate is per kg but amount is in grams, convert grams to kg
-      const amountInKg = amount / 1000;
-      return amountInKg * rt;
-    } else if (unitName.includes("mg")) {
-      // If rate is per kg but amount is in mg, convert mg to kg
-      const amountInKg = amount / 1000000;
+    if (isWeightBased) {
+      // Get the unit name properly
+      const unitName = (unit.name || "").toLowerCase();
+      const unitCode = (unit.code || "").toLowerCase();
+
+      let amountInKg = amount;
+
+      // Convert to kilograms based on unit
+      if (unitName.includes("kg") || unitCode.includes("kg")) {
+        // Already in kilograms, no conversion needed
+        amountInKg = amount;
+        console.log("KG unit detected, no conversion needed");
+      } else if (unitName.includes("g") || unitCode.includes("g")) {
+        // Convert grams to kilograms
+        amountInKg = amount / 1000;
+        console.log(
+          "G unit detected, converting grams to kg:",
+          amount,
+          "g =",
+          amountInKg,
+          "kg",
+        );
+      } else if (unitName.includes("mg") || unitCode.includes("mg")) {
+        // Convert milligrams to kilograms
+        amountInKg = amount / 1000000;
+      }
+
+      console.log(
+        "Weight calculation:",
+        amountInKg,
+        "kg ×",
+        rt,
+        "= ₹",
+        amountInKg * rt,
+      );
       return amountInKg * rt;
     } else {
-      // For non-weight units, use conversion factor
+      // For quantity units
       const conversionFactor = unit.conversion_factor || 1;
       const amountInBaseUnit = amount / conversionFactor;
       return amountInBaseUnit * rt;
     }
   };
-
   const calculateTotals = () => {
     // Calculate item total based on quantity or weight, rate, and unit conversion
     const itemTotal = formData.items
@@ -727,27 +783,24 @@ const isWeightUnit = (unitId) => {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-
-    // Recalculate totals for VAT, Discount, Shipping Cost, or Exchange Rate changes
-    if (
-      name === "vat" ||
-      name === "discount" ||
-      name === "shipping_cost" ||
-      name === "exchange_rate"
-    ) {
-      setTimeout(() => calculateTotals(), 0);
-    }
-  };
+const handleChange = (e) => {
+  const { name, value } = e.target;
+  
+  // Add % automatically for VAT
+  const newValue = name === "vat" 
+    ? `${value.replace(/[^0-9.]/g, '')}`
+    : value;
+    
+  setFormData(prev => ({ ...prev, [name]: newValue }));
+  
+  // Clear error
+  if (errors[name]) setErrors(prev => ({ ...prev, [name]: "" }));
+  
+  // Recalculate if needed
+  if (["vat", "discount", "shipping_cost", "exchange_rate"].includes(name)) {
+    setTimeout(() => calculateTotals(), 0);
+  }
+};
 
   // Remove item row
   const removeItem = (index) => {
@@ -814,6 +867,12 @@ const isWeightUnit = (unitId) => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    // Parse VAT value (ensure it has % sign)
+    const vatValue = formData.vat;
+    const vatWithPercentage = vatValue.includes("%")
+      ? vatValue
+      : `${vatValue}%`;
+
     const payload = {
       supplier_id: formData.supplier_id,
       order_date: formData.order_date,
@@ -833,7 +892,7 @@ const isWeightUnit = (unitId) => {
         })),
       notes: formData.notes,
       total_amount: parseFloat(formData.total_amount) || 0,
-      vat: parseFloat(formData.vat) || 0,
+      vat: vatWithPercentage, // Send as "10%" format
       discount: parseFloat(formData.discount) || 0,
       shipping_cost: parseFloat(formData.shipping_cost) || 0,
       subtotal: parseFloat(formData.subtotal) || 0,
@@ -848,37 +907,37 @@ const isWeightUnit = (unitId) => {
     console.log("Submitting purchase order data:", payload);
     onSave(payload);
 
-    // Reset form
-    setFormData({
-      supplier_id: "",
-      order_date: new Date().toISOString().split("T")[0],
-      items: [
-        {
-          inventory_item_id: "",
-          quantity: "",
-          weight: "",
-          unit_id: "",
-          rate: "",
-          total: 0,
-          item_code: "",
-          item_name: "",
-          discount: 0,
-          tax: 0,
-        },
-      ],
-      notes: "",
-      total_amount: 0,
-      vat: 0,
-      discount: 0,
-      shipping_cost: 0,
-      subtotal: 0,
-      grand_total: 0,
-      payment_status: "pending",
-      reference_no: "",
-      exchange_rate: 1,
-      currency: "INR",
-      branch_id: "",
-    });
+    // Reset form with VAT in correct format
+    // setFormData({
+    //   supplier_id: "",
+    //   order_date: new Date().toISOString().split("T")[0],
+    //   items: [
+    //     {
+    //       inventory_item_id: "",
+    //       quantity: "",
+    //       weight: "",
+    //       unit_id: "",
+    //       rate: "",
+    //       total: 0,
+    //       item_code: "",
+    //       item_name: "",
+    //       discount: 0,
+    //       tax: 0,
+    //     },
+    //   ],
+    //   notes: "",
+    //   total_amount: 0,
+    //   vat: "0%", 
+    //   discount: 0,
+    //   shipping_cost: 0,
+    //   subtotal: 0,
+    //   grand_total: 0,
+    //   payment_status: "pending",
+    //   reference_no: "",
+    //   exchange_rate: 1,
+    //   currency: "INR",
+    //   branch_id: "",
+    // });
     setSearchQuery("");
     setSearchResults([]);
     setErrors({});
@@ -1161,20 +1220,18 @@ const isWeightUnit = (unitId) => {
                   <label className="form-label fw-medium">VAT (%)</label>
                   <div className="input-group">
                     <input
-                      type="number"
+                      type="text" // Change from number to text
                       className="form-control"
                       name="vat"
                       value={formData.vat}
                       onChange={handleChange}
                       disabled={isDisabled}
-                      min="0"
-                      step="0.01"
-                      placeholder="0.00"
+                      placeholder="0%"
                     />
                     <span className="input-group-text">%</span>
                   </div>
                   <small className="text-muted">
-                    Value Added Tax percentage
+                    Value Added Tax percentage (e.g., "10%")
                   </small>
                 </div>
 
@@ -1391,22 +1448,38 @@ const isWeightUnit = (unitId) => {
                                       }`}
                                       placeholder="Enter Weight"
                                       value={item.weight || ""}
-                                      onChange={(e) =>
+                                      onChange={(e) => {
+                                        console.log(
+                                          "Weight changed for",
+                                          item.unit_id,
+                                          ":",
+                                          e.target.value,
+                                        );
+                                        console.log(
+                                          "Unit is:",
+                                          units.find(
+                                            (u) => u._id === item.unit_id,
+                                          ),
+                                        );
                                         handleQuantityWeightChange(
                                           originalIndex,
                                           "weight",
                                           e.target.value,
-                                        )
-                                      }
+                                        );
+                                      }}
                                       disabled={isDisabled}
                                       min="0"
                                       step="0.001"
                                     />
-                                    {/* <small className="text-muted d-block mt-1">
+                                    {/* Add debug info */}
+                                    <small className="text-muted d-block mt-1">
                                       Weight in{" "}
                                       {units.find((u) => u._id === item.unit_id)
                                         ?.code || "unit"}
-                                    </small> */}
+                                      {isWeightUnit(item.unit_id)
+                                        ? " (Weight unit)"
+                                        : ""}
+                                    </small>
                                   </>
                                 ) : item.unit_id &&
                                   isQuantityUnit(item.unit_id) ? (
@@ -1646,48 +1719,80 @@ const isWeightUnit = (unitId) => {
 
                                 let displayText = [];
 
-                                // Calculate total weight in base unit (grams)
+                                // Calculate total weight by unit type
                                 if (weightItems.length > 0) {
-                                  let totalGrams = 0;
+                                  // Group by specific unit
+                                  const unitsByType = {};
+
                                   weightItems.forEach((item) => {
                                     const unit = units.find(
                                       (u) => u._id === item.unit_id,
                                     );
                                     const amount = parseFloat(item.weight) || 0;
 
-                                    if (unit) {
+                                    if (unit && amount > 0) {
                                       const unitName =
-                                        unit.name?.toLowerCase() ||
-                                        unit.code?.toLowerCase() ||
-                                        "";
-                                      if (unitName.includes("kg")) {
-                                        totalGrams += amount * 1000;
-                                      } else if (
-                                        unitName.includes("g") ||
-                                        unitName.includes("gram")
-                                      ) {
-                                        totalGrams += amount;
+                                        unit.code || unit.name || "unit";
+
+                                      if (!unitsByType[unitName]) {
+                                        unitsByType[unitName] = 0;
                                       }
+                                      unitsByType[unitName] += amount;
                                     }
                                   });
 
-                                  // Convert to appropriate display unit
-                                  if (totalGrams >= 1000) {
-                                    displayText.push(
-                                      `${(totalGrams / 1000).toFixed(0)} kg`,
-                                    );
-                                  } else {
-                                    displayText.push(
-                                      `${totalGrams.toFixed(0)} g`,
-                                    );
-                                  }
+                                  // Format each unit type
+                                  Object.keys(unitsByType).forEach(
+                                    (unitName) => {
+                                      const totalAmount = unitsByType[unitName];
+                                      displayText.push(
+                                        `${totalAmount.toFixed(2)} ${unitName}`,
+                                      );
+                                    },
+                                  );
                                 }
 
+                                // Calculate total quantity by unit type
+                                if (quantityItems.length > 0) {
+                                  // Group by specific unit
+                                  const unitsByType = {};
 
-                                return displayText;
+                                  quantityItems.forEach((item) => {
+                                    const unit = units.find(
+                                      (u) => u._id === item.unit_id,
+                                    );
+                                    const amount =
+                                      parseFloat(item.quantity) || 0;
+
+                                    if (unit && amount > 0) {
+                                      const unitName =
+                                        unit.code || unit.name || "units";
+
+                                      if (!unitsByType[unitName]) {
+                                        unitsByType[unitName] = 0;
+                                      }
+                                      unitsByType[unitName] += amount;
+                                    }
+                                  });
+
+                                  // Format each unit type
+                                  Object.keys(unitsByType).forEach(
+                                    (unitName) => {
+                                      const totalAmount = unitsByType[unitName];
+                                      displayText.push(
+                                        `${totalAmount.toFixed(0)} ${unitName}`,
+                                      );
+                                    },
+                                  );
+                                }
+
+                                return displayText.length > 0
+                                  ? displayText.join(" + ")
+                                  : "0";
                               })()}
                             </span>
                           </div>
+
                           <div className="mb-2">
                             <span className="text-muted">Subtotal:</span>
                             <span className="float-end fw-medium">

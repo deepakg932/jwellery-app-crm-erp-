@@ -27,6 +27,8 @@ const DesignStageTable = () => {
     fetchDesignStages,
     employees,
     updateStageWithFiles,
+    calculateLaborCost,
+    laborCosts,
   } = useDesignStages();
 
   console.log("Design stages data:", designStages);
@@ -37,7 +39,7 @@ const DesignStageTable = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedStage, setSelectedStage] = useState(null);
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -59,30 +61,41 @@ const DesignStageTable = () => {
   // Get unique stage types from data
   const getStageTypes = () => {
     const types = new Set();
-    designStages.forEach(stage => {
+    designStages.forEach((stage) => {
       if (stage.stage_type) {
         types.add(stage.stage_type);
       }
     });
-    
-    const typeOptions = Array.from(types).map(type => ({
+
+    const typeOptions = Array.from(types).map((type) => ({
       value: type,
-      label: type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')
+      label: type.charAt(0).toUpperCase() + type.slice(1).replace("_", " "),
     }));
-    
-    return [{ value: "all", label: "All Types" }, ...typeOptions.sort((a, b) => a.label.localeCompare(b.label))];
+
+    return [
+      { value: "all", label: "All Types" },
+      ...typeOptions.sort((a, b) => a.label.localeCompare(b.label)),
+    ];
   };
 
   // Filter stages
   const filteredStages = designStages.filter((stage) => {
     const matchesSearch =
       search === "" ||
-      (stage.stage_name && stage.stage_name.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.job_card_no && stage.job_card_no.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.assigned_name && stage.assigned_name.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.design_type && stage.design_type.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.assigned_department && stage.assigned_department.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.stage_type && stage.stage_type.toLowerCase().includes(search.toLowerCase()));
+      (stage.stage_name &&
+        stage.stage_name.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.job_card_no &&
+        stage.job_card_no.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.assigned_name &&
+        stage.assigned_name.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.design_type &&
+        stage.design_type.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.assigned_department &&
+        stage.assigned_department
+          .toLowerCase()
+          .includes(search.toLowerCase())) ||
+      (stage.stage_type &&
+        stage.stage_type.toLowerCase().includes(search.toLowerCase()));
 
     const matchesStatus =
       statusFilter === "all" || stage.status === statusFilter;
@@ -176,12 +189,14 @@ const DesignStageTable = () => {
       casting: "dark", // Added casting since it's in your response
     };
 
-    const label = stageType 
-      ? stageType.charAt(0).toUpperCase() + stageType.slice(1).replace('_', ' ')
+    const label = stageType
+      ? stageType.charAt(0).toUpperCase() + stageType.slice(1).replace("_", " ")
       : "Unknown";
 
     return (
-      <span className={`badge bg-${colorMap[stageType] || 'secondary'} text-white`}>
+      <span
+        className={`badge bg-${colorMap[stageType] || "secondary"} text-white`}
+      >
         {label}
       </span>
     );
@@ -193,21 +208,28 @@ const DesignStageTable = () => {
       console.log("handleUpdateStage called with:", {
         stageId,
         updateData,
-        filesToUploadCount: filesToUpload?.length || 0
+        filesToUploadCount: filesToUpload?.length || 0,
       });
-      
+
       // Call API to update the stage with files
-      const result = await updateStageWithFiles(stageId, updateData, filesToUpload || []);
-      
+      const result = await updateStageWithFiles(
+        stageId,
+        updateData,
+        filesToUpload || [],
+      );
+
       console.log("Update result:", result);
-      
-      if (result.success) {
-        return true;
-      }
-      return false;
+
+      // if (result.success) {
+      //   return true;
+      // }
+      return result;
     } catch (error) {
       console.error("Error updating stage:", error);
-      return false;
+      return {
+        success: false,
+        error: error.message || "An error occurred",
+      };
     }
   };
 
@@ -238,32 +260,39 @@ const DesignStageTable = () => {
       "Estimated Hours",
       "Actual Hours",
       "Product",
-      "Created At"
+      "Created At",
     ];
-    
+
     const csvContent = [
       headers.join(","),
-      ...filteredStages.map(stage => [
-        stage.job_card_no || "",
-        stage.stage_type || "",
-        stage.stage_name || "",
-        stage.assigned_name || "Unassigned",
-        stage.assigned_department || "",
-        formatDate(stage.start_date),
-        formatDate(stage.end_date),
-        stage.status || "",
-        stage.estimated_hours || "",
-        stage.actual_hours || "",
-        stage.design_type || "",
-        formatDate(stage.created_at)
-      ].map(field => `"${field}"`).join(","))
+      ...filteredStages.map((stage) =>
+        [
+          stage.job_card_no || "",
+          stage.stage_type || "",
+          stage.stage_name || "",
+          stage.assigned_name || "Unassigned",
+          stage.assigned_department || "",
+          formatDate(stage.start_date),
+          formatDate(stage.end_date),
+          stage.status || "",
+          stage.estimated_hours || "",
+          stage.actual_hours || "",
+          stage.design_type || "",
+          formatDate(stage.created_at),
+        ]
+          .map((field) => `"${field}"`)
+          .join(","),
+      ),
     ].join("\n");
-    
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `design-stages-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `design-stages-${new Date().toISOString().split("T")[0]}.csv`,
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -284,7 +313,8 @@ const DesignStageTable = () => {
           <div className="modal-content rounded-3">
             <div className="modal-header border-bottom pb-3">
               <h5 className="modal-title fw-bold fs-5">
-                {selectedStage.stage_name || selectedStage.stage_type} {selectedStage.job_card_no && `- ${selectedStage.job_card_no}`}
+                {selectedStage.stage_name || selectedStage.stage_type}{" "}
+                {selectedStage.job_card_no && `- ${selectedStage.job_card_no}`}
               </h5>
               <button
                 type="button"
@@ -301,53 +331,71 @@ const DesignStageTable = () => {
               <div className="row mb-4">
                 <div className="col-md-6">
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Stage Type</label>
+                    <label className="form-label text-muted small">
+                      Stage Type
+                    </label>
                     <div>{getStageTypeBadge(selectedStage.stage_type)}</div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Status</label>
+                    <label className="form-label text-muted small">
+                      Status
+                    </label>
                     <div>{getStatusBadge(selectedStage.status)}</div>
                   </div>
                   {selectedStage.job_card_no && (
                     <div className="mb-3">
-                      <label className="form-label text-muted small">Job Card No</label>
+                      <label className="form-label text-muted small">
+                        Job Card No
+                      </label>
                       <div className="fw-bold">{selectedStage.job_card_no}</div>
                     </div>
                   )}
                   {selectedStage.completed_at && (
                     <div className="mb-3">
-                      <label className="form-label text-muted small">Completed At</label>
+                      <label className="form-label text-muted small">
+                        Completed At
+                      </label>
                       <div>{formatDateTime(selectedStage.completed_at)}</div>
                     </div>
                   )}
                   {selectedStage.remarks && (
                     <div className="mb-3">
-                      <label className="form-label text-muted small">Remarks</label>
+                      <label className="form-label text-muted small">
+                        Remarks
+                      </label>
                       <div>{selectedStage.remarks}</div>
                     </div>
                   )}
                 </div>
                 <div className="col-md-6">
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Assigned To</label>
+                    <label className="form-label text-muted small">
+                      Assigned To
+                    </label>
                     <div className="fw-bold">
                       <FiUser className="me-2" />
                       {selectedStage.assigned_name || "Unassigned"}
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Department</label>
+                    <label className="form-label text-muted small">
+                      Department
+                    </label>
                     <div>{selectedStage.assigned_department || "N/A"}</div>
                   </div>
                   <div className="mb-3">
                     <label className="form-label text-muted small">Dates</label>
                     <div>
                       <div>Start: {formatDate(selectedStage.start_date)}</div>
-                      <div>End: {formatDate(selectedStage.end_date) || "Not set"}</div>
+                      <div>
+                        End: {formatDate(selectedStage.end_date) || "Not set"}
+                      </div>
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Product</label>
+                    <label className="form-label text-muted small">
+                      Product
+                    </label>
                     <div className="fw-bold">
                       <FiPackage className="me-2" />
                       {selectedStage.design_type || "N/A"}
@@ -371,7 +419,9 @@ const DesignStageTable = () => {
                 <div className="card mb-3">
                   <div className="card-body">
                     <h6 className="card-title">Design Specifications</h6>
-                    <p className="mb-0">{selectedStage.design_specifications}</p>
+                    <p className="mb-0">
+                      {selectedStage.design_specifications}
+                    </p>
                   </div>
                 </div>
               )}
@@ -385,24 +435,29 @@ const DesignStageTable = () => {
                       <div className="d-flex justify-content-between">
                         <div>
                           <div className="small text-muted">Estimated</div>
-                          <div className="fw-bold">{selectedStage.estimated_hours || 0} hrs</div>
+                          <div className="fw-bold">
+                            {selectedStage.estimated_hours || 0} hrs
+                          </div>
                         </div>
                         <div>
                           <div className="small text-muted">Actual</div>
-                          <div className="fw-bold">{selectedStage.actual_hours || 0} hrs</div>
+                          <div className="fw-bold">
+                            {selectedStage.actual_hours || 0} hrs
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-        
               </div>
 
               {/* Design Files */}
               {selectedStage.files && selectedStage.files.length > 0 && (
                 <div className="card mb-4">
                   <div className="card-header">
-                    <h6 className="mb-0">Design Files ({selectedStage.files.length})</h6>
+                    <h6 className="mb-0">
+                      Design Files ({selectedStage.files.length})
+                    </h6>
                   </div>
                   <div className="card-body">
                     <div className="list-group">
@@ -413,15 +468,24 @@ const DesignStageTable = () => {
                         >
                           <div className="d-flex align-items-center">
                             <span className="me-3 fs-5">
-                              {file.name.includes(".pdf") ? "📄" : 
-                               file.name.includes(".dwg") || file.name.includes(".dxf") ? "📐" :
-                               file.name.includes(".jpg") || file.name.includes(".png") ? "🖼️" : "📎"}
+                              {file.name.includes(".pdf")
+                                ? "📄"
+                                : file.name.includes(".dwg") ||
+                                    file.name.includes(".dxf")
+                                  ? "📐"
+                                  : file.name.includes(".jpg") ||
+                                      file.name.includes(".png")
+                                    ? "🖼️"
+                                    : "📎"}
                             </span>
                             <div>
                               <div className="fw-medium">{file.name}</div>
                               <small className="text-muted">
-                                {file.size ? `${(file.size / 1024).toFixed(2)} KB` : "Unknown size"}
-                                {file.uploaded_at && ` • ${formatDate(file.uploaded_at)}`}
+                                {file.size
+                                  ? `${(file.size / 1024).toFixed(2)} KB`
+                                  : "Unknown size"}
+                                {file.uploaded_at &&
+                                  ` • ${formatDate(file.uploaded_at)}`}
                                 {file.isReference && " • Reference"}
                               </small>
                             </div>
@@ -467,7 +531,9 @@ const DesignStageTable = () => {
                           </div>
                           <div className="mb-2">
                             <span className="text-muted">Unit Price:</span>{" "}
-                            {formatCurrency(selectedStage.product_info.unit_price)}
+                            {formatCurrency(
+                              selectedStage.product_info.unit_price,
+                            )}
                           </div>
                         </>
                       )}
@@ -512,7 +578,10 @@ const DesignStageTable = () => {
     <div className="container-fluid py-3">
       {/* Error Display */}
       {error && (
-        <div className="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <div
+          className="alert alert-danger alert-dismissible fade show mb-3"
+          role="alert"
+        >
           {error}
           <button type="button" className="btn-close" onClick={() => {}} />
         </div>
@@ -525,7 +594,8 @@ const DesignStageTable = () => {
             <div className="col-md-6">
               <h2 className="h4 fw-bold mb-1">Design Stages</h2>
               <p className="text-muted mb-0">
-                Total {designStages.length} stages • Showing {filteredStages.length} filtered
+                Total {designStages.length} stages • Showing{" "}
+                {filteredStages.length} filtered
               </p>
             </div>
 
@@ -631,7 +701,6 @@ const DesignStageTable = () => {
               <tr>
                 <th>#</th>
                 <th>Job Card</th>
-                <th>Stage</th>
                 <th>Assigned To</th>
                 <th>Department</th>
                 <th>Dates</th>
@@ -646,7 +715,10 @@ const DesignStageTable = () => {
                 <tr>
                   <td colSpan="10" className="text-center py-4">
                     <div className="d-flex justify-content-center">
-                      <div className="spinner-border text-primary" role="status">
+                      <div
+                        className="spinner-border text-primary"
+                        role="status"
+                      >
                         <span className="visually-hidden">Loading...</span>
                       </div>
                     </div>
@@ -655,20 +727,32 @@ const DesignStageTable = () => {
               ) : filteredStages.length === 0 ? (
                 <tr>
                   <td colSpan="10" className="text-center py-4 text-muted">
-                    {search || statusFilter !== "all" || stageTypeFilter !== "all"
+                    {search ||
+                    statusFilter !== "all" ||
+                    stageTypeFilter !== "all"
                       ? "No stages found for your search criteria"
                       : "No design stages available"}
                   </td>
                 </tr>
               ) : (
                 currentStages.map((stage, index) => (
-                  <tr key={stage._id} className={
-                    stage.status === 'completed' || stage.status === 'approved' ? 'table-success' :
-                    stage.status === 'hold' ? 'table-warning' :
-                    stage.status === 'cancelled' ? 'table-danger' : ''
-                  }>
-                    <td className="fw-medium">{indexOfFirstItem + index + 1}</td>
-                    
+                  <tr
+                    key={stage._id}
+                    className={
+                      stage.status === "completed" ||
+                      stage.status === "approved"
+                        ? "table-success"
+                        : stage.status === "hold"
+                          ? "table-warning"
+                          : stage.status === "cancelled"
+                            ? "table-danger"
+                            : ""
+                    }
+                  >
+                    <td className="fw-medium">
+                      {indexOfFirstItem + index + 1}
+                    </td>
+
                     <td>
                       {stage.job_card_no ? (
                         <>
@@ -684,23 +768,17 @@ const DesignStageTable = () => {
                         <span className="text-muted">N/A</span>
                       )}
                     </td>
-                    
-                    <td>
-                      <div className="d-flex flex-column">
-                        {getStageTypeBadge(stage.stage_type)}
-                        <small className="text-muted mt-1">
-                          {stage.stage_name || stage.stage_type}
-                        </small>
-                      </div>
-                    </td>
-                    
+
+
                     <td>
                       <div>
                         <div className="fw-medium d-flex align-items-center">
                           <FiUser size={12} className="me-1" />
                           {stage.assigned_name || "Unassigned"}
                         </div>
-                        <small className="text-muted">{stage.assigned_department || "N/A"}</small>
+                        <small className="text-muted">
+                          {stage.assigned_department || "N/A"}
+                        </small>
                       </div>
                     </td>
 
@@ -709,7 +787,7 @@ const DesignStageTable = () => {
                         {stage.assigned_department || "N/A"}
                       </div>
                     </td>
-                    
+
                     <td>
                       <div className="small">
                         <div className="d-flex align-items-center mb-1">
@@ -717,22 +795,31 @@ const DesignStageTable = () => {
                           <span>Start: {formatDate(stage.start_date)}</span>
                         </div>
                         <div className="d-flex align-items-center">
-                          <FiCalendar size={12} className={`me-1 ${stage.end_date ? 'text-success' : 'text-muted'}`} />
-                          <span>End: {formatDate(stage.end_date) || "Not set"}</span>
+                          <FiCalendar
+                            size={12}
+                            className={`me-1 ${stage.end_date ? "text-success" : "text-muted"}`}
+                          />
+                          <span>
+                            End: {formatDate(stage.end_date) || "Not set"}
+                          </span>
                         </div>
                       </div>
                     </td>
-                    
+
                     <td>
                       <div className="d-flex align-items-center gap-2">
                         <FiClock size={12} className="text-muted" />
                         <div>
-                          <div className="small text-muted">Est: {stage.estimated_hours || 0}</div>
-                          <div className="small fw-medium">Act: {stage.actual_hours || 0}</div>
+                          <div className="small text-muted">
+                            Est: {stage.estimated_hours || 0}
+                          </div>
+                          <div className="small fw-medium">
+                            Act: {stage.actual_hours || 0}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    
+
                     <td>{getStatusBadge(stage.status)}</td>
 
                     {/* ACTION BUTTONS */}
@@ -749,7 +836,7 @@ const DesignStageTable = () => {
                         >
                           <FiEye size={14} />
                         </button>
-                        
+
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center"
                           onClick={() => handleOpenUpdate(stage)}
@@ -858,6 +945,8 @@ const DesignStageTable = () => {
           onUpdate={handleUpdateStage}
           onClose={handleCloseUpdate}
           loading={loading}
+          laborCosts={laborCosts}
+          calculateLaborCost={calculateLaborCost}
         />
       )}
 
@@ -867,8 +956,12 @@ const DesignStageTable = () => {
           animation: spin 1s linear infinite;
         }
         @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
     </div>
@@ -876,3 +969,6 @@ const DesignStageTable = () => {
 };
 
 export default DesignStageTable;
+
+
+

@@ -34,6 +34,7 @@ const FilingStageTable = () => {
     filingStages,
     materials,
     units,
+    laborCosts,
     loading,
     error,
     fetchFilingStages,
@@ -1391,6 +1392,7 @@ const FilingStageTable = () => {
           selectedStage={selectedStage}
           employees={employees}
           materials={materials}
+          laborCosts={laborCosts} 
           units={units}
           tools={tools}
           onUpdate={handleUpdateStage}

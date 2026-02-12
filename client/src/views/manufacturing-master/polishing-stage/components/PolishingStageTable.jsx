@@ -34,6 +34,7 @@ const PolishingStageTable = () => {
     polishingStages,
     materials,
     units,
+    laborCosts,
     loading,
     error,
     fetchPolishingStages,
@@ -1154,6 +1155,7 @@ const PolishingStageTable = () => {
           selectedStage={selectedStage}
           employees={employees}
           materials={materials}
+          laborCosts={laborCosts}
           units={units}
           onUpdate={handleUpdateStage}
           onClose={handleCloseUpdate}

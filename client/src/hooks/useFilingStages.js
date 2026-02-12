@@ -8,6 +8,7 @@ export default function useFilingStages() {
   const [units, setUnits] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [tools, setTools] = useState([]);
+  const [laborCosts, setLaborCosts] = useState([]); // Add labor costs
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -30,7 +31,6 @@ export default function useFilingStages() {
           // Parse filing tools
           let filingToolsArray = [];
           if (data.filing_tools_used && Array.isArray(data.filing_tools_used)) {
-            // If it's an array, use it directly
             if (
               data.filing_tools_used.length > 0 &&
               typeof data.filing_tools_used[0] === "string"
@@ -47,13 +47,12 @@ export default function useFilingStages() {
               .map((tool) => tool.trim());
           }
 
-          // Parse files - handle array or JSON string
+          // Parse files
           let filesArray = [];
           if (data.files) {
             if (Array.isArray(data.files)) {
               if (data.files.length > 0 && typeof data.files[0] === "string") {
                 try {
-                  // Try to parse the string as JSON
                   const parsedFiles = JSON.parse(data.files[0]);
                   filesArray = Array.isArray(parsedFiles) ? parsedFiles : [];
                 } catch (e) {
@@ -68,6 +67,34 @@ export default function useFilingStages() {
                 filesArray = JSON.parse(data.files);
               } catch {
                 filesArray = [];
+              }
+            }
+          }
+
+          // Parse labor costs
+          let selectedLaborCostsArray = [];
+          let laborBreakdownArray = [];
+          
+          if (data.selected_labor_costs) {
+            if (Array.isArray(data.selected_labor_costs)) {
+              selectedLaborCostsArray = data.selected_labor_costs;
+            } else if (typeof data.selected_labor_costs === "string") {
+              try {
+                selectedLaborCostsArray = JSON.parse(data.selected_labor_costs);
+              } catch {
+                selectedLaborCostsArray = [];
+              }
+            }
+          }
+
+          if (data.labor_cost_breakdown) {
+            if (Array.isArray(data.labor_cost_breakdown)) {
+              laborBreakdownArray = data.labor_cost_breakdown;
+            } else if (typeof data.labor_cost_breakdown === "string") {
+              try {
+                laborBreakdownArray = JSON.parse(data.labor_cost_breakdown);
+              } catch {
+                laborBreakdownArray = [];
               }
             }
           }
@@ -122,7 +149,7 @@ export default function useFilingStages() {
 
             // Cost tracking
             material_cost: data.material_cost || 0,
-            labour_cost: data.labour_cost || 0,
+            labour_cost: data.labour_cost || 0, // This should come from selected labor costs
             equipment_cost: data.equipment_cost || 0,
             consumables_cost: data.consumables_cost || 0,
             tool_wear_cost: data.tool_wear_cost || 0,
@@ -141,7 +168,11 @@ export default function useFilingStages() {
             backup_location: data.backup_location || "",
             files: filesArray || [],
 
-            // Material tracking (not in your response but kept for compatibility)
+            // Labor cost tracking (new fields)
+            selected_labor_costs: selectedLaborCostsArray || [],
+            labor_cost_breakdown: laborBreakdownArray || [],
+
+            // Material tracking
             material_id: data.material_id || "",
             material_type: data.material_type || "",
             material_item_code: data.material_item_code || "",
@@ -187,7 +218,102 @@ export default function useFilingStages() {
     }
   };
 
+  // Fetch labor costs from price making API - INCLUDE KARIGAR COSTS FOR FILING
+  const fetchLaborCosts = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_ENDPOINTS.getPriceMakings());
 
+      console.log("Price making API Response for filing:", response.data);
+
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        // Filter for filing-related labor costs including karigar costs
+        const laborCostData = response.data.data.filter((item) => {
+          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
+          const lowerCaseName = costName.toLowerCase();
+          
+          // Include labor costs for filing stage
+          return (
+            lowerCaseName.includes("labor") ||
+            lowerCaseName.includes("karigar") ||
+            lowerCaseName.includes("craftsman") ||
+            lowerCaseName.includes("worker")
+          );
+        });
+
+        // Process and format labor costs
+        const processedCosts = laborCostData.map((item) => {
+          return {
+            ...item,
+            _id: item._id,
+            cost_name:
+              item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
+            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || "unit",
+            stage_name: item.making_stage_id?.stage_name || "General",
+            sub_stage_name:
+              item.making_sub_stage_id?.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          };
+        });
+
+        console.log("Processed labor costs for filing:", processedCosts);
+        setLaborCosts(processedCosts);
+        return processedCosts;
+      }
+
+      setLaborCosts([]);
+      return [];
+    } catch (err) {
+      console.error("Error fetching labor costs:", err);
+      setLaborCosts([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate total labor cost based on selected labor cost items
+  const calculateTotalLaborCost = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return 0;
+
+    let totalLaborCost = 0;
+
+    selectedLaborCosts.forEach((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+      totalLaborCost += costAmount;
+    });
+
+    console.log(
+      "Calculated total labor cost for filing:",
+      totalLaborCost,
+      "from",
+      selectedLaborCosts.length,
+      "items"
+    );
+    return totalLaborCost;
+  };
+
+  // Calculate labor breakdown for selected items
+  const calculateLaborBreakdown = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return [];
+
+    return selectedLaborCosts.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+  };
 
   // Fetch units
   const fetchUnits = async () => {
@@ -223,24 +349,54 @@ export default function useFilingStages() {
     }
   };
 
-
   // Update Filing stage
   const updateFilingStageWithFiles = async (
     stageId,
     updateData,
-    filesToUpload = [],
+    filesToUpload = []
   ) => {
     try {
       setLoading(true);
       setError("");
 
+      // Calculate labor cost from selected labor costs if provided
+      let finalUpdateData = { ...updateData };
+
+      // If selected_labor_costs is provided, calculate total labor cost
+      if (
+        updateData.selected_labor_costs &&
+        Array.isArray(updateData.selected_labor_costs)
+      ) {
+        const totalLaborCost = calculateTotalLaborCost(
+          updateData.selected_labor_costs
+        );
+
+        // Update labor cost in data
+        finalUpdateData.labour_cost = totalLaborCost.toFixed(2);
+
+        // Recalculate totals with new labor cost
+        const tool = parseFloat(updateData.tool_cost) || 0;
+        const equipment = parseFloat(updateData.equipment_cost) || 0;
+        const consumables = parseFloat(updateData.consumables_cost) || 0;
+        const wastage = parseFloat(updateData.wastage_cost) || 0;
+        const other = parseFloat(updateData.other_costs) || 0;
+        const markup = parseFloat(updateData.markup_percentage) || 25;
+
+        const total = tool + totalLaborCost + equipment + consumables + wastage + other;
+        const markupAmount = (total * markup) / 100;
+        const finalPrice = total + markupAmount;
+
+        finalUpdateData.total_cost = total.toFixed(2);
+        finalUpdateData.final_price = finalPrice.toFixed(2);
+      }
+
       const url = API_ENDPOINTS.updateFilingStage(stageId);
 
       const formData = new FormData();
 
-      Object.keys(updateData).forEach((key) => {
+      Object.keys(finalUpdateData).forEach((key) => {
         if (key !== "files" && key !== "material_name" && key !== "unit_name") {
-          const value = updateData[key];
+          const value = finalUpdateData[key];
           if (value !== null && value !== undefined) {
             formData.append(key, value);
           }
@@ -263,10 +419,50 @@ export default function useFilingStages() {
         formData.append("files", JSON.stringify(existingFiles));
       }
 
+      // Append selected labor costs as JSON array of IDs
+      if (
+        updateData.selected_labor_costs &&
+        Array.isArray(updateData.selected_labor_costs)
+      ) {
+        formData.append(
+          "selected_labor_costs",
+          JSON.stringify(
+            updateData.selected_labor_costs.map((cost) => cost._id)
+          )
+        );
+      }
+
+      // Append labor breakdown as JSON
+      if (
+        updateData.labor_cost_breakdown &&
+        Array.isArray(updateData.labor_cost_breakdown)
+      ) {
+        formData.append(
+          "labor_cost_breakdown",
+          JSON.stringify(updateData.labor_cost_breakdown)
+        );
+      }
+
       if (filesToUpload.length > 0) {
         filesToUpload.forEach((file, index) => {
           formData.append(`uploaded_files`, file);
         });
+      }
+
+      // Debug
+      console.log("📤 Sending Filing update data:");
+      for (let [key, value] of formData.entries()) {
+        if (key === "uploaded_files") {
+          console.log(`${key}: File - ${value.name}`);
+        } else if (
+          key === "files" ||
+          key === "selected_labor_costs" ||
+          key === "labor_cost_breakdown"
+        ) {
+          console.log(`${key}: ${value.substring(0, 100)}...`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
       }
 
       const res = await axios.put(url, formData, {
@@ -284,9 +480,10 @@ export default function useFilingStages() {
         return { success: false, error: errorMsg };
       }
     } catch (err) {
-      console.error("Update error:", err);
+      console.error("❌ Update error:", err);
 
       if (err.response) {
+        console.error("Response data:", err.response.data);
         const errorMsg =
           err.response.data?.message || `Error: ${err.response.status}`;
         setError(errorMsg);
@@ -308,6 +505,7 @@ export default function useFilingStages() {
         fetchFilingStages(),
         fetchEmployees(),
         fetchUnits(),
+        fetchLaborCosts(), // Add labor costs fetch
       ]);
     } catch (error) {
       console.error("Error fetching all data:", error);
@@ -326,11 +524,15 @@ export default function useFilingStages() {
     filingStages,
     units,
     employees,
+    laborCosts, // Export labor costs
     loading,
     error,
     fetchFilingStages,
     fetchEmployees,
     fetchUnits,
+    fetchLaborCosts, // Export fetch function
+    calculateTotalLaborCost, // Export calculation function
+    calculateLaborBreakdown, // Export breakdown function
     updateFilingStageWithFiles,
     fetchAllData,
   };

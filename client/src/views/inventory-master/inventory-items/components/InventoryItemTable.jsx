@@ -542,7 +542,7 @@ const showBarcodeModal = (barcodeUrl, itemCode) => {
                           {getSubCategoryName(item)}
                         </span>
                       </td>
-                      <td>
+                      {/* <td>
                         <div className="small">
                           {item.branch_name ? (
                             <>
@@ -559,7 +559,7 @@ const showBarcodeModal = (barcodeUrl, itemCode) => {
                             <span className="text-muted">No Branch</span>
                           )}
                         </div>
-                      </td>
+                      </td> */}
                       <td>
                         <span className="badge bg-warning text-dark fw-semibold">
                           {item.purity || "No Purity"}
@@ -585,6 +585,24 @@ const showBarcodeModal = (barcodeUrl, itemCode) => {
                           <span className="text-muted">
                             {getSupplierName(item)}
                           </span>
+                        </div>
+                      </td>
+                       <td>
+                        <div className="small">
+                          {item.branch_name ? (
+                            <>
+                              <div className="fw-medium">
+                                {item.branch_name}
+                              </div>
+                              {item.branch_is_warehouse && (
+                                <span className="badge bg-info small mt-1">
+                                  Warehouse
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted">No Branch</span>
+                          )}
                         </div>
                       </td>
 

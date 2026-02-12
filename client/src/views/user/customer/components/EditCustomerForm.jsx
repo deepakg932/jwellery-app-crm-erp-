@@ -2,12 +2,12 @@ import React, { useState, useEffect } from "react";
 import { FiUpload } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
 
-const EditCustomerForm = ({ 
-  onClose, 
-  onSave, 
-  customer, 
+const EditCustomerForm = ({
+  onClose,
+  onSave,
+  customer,
   loading = false,
-  customerGroups = [] 
+  customerGroups = [],
 }) => {
   const [formData, setFormData] = useState({
     customer_name: "",
@@ -16,6 +16,7 @@ const EditCustomerForm = ({
     email: "",
     whatsapp_number: "",
     tax_number: "",
+    aadhar_number: "",
     address: "",
     country: "",
     state: "",
@@ -23,7 +24,7 @@ const EditCustomerForm = ({
     pincode: "",
     status: true,
   });
-console.log(customerGroups)
+  console.log(customerGroups);
   const [errors, setErrors] = useState({});
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
@@ -32,12 +33,12 @@ console.log(customerGroups)
   // Initialize countries on component mount
   useEffect(() => {
     const allCountries = Country.getAllCountries();
-    const formattedCountries = allCountries.map(country => ({
+    const formattedCountries = allCountries.map((country) => ({
       value: country.isoCode,
       label: country.name,
-      phoneCode: country.phonecode
+      phoneCode: country.phonecode,
     }));
-    
+
     setCountries(formattedCountries);
   }, []);
 
@@ -45,32 +46,35 @@ console.log(customerGroups)
   useEffect(() => {
     if (customer) {
       console.log("Customer data received in EditCustomerForm:", customer);
-      
+
       // Convert country name to country code
       const countryObj = Country.getAllCountries().find(
-        c => c.name === customer.country || c.isoCode === customer.country
+        (c) => c.name === customer.country || c.isoCode === customer.country,
       );
-      
+
       console.log("Found country object:", countryObj);
       console.log("Customer country:", customer.country);
-      
+
       // Find customer group ID - handle both direct ID and nested object
       let groupId = "";
       if (customer.customer_group_id) {
         // If it's an object with _id property
-        if (typeof customer.customer_group_id === 'object' && customer.customer_group_id._id) {
+        if (
+          typeof customer.customer_group_id === "object" &&
+          customer.customer_group_id._id
+        ) {
           groupId = customer.customer_group_id._id;
-        } 
+        }
         // If it's just a string ID
-        else if (typeof customer.customer_group_id === 'string') {
+        else if (typeof customer.customer_group_id === "string") {
           groupId = customer.customer_group_id;
         }
       }
-      
+
       // Use the correct field name from your API - customer has 'name' not 'customer_name'
       const customerName = customer.name || customer.customer_name || "";
       const customerPhone = customer.mobile || customer.phone || "";
-      
+
       console.log("Setting form data with:", {
         customer_name: customerName,
         customer_group_id: groupId,
@@ -79,7 +83,7 @@ console.log(customerGroups)
         state: customer.state || "",
         city: customer.city || "",
       });
-      
+
       setFormData({
         customer_name: customerName,
         customer_group_id: groupId,
@@ -87,6 +91,7 @@ console.log(customerGroups)
         email: customer.email || "",
         whatsapp_number: customer.whatsapp_number || "",
         tax_number: customer.tax_number || "",
+        aadhar_number: customer.aadhar_number,
         address: customer.address || "",
         country: countryObj?.isoCode || "IN", // Default to India if not found
         state: customer.state || "",
@@ -98,14 +103,14 @@ console.log(customerGroups)
       // Load states for the customer's country
       const countryCode = countryObj?.isoCode || "IN";
       console.log("Loading states for country code:", countryCode);
-      
+
       if (countryCode) {
         const countryStates = State.getStatesOfCountry(countryCode);
         console.log("Available states:", countryStates);
-        
-        const formattedStates = countryStates.map(state => ({
+
+        const formattedStates = countryStates.map((state) => ({
           value: state.isoCode,
-          label: state.name
+          label: state.name,
         }));
         setStates(formattedStates);
       }
@@ -113,23 +118,24 @@ console.log(customerGroups)
       // Load cities for the customer's state
       const stateValue = customer.state || "";
       console.log("Loading cities for state:", stateValue);
-      
+
       if (countryCode && stateValue) {
         // Try to find state by name if isoCode doesn't match
         let stateCode = stateValue;
-        const stateObj = State.getStatesOfCountry(countryCode)
-          .find(s => s.isoCode === stateValue || s.name === stateValue);
-        
+        const stateObj = State.getStatesOfCountry(countryCode).find(
+          (s) => s.isoCode === stateValue || s.name === stateValue,
+        );
+
         if (stateObj) {
           stateCode = stateObj.isoCode;
           console.log("Found state object:", stateObj);
-          
+
           const stateCities = City.getCitiesOfState(countryCode, stateCode);
           console.log("Available cities:", stateCities);
-          
-          const formattedCities = stateCities.map(city => ({
+
+          const formattedCities = stateCities.map((city) => ({
             value: city.name,
-            label: city.name
+            label: city.name,
           }));
           setCities(formattedCities);
         }
@@ -146,19 +152,19 @@ console.log(customerGroups)
     if (formData.country) {
       console.log("Country changed to:", formData.country);
       const countryStates = State.getStatesOfCountry(formData.country);
-      const formattedStates = countryStates.map(state => ({
+      const formattedStates = countryStates.map((state) => ({
         value: state.isoCode,
-        label: state.name
+        label: state.name,
       }));
 
       console.log("Setting states:", formattedStates);
       setStates(formattedStates);
-      
+
       // Reset state and city if country changes
-      setFormData(prev => ({ 
-        ...prev, 
-        state: "", 
-        city: "" 
+      setFormData((prev) => ({
+        ...prev,
+        state: "",
+        city: "",
       }));
       setCities([]);
     }
@@ -168,17 +174,20 @@ console.log(customerGroups)
   useEffect(() => {
     if (formData.country && formData.state) {
       console.log("State changed to:", formData.state);
-      const stateCities = City.getCitiesOfState(formData.country, formData.state);
-      const formattedCities = stateCities.map(city => ({
+      const stateCities = City.getCitiesOfState(
+        formData.country,
+        formData.state,
+      );
+      const formattedCities = stateCities.map((city) => ({
         value: city.name,
-        label: city.name
+        label: city.name,
       }));
 
       console.log("Setting cities:", formattedCities);
       setCities(formattedCities);
-      
+
       // Reset city if state changes
-      setFormData(prev => ({ ...prev, city: "" }));
+      setFormData((prev) => ({ ...prev, city: "" }));
     }
   }, [formData.country, formData.state]);
 
@@ -199,11 +208,17 @@ console.log(customerGroups)
       newErrors.phone = "Phone number must be 10 digits";
     }
 
-    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+    if (
+      formData.email.trim() &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())
+    ) {
       newErrors.email = "Please enter a valid email address";
     }
 
-    if (formData.whatsapp_number.trim() && !/^\d{10}$/.test(formData.whatsapp_number.trim())) {
+    if (
+      formData.whatsapp_number.trim() &&
+      !/^\d{10}$/.test(formData.whatsapp_number.trim())
+    ) {
       newErrors.whatsapp_number = "WhatsApp number must be 10 digits";
     }
 
@@ -240,7 +255,7 @@ console.log(customerGroups)
     // Get country and state names from their codes
     const selectedCountry = countries.find((c) => c.value === formData.country);
     const selectedState = states.find((s) => s.value === formData.state);
-    
+
     console.log("Selected country:", selectedCountry);
     console.log("Selected state:", selectedState);
 
@@ -252,6 +267,7 @@ console.log(customerGroups)
       email: formData.email.trim(),
       whatsapp_number: formData.whatsapp_number.trim(),
       tax_number: formData.tax_number.trim(),
+      aadhar_number: formData.aadhar_number.trim(),
       address: formData.address.trim(),
       country: selectedCountry ? selectedCountry.label : formData.country,
       country_code: formData.country,
@@ -285,16 +301,19 @@ console.log(customerGroups)
 
   // Helper function to get country by name (for backward compatibility)
   const getCountryByLabel = (countryName) => {
-    const country = countries.find(c => c.label === countryName);
+    const country = countries.find((c) => c.label === countryName);
     return country ? country.value : "";
   };
 
   // When formData.country changes, try to find by label if not found by value
   useEffect(() => {
-    if (formData.country && !countries.find(c => c.value === formData.country)) {
+    if (
+      formData.country &&
+      !countries.find((c) => c.value === formData.country)
+    ) {
       const countryByLabel = getCountryByLabel(formData.country);
       if (countryByLabel) {
-        setFormData(prev => ({ ...prev, country: countryByLabel }));
+        setFormData((prev) => ({ ...prev, country: countryByLabel }));
       }
     }
   }, [formData.country, countries]);
@@ -361,7 +380,8 @@ console.log(customerGroups)
                     <option value="">Select Customer Group</option>
                     {customerGroups.map((group) => (
                       <option key={group._id} value={group._id}>
-                        {group.customer_group} {/* FIX: Changed from customer_group_id to customer_group */}
+                        {group.customer_group}{" "}
+                        {/* FIX: Changed from customer_group_id to customer_group */}
                       </option>
                     ))}
                   </select>
@@ -457,6 +477,21 @@ console.log(customerGroups)
                   </div>
                 </div>
 
+                {/* Aadhar Number */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">Aadhar Number</label>
+                  <input
+                    type="tel"
+                    name="aadhar_number"
+                    className="form-control form-control-lg"
+                    placeholder="e.g., 456335223985"
+                    value={formData.aadhar_number}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                  <div className="form-text">12-digit adhar (Optional)</div>
+                </div>
+
                 {/* Tax Number */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
@@ -519,11 +554,12 @@ console.log(customerGroups)
                   {errors.country && (
                     <div className="invalid-feedback">{errors.country}</div>
                   )}
-                  {formData.country && !countries.find(c => c.value === formData.country) && (
-                    <div className="form-text text-warning">
-                      Country not found in list. Please select from dropdown.
-                    </div>
-                  )}
+                  {formData.country &&
+                    !countries.find((c) => c.value === formData.country) && (
+                      <div className="form-text text-warning">
+                        Country not found in list. Please select from dropdown.
+                      </div>
+                    )}
                 </div>
 
                 {/* State */}
@@ -550,11 +586,12 @@ console.log(customerGroups)
                   {errors.state && (
                     <div className="invalid-feedback">{errors.state}</div>
                   )}
-                  {formData.state && !states.find(s => s.value === formData.state) && (
-                    <div className="form-text text-warning">
-                      State not found in list. Please select from dropdown.
-                    </div>
-                  )}
+                  {formData.state &&
+                    !states.find((s) => s.value === formData.state) && (
+                      <div className="form-text text-warning">
+                        State not found in list. Please select from dropdown.
+                      </div>
+                    )}
                 </div>
 
                 {/* City */}

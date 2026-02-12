@@ -21,7 +21,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
       setStoneData({
         stone_type: stone.stone_type || "",
       });
-      const imageUrl = stone.fullImageUrl || "";
+      const imageUrl = stone.stone_image || "";
       setImagePreview(imageUrl ? imageUrl : null);
       setImageFile(null);
       setError("");

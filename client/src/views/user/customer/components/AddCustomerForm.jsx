@@ -14,6 +14,7 @@ const AddCustomerForm = ({
     phone: "",
     email: "",
     whatsapp_number: "",
+    aadhar_number: "",
     tax_number: "",
     address: "",
     country: "",
@@ -57,7 +58,7 @@ const AddCustomerForm = ({
     //     customer_group_id: customerGroups[0]._id
     //   }));
     // }
-  },[]);
+  }, []);
 
   // Update states when country changes
   useEffect(() => {
@@ -79,7 +80,7 @@ const AddCustomerForm = ({
     if (formData.country && formData.state) {
       const stateCities = City.getCitiesOfState(
         formData.country,
-        formData.state
+        formData.state,
       );
       const formattedCities = stateCities.map((city) => ({
         value: city.name,
@@ -156,7 +157,7 @@ const AddCustomerForm = ({
     const selectedCountry = countries.find((c) => c.value === formData.country);
     const selectedState = states.find((s) => s.value === formData.state);
     const selectedGroup = customerGroups.find(
-      (g) => g._id === formData.customer_group_id
+      (g) => g._id === formData.customer_group_id,
     );
 
     const payload = {
@@ -166,6 +167,7 @@ const AddCustomerForm = ({
       email: formData.email.trim(),
       whatsapp_number: formData.whatsapp_number.trim(),
       tax_number: formData.tax_number.trim(),
+      aadhar_number: formData.aadhar_number.trim(),
       address: formData.address.trim(),
       country: selectedCountry ? selectedCountry.label : formData.country,
       country_code: formData.country,
@@ -190,6 +192,7 @@ const AddCustomerForm = ({
       email: "",
       whatsapp_number: "",
       tax_number: "",
+      aadhar_number: "",
       address: "",
       country: resetCountry,
       state: "",
@@ -224,6 +227,7 @@ const AddCustomerForm = ({
       email: "",
       whatsapp_number: "",
       tax_number: "",
+      aadhar_number: "",
       address: "",
       country: resetCountry,
       state: "",
@@ -394,6 +398,20 @@ const AddCustomerForm = ({
                   </div>
                 </div>
 
+                {/* Aadhar Number */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">Aadhar Number</label>
+                  <input
+                    type="tel"
+                    name="aadhar_number"
+                    className="form-control form-control-lg"
+                    placeholder="e.g., 456335223985"
+                    value={formData.aadhar_number}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                  <div className="form-text">12-digit adhar (Optional)</div>
+                </div>
                 {/* Tax Number */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">

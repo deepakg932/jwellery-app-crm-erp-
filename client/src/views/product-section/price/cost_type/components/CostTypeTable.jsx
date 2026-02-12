@@ -51,11 +51,10 @@ export default function CostTypeTable() {
         .includes(search.toLowerCase()) ||
       (costType?.cost_name || "")
         .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      (costType?.making_sub_stage_name || "")
-        .toLowerCase()
         .includes(search.toLowerCase())
   );
+
+  console.log(filteredCostTypes)
 
   // Handle add cost type
   const handleAdd = async (costTypeData) => {
@@ -258,7 +257,6 @@ export default function CostTypeTable() {
                 <th>#</th>
                 <th>Cost Type</th>
                 <th>Cost Name</th>
-                <th>Sub Stage</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
@@ -301,11 +299,7 @@ export default function CostTypeTable() {
                         {item.cost_name || "Not Assigned"}
                       </span>
                     </td>
-                    <td>
-                      <span className="badge bg-info">
-                        {item.making_sub_stage_name || "Not Assigned"}
-                      </span>
-                    </td>
+          
                     <td>
                       <div className="d-flex justify-content-end gap-2">
                         <button

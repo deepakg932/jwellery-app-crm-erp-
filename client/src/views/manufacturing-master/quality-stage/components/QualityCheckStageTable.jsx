@@ -36,6 +36,7 @@ const QualityCheckStageTable = () => {
     error,
     fetchQualityStages,
     updateQualityStageWithFiles,
+    laborCosts,
   } = useQualityCheckStages();
 
   console.log("Quality Stages Data:", qualityStages);
@@ -132,7 +133,9 @@ const QualityCheckStageTable = () => {
     };
 
     return (
-      <span className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}>
+      <span
+        className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}
+      >
         <span>{config.icon}</span>
         {config.label}
       </span>
@@ -168,7 +171,9 @@ const QualityCheckStageTable = () => {
     };
 
     return (
-      <span className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}>
+      <span
+        className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}
+      >
         <span>{config.icon}</span>
         {config.label}
       </span>
@@ -256,10 +261,11 @@ const QualityCheckStageTable = () => {
     const csvContent = [
       headers.join(","),
       ...filteredStages.map((stage) => {
-        const passRate = stage.batch_size > 0 
-          ? ((stage.accepted_quantity / stage.batch_size) * 100).toFixed(1)
-          : "0";
-        
+        const passRate =
+          stage.batch_size > 0
+            ? ((stage.accepted_quantity / stage.batch_size) * 100).toFixed(1)
+            : "0";
+
         return [
           stage.job_card_no || "",
           stage.design_type || "",
@@ -315,9 +321,13 @@ const QualityCheckStageTable = () => {
     if (!selectedStage) return null;
 
     // Calculate statistics
-    const passRate = selectedStage.batch_size > 0 
-      ? ((selectedStage.accepted_quantity / selectedStage.batch_size) * 100).toFixed(1)
-      : "0";
+    const passRate =
+      selectedStage.batch_size > 0
+        ? (
+            (selectedStage.accepted_quantity / selectedStage.batch_size) *
+            100
+          ).toFixed(1)
+        : "0";
 
     return (
       <div
@@ -378,7 +388,9 @@ const QualityCheckStageTable = () => {
                     <label className="form-label text-muted small">
                       Department
                     </label>
-                    <div>{selectedStage.assigned_department || "QUALITY_CHECK"}</div>
+                    <div>
+                      {selectedStage.assigned_department || "QUALITY_CHECK"}
+                    </div>
                   </div>
                 </div>
                 <div className="col-md-6">
@@ -414,7 +426,9 @@ const QualityCheckStageTable = () => {
                       Next Stage
                     </label>
                     <div className="badge bg-info">
-                      {selectedStage.next_stage || selectedStage.job_card_stage || "Not set"}
+                      {selectedStage.next_stage ||
+                        selectedStage.job_card_stage ||
+                        "Not set"}
                     </div>
                   </div>
                 </div>
@@ -456,9 +470,7 @@ const QualityCheckStageTable = () => {
                     </div>
                     <div className="col-md-3">
                       <div className="text-center">
-                        <div className="fw-bold fs-4">
-                          {passRate}%
-                        </div>
+                        <div className="fw-bold fs-4">{passRate}%</div>
                         <div className="small text-muted">Pass Rate</div>
                       </div>
                     </div>
@@ -466,26 +478,34 @@ const QualityCheckStageTable = () => {
                   <div className="row mt-3">
                     <div className="col-md-4">
                       <div className="small">
-                        <strong>Inspection Method:</strong> {selectedStage.inspection_method || "Visual"}
+                        <strong>Inspection Method:</strong>{" "}
+                        {selectedStage.inspection_method || "Visual"}
                       </div>
                       <div className="small">
-                        <strong>Sample Size:</strong> {selectedStage.sample_size || 1}
-                      </div>
-                    </div>
-                    <div className="col-md-4">
-                      <div className="small">
-                        <strong>Surface Finish:</strong> {selectedStage.surface_finish || "N/A"}
-                      </div>
-                      <div className="small">
-                        <strong>Adhesion:</strong> {selectedStage.adhesion_quality || "N/A"}
+                        <strong>Sample Size:</strong>{" "}
+                        {selectedStage.sample_size || 1}
                       </div>
                     </div>
                     <div className="col-md-4">
                       <div className="small">
-                        <strong>Uniformity:</strong> {selectedStage.uniformity || "N/A"}
+                        <strong>Surface Finish:</strong>{" "}
+                        {selectedStage.surface_finish || "N/A"}
                       </div>
                       <div className="small">
-                        <strong>Tools Used:</strong> {(selectedStage.measuring_tools_used || []).join(", ") || "N/A"}
+                        <strong>Adhesion:</strong>{" "}
+                        {selectedStage.adhesion_quality || "N/A"}
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="small">
+                        <strong>Uniformity:</strong>{" "}
+                        {selectedStage.uniformity || "N/A"}
+                      </div>
+                      <div className="small">
+                        <strong>Tools Used:</strong>{" "}
+                        {(selectedStage.measuring_tools_used || []).join(
+                          ", ",
+                        ) || "N/A"}
                       </div>
                     </div>
                   </div>
@@ -502,20 +522,33 @@ const QualityCheckStageTable = () => {
                         Defects Summary
                       </h6>
                       <div className="small mb-1">
-                        Total: <span className="fw-bold">{selectedStage.defects_count || 0}</span>
+                        Total:{" "}
+                        <span className="fw-bold">
+                          {selectedStage.defects_count || 0}
+                        </span>
                       </div>
                       <div className="small mb-1">
-                        Critical: <span className="fw-bold text-danger">{selectedStage.critical_defects || 0}</span>
+                        Critical:{" "}
+                        <span className="fw-bold text-danger">
+                          {selectedStage.critical_defects || 0}
+                        </span>
                       </div>
                       <div className="small mb-1">
-                        Major: <span className="fw-bold text-warning">{selectedStage.major_defects || 0}</span>
+                        Major:{" "}
+                        <span className="fw-bold text-warning">
+                          {selectedStage.major_defects || 0}
+                        </span>
                       </div>
                       <div className="small">
-                        Minor: <span className="fw-bold text-info">{selectedStage.minor_defects || 0}</span>
+                        Minor:{" "}
+                        <span className="fw-bold text-info">
+                          {selectedStage.minor_defects || 0}
+                        </span>
                       </div>
                       {(selectedStage.defects_detected || []).length > 0 && (
                         <div className="mt-2 x-small">
-                          Defects: {(selectedStage.defects_detected || []).join(", ")}
+                          Defects:{" "}
+                          {(selectedStage.defects_detected || []).join(", ")}
                         </div>
                       )}
                     </div>
@@ -531,14 +564,23 @@ const QualityCheckStageTable = () => {
                       <div className="fw-bold fs-5">
                         {formatTime(selectedStage.total_time_spent)}
                       </div>
-                      <div className="small text-muted">
-                        Total Time
-                      </div>
+                      <div className="small text-muted">Total Time</div>
                       <div className="x-small mt-2">
-                        <div>Preparation: {formatTime(selectedStage.preparation_time)}</div>
-                        <div>Inspection: {formatTime(selectedStage.inspection_time)}</div>
-                        <div>Documentation: {formatTime(selectedStage.documentation_time)}</div>
-                        <div>Approval: {formatTime(selectedStage.approval_time)}</div>
+                        <div>
+                          Preparation:{" "}
+                          {formatTime(selectedStage.preparation_time)}
+                        </div>
+                        <div>
+                          Inspection:{" "}
+                          {formatTime(selectedStage.inspection_time)}
+                        </div>
+                        <div>
+                          Documentation:{" "}
+                          {formatTime(selectedStage.documentation_time)}
+                        </div>
+                        <div>
+                          Approval: {formatTime(selectedStage.approval_time)}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -553,14 +595,19 @@ const QualityCheckStageTable = () => {
                       <div className="fw-bold fs-5">
                         ₹{selectedStage.total_cost || 0}
                       </div>
-                      <div className="small text-muted">
-                        Total Cost
-                      </div>
+                      <div className="small text-muted">Total Cost</div>
                       <div className="x-small mt-2">
-                        <div>Inspection: ₹{selectedStage.inspection_cost || 0}</div>
+                        <div>
+                          Inspection: ₹{selectedStage.inspection_cost || 0}
+                        </div>
                         <div>Labour: ₹{selectedStage.labour_cost || 0}</div>
-                        <div>Equipment: ₹{selectedStage.equipment_cost || 0}</div>
-                        <div>Certification: ₹{selectedStage.certification_cost || 0}</div>
+                        <div>
+                          Equipment: ₹{selectedStage.equipment_cost || 0}
+                        </div>
+                        <div>
+                          Certification: ₹
+                          {selectedStage.certification_cost || 0}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -573,34 +620,80 @@ const QualityCheckStageTable = () => {
                   <div className="card-header bg-light">
                     <h6 className="mb-0 small fw-bold">
                       <FiCheck className="me-2" />
-                      Check Points Details ({selectedStage.check_points.length} points)
+                      Check Points Details ({
+                        selectedStage.check_points.length
+                      }{" "}
+                      points)
                     </h6>
                   </div>
                   <div className="card-body">
                     <div className="row">
                       {selectedStage.check_points.map((point, index) => {
                         const pointConfig = {
-                          dimensions: { icon: "📐", label: "Dimensions", color: "primary" },
-                          weight: { icon: "⚖️", label: "Weight", color: "info" },
-                          purity: { icon: "🧪", label: "Purity", color: "warning" },
-                          finish: { icon: "✨", label: "Finish", color: "success" },
-                          assembly: { icon: "⚙️", label: "Assembly", color: "secondary" },
-                          marking: { icon: "🏷️", label: "Marking", color: "dark" },
-                          polish: { icon: "🔍", label: "Polish", color: "light", textColor: "dark" },
-                          stones: { icon: "💎", label: "Stones", color: "info" },
-                          color: { icon: "🎨", label: "Color", color: "danger" },
-                          packaging: { icon: "📦", label: "Packaging", color: "success" },
+                          dimensions: {
+                            icon: "📐",
+                            label: "Dimensions",
+                            color: "primary",
+                          },
+                          weight: {
+                            icon: "⚖️",
+                            label: "Weight",
+                            color: "info",
+                          },
+                          purity: {
+                            icon: "🧪",
+                            label: "Purity",
+                            color: "warning",
+                          },
+                          finish: {
+                            icon: "✨",
+                            label: "Finish",
+                            color: "success",
+                          },
+                          assembly: {
+                            icon: "⚙️",
+                            label: "Assembly",
+                            color: "secondary",
+                          },
+                          marking: {
+                            icon: "🏷️",
+                            label: "Marking",
+                            color: "dark",
+                          },
+                          polish: {
+                            icon: "🔍",
+                            label: "Polish",
+                            color: "light",
+                            textColor: "dark",
+                          },
+                          stones: {
+                            icon: "💎",
+                            label: "Stones",
+                            color: "info",
+                          },
+                          color: {
+                            icon: "🎨",
+                            label: "Color",
+                            color: "danger",
+                          },
+                          packaging: {
+                            icon: "📦",
+                            label: "Packaging",
+                            color: "success",
+                          },
                         };
-                        
-                        const config = pointConfig[point.toLowerCase()] || { 
-                          icon: "✅", 
-                          label: point, 
-                          color: "secondary" 
+
+                        const config = pointConfig[point.toLowerCase()] || {
+                          icon: "✅",
+                          label: point,
+                          color: "secondary",
                         };
-                        
+
                         return (
                           <div key={index} className="col-6 col-md-4 mb-2">
-                            <span className={`badge bg-${config.color} ${config.textColor ? `text-${config.textColor}` : 'text-white'} me-1`}>
+                            <span
+                              className={`badge bg-${config.color} ${config.textColor ? `text-${config.textColor}` : "text-white"} me-1`}
+                            >
                               {config.icon}
                             </span>
                             <span className="small">{config.label}</span>
@@ -608,15 +701,18 @@ const QualityCheckStageTable = () => {
                         );
                       })}
                     </div>
-                    
+
                     {/* Quality Checks Details */}
                     <div className="row mt-3">
                       {selectedStage.dimensions_check && (
                         <div className="col-md-6 mb-2">
                           <div className="small">
-                            <strong>Dimensions:</strong> {selectedStage.dimensions_tolerance || "N/A"}
+                            <strong>Dimensions:</strong>{" "}
+                            {selectedStage.dimensions_tolerance || "N/A"}
                             {selectedStage.dimensions_notes && (
-                              <div className="x-small text-muted">Notes: {selectedStage.dimensions_notes}</div>
+                              <div className="x-small text-muted">
+                                Notes: {selectedStage.dimensions_notes}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -624,9 +720,12 @@ const QualityCheckStageTable = () => {
                       {selectedStage.weight_check && (
                         <div className="col-md-6 mb-2">
                           <div className="small">
-                            <strong>Weight:</strong> {selectedStage.weight_tolerance || "N/A"}
+                            <strong>Weight:</strong>{" "}
+                            {selectedStage.weight_tolerance || "N/A"}
                             {selectedStage.weight_notes && (
-                              <div className="x-small text-muted">Notes: {selectedStage.weight_notes}</div>
+                              <div className="x-small text-muted">
+                                Notes: {selectedStage.weight_notes}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -634,9 +733,12 @@ const QualityCheckStageTable = () => {
                       {selectedStage.purity_check && (
                         <div className="col-md-6 mb-2">
                           <div className="small">
-                            <strong>Purity:</strong> {selectedStage.purity_verified || "N/A"}
+                            <strong>Purity:</strong>{" "}
+                            {selectedStage.purity_verified || "N/A"}
                             {selectedStage.purity_certificate_no && (
-                              <div className="x-small text-muted">Cert: {selectedStage.purity_certificate_no}</div>
+                              <div className="x-small text-muted">
+                                Cert: {selectedStage.purity_certificate_no}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -644,9 +746,12 @@ const QualityCheckStageTable = () => {
                       {selectedStage.finish_check && (
                         <div className="col-md-6 mb-2">
                           <div className="small">
-                            <strong>Finish:</strong> {selectedStage.finish_quality || "N/A"}
+                            <strong>Finish:</strong>{" "}
+                            {selectedStage.finish_quality || "N/A"}
                             {selectedStage.finish_defects && (
-                              <div className="x-small text-muted">Defects: {selectedStage.finish_defects}</div>
+                              <div className="x-small text-muted">
+                                Defects: {selectedStage.finish_defects}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -657,7 +762,8 @@ const QualityCheckStageTable = () => {
               )}
 
               {/* Certificate & Approval Info */}
-              {(selectedStage.certificate_issued || selectedStage.approved_by) && (
+              {(selectedStage.certificate_issued ||
+                selectedStage.approved_by) && (
                 <div className="card mb-4">
                   <div className="card-body">
                     <h6 className="card-title small">
@@ -680,7 +786,8 @@ const QualityCheckStageTable = () => {
                       {selectedStage.approved_by && (
                         <div className="col-md-6">
                           <div className="small">
-                            <strong>Approved By:</strong> {selectedStage.approved_by}
+                            <strong>Approved By:</strong>{" "}
+                            {selectedStage.approved_by}
                             {selectedStage.approval_date && (
                               <div className="x-small text-muted">
                                 Date: {formatDate(selectedStage.approval_date)}
@@ -710,7 +817,9 @@ const QualityCheckStageTable = () => {
                           <FiAlertTriangle className="me-1" />
                           Rework Reason
                         </h6>
-                        <p className="mb-0 small text-danger">{selectedStage.rework_reason}</p>
+                        <p className="mb-0 small text-danger">
+                          {selectedStage.rework_reason}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -903,9 +1012,13 @@ const QualityCheckStageTable = () => {
               ) : (
                 currentStages.map((stage, index) => {
                   // Calculate statistics
-                  const passRate = stage.batch_size > 0 
-                    ? ((stage.accepted_quantity / stage.batch_size) * 100).toFixed(1)
-                    : "0";
+                  const passRate =
+                    stage.batch_size > 0
+                      ? (
+                          (stage.accepted_quantity / stage.batch_size) *
+                          100
+                        ).toFixed(1)
+                      : "0";
 
                   return (
                     <tr
@@ -913,7 +1026,8 @@ const QualityCheckStageTable = () => {
                       className={
                         stage.overall_status === "passed"
                           ? "table-success"
-                          : stage.overall_status === "failed" || stage.overall_status === "rework"
+                          : stage.overall_status === "failed" ||
+                              stage.overall_status === "rework"
                             ? "table-warning"
                             : stage.overall_status === "in_progress"
                               ? "table-info"
@@ -944,7 +1058,9 @@ const QualityCheckStageTable = () => {
                           {stage.design_type || "N/A"}
                         </div>
                         <div className="text-muted x-small">
-                          {stage.job_card_status ? `Status: ${stage.job_card_status}` : ""}
+                          {stage.job_card_status
+                            ? `Status: ${stage.job_card_status}`
+                            : ""}
                         </div>
                       </td>
 
@@ -982,14 +1098,20 @@ const QualityCheckStageTable = () => {
                         <div className="small">
                           <div className="d-flex justify-content-between mb-1">
                             <span className="x-small text-muted">Total:</span>
-                            <span className={`fw-medium ${
-                              stage.defects_count > 0 ? 'text-danger' : 'text-success'
-                            }`}>
+                            <span
+                              className={`fw-medium ${
+                                stage.defects_count > 0
+                                  ? "text-danger"
+                                  : "text-success"
+                              }`}
+                            >
                               {stage.defects_count || 0}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between">
-                            <span className="x-small text-muted">Critical:</span>
+                            <span className="x-small text-muted">
+                              Critical:
+                            </span>
                             <span className="fw-medium text-danger">
                               {stage.critical_defects || 0}
                             </span>
@@ -1020,7 +1142,8 @@ const QualityCheckStageTable = () => {
                           {getStatusBadge(stage.overall_status)}
                           {stage.rework_required && (
                             <span className="badge bg-warning x-small">
-                              <FiAlertTriangle size={10} className="me-1" /> Rework
+                              <FiAlertTriangle size={10} className="me-1" />{" "}
+                              Rework
                             </span>
                           )}
                           {stage.certificate_issued && (
@@ -1033,7 +1156,9 @@ const QualityCheckStageTable = () => {
 
                       <td>
                         <div className="badge bg-info">
-                          {stage.next_stage || stage.job_card_stage || "Not set"}
+                          {stage.next_stage ||
+                            stage.job_card_stage ||
+                            "Not set"}
                         </div>
                       </td>
 
@@ -1161,6 +1286,7 @@ const QualityCheckStageTable = () => {
           onUpdate={handleUpdateStage}
           onClose={handleCloseUpdate}
           loading={loading}
+          laborCosts={laborCosts}
         />
       )}
 

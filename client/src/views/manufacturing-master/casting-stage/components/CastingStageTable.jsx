@@ -35,6 +35,7 @@ const CastingStageTable = () => {
     materials,
     units,
     loading,
+    laborCosts,
     error,
     fetchCastingStages,
     stockMovements,
@@ -110,6 +111,8 @@ const CastingStageTable = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentStages = filteredStages.slice(indexOfFirstItem, indexOfLastItem);
+
+  console.log(currentStages)
 
   // Format date
   const formatDate = (dateString) => {
@@ -1032,7 +1035,7 @@ const CastingStageTable = () => {
               <tr>
                 <th className="small fw-bold text-center">#</th>
                 <th className="small fw-bold">Job Card</th>
-                <th className="small fw-bold">Product</th>
+                {/* <th className="small fw-bold">Product</th> */}
                 <th className="small fw-bold">Karigar</th>
                 <th className="small fw-bold">Material</th>
                 <th className="small fw-bold">Material Balance</th>
@@ -1103,7 +1106,7 @@ const CastingStageTable = () => {
                           )}
                         </div>
                       </td>
-
+{/* 
                       <td>
                         <div className="fw-medium small">
                           <FiPackage size={10} className="me-1" />
@@ -1113,7 +1116,7 @@ const CastingStageTable = () => {
                           {stage.casting_method && `Method: ${stage.casting_method}`}
                           {stage.mold_type && ` • Mold: ${stage.mold_type}`}
                         </div>
-                      </td>
+                      </td> */}
 
                       <td>
                         <div>
@@ -1144,19 +1147,28 @@ const CastingStageTable = () => {
                           <div className="d-flex justify-content-between mb-1">
                             <span className="x-small text-muted">Issued:</span>
                             <span className="fw-medium">
-                              {stage.material_issued_qty || 0}g
+                              {stage.material_issued_qty || 0}
+                            </span>
+                             <span className="fw-medium ">
+                              {stage.material_unit}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-1">
                             <span className="x-small text-muted">Used:</span>
-                            <span className="fw-medium text-success">
-                              {stage.material_used_qty || 0}g
+                            <span className="fw-medium  text-success">
+                              {stage.material_used_qty || 0}
+                            </span>
+                             <span className="fw-medium  text-success">
+                              {stage.material_unit}
                             </span>
                           </div>
-                          <div className="d-flex justify-content-between mb-1">
+                          <div className="d-flex justify-content-between mb-2">
                             <span className="x-small text-muted">Returned:</span>
                             <span className="fw-medium text-info">
-                              {stage.material_returned_qty || 0}g
+                              {stage.material_returned_qty || 0}
+                            </span>
+                             <span className="fw-medium  text-success">
+                              {stage.material_unit}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between">
@@ -1168,7 +1180,10 @@ const CastingStageTable = () => {
                                   : "text-warning"
                               }`}
                             >
-                              {stage.material_wastage_qty || 0}g
+                              {stage.material_wastage_qty || 0}
+                            </span>
+                             <span className="fw-medium  text-success">
+                              {stage.material_unit}
                             </span>
                           </div>
                           <div
@@ -1375,6 +1390,7 @@ const CastingStageTable = () => {
           units={units}
           availableMaterials={availableMaterials}
           stockMovements={stockMovements}
+          laborCosts={laborCosts}
           onUpdate={handleUpdateStage}
           onClose={handleCloseUpdate}
           loading={loading}

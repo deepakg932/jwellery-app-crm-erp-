@@ -37,6 +37,7 @@ const PackagingStageTable = () => {
     fetchPackagingStages,
     employees,
     updatePackagingStageWithFiles,
+    laborCosts,
   } = usePackagingStages();
 
   console.log("Packaging Stages:", packagingStages);
@@ -53,12 +54,27 @@ const PackagingStageTable = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const statusOptions = [
-    { value: "not_started", label: "Not Started", color: "secondary", icon: "⏳" },
+    {
+      value: "not_started",
+      label: "Not Started",
+      color: "secondary",
+      icon: "⏳",
+    },
     { value: "preparation", label: "Preparation", color: "info", icon: "🛠️" },
     { value: "packaging", label: "Packaging", color: "warning", icon: "📦" },
     { value: "labeling", label: "Labeling", color: "info", icon: "🏷️" },
-    { value: "quality_check", label: "Quality Check", color: "warning", icon: "🔍" },
-    { value: "documentation", label: "Documentation", color: "info", icon: "📄" },
+    {
+      value: "quality_check",
+      label: "Quality Check",
+      color: "warning",
+      icon: "🔍",
+    },
+    {
+      value: "documentation",
+      label: "Documentation",
+      color: "info",
+      icon: "📄",
+    },
     { value: "completed", label: "Completed", color: "success", icon: "✅" },
     { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
   ];
@@ -97,7 +113,9 @@ const PackagingStageTable = () => {
       (materialFilter === "box" && stage.box_used) ||
       (materialFilter === "certificate" && stage.certificate_used) ||
       (materialFilter === "cotton" && stage.cotton_used) ||
-      (materialFilter === "additional" && (stage.additional_materials?.length > 0 || stage.materials_used?.length > 0));
+      (materialFilter === "additional" &&
+        (stage.additional_materials?.length > 0 ||
+          stage.materials_used?.length > 0));
 
     return matchesSearch && matchesStatus && matchesMaterial;
   });
@@ -151,7 +169,9 @@ const PackagingStageTable = () => {
     };
 
     return (
-      <span className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}>
+      <span
+        className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}
+      >
         <span>{config.icon}</span>
         {config.label}
       </span>
@@ -161,48 +181,67 @@ const PackagingStageTable = () => {
   // Get material badges
   const getMaterialBadges = (stage) => {
     const badges = [];
-    
+
     if (stage.box_used) {
       badges.push(
-        <span key="box" className="badge bg-warning me-1 small d-flex align-items-center gap-1">
-          <FiBox size={10} /> Box {stage.box_quantity ? `(${stage.box_quantity})` : ''}
-        </span>
+        <span
+          key="box"
+          className="badge bg-warning me-1 small d-flex align-items-center gap-1"
+        >
+          <FiBox size={10} /> Box{" "}
+          {stage.box_quantity ? `(${stage.box_quantity})` : ""}
+        </span>,
       );
     }
-    
+
     if (stage.certificate_used) {
       badges.push(
-        <span key="certificate" className="badge bg-info me-1 small d-flex align-items-center gap-1">
-          <FiTag size={10} /> Certificate {stage.certificate_quantity ? `(${stage.certificate_quantity})` : ''}
-        </span>
+        <span
+          key="certificate"
+          className="badge bg-info me-1 small d-flex align-items-center gap-1"
+        >
+          <FiTag size={10} /> Certificate{" "}
+          {stage.certificate_quantity ? `(${stage.certificate_quantity})` : ""}
+        </span>,
       );
     }
-    
+
     if (stage.cotton_used) {
       badges.push(
-        <span key="cotton" className="badge bg-success me-1 small d-flex align-items-center gap-1">
-          <FiPackage size={10} /> Cotton {stage.cotton_quantity ? `(${stage.cotton_quantity}g)` : ''}
-        </span>
+        <span
+          key="cotton"
+          className="badge bg-success me-1 small d-flex align-items-center gap-1"
+        >
+          <FiPackage size={10} /> Cotton{" "}
+          {stage.cotton_quantity ? `(${stage.cotton_quantity}g)` : ""}
+        </span>,
       );
     }
-    
-    if (stage.additional_materials?.length > 0 && stage.additional_materials[0]) {
+
+    if (
+      stage.additional_materials?.length > 0 &&
+      stage.additional_materials[0]
+    ) {
       badges.push(
         <span key="additional" className="badge bg-secondary me-1 small">
           +{stage.additional_materials.length}
-        </span>
+        </span>,
       );
     }
-    
+
     if (stage.materials_used?.length > 0 && stage.materials_used[0]) {
       badges.push(
         <span key="materials" className="badge bg-primary me-1 small">
           {stage.materials_used.length} items
-        </span>
+        </span>,
       );
     }
-    
-    return badges.length > 0 ? badges : <span className="text-muted small">No materials</span>;
+
+    return badges.length > 0 ? (
+      badges
+    ) : (
+      <span className="text-muted small">No materials</span>
+    );
   };
 
   // Handle update from modal
@@ -277,13 +316,13 @@ const PackagingStageTable = () => {
     const csvContent = [
       headers.join(","),
       ...filteredStages.map((stage) => {
-        const materialCount = 
+        const materialCount =
           (stage.box_used ? 1 : 0) +
           (stage.certificate_used ? 1 : 0) +
           (stage.cotton_used ? 1 : 0) +
           (stage.additional_materials?.length || 0) +
           (stage.materials_used?.length || 0);
-        
+
         return [
           stage.job_card_no || "",
           stage.invoice_number || "",
@@ -330,7 +369,7 @@ const PackagingStageTable = () => {
     if (!selectedStage) return null;
 
     // Calculate material count
-    const materialCount = 
+    const materialCount =
       (selectedStage.box_used ? 1 : 0) +
       (selectedStage.certificate_used ? 1 : 0) +
       (selectedStage.cotton_used ? 1 : 0) +
@@ -389,7 +428,8 @@ const PackagingStageTable = () => {
                       Packaging Type
                     </label>
                     <div className="badge bg-info">
-                      {selectedStage.packaging_type?.toUpperCase() || "STANDARD"}
+                      {selectedStage.packaging_type?.toUpperCase() ||
+                        "STANDARD"}
                     </div>
                   </div>
                   <div className="mb-3">
@@ -415,7 +455,9 @@ const PackagingStageTable = () => {
                     <label className="form-label text-muted small">
                       Department
                     </label>
-                    <div>{selectedStage.assigned_department || "PACKAGING"}</div>
+                    <div>
+                      {selectedStage.assigned_department || "PACKAGING"}
+                    </div>
                   </div>
                   <div className="mb-3">
                     <label className="form-label text-muted small">Dates</label>
@@ -461,12 +503,13 @@ const PackagingStageTable = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="row">
                     {selectedStage.box_used && (
                       <div className="col-md-4 mb-2">
                         <div className="small">
-                          <strong>Box:</strong> {selectedStage.box_type || "Standard"}
+                          <strong>Box:</strong>{" "}
+                          {selectedStage.box_type || "Standard"}
                           {selectedStage.box_quantity && (
                             <div className="x-small text-muted">
                               Quantity: {selectedStage.box_quantity}
@@ -480,11 +523,12 @@ const PackagingStageTable = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {selectedStage.certificate_used && (
                       <div className="col-md-4 mb-2">
                         <div className="small">
-                          <strong>Certificate:</strong> {selectedStage.certificate_type || "Standard"}
+                          <strong>Certificate:</strong>{" "}
+                          {selectedStage.certificate_type || "Standard"}
                           {selectedStage.certificate_quantity && (
                             <div className="x-small text-muted">
                               Quantity: {selectedStage.certificate_quantity}
@@ -498,11 +542,12 @@ const PackagingStageTable = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {selectedStage.cotton_used && (
                       <div className="col-md-4 mb-2">
                         <div className="small">
-                          <strong>Cotton:</strong> {selectedStage.cotton_quantity || "0"}g
+                          <strong>Cotton:</strong>{" "}
+                          {selectedStage.cotton_quantity || "0"}g
                           {selectedStage.cotton_cost && (
                             <div className="x-small text-muted">
                               Cost: ₹{selectedStage.cotton_cost}
@@ -512,26 +557,30 @@ const PackagingStageTable = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Additional Materials */}
-                  {(selectedStage.additional_materials?.length > 0 && selectedStage.additional_materials[0]) && (
-                    <div className="mt-3">
-                      <div className="small fw-bold">Additional Materials:</div>
-                      <div className="x-small">
-                        {selectedStage.additional_materials.join(", ")}
+                  {selectedStage.additional_materials?.length > 0 &&
+                    selectedStage.additional_materials[0] && (
+                      <div className="mt-3">
+                        <div className="small fw-bold">
+                          Additional Materials:
+                        </div>
+                        <div className="x-small">
+                          {selectedStage.additional_materials.join(", ")}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  
+                    )}
+
                   {/* Materials Used */}
-                  {(selectedStage.materials_used?.length > 0 && selectedStage.materials_used[0]) && (
-                    <div className="mt-3">
-                      <div className="small fw-bold">Materials Used:</div>
-                      <div className="x-small">
-                        {selectedStage.materials_used.join(", ")}
+                  {selectedStage.materials_used?.length > 0 &&
+                    selectedStage.materials_used[0] && (
+                      <div className="mt-3">
+                        <div className="small fw-bold">Materials Used:</div>
+                        <div className="x-small">
+                          {selectedStage.materials_used.join(", ")}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </div>
               </div>
 
@@ -547,15 +596,25 @@ const PackagingStageTable = () => {
                       <div className="fw-bold fs-5">
                         {formatTime(selectedStage.total_time_spent)}
                       </div>
-                      <div className="small text-muted">
-                        Total Time
-                      </div>
+                      <div className="small text-muted">Total Time</div>
                       <div className="x-small mt-2">
-                        <div>Preparation: {formatTime(selectedStage.preparation_time)}</div>
-                        <div>Packaging: {formatTime(selectedStage.packaging_time)}</div>
-                        <div>Labeling: {formatTime(selectedStage.labeling_time)}</div>
-                        <div>Quality: {formatTime(selectedStage.quality_time)}</div>
-                        <div>Documentation: {formatTime(selectedStage.documentation_time)}</div>
+                        <div>
+                          Preparation:{" "}
+                          {formatTime(selectedStage.preparation_time)}
+                        </div>
+                        <div>
+                          Packaging: {formatTime(selectedStage.packaging_time)}
+                        </div>
+                        <div>
+                          Labeling: {formatTime(selectedStage.labeling_time)}
+                        </div>
+                        <div>
+                          Quality: {formatTime(selectedStage.quality_time)}
+                        </div>
+                        <div>
+                          Documentation:{" "}
+                          {formatTime(selectedStage.documentation_time)}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -579,7 +638,9 @@ const PackagingStageTable = () => {
                       <div className="x-small mt-2">
                         <div>Material: ₹{selectedStage.material_cost || 0}</div>
                         <div>Labour: ₹{selectedStage.labour_cost || 0}</div>
-                        <div>Equipment: ₹{selectedStage.equipment_cost || 0}</div>
+                        <div>
+                          Equipment: ₹{selectedStage.equipment_cost || 0}
+                        </div>
                         <div>Other: ₹{selectedStage.other_costs || 0}</div>
                       </div>
                     </div>
@@ -593,11 +654,17 @@ const PackagingStageTable = () => {
                         Quality Metrics
                       </h6>
                       <div className="d-flex align-items-center mb-2">
-                        <div className={`fw-bold fs-4 ${
-                          selectedStage.quality_score >= 95 ? 'text-success' :
-                          selectedStage.quality_score >= 90 ? 'text-info' :
-                          selectedStage.quality_score >= 85 ? 'text-warning' : 'text-danger'
-                        }`}>
+                        <div
+                          className={`fw-bold fs-4 ${
+                            selectedStage.quality_score >= 95
+                              ? "text-success"
+                              : selectedStage.quality_score >= 90
+                                ? "text-info"
+                                : selectedStage.quality_score >= 85
+                                  ? "text-warning"
+                                  : "text-danger"
+                          }`}
+                        >
                           {selectedStage.quality_score || 0}%
                         </div>
                         <div className="ms-2">
@@ -609,7 +676,9 @@ const PackagingStageTable = () => {
                         </div>
                       </div>
                       <div className="small text-muted">
-                        {selectedStage.quality_check ? "Quality Check Done" : "Pending"}
+                        {selectedStage.quality_check
+                          ? "Quality Check Done"
+                          : "Pending"}
                       </div>
                       {selectedStage.quality_remarks && (
                         <div className="x-small mt-2">
@@ -618,7 +687,8 @@ const PackagingStageTable = () => {
                       )}
                       {selectedStage.weight_after_packaging && (
                         <div className="x-small mt-2">
-                          <strong>Weight:</strong> {selectedStage.weight_after_packaging}g
+                          <strong>Weight:</strong>{" "}
+                          {selectedStage.weight_after_packaging}g
                         </div>
                       )}
                     </div>
@@ -627,7 +697,9 @@ const PackagingStageTable = () => {
               </div>
 
               {/* Surface Quality */}
-              {(selectedStage.surface_finish || selectedStage.adhesion_quality || selectedStage.uniformity) && (
+              {(selectedStage.surface_finish ||
+                selectedStage.adhesion_quality ||
+                selectedStage.uniformity) && (
                 <div className="card mb-4">
                   <div className="card-body">
                     <h6 className="card-title small">
@@ -637,17 +709,20 @@ const PackagingStageTable = () => {
                     <div className="row">
                       <div className="col-md-4">
                         <div className="small">
-                          <strong>Finish:</strong> {selectedStage.surface_finish || "N/A"}
+                          <strong>Finish:</strong>{" "}
+                          {selectedStage.surface_finish || "N/A"}
                         </div>
                       </div>
                       <div className="col-md-4">
                         <div className="small">
-                          <strong>Adhesion:</strong> {selectedStage.adhesion_quality || "N/A"}
+                          <strong>Adhesion:</strong>{" "}
+                          {selectedStage.adhesion_quality || "N/A"}
                         </div>
                       </div>
                       <div className="col-md-4">
                         <div className="small">
-                          <strong>Uniformity:</strong> {selectedStage.uniformity || "N/A"}
+                          <strong>Uniformity:</strong>{" "}
+                          {selectedStage.uniformity || "N/A"}
                         </div>
                       </div>
                     </div>
@@ -656,19 +731,20 @@ const PackagingStageTable = () => {
               )}
 
               {/* Defects */}
-              {(selectedStage.defects_detected?.length > 0 && selectedStage.defects_detected[0]) && (
-                <div className="card mb-4">
-                  <div className="card-body">
-                    <h6 className="card-title small text-danger">
-                      <FiAlertCircle className="me-1" />
-                      Defects Detected
-                    </h6>
-                    <div className="x-small">
-                      {selectedStage.defects_detected.join(", ")}
+              {selectedStage.defects_detected?.length > 0 &&
+                selectedStage.defects_detected[0] && (
+                  <div className="card mb-4">
+                    <div className="card-body">
+                      <h6 className="card-title small text-danger">
+                        <FiAlertCircle className="me-1" />
+                        Defects Detected
+                      </h6>
+                      <div className="x-small">
+                        {selectedStage.defects_detected.join(", ")}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Time Breakdown */}
               {selectedStage.time_breakdown && (
@@ -889,7 +965,7 @@ const PackagingStageTable = () => {
               ) : (
                 currentStages.map((stage, index) => {
                   // Calculate material count
-                  const materialCount = 
+                  const materialCount =
                     (stage.box_used ? 1 : 0) +
                     (stage.certificate_used ? 1 : 0) +
                     (stage.cotton_used ? 1 : 0) +
@@ -979,11 +1055,17 @@ const PackagingStageTable = () => {
 
                       <td>
                         <div className="d-flex align-items-center gap-1">
-                          <span className={`badge ${
-                            stage.quality_score >= 95 ? 'bg-success' :
-                            stage.quality_score >= 90 ? 'bg-info' :
-                            stage.quality_score >= 85 ? 'bg-warning' : 'bg-danger'
-                          }`}>
+                          <span
+                            className={`badge ${
+                              stage.quality_score >= 95
+                                ? "bg-success"
+                                : stage.quality_score >= 90
+                                  ? "bg-info"
+                                  : stage.quality_score >= 85
+                                    ? "bg-warning"
+                                    : "bg-danger"
+                            }`}
+                          >
                             {stage.quality_score || 0}%
                           </span>
                           {stage.quality_check ? (
@@ -992,14 +1074,16 @@ const PackagingStageTable = () => {
                             <FiAlertCircle size={12} className="text-warning" />
                           )}
                           {stage.barcode_generated && (
-                            <FiTag size={12} className="text-info ms-1" title="Barcode Generated" />
+                            <FiTag
+                              size={12}
+                              className="text-info ms-1"
+                              title="Barcode Generated"
+                            />
                           )}
                         </div>
                       </td>
 
-                      <td>
-                        {getStatusBadge(stage.status)}
-                      </td>
+                      <td>{getStatusBadge(stage.status)}</td>
 
                       {/* ACTION BUTTONS */}
                       <td>
@@ -1126,6 +1210,7 @@ const PackagingStageTable = () => {
           onUpdate={handleUpdateStage}
           onClose={handleCloseUpdate}
           loading={loading}
+          laborCosts={laborCosts}
         />
       )}
 

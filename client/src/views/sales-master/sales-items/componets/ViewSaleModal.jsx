@@ -8,6 +8,7 @@ import {
   FiFileText,
   FiRefreshCw,
   FiFile,
+  FiImage, // Added this import
 } from "react-icons/fi";
 import { AiOutlineFileExcel } from "react-icons/ai";
 import { GrDocumentPdf } from "react-icons/gr";
@@ -128,6 +129,9 @@ const ViewSaleModal = ({ sale, onClose }) => {
     // Extract sold by information
     const soldByName =
       sale.sold_by_name || sale.sold_by?.name || "Unknown Employee";
+
+    // Get exchange image URL if exists
+    const exchangeImageUrl = sale.exchange_details?.fullImageUrl || "";
 
     // Create a printable HTML invoice
     const invoiceHTML = `
@@ -256,6 +260,13 @@ const ViewSaleModal = ({ sale, onClose }) => {
             border-radius: 5px;
             margin: 20px 0;
           }
+          .exchange-image {
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+          }
         </style>
       </head>
       <body>
@@ -345,6 +356,24 @@ const ViewSaleModal = ({ sale, onClose }) => {
                 Exchange Sale
               </h3>
               <div class="detail-item">
+                <span class="detail-label">Item Name:</span> ${sale.exchange_details?.item_name || "N/A"}
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Weight:</span> ${sale.exchange_details?.weight || 0}
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Unit:</span> ${sale.exchange_details?.unit_name || "N/A"}
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Weight in Grams:</span> ${sale.exchange_details?.weight_in_gram || 0} g
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Actual Rate:</span> ₹${sale.exchange_details?.actual_rate || 0}
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Calculated Value:</span> ₹${sale.exchange_details?.calculated_value || 0}
+              </div>
+              <div class="detail-item">
                 <span class="detail-label">Exchange Amount:</span> ₹${parseFloat(
                   sale.exchange_amount || 0,
                 ).toLocaleString("en-IN", {
@@ -352,6 +381,16 @@ const ViewSaleModal = ({ sale, onClose }) => {
                   maximumFractionDigits: 2,
                 })}
               </div>
+              ${
+                sale.exchange_details?.fullImageUrl
+                  ? `
+                <div class="detail-item">
+                  <span class="detail-label">Exchange Image:</span><br>
+                  <img src="${sale.exchange_details.fullImageUrl}" alt="Exchange Item" class="exchange-image" onerror="this.style.display='none';">
+                </div>
+              `
+                  : ""
+              }
               ${
                 sale.exchange_note
                   ? `
@@ -514,6 +553,7 @@ const ViewSaleModal = ({ sale, onClose }) => {
         status: sale.status,
         payment_status: sale.payment_status,
         is_exchange: sale.is_exchange ? "Yes" : "No",
+        exchange_details: sale.exchange_details || {},
         exchange_amount: sale.exchange_amount || 0,
         exchange_note: sale.exchange_note || "",
         items: sale.items || [],
@@ -549,7 +589,14 @@ const ViewSaleModal = ({ sale, onClose }) => {
       csvContent += `Payment Status,${saleData.payment_status}\r\n`;
       csvContent += `Exchange Sale,${saleData.is_exchange}\r\n`;
       if (saleData.is_exchange === "Yes") {
+        csvContent += `Exchange Item Name,${saleData.exchange_details.item_name}\r\n`;
+        csvContent += `Exchange Weight,${saleData.exchange_details.weight}\r\n`;
+        csvContent += `Exchange Unit,${saleData.exchange_details.unit}\r\n`;
+        csvContent += `Exchange Weight (g),${saleData.exchange_details.weight_in_gram}\r\n`;
+        csvContent += `Exchange Actual Rate,${saleData.exchange_details.actual_rate}\r\n`;
+        csvContent += `Exchange Calculated Value,${saleData.exchange_details.calculated_value}\r\n`;
         csvContent += `Exchange Amount,${saleData.exchange_amount}\r\n`;
+        csvContent += `Exchange Image,${saleData.exchange_details.fullImageUrl || ""}\r\n`;
         csvContent += `Exchange Note,${saleData.exchange_note}\r\n`;
       }
       csvContent += `\r\n`;
@@ -827,6 +874,83 @@ const ViewSaleModal = ({ sale, onClose }) => {
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Exchange Image Section - ADDED THIS */}
+                      {sale.exchange_details?.fullImageUrl && (
+                        <div className="mt-4">
+                          <h6 className="fw-bold mb-3">
+                            <FiImage className="me-2" />
+                            Exchange Item Image
+                          </h6>
+                          <div className="row">
+                            <div className="col-md-6">
+                              <div className="border rounded p-3 bg-white">
+                                <img
+                                  src={sale.exchange_details.fullImageUrl}
+                                  alt="Exchange Item"
+                                  className="img-fluid rounded"
+                                  style={{
+                                    maxHeight: "200px",
+                                    objectFit: "contain",
+                                  }}
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src =
+                                      "https://via.placeholder.com/200x200?text=Image+Not+Available";
+                                  }}
+                                />
+                                <div className="text-center small text-muted mt-2">
+                                  Exchange Item: {sale.exchange_details.item_name || "N/A"}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="col-md-6">
+                              <div className="p-3">
+                                <h6 className="fw-bold mb-3">Exchange Item Details</h6>
+                                <div className="row">
+                                  <div className="col-6 mb-2">
+                                    <small className="text-muted">Item Name:</small>
+                                    <div className="fw-medium">
+                                      {sale.exchange_details.item_name || "N/A"}
+                                    </div>
+                                  </div>
+                                  <div className="col-6 mb-2">
+                                    <small className="text-muted">Weight:</small>
+                                    <div className="fw-medium">
+                                      {sale.exchange_details.weight || 0}
+                                    </div>
+                                  </div>
+                                  <div className="col-6 mb-2">
+                                    <small className="text-muted">Unit:</small>
+                                    <div className="fw-medium">
+                                      {sale.exchange_details.unit_name || "N/A"}
+                                    </div>
+                                  </div>
+                                  <div className="col-6 mb-2">
+                                    <small className="text-muted">Weight (g):</small>
+                                    <div className="fw-medium">
+                                      {sale.exchange_details.weight_in_gram || 0} g
+                                    </div>
+                                  </div>
+                                  <div className="col-6 mb-2">
+                                    <small className="text-muted">Actual Rate:</small>
+                                    <div className="fw-medium">
+                                      ₹{sale.exchange_details.actual_rate || 0}
+                                    </div>
+                                  </div>
+                                  <div className="col-6 mb-2">
+                                    <small className="text-muted">Calculated Value:</small>
+                                    <div className="fw-medium">
+                                      ₹{sale.exchange_details.calculated_value || 0}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="alert alert-info mt-3 mb-0">
                         <div className="d-flex align-items-center">
                           <FiRefreshCw className="me-2" size={18} />

@@ -6,11 +6,13 @@ import { API_ENDPOINTS } from "@/api/api";
 export default function usePlatingStages() {
   const [platingStages, setPlatingStages] = useState([]);
   const [materials, setMaterials] = useState([]);
+  const [units, setUnits] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [laborCosts, setLaborCosts] = useState([]); // Add labor costs
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Static plating materials (since you mentioned they're static)
+  // Static plating materials
   const staticPlatingMaterials = [
     {
       _id: "rhodium",
@@ -111,135 +113,191 @@ export default function usePlatingStages() {
   ];
 
   // Fetch Plating stages
-const fetchPlatingStages = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError("");
+  const fetchPlatingStages = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const url = API_ENDPOINTS.getPlatingStages();
-    const res = await axios.get(url);
+      const url = API_ENDPOINTS.getPlatingStages();
+      const res = await axios.get(url);
 
-    let jobCardsData = [];
+      let jobCardsData = [];
 
-    if (res.data?.success && Array.isArray(res.data.data)) {
-      jobCardsData = res.data.data;
-    } else if (Array.isArray(res.data)) {
-      jobCardsData = res.data;
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        jobCardsData = res.data.data;
+      } else if (Array.isArray(res.data)) {
+        jobCardsData = res.data;
+      }
+
+      console.log("Plating stages raw data:", jobCardsData);
+
+      const platingStagesData = jobCardsData
+        .filter(jobCard => jobCard.plating_stage)
+        .map(jobCard => {
+          const platingStage = jobCard.plating_stage;
+          const platingData = platingStage.data || {};
+          const jobCardData = jobCard.job_card || {};
+          const assignedTo = platingStage.assigned_to || {};
+
+          // Parse files
+          let filesArray = [];
+          if (platingData.files) {
+            if (Array.isArray(platingData.files)) {
+              if (platingData.files.length > 0 && typeof platingData.files[0] === "string") {
+                try {
+                  const parsedFiles = JSON.parse(platingData.files[0]);
+                  filesArray = Array.isArray(parsedFiles) ? parsedFiles : [];
+                } catch (e) {
+                  console.error("Error parsing files:", e);
+                  filesArray = [];
+                }
+              } else {
+                filesArray = platingData.files;
+              }
+            } else if (typeof platingData.files === "string") {
+              try {
+                filesArray = JSON.parse(platingData.files);
+              } catch {
+                filesArray = [];
+              }
+            }
+          }
+
+          // Parse labor costs
+          let selectedLaborCostsArray = [];
+          let laborBreakdownArray = [];
+          
+          if (platingData.selected_labor_costs) {
+            if (Array.isArray(platingData.selected_labor_costs)) {
+              selectedLaborCostsArray = platingData.selected_labor_costs;
+            } else if (typeof platingData.selected_labor_costs === "string") {
+              try {
+                selectedLaborCostsArray = JSON.parse(platingData.selected_labor_costs);
+              } catch {
+                selectedLaborCostsArray = [];
+              }
+            }
+          }
+
+          if (platingData.labor_cost_breakdown) {
+            if (Array.isArray(platingData.labor_cost_breakdown)) {
+              laborBreakdownArray = platingData.labor_cost_breakdown;
+            } else if (typeof platingData.labor_cost_breakdown === "string") {
+              try {
+                laborBreakdownArray = JSON.parse(platingData.labor_cost_breakdown);
+              } catch {
+                laborBreakdownArray = [];
+              }
+            }
+          }
+          
+          return {
+            // IDs
+            _id: jobCard._id || platingStage._id,
+            plating_stage_id: platingStage._id,
+            job_card_id: jobCardData._id,
+            
+            // Job card info
+            job_card_no: jobCardData.job_card_no || "N/A",
+            design_type: jobCardData.design_type || "N/A",
+            job_card_priority: jobCardData.priority,
+            job_card_images: jobCardData.images || [],
+            job_card_stage: jobCardData.stage,
+            job_card_status: jobCardData.status,
+            
+            // Department info
+            department: "PLATING",
+            assigned_department: platingStage.department,
+            
+            // Assignment info
+            assigned_to: assignedTo._id,
+            assigned_name: assignedTo.name,
+            assigned_email: assignedTo.email,
+            
+            // Stage status
+            status: platingStage.status,
+            start_date: platingStage.start_date,
+            end_date: platingStage.end_date,
+            completed_at: platingStage.completed_at,
+            remarks: platingStage.remarks,
+            createdAt: jobCard.createdAt,
+            
+            // Material info
+            material_id: platingData.material_id || "",
+            material_name: platingData.material_name || staticPlatingMaterials.find(m => m._id === platingData.material_id)?.name || "",
+            material_code: platingData.material_code || staticPlatingMaterials.find(m => m._id === platingData.material_id)?.item_code || "",
+            material_used_qty: platingData.material_used_qty || "",
+            material_unit: platingData.material_unit || "ml",
+            
+            // Plating process details
+            plating_type: platingData.plating_type || "electroplating",
+            plating_thickness: platingData.plating_thickness || "",
+            current_density: platingData.current_density || "",
+            voltage_applied: platingData.voltage_applied || "",
+            plating_time: platingData.plating_time || "",
+            bath_temperature: platingData.bath_temperature || "",
+            ph_level: platingData.ph_level || "",
+            
+            // Quality metrics
+            surface_finish: platingData.surface_finish || "good",
+            adhesion_quality: platingData.adhesion_quality || "good",
+            uniformity: platingData.uniformity || "good",
+            defects: platingData.defects || "",
+            rework_required: platingData.rework_required || false,
+            rework_reason: platingData.rework_reason || "",
+            
+            // Time tracking
+            labour_hours: platingData.labour_hours || "",
+            actual_hours: platingData.actual_hours || "",
+            preparation_time: platingData.preparation_time || "",
+            cleaning_time: platingData.cleaning_time || "",
+            plating_time_track: platingData.plating_time_track || "",
+            rinsing_time: platingData.rinsing_time || "",
+            drying_time: platingData.drying_time || "",
+            quality_check_time: platingData.quality_check_time || "",
+            total_time_spent: platingData.total_time_spent || "",
+            time_breakdown: platingData.time_breakdown || "",
+            
+            // Next stage
+            next_stage: platingData.next_stage || "",
+            
+            // Cost tracking
+            material_cost: platingData.material_cost || "",
+            labour_cost: platingData.labour_cost || "",
+            equipment_cost: platingData.equipment_cost || "",
+            chemical_cost: platingData.chemical_cost || "",
+            electricity_cost: platingData.electricity_cost || "",
+            other_costs: platingData.other_costs || "",
+            total_cost: platingData.total_cost || "",
+            final_price: platingData.final_price || "",
+            markup_percentage: platingData.markup_percentage || "25",
+            cost_currency: platingData.cost_currency || "INR",
+            cost_status: platingData.cost_status || "estimated",
+            
+            // Labor cost tracking (new fields)
+            selected_labor_costs: selectedLaborCostsArray || [],
+            labor_cost_breakdown: laborBreakdownArray || [],
+            
+            // File tracking
+            file_version: platingData.file_version || "1.0",
+            file_revisions: platingData.file_revisions || 0,
+            file_status: platingData.file_status || "draft",
+            backup_location: platingData.backup_location || "",
+            files: filesArray || [],
+          };
+        });
+
+      setPlatingStages(platingStagesData);
+      return platingStagesData;
+    } catch (err) {
+      console.error("Fetch plating stages error:", err);
+      setError(err.response?.data?.message || "Failed to load plating stages");
+      setPlatingStages([]);
+      return [];
+    } finally {
+      setLoading(false);
     }
-
-    console.log("Plating stages raw data:", jobCardsData);
-
-    const platingStagesData = jobCardsData
-      .filter(jobCard => jobCard.plating_stage)
-      .map(jobCard => {
-        const platingStage = jobCard.plating_stage;
-        const platingData = platingStage.data || {};
-        const jobCardData = jobCard.job_card || {};
-        const assignedTo = platingStage.assigned_to || {};
-        
-        return {
-          // IDs
-          _id: jobCard._id || platingStage._id,
-          plating_stage_id: platingStage._id,
-          job_card_id: jobCardData._id,
-          
-          // Job card info
-          job_card_no: jobCardData.job_card_no || "N/A",
-          design_type: jobCardData.design_type || "N/A",
-          job_card_priority: jobCardData.priority,
-          job_card_images: jobCardData.images || [],
-          job_card_stage: jobCardData.stage,
-          job_card_status: jobCardData.status,
-          
-          // Department info
-          department: "PLATING",
-          assigned_department: platingStage.department,
-          
-          // Assignment info
-          assigned_to: assignedTo._id,
-          assigned_name: assignedTo.name,
-          assigned_email: assignedTo.email,
-          
-          // Stage status
-          status: platingStage.status,
-          start_date: platingStage.start_date,
-          end_date: platingStage.end_date,
-          completed_at: platingStage.completed_at,
-          remarks: platingStage.remarks,
-          createdAt: jobCard.createdAt,
-          
-          // Material info
-          material_id: platingData.material_id || "",
-          material_name: platingData.material_name || staticPlatingMaterials.find(m => m._id === platingData.material_id)?.name || "",
-          material_code: platingData.material_code || staticPlatingMaterials.find(m => m._id === platingData.material_id)?.item_code || "",
-          material_used_qty: platingData.material_used_qty || "",
-          material_unit: platingData.material_unit || "ml",
-          
-          // Plating process details
-          plating_type: platingData.plating_type || "electroplating",
-          plating_thickness: platingData.plating_thickness || "",
-          current_density: platingData.current_density || "",
-          voltage_applied: platingData.voltage_applied || "",
-          plating_time: platingData.plating_time || "",
-          bath_temperature: platingData.bath_temperature || "",
-          ph_level: platingData.ph_level || "",
-          
-          // Quality metrics
-          surface_finish: platingData.surface_finish || "good",
-          adhesion_quality: platingData.adhesion_quality || "good",
-          uniformity: platingData.uniformity || "good",
-          defects: platingData.defects || "",
-          rework_required: platingData.rework_required || false,
-          rework_reason: platingData.rework_reason || "",
-          
-          // Time tracking
-          labour_hours: platingData.labour_hours || "",
-          actual_hours: platingData.actual_hours || "",
-          preparation_time: platingData.preparation_time || "",
-          cleaning_time: platingData.cleaning_time || "",
-          plating_time_track: platingData.plating_time_track || "",
-          rinsing_time: platingData.rinsing_time || "",
-          drying_time: platingData.drying_time || "",
-          quality_check_time: platingData.quality_check_time || "",
-          total_time_spent: platingData.total_time_spent || "",
-          time_breakdown: platingData.time_breakdown || "",
-          
-          // Next stage
-          next_stage: platingData.next_stage || "",
-          
-          // Cost tracking
-          material_cost: platingData.material_cost || "",
-          labour_cost: platingData.labour_cost || "",
-          equipment_cost: platingData.equipment_cost || "",
-          chemical_cost: platingData.chemical_cost || "",
-          electricity_cost: platingData.electricity_cost || "",
-          other_costs: platingData.other_costs || "",
-          total_cost: platingData.total_cost || "",
-          final_price: platingData.final_price || "",
-          markup_percentage: platingData.markup_percentage || "",
-          cost_currency: platingData.cost_currency || "INR",
-          cost_status: platingData.cost_status || "estimated",
-          
-          // File tracking
-          file_version: platingData.file_version || "1.0",
-          file_revisions: platingData.file_revisions || 0,
-          file_status: platingData.file_status || "draft",
-          backup_location: platingData.backup_location || "",
-          files: platingData.files || [],
-        };
-      });
-
-    setPlatingStages(platingStagesData);
-    return platingStagesData;
-  } catch (err) {
-    console.error("Fetch plating stages error:", err);
-    setError(err.response?.data?.message || "Failed to load plating stages");
-    setPlatingStages([]);
-    return [];
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   // Fetch employees
   const fetchEmployees = async () => {
@@ -252,6 +310,146 @@ const fetchPlatingStages = useCallback(async () => {
       console.error("Error fetching employees:", err);
       setEmployees([]);
       return [];
+    }
+  };
+
+  // Fetch labor costs from price making API - INCLUDE PLATING COSTS
+  const fetchLaborCosts = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_ENDPOINTS.getPriceMakings());
+
+      console.log("Price making API Response for plating:", response.data);
+
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        // Filter for plating-related labor costs
+        const laborCostData = response.data.data.filter((item) => {
+          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
+          const stageName = item.making_stage_id?.stage_name || "";
+          const subStageName = item.making_sub_stage_id?.sub_stage_name || "";
+          const lowerCaseName = costName.toLowerCase();
+          const lowerCaseStage = stageName.toLowerCase();
+          const lowerCaseSubStage = subStageName.toLowerCase();
+          
+          // Include labor costs for plating stage
+          return (
+            lowerCaseName.includes("labor") ||
+            lowerCaseName.includes("plating") ||
+            lowerCaseName.includes("plater") ||
+            lowerCaseName.includes("electroplate") ||
+            lowerCaseName.includes("karigar") ||
+            lowerCaseName.includes("craftsman") ||
+            lowerCaseName.includes("worker") ||
+            lowerCaseName.includes("bath") ||
+            lowerCaseName.includes("solution") ||
+            lowerCaseStage.includes("plate") ||
+            lowerCaseSubStage.includes("plate") ||
+            lowerCaseName.includes("कारीगर") ||
+            lowerCaseName.includes("प्लेटिंग")
+          );
+        });
+
+        // Process and format labor costs
+        const processedCosts = laborCostData.map((item) => {
+          return {
+            ...item,
+            _id: item._id,
+            cost_name:
+              item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
+            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || "unit",
+            stage_name: item.making_stage_id?.stage_name || "General",
+            sub_stage_name:
+              item.making_sub_stage_id?.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          };
+        });
+
+        console.log("Processed labor costs for plating:", processedCosts);
+        setLaborCosts(processedCosts);
+        return processedCosts;
+      }
+
+      setLaborCosts([]);
+      return [];
+    } catch (err) {
+      console.error("Error fetching labor costs:", err);
+      setLaborCosts([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate total labor cost based on selected labor cost items
+  const calculateTotalLaborCost = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return 0;
+
+    let totalLaborCost = 0;
+
+    selectedLaborCosts.forEach((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+      totalLaborCost += costAmount;
+    });
+
+    console.log(
+      "Calculated total labor cost for plating:",
+      totalLaborCost,
+      "from",
+      selectedLaborCosts.length,
+      "items"
+    );
+    return totalLaborCost;
+  };
+
+  // Calculate labor breakdown for selected items
+  const calculateLaborBreakdown = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return [];
+
+    return selectedLaborCosts.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+  };
+
+  // Fetch units from units API
+  const fetchUnits = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      
+      const response = await axios.get(API_ENDPOINTS.getUnits());
+
+      let unitsData = [];
+      
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        unitsData = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        unitsData = response.data;
+      } else if (response.data && Array.isArray(response.data.units)) {
+        unitsData = response.data.units;
+      }
+      
+      setUnits(unitsData);
+      return unitsData;
+    } catch (err) {
+      console.error("Error fetching units:", err);
+      setError("Failed to fetch units");
+      setUnits([]);
+      return [];
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -273,7 +471,7 @@ const fetchPlatingStages = useCallback(async () => {
     }
   };
 
-  // Update Plating stage
+  // Update Plating stage with files and labor costs
   const updatePlatingStageWithFiles = async (
     stageId,
     updateData,
@@ -283,13 +481,44 @@ const fetchPlatingStages = useCallback(async () => {
       setLoading(true);
       setError("");
 
+      // Calculate labor cost from selected labor costs if provided
+      let finalUpdateData = { ...updateData };
+
+      // If selected_labor_costs is provided, calculate total labor cost
+      if (
+        updateData.selected_labor_costs &&
+        Array.isArray(updateData.selected_labor_costs)
+      ) {
+        const totalLaborCost = calculateTotalLaborCost(
+          updateData.selected_labor_costs
+        );
+
+        // Update labor cost in data
+        finalUpdateData.labour_cost = totalLaborCost.toFixed(2);
+
+        // Recalculate totals with new labor cost
+        const material = parseFloat(updateData.material_cost) || 0;
+        const equipment = parseFloat(updateData.equipment_cost) || 0;
+        const chemical = parseFloat(updateData.chemical_cost) || 0;
+        const electricity = parseFloat(updateData.electricity_cost) || 0;
+        const other = parseFloat(updateData.other_costs) || 0;
+        const markup = parseFloat(updateData.markup_percentage) || 25;
+
+        const total = material + totalLaborCost + equipment + chemical + electricity + other;
+        const markupAmount = (total * markup) / 100;
+        const finalPrice = total + markupAmount;
+
+        finalUpdateData.total_cost = total.toFixed(2);
+        finalUpdateData.final_price = finalPrice.toFixed(2);
+      }
+
       const url = API_ENDPOINTS.updatePlatingStage(stageId);
       
       const formData = new FormData();
 
-      Object.keys(updateData).forEach(key => {
+      Object.keys(finalUpdateData).forEach(key => {
         if (key !== 'files' && key !== 'material_name' && key !== 'unit_name') {
-          const value = updateData[key];
+          const value = finalUpdateData[key];
           if (value !== null && value !== undefined) {
             formData.append(key, value);
           }
@@ -312,10 +541,50 @@ const fetchPlatingStages = useCallback(async () => {
         formData.append("files", JSON.stringify(existingFiles));
       }
 
+      // Append selected labor costs as JSON array of IDs
+      if (
+        updateData.selected_labor_costs &&
+        Array.isArray(updateData.selected_labor_costs)
+      ) {
+        formData.append(
+          "selected_labor_costs",
+          JSON.stringify(
+            updateData.selected_labor_costs.map((cost) => cost._id)
+          )
+        );
+      }
+
+      // Append labor breakdown as JSON
+      if (
+        updateData.labor_cost_breakdown &&
+        Array.isArray(updateData.labor_cost_breakdown)
+      ) {
+        formData.append(
+          "labor_cost_breakdown",
+          JSON.stringify(updateData.labor_cost_breakdown)
+        );
+      }
+
       if (filesToUpload.length > 0) {
         filesToUpload.forEach((file, index) => {
           formData.append(`uploaded_files`, file);
         });
+      }
+
+      // Debug
+      console.log("📤 Sending Plating update data:");
+      for (let [key, value] of formData.entries()) {
+        if (key === "uploaded_files") {
+          console.log(`${key}: File - ${value.name}`);
+        } else if (
+          key === "files" ||
+          key === "selected_labor_costs" ||
+          key === "labor_cost_breakdown"
+        ) {
+          console.log(`${key}: ${value.substring(0, 100)}...`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
       }
 
       const res = await axios.put(url, formData, {
@@ -333,9 +602,10 @@ const fetchPlatingStages = useCallback(async () => {
         return { success: false, error: errorMsg };
       }
     } catch (err) {
-      console.error("Update error:", err);
+      console.error("Update plating error:", err);
       
       if (err.response) {
+        console.error("Response data:", err.response.data);
         const errorMsg = err.response.data?.message || `Error: ${err.response.status}`;
         setError(errorMsg);
         return { success: false, error: errorMsg };
@@ -355,7 +625,9 @@ const fetchPlatingStages = useCallback(async () => {
       await Promise.all([
         fetchPlatingStages(),
         fetchEmployees(),
-        fetchMaterials()
+        fetchMaterials(),
+        fetchUnits(),
+        fetchLaborCosts() // Add labor costs fetch
       ]);
     } catch (error) {
       console.error("Error fetching all data:", error);
@@ -373,12 +645,18 @@ const fetchPlatingStages = useCallback(async () => {
   return {
     platingStages,
     materials,
+    units,
     employees,
+    laborCosts, // Export labor costs
     loading,
     error,
     fetchPlatingStages,
     fetchEmployees,
     fetchMaterials,
+    fetchUnits,
+    fetchLaborCosts, // Export fetch function
+    calculateTotalLaborCost, // Export calculation function
+    calculateLaborBreakdown, // Export breakdown function
     updatePlatingStageWithFiles,
     fetchAllData,
   };

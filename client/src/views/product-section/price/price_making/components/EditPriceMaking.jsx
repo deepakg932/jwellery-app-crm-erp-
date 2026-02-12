@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 
 const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, loading = false }) => {
   const [formData, setFormData] = useState({
-    stage_name: "",
-    sub_stage_name: "",
-    cost_type: "",
-    unit_name: "",
+    making_stage_id: "",
+    making_sub_stage_id: "",
+    cost_type_id: "",
+    unit_id: "",
     cost_amount: ""
   });
   const [error, setError] = useState("");
@@ -15,11 +15,11 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
   useEffect(() => {
     if (priceMaking) {
       setFormData({
-        stage_name: priceMaking.stage_name || "",
-        sub_stage_name: priceMaking.sub_stage_name || "",
-        cost_type: priceMaking.cost_type || "",
-        unit_name: priceMaking.unit_name || "",
-        cost_amount: priceMaking.cost_amount || priceMaking.amount || ""
+        making_stage_id: priceMaking.making_stage_id || "",
+        making_sub_stage_id: priceMaking.making_sub_stage_id || "",
+        cost_type_id: priceMaking.cost_type_id || "",
+        unit_id: priceMaking.unit_id || "",
+        cost_amount: priceMaking.cost_amount || ""
       });
       setError("");
     }
@@ -27,32 +27,32 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
 
   // Update filtered sub stages when making stage changes
   useEffect(() => {
-    if (formData.stage_name) {
-      // Filter by stage name (TEXT)
+    if (formData.making_stage_id) {
+      // Filter by stage ID
       const filtered = dropdownData.makingSubStages.filter(
-        subStage => subStage.stage_name === formData.stage_name
+        subStage => subStage.stage_id === formData.making_stage_id
       );
       setFilteredSubStages(filtered);
     } else {
       setFilteredSubStages([]);
     }
-  }, [formData.stage_name, dropdownData.makingSubStages]);
+  }, [formData.making_stage_id, dropdownData.makingSubStages]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validation
-    if (!formData.stage_name) {
+    if (!formData.making_stage_id) {
       setError("Please select a making stage");
       return;
     }
 
-    if (!formData.cost_type) {
+    if (!formData.cost_type_id) {
       setError("Please select a cost type");
       return;
     }
 
-    if (!formData.unit_name) {
+    if (!formData.unit_id) {
       setError("Please select a unit");
       return;
     }
@@ -62,17 +62,17 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
       return;
     }
 
-    // Match API field names
+    // Send IDs to API
     const priceMakingData = {
-      stage_name: formData.stage_name,
-      sub_stage_name: formData.sub_stage_name,
-      cost_type: formData.cost_type,
+      making_stage_id: formData.making_stage_id,
+      making_sub_stage_id: formData.making_sub_stage_id || null,
+      cost_type_id: formData.cost_type_id,
       cost_amount: parseFloat(formData.cost_amount),
-      unit_name: formData.unit_name,
+      unit_id: formData.unit_id,
       is_active: true,
     };
 
-    console.log("Updating price making:", priceMakingData);
+    console.log("Updating price making with IDs:", priceMakingData);
     
     try {
       await onSubmit(priceMakingData);
@@ -93,14 +93,35 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
 
   const handleClose = () => {
     setFormData({
-      stage_name: "",
-      sub_stage_name: "",
-      cost_type: "",
-      unit_name: "",
+      making_stage_id: "",
+      making_sub_stage_id: "",
+      cost_type_id: "",
+      unit_id: "",
       cost_amount: ""
     });
     setError("");
     onHide();
+  };
+
+  // Helper functions to get display names by ID
+  const getStageNameById = (id) => {
+    const stage = dropdownData.makingStages.find(stage => stage._id === id);
+    return stage?.stage_name || '';
+  };
+
+  const getSubStageNameById = (id) => {
+    const subStage = dropdownData.makingSubStages.find(subStage => subStage._id === id);
+    return subStage?.sub_stage_name || '';
+  };
+
+  const getCostTypeById = (id) => {
+    const costType = dropdownData.costTypes.find(cost => cost._id === id);
+    return costType?.cost_type || '';
+  };
+
+  const getUnitNameById = (id) => {
+    const unit = dropdownData.units.find(u => u._id === id);
+    return unit?.unit_name || unit?.name || '';
   };
 
   // Don't render if not shown
@@ -139,91 +160,111 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
             <div className="modal-body">
               <div className="row">
                 
-                {/* Making Stage */}
+                {/* Making Stage - Using ID */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
                     Making Stage <span className="text-danger">*</span>
                   </label>
                   <select
                     className="form-select form-select-lg"
-                    name="stage_name"
-                    value={formData.stage_name}
+                    name="making_stage_id"
+                    value={formData.making_stage_id}
                     onChange={handleChange}
                     required
                     disabled={loading}
                   >
                     <option value="">Select Making Stage</option>
                     {dropdownData.makingStages.map((stage) => (
-                      <option key={stage._id} value={stage.stage_name}>
+                      <option key={stage._id} value={stage._id}>
                         {stage.stage_name}
                       </option>
                     ))}
                   </select>
+                  {formData.making_stage_id && (
+                    <div className="form-text">
+                      Selected: {getStageNameById(formData.making_stage_id)}
+                    </div>
+                  )}
                 </div>
 
-                {/* Sub Making Stage */}
+                {/* Sub Making Stage - Using ID */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
                     Sub Making Stage
                   </label>
                   <select
                     className="form-select form-select-lg"
-                    name="sub_stage_name"
-                    value={formData.sub_stage_name}
+                    name="making_sub_stage_id"
+                    value={formData.making_sub_stage_id}
                     onChange={handleChange}
-                    disabled={!formData.stage_name || loading}
+                    disabled={!formData.making_stage_id || loading}
                   >
                     <option value="">Select Sub Stage (Optional)</option>
                     {filteredSubStages.map((subStage) => (
-                      <option key={subStage._id} value={subStage.sub_stage_name}>
+                      <option key={subStage._id} value={subStage._id}>
                         {subStage.sub_stage_name}
                       </option>
                     ))}
                   </select>
+                  {formData.making_sub_stage_id && (
+                    <div className="form-text">
+                      Selected: {getSubStageNameById(formData.making_sub_stage_id)}
+                    </div>
+                  )}
                 </div>
 
-                {/* Cost Type */}
+                {/* Cost Type - Using ID */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
                     Cost Type <span className="text-danger">*</span>
                   </label>
                   <select
                     className="form-select form-select-lg"
-                    name="cost_type"
-                    value={formData.cost_type}
+                    name="cost_type_id"
+                    value={formData.cost_type_id}
                     onChange={handleChange}
                     required
                     disabled={loading}
                   >
                     <option value="">Select Cost Type</option>
                     {dropdownData.costTypes.map((costType) => (
-                      <option key={costType._id} value={costType.cost_type}>
-                        {costType.cost_type}
+                      <option key={costType._id} value={costType._id}>
+                       {costType.cost_type } ({costType.cost_name})
                       </option>
                     ))}
                   </select>
+                  {formData.cost_type_id && (
+                    <div className="form-text">
+                      Selected: {getCostTypeById(formData.cost_type_id)}
+                    </div>
+                  )}
                 </div>
 
-                {/* Unit */}
+                {/* Unit - Using ID */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
                     Unit <span className="text-danger">*</span>
                   </label>
                   <select
                     className="form-select form-select-lg"
-                    name="unit_name"
-                    value={formData.unit_name}
+                    name="unit_id"
+                    value={formData.unit_id}
                     onChange={handleChange}
                     required
                     disabled={loading}
                   >
                     <option value="">Select Unit</option>
                     {dropdownData.units.map((unit) => (
-                      <option key={unit._id} value={unit.unit_name || unit.name}>
+                      <option key={unit._id} value={unit._id}>
                         {unit.unit_name || unit.name}
                       </option>
                     ))}
                   </select>
+                  {formData.unit_id && (
+                    <div className="form-text">
+                      Selected: {getUnitNameById(formData.unit_id)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Amount */}
@@ -245,7 +286,7 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                       disabled={loading}
                     />
                     <span className="input-group-text">
-                      per {formData.unit_name || "unit"}
+                      per {getUnitNameById(formData.unit_id) || "unit"}
                     </span>
                   </div>
                 </div>

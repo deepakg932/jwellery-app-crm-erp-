@@ -10,9 +10,13 @@ import {
   FiPackage,
   FiSearch,
   FiX,
-  FiPlus 
+  FiPlus,
+  FiImage, // Add this icon
+  FiTrash2, // Add this icon
+  FiCamera
 } from "react-icons/fi";
 import AddCustomerForm from "@/views/user/customer/components/AddCustomerForm";
+
 const AddRepairForm = ({
   onClose,
   onSave,
@@ -39,9 +43,10 @@ const AddRepairForm = ({
     status: "pending",
     account: "cash",
     note: "",
-    product_type: "existing", // 'existing' or 'manual'
-    selected_product_id: "", // For existing products
-    custom_product_name: "", // For manual entry
+    product_type: "existing",
+    selected_product_id: "",
+    custom_product_name: "",
+    repair_images: [], // New field for images
   });
 
   const [errors, setErrors] = useState({});
@@ -49,7 +54,10 @@ const AddRepairForm = ({
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [productType, setProductType] = useState("existing"); // 'existing' or 'manual'
+  const [previewImages, setPreviewImages] = useState([]); // For image previews
+  const [uploadingImages, setUploadingImages] = useState(false);
   const searchRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [addingCustomer, setAddingCustomer] = useState(false);
 
@@ -108,6 +116,77 @@ const AddRepairForm = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Handle image upload
+  const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files);
+    
+    // Validate file types
+    const validFiles = files.filter(file => {
+      const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
+      return validTypes.includes(file.type);
+    });
+
+    // Validate file size (max 5MB each)
+    const sizeValidFiles = validFiles.filter(file => {
+      return file.size <= 5 * 1024 * 1024; // 5MB
+    });
+
+    if (sizeValidFiles.length === 0) {
+      alert('Please select valid image files (JPEG, PNG, GIF, WebP) under 5MB');
+      return;
+    }
+
+    // Create preview URLs
+    const newPreviewUrls = sizeValidFiles.map(file => ({
+      file: file,
+      preview: URL.createObjectURL(file),
+      name: file.name,
+      size: (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+    }));
+
+    // Update form data
+    setFormData(prev => ({
+      ...prev,
+      repair_images: [...prev.repair_images, ...sizeValidFiles]
+    }));
+
+    // Update preview images
+    setPreviewImages(prev => [...prev, ...newPreviewUrls]);
+
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove image
+  const removeImage = (index) => {
+    // Revoke object URL to prevent memory leak
+    if (previewImages[index]) {
+      URL.revokeObjectURL(previewImages[index].preview);
+    }
+
+    // Remove from form data
+    setFormData(prev => ({
+      ...prev,
+      repair_images: prev.repair_images.filter((_, i) => i !== index)
+    }));
+
+    // Remove from preview
+    setPreviewImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Clean up preview URLs on component unmount
+  useEffect(() => {
+    return () => {
+      previewImages.forEach(image => {
+        if (image.preview) {
+          URL.revokeObjectURL(image.preview);
+        }
+      });
+    };
+  }, [previewImages]);
 
   // Handle product selection from search
   const handleProductSelect = (item) => {
@@ -268,6 +347,7 @@ const AddRepairForm = ({
       product_code: formData.product_code || "",
       is_custom_product: productType === "manual",
       sale_item_id: productType === "existing" ? formData.sale_item_id : null,
+      repair_images: formData.repair_images, // Include images
     };
 
     console.log("Submitting repair data:", payload);
@@ -275,6 +355,13 @@ const AddRepairForm = ({
   };
 
   const handleClose = () => {
+    // Clean up preview URLs
+    previewImages.forEach(image => {
+      if (image.preview) {
+        URL.revokeObjectURL(image.preview);
+      }
+    });
+
     setFormData({
       product_name: "",
       product_module: "",
@@ -292,10 +379,12 @@ const AddRepairForm = ({
       product_type: "existing",
       selected_product_id: "",
       product_code: "",
+      repair_images: [],
     });
     setErrors({});
     setSearchQuery("");
     setSearchResults([]);
+    setPreviewImages([]);
     setShowSearchResults(false);
     setProductType("existing");
     onClose();
@@ -320,6 +409,7 @@ const AddRepairForm = ({
       year: "numeric",
     });
   };
+
   return (
     <div
       className="modal fade show d-block"
@@ -637,6 +727,100 @@ const AddRepairForm = ({
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              {/* NEW: Repair Images Section */}
+              <div className="card border mb-4">
+                <div className="card-header bg-light">
+                  <h6 className="fw-bold mb-0">
+                    <FiImage className="me-2" />
+                    Repair Images (Optional)
+                  </h6>
+                </div>
+                <div className="card-body">
+                  <div className="mb-3">
+                    <label className="form-label fw-medium">
+                      Upload Images of the Damaged/Problem Product
+                    </label>
+                    <div className="border rounded p-4 text-center">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleImageUpload}
+                        className="d-none"
+                        id="repair-images-upload"
+                        multiple
+                        accept="image/jpeg,image/png,image/jpg,image/gif,image/webp"
+                        disabled={isDisabled}
+                      />
+                      <label
+                        htmlFor="repair-images-upload"
+                        className="btn btn-outline-primary d-flex flex-column align-items-center justify-content-center py-4 cursor-pointer"
+                        style={{ minHeight: "150px" }}
+                      >
+                        <FiCamera size={48} className="mb-3 text-muted" />
+                        <span className="fw-medium">Click to upload images</span>
+                        <span className="text-muted small mt-2">
+                          Supports JPG, PNG, GIF, WebP (Max 5MB each)
+                        </span>
+                        <span className="text-muted small">
+                          You can select multiple images
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Image Previews */}
+                  {previewImages.length > 0 && (
+                    <div className="mt-4">
+                      <h6 className="fw-medium mb-3">
+                        Uploaded Images ({previewImages.length})
+                      </h6>
+                      <div className="row g-3">
+                        {previewImages.map((image, index) => (
+                          <div key={index} className="col-md-4 col-6">
+                            <div className="card border">
+                              <div className="card-img-top position-relative">
+                                <img
+                                  src={image.preview}
+                                  alt={`Repair image ${index + 1}`}
+                                  className="img-fluid"
+                                  style={{
+                                    height: "120px",
+                                    width: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                                  onClick={() => removeImage(index)}
+                                  disabled={isDisabled}
+                                  style={{
+                                    width: "30px",
+                                    height: "30px",
+                                    borderRadius: "50%",
+                                    padding: "0",
+                                  }}
+                                >
+                                  <FiTrash2 size={14} />
+                                </button>
+                              </div>
+                              <div className="card-body p-2">
+                                <div className="small text-truncate">
+                                  {image.name}
+                                </div>
+                                <div className="small text-muted">
+                                  {image.size}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -991,6 +1175,14 @@ const AddRepairForm = ({
                           <span className="text-muted">Product Code:</span>
                           <span className="fw-medium ms-2">
                             {formData.product_code}
+                          </span>
+                        </div>
+                      )}
+                      {previewImages.length > 0 && (
+                        <div className="mb-2">
+                          <span className="text-muted">Images:</span>
+                          <span className="fw-medium ms-2 text-success">
+                            {previewImages.length} uploaded
                           </span>
                         </div>
                       )}

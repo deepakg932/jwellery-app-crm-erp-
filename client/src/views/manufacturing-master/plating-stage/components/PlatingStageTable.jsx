@@ -37,6 +37,7 @@ const PlatingStageTable = () => {
     fetchPlatingStages,
     employees,
     updatePlatingStageWithFiles,
+    laborCosts,
   } = usePlatingStages();
 
   const [search, setSearch] = useState("");
@@ -51,13 +52,23 @@ const PlatingStageTable = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const statusOptions = [
-    { value: "not_started", label: "Not Started", color: "secondary", icon: "⏳" },
+    {
+      value: "not_started",
+      label: "Not Started",
+      color: "secondary",
+      icon: "⏳",
+    },
     { value: "preparation", label: "Preparation", color: "info", icon: "🛠️" },
     { value: "cleaning", label: "Cleaning", color: "info", icon: "🧹" },
     { value: "plating", label: "Plating", color: "warning", icon: "⚡" },
     { value: "rinsing", label: "Rinsing", color: "info", icon: "💧" },
     { value: "drying", label: "Drying", color: "info", icon: "🌬️" },
-    { value: "quality_check", label: "Quality Check", color: "warning", icon: "🔍" },
+    {
+      value: "quality_check",
+      label: "Quality Check",
+      color: "warning",
+      icon: "🔍",
+    },
     { value: "completed", label: "Completed", color: "success", icon: "✅" },
     { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
     { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
@@ -103,7 +114,7 @@ const PlatingStageTable = () => {
       statusFilter === "all" || stage.status === statusFilter;
 
     const matchesMaterial =
-      materialFilter === "all" || 
+      materialFilter === "all" ||
       stage.material_name?.toLowerCase().includes(materialFilter.toLowerCase());
 
     return matchesSearch && matchesStatus && matchesMaterial;
@@ -160,7 +171,9 @@ const PlatingStageTable = () => {
     };
 
     return (
-      <span className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}>
+      <span
+        className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}
+      >
         <span>{config.icon}</span>
         {config.label}
       </span>
@@ -170,10 +183,20 @@ const PlatingStageTable = () => {
   // Get material badge
   const getMaterialBadge = (materialName) => {
     const materialConfig = {
-      rhodium: { color: "light", icon: "⚪", label: "Rhodium", textColor: "dark" },
+      rhodium: {
+        color: "light",
+        icon: "⚪",
+        label: "Rhodium",
+        textColor: "dark",
+      },
       gold: { color: "warning", icon: "💰", label: "Gold" },
       "rose gold": { color: "danger", icon: "🌹", label: "Rose Gold" },
-      "white gold": { color: "light", icon: "⚪", label: "White Gold", textColor: "dark" },
+      "white gold": {
+        color: "light",
+        icon: "⚪",
+        label: "White Gold",
+        textColor: "dark",
+      },
       silver: { color: "secondary", icon: "⚪", label: "Silver" },
       copper: { color: "warning", icon: "🔶", label: "Copper" },
       nickel: { color: "dark", icon: "⚫", label: "Nickel" },
@@ -212,7 +235,9 @@ const PlatingStageTable = () => {
     };
 
     return (
-      <span className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}>
+      <span
+        className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}
+      >
         <span>{config.icon}</span>
         {config.label}
       </span>
@@ -235,7 +260,9 @@ const PlatingStageTable = () => {
     };
 
     return (
-      <span className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}>
+      <span
+        className={`badge bg-${config.color} text-white fw-semibold d-flex align-items-center gap-1`}
+      >
         <span>{config.icon}</span>
         {config.label}
       </span>
@@ -443,7 +470,8 @@ const PlatingStageTable = () => {
                     <div className="d-flex align-items-center gap-2">
                       {getMaterialBadge(selectedStage.material_name)}
                       <span className="badge bg-light text-dark">
-                        {selectedStage.material_used_qty || "0"} {selectedStage.material_unit || "ml"}
+                        {selectedStage.material_used_qty || "0"}{" "}
+                        {selectedStage.material_unit || "ml"}
                       </span>
                     </div>
                     {selectedStage.material_code && (
@@ -492,7 +520,9 @@ const PlatingStageTable = () => {
                       Next Stage
                     </label>
                     <div className="badge bg-info">
-                      {selectedStage.next_stage || selectedStage.job_card_stage || "Not set"}
+                      {selectedStage.next_stage ||
+                        selectedStage.job_card_stage ||
+                        "Not set"}
                     </div>
                   </div>
                 </div>
@@ -541,34 +571,40 @@ const PlatingStageTable = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="row mt-3">
                     <div className="col-md-6">
                       <div className="small">
                         <FiThermometer className="me-1" />
-                        <strong>Bath Temperature:</strong> {selectedStage.bath_temperature || "N/A"}°C
+                        <strong>Bath Temperature:</strong>{" "}
+                        {selectedStage.bath_temperature || "N/A"}°C
                       </div>
                       <div className="small">
                         <FiDroplet className="me-1" />
-                        <strong>pH Level:</strong> {selectedStage.ph_level || "N/A"}
+                        <strong>pH Level:</strong>{" "}
+                        {selectedStage.ph_level || "N/A"}
                       </div>
                       <div className="small">
                         <FiClock className="me-1" />
-                        <strong>Plating Time:</strong> {selectedStage.plating_time || "N/A"} min
+                        <strong>Plating Time:</strong>{" "}
+                        {selectedStage.plating_time || "N/A"} min
                       </div>
                     </div>
                     <div className="col-md-6">
                       <div className="small">
                         <FiShield className="me-1" />
-                        <strong>Adhesion:</strong> {selectedStage.adhesion_quality || "N/A"}
+                        <strong>Adhesion:</strong>{" "}
+                        {selectedStage.adhesion_quality || "N/A"}
                       </div>
                       <div className="small">
                         <FiTool className="me-1" />
-                        <strong>Uniformity:</strong> {selectedStage.uniformity || "N/A"}
+                        <strong>Uniformity:</strong>{" "}
+                        {selectedStage.uniformity || "N/A"}
                       </div>
                       <div className="small">
                         <FiAlertCircle className="me-1" />
-                        <strong>Defects:</strong> {selectedStage.defects || "None"}
+                        <strong>Defects:</strong>{" "}
+                        {selectedStage.defects || "None"}
                       </div>
                     </div>
                   </div>
@@ -603,12 +639,25 @@ const PlatingStageTable = () => {
                           Total: {formatTime(selectedStage.total_time_spent)}
                         </div>
                         <div className="x-small mt-1">
-                          <div>Prep: {formatTime(selectedStage.preparation_time)}</div>
-                          <div>Clean: {formatTime(selectedStage.cleaning_time)}</div>
-                          <div>Plate: {formatTime(selectedStage.plating_time_track)}</div>
-                          <div>Rinse: {formatTime(selectedStage.rinsing_time)}</div>
-                          <div>Dry: {formatTime(selectedStage.drying_time)}</div>
-                          <div>QC: {formatTime(selectedStage.quality_check_time)}</div>
+                          <div>
+                            Prep: {formatTime(selectedStage.preparation_time)}
+                          </div>
+                          <div>
+                            Clean: {formatTime(selectedStage.cleaning_time)}
+                          </div>
+                          <div>
+                            Plate:{" "}
+                            {formatTime(selectedStage.plating_time_track)}
+                          </div>
+                          <div>
+                            Rinse: {formatTime(selectedStage.rinsing_time)}
+                          </div>
+                          <div>
+                            Dry: {formatTime(selectedStage.drying_time)}
+                          </div>
+                          <div>
+                            QC: {formatTime(selectedStage.quality_check_time)}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -633,9 +682,13 @@ const PlatingStageTable = () => {
                       <div className="x-small mt-2">
                         <div>Material: ₹{selectedStage.material_cost || 0}</div>
                         <div>Labour: ₹{selectedStage.labour_cost || 0}</div>
-                        <div>Equipment: ₹{selectedStage.equipment_cost || 0}</div>
+                        <div>
+                          Equipment: ₹{selectedStage.equipment_cost || 0}
+                        </div>
                         <div>Chemical: ₹{selectedStage.chemical_cost || 0}</div>
-                        <div>Electricity: ₹{selectedStage.electricity_cost || 0}</div>
+                        <div>
+                          Electricity: ₹{selectedStage.electricity_cost || 0}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -666,7 +719,9 @@ const PlatingStageTable = () => {
                         <div className="mt-2 small text-danger">
                           <FiAlertCircle className="me-1" /> Rework Required
                           {selectedStage.rework_reason && (
-                            <div className="x-small">Reason: {selectedStage.rework_reason}</div>
+                            <div className="x-small">
+                              Reason: {selectedStage.rework_reason}
+                            </div>
                           )}
                         </div>
                       )}
@@ -688,7 +743,9 @@ const PlatingStageTable = () => {
                     {selectedStage.time_breakdown && (
                       <div>
                         <h6 className="card-title small">Time Breakdown</h6>
-                        <p className="mb-0 small">{selectedStage.time_breakdown}</p>
+                        <p className="mb-0 small">
+                          {selectedStage.time_breakdown}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -986,7 +1043,9 @@ const PlatingStageTable = () => {
                         <div>
                           {getMaterialBadge(stage.material_name)}
                           <div className="mt-1 x-small">
-                            {stage.material_used_qty ? `${stage.material_used_qty} ${stage.material_unit}` : ""}
+                            {stage.material_used_qty
+                              ? `${stage.material_used_qty} ${stage.material_unit}`
+                              : ""}
                           </div>
                           {stage.material_code && (
                             <div className="x-small text-muted">
@@ -1006,7 +1065,9 @@ const PlatingStageTable = () => {
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-1">
-                            <span className="x-small text-muted">Thickness:</span>
+                            <span className="x-small text-muted">
+                              Thickness:
+                            </span>
                             <span className="fw-medium text-success">
                               {stage.plating_thickness || "N/A"}μm
                             </span>
@@ -1054,7 +1115,9 @@ const PlatingStageTable = () => {
 
                       <td>
                         <div className="badge bg-info">
-                          {stage.next_stage || stage.job_card_stage || "Not set"}
+                          {stage.next_stage ||
+                            stage.job_card_stage ||
+                            "Not set"}
                         </div>
                       </td>
 
@@ -1180,6 +1243,7 @@ const PlatingStageTable = () => {
           selectedStage={selectedStage}
           employees={employees}
           materials={materials}
+          laborCosts={laborCosts}
           onUpdate={handleUpdateStage}
           onClose={handleCloseUpdate}
           loading={loading}

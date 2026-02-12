@@ -105,17 +105,46 @@ export default function PriceMakingTable() {
     }).format(amount || 0);
   };
 
-  // Get badge color based on making stage
-  const getStageColor = (stage) => {
-    const stageColors = {
-      'making': 'bg-primary-subtle text-primary',
-      'makingStage': 'bg-success-subtle text-success',
-      'Cutting': 'bg-danger-subtle text-danger',
-      'Sewing': 'bg-info-subtle text-info',
-      'Finishing': 'bg-warning-subtle text-warning',
-      'Packaging': 'bg-secondary-subtle text-secondary',
+  // Get badge color based on cost type
+  const getCostTypeColor = (costType) => {
+    const costTypeColors = {
+      'fixed': 'bg-success-subtle text-success',
+      'variable': 'bg-warning-subtle text-warning',
+      'direct': 'bg-primary-subtle text-primary',
+      'indirect': 'bg-info-subtle text-info',
+      'labor': 'bg-danger-subtle text-danger',
+      'material': 'bg-secondary-subtle text-secondary',
     };
-    return stageColors[stage] || 'bg-light text-dark border';
+    
+    // Check if any keyword matches
+    const costTypeLower = (costType || '').toLowerCase();
+    for (const [key, color] of Object.entries(costTypeColors)) {
+      if (costTypeLower.includes(key)) {
+        return color;
+      }
+    }
+    
+    return 'bg-light text-dark border';
+  };
+
+  // Get badge color based on cost name
+  const getCostNameColor = (costName) => {
+    const costNameColors = {
+      'labor': 'bg-danger-subtle text-danger',
+      'material': 'bg-primary-subtle text-primary',
+      'overhead': 'bg-info-subtle text-info',
+      'transport': 'bg-warning-subtle text-warning',
+      'packaging': 'bg-success-subtle text-success',
+    };
+    
+    const costNameLower = (costName || '').toLowerCase();
+    for (const [key, color] of Object.entries(costNameColors)) {
+      if (costNameLower.includes(key)) {
+        return color;
+      }
+    }
+    
+    return 'bg-secondary-subtle text-secondary';
   };
 
   // Delete Confirmation Modal Component
@@ -144,14 +173,16 @@ export default function PriceMakingTable() {
             <p>
               Are you sure you want to delete this price making entry?
             </p>
-            {/* <div className="alert alert-warning py-2 mt-3">
-              <small>
-                <strong>Stage:</strong> {selectedItem?.stage_name}<br/>
-                <strong>Sub Stage:</strong> {selectedItem?.sub_stage_name || "Not Assigned"}<br/>
-                <strong>Cost Type:</strong> {selectedItem?.cost_type}<br/>
-                <strong>Amount:</strong> {formatCurrency(selectedItem?.cost_amount || selectedItem?.amount)}
-              </small>
-            </div> */}
+            {selectedItem && (
+              <div className="alert alert-warning py-2 mt-3">
+                <small>
+                  <strong>Cost Type:</strong> {selectedItem?.cost_type}<br/>
+                  <strong>Cost Name:</strong> {selectedItem?.cost_name || "N/A"}<br/>
+                  <strong>Unit:</strong> {selectedItem?.unit_name || "N/A"}<br/>
+                  <strong>Amount:</strong> {formatCurrency(selectedItem?.cost_amount)}
+                </small>
+              </div>
+            )}
           </div>
 
           <div className="modal-footer border-top pt-3">
@@ -208,7 +239,7 @@ export default function PriceMakingTable() {
             <div className="col-md-6">
               <h1 className="h3 fw-bold mb-2">Price Making Master</h1>
               <p className="text-muted mb-0">
-                Manage production costs and pricing for different stages
+                Manage production costs and pricing
               </p>
             </div>
 
@@ -252,9 +283,8 @@ export default function PriceMakingTable() {
             <thead>
               <tr>
                 <th>#</th>
-                <th>Making Stage</th>
-                <th>Sub Making Stage</th>
                 <th>Cost Type</th>
+                <th>Cost Name</th>
                 <th>Unit</th>
                 <th>Cost Amount</th>
                 <th className="text-end">Actions</th>
@@ -264,7 +294,7 @@ export default function PriceMakingTable() {
             <tbody>
               {loading && priceMakings.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-4">
+                  <td colSpan="6" className="text-center py-4">
                     <div className="d-flex justify-content-center">
                       <div
                         className="spinner-border text-primary"
@@ -277,7 +307,7 @@ export default function PriceMakingTable() {
                 </tr>
               ) : filteredPriceMakings.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-4 text-muted">
+                  <td colSpan="6" className="text-center py-4 text-muted">
                     {search
                       ? "No price makings found for your search"
                       : "No price makings available"}
@@ -287,27 +317,38 @@ export default function PriceMakingTable() {
                 filteredPriceMakings.map((item, index) => (
                   <tr key={item._id || index}>
                     <td>{index + 1}</td>
+                    
+                    {/* Cost Type */}
                     <td>
-                      <span className={`badge ${getStageColor(item.stage_name)} p-2`}>
-                        {item.stage_name || "Not Specified"}
-                      </span>
-                    </td>
-                    <td className="fw-semibold">
-                      {item.sub_stage_name || "Not Assigned"}
-                    </td>
-                    <td>
-                      <span className="badge bg-light text-dark border">
+                      <span className={`badge ${getCostTypeColor(item.cost_type)} p-2`}>
                         {item.cost_type || "Not Specified"}
                       </span>
+                      {/* {item.stage_name && (
+                        <div className="small text-muted mt-1">
+                          Stage: {item.stage_name}
+                          {item.sub_stage_name && ` / ${item.sub_stage_name}`}
+                        </div>
+                      )} */}
                     </td>
+                    
+                    {/* Cost Name */}
                     <td>
-                      <span className="badge bg-info-subtle text-info">
+                      <span className={`badge ${getCostNameColor(item.cost_name)} p-2`}>
+                        {item.cost_name || "N/A"}
+                      </span>
+                    </td>
+                    
+                    {/* Unit */}
+                    <td>
+                      <span className="badge bg-info-subtle text-info p-2">
                         {item.unit_name || "N/A"}
                       </span>
                     </td>
+                    
+                    {/* Cost Amount */}
                     <td className="fw-bold text-success">
                       <FiDollarSign className="me-1" size={14} />
-                      {formatCurrency(item.cost_amount || item.amount)}
+                      {formatCurrency(item.cost_amount)}
                     </td>
 
                     {/* ACTION BUTTONS */}

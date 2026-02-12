@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
 import {
   FiUser,
   FiCheck,
@@ -44,11 +45,15 @@ import {
   FiDroplet,
   FiShoppingCart,
   FiDatabase as FiDatabaseIcon,
+  FiUsers,
+  FiTarget,
 } from "react-icons/fi";
 
 const UpdateQualityCheckStage = ({
   selectedStage,
   employees = [],
+  units = [],
+  laborCosts = [], // Add labor costs
   onUpdate,
   onClose,
   loading = false,
@@ -56,6 +61,12 @@ const UpdateQualityCheckStage = ({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [qualityFiles, setQualityFiles] = useState([]);
+  const [selectedLaborCosts, setSelectedLaborCosts] = useState([]); // Add selected labor costs
+  const [laborBreakdown, setLaborBreakdown] = useState([]); // Add labor breakdown
+
+  console.log("Selected stage:", employees);
+  console.log("Labor costs received for quality check:", laborCosts);
+
   const [formData, setFormData] = useState({
     assigned_to: "",
     status: "pending",
@@ -133,15 +144,13 @@ const UpdateQualityCheckStage = ({
     remarks: "",
   });
 
-  console.log(selectedStage);
-
   const [formErrors, setFormErrors] = useState({});
   const fileInputRef = useRef(null);
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
     quality: false,
     defects: false,
-    cost: false,
+    cost: true,
     time: false,
     files: false,
   });
@@ -230,84 +239,222 @@ const UpdateQualityCheckStage = ({
     { value: "completed", label: "Completed", icon: "🏁" },
   ];
 
+  // Prepare options for React Select - QUALITY CHECK LABOR COSTS
+  const getLaborCostOptions = () => {
+    if (!laborCosts || laborCosts.length === 0) return [];
+
+    // Filter for quality check-related labor costs
+    const filteredCosts = laborCosts.filter((cost) => {
+      const costName = (cost.cost_name || "").toLowerCase();
+      const stageName = (cost.stage_name || "").toLowerCase();
+      const subStageName = (cost.sub_stage_name || "").toLowerCase();
+
+      // Include labor and quality check costs relevant to quality stage
+      return (
+        costName.includes("labor") ||
+        costName.includes("quality") ||
+        costName.includes("inspection") ||
+        costName.includes("inspector") ||
+        costName.includes("check") ||
+        costName.includes("testing") ||
+        costName.includes("verification") ||
+        costName.includes("karigar") ||
+        costName.includes("craftsman") ||
+        costName.includes("worker") ||
+        stageName.includes("quality") ||
+        subStageName.includes("quality") ||
+        stageName.includes("inspection") ||
+        subStageName.includes("inspection") ||
+        stageName.includes("check") ||
+        subStageName.includes("check") ||
+        costName.includes("गुणवत्ता") ||
+        costName.includes("कारीगर")
+      );
+    });
+
+    return filteredCosts.map((cost) => ({
+      value: cost._id,
+      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      originalData: cost,
+    }));
+  };
+
+  // Handle labor cost selection change
+  const handleLaborCostsChange = (selectedOptions) => {
+    const selectedItems = selectedOptions
+      ? selectedOptions.map((option) => option.originalData)
+      : [];
+    setSelectedLaborCosts(selectedItems);
+
+    // Calculate total labor cost based on selected items
+    calculateLaborCostFromSelection(selectedItems);
+  };
+
+  // Calculate labor cost from selected items
+  const calculateLaborCostFromSelection = (selectedItems) => {
+    if (selectedItems.length === 0) {
+      setFormData((prev) => ({ ...prev, labour_cost: "0.00" }));
+      setLaborBreakdown([]);
+      return;
+    }
+
+    // Calculate breakdown for selected items
+    const breakdown = selectedItems.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || cost.cost_name_id?.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+
+    setLaborBreakdown(breakdown);
+
+    // Calculate total labor cost
+    const totalLaborCost = breakdown.reduce(
+      (sum, item) => sum + parseFloat(item.total_cost),
+      0,
+    );
+
+    // Update form data with calculated labor cost
+    setFormData((prev) => ({
+      ...prev,
+      labour_cost: totalLaborCost.toFixed(2),
+    }));
+
+    // Recalculate total cost
+    calculateTotals();
+  };
+
   // Initialize form data
   useEffect(() => {
-    if (selectedStage) {
-      const initialData = {
-        assigned_to: selectedStage.assigned_to || "",
-        status: selectedStage.status || "pending",
-        start_date: selectedStage.start_date
-          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-          : "",
-        end_date: selectedStage.end_date
-          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-          : "",
+    if (selectedStage && laborCosts.length > 0) {
+      // Parse selected labor costs if they exist in the stage data
+      let parsedSelectedLaborCosts = [];
+      if (selectedStage.selected_labor_costs) {
+        if (Array.isArray(selectedStage.selected_labor_costs)) {
+          // Map the IDs to actual labor cost objects
+          parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+            selectedStage.selected_labor_costs.includes(cost._id),
+          );
+        } else if (typeof selectedStage.selected_labor_costs === "string") {
+          try {
+            const ids = JSON.parse(selectedStage.selected_labor_costs);
+            parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+              ids.includes(cost._id),
+            );
+          } catch {
+            parsedSelectedLaborCosts = [];
+          }
+        }
+      }
 
-        check_points: selectedStage.check_points || [],
-        overall_status: selectedStage.overall_status || "pending",
-        dimensions_check: selectedStage.dimensions_check || false,
-        dimensions_tolerance:
-          selectedStage.dimensions_tolerance || "within_spec",
-        dimensions_notes: selectedStage.dimensions_notes || "",
-        weight_check: selectedStage.weight_check || false,
-        weight_tolerance: selectedStage.weight_tolerance || "within_spec",
-        weight_notes: selectedStage.weight_notes || "",
-        purity_check: selectedStage.purity_check || false,
-        purity_verified: selectedStage.purity_verified || "",
-        purity_certificate_no: selectedStage.purity_certificate_no || "",
-        finish_check: selectedStage.finish_check || false,
-        finish_quality: selectedStage.finish_quality || "good",
-        finish_defects: selectedStage.finish_defects || "",
+      // Parse labor breakdown if it exists
+      let parsedLaborBreakdown = [];
+      if (selectedStage.labor_cost_breakdown) {
+        if (Array.isArray(selectedStage.labor_cost_breakdown)) {
+          parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
+        } else if (typeof selectedStage.labor_cost_breakdown === "string") {
+          try {
+            parsedLaborBreakdown = JSON.parse(
+              selectedStage.labor_cost_breakdown,
+            );
+          } catch {
+            parsedLaborBreakdown = [];
+          }
+        }
+      }
 
-        defects_detected: selectedStage.defects_detected || [],
-        defects_count: selectedStage.defects_count || 0,
-        critical_defects: selectedStage.critical_defects || 0,
-        major_defects: selectedStage.major_defects || 0,
-        minor_defects: selectedStage.minor_defects || 0,
+      // const initialData = {
+      //   assigned_to: selectedStage.assigned_to || "",
+      //   status: selectedStage.status || "pending",
+      //   start_date: selectedStage.start_date
+      //     ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+      //     : "",
+      //   end_date: selectedStage.end_date
+      //     ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+      //     : "",
 
-        inspection_method: selectedStage.inspection_method || "visual",
-        measuring_tools_used: selectedStage.measuring_tools_used || [],
-        sample_size: selectedStage.sample_size || 1,
-        batch_size: selectedStage.batch_size || 1,
-        accepted_quantity: selectedStage.accepted_quantity || 0,
-        rejected_quantity: selectedStage.rejected_quantity || 0,
+      //   check_points: selectedStage.check_points || [],
+      //   overall_status: selectedStage.overall_status || "pending",
+      //   dimensions_check: selectedStage.dimensions_check || false,
+      //   dimensions_tolerance:
+      //     selectedStage.dimensions_tolerance || "within_spec",
+      //   dimensions_notes: selectedStage.dimensions_notes || "",
+      //   weight_check: selectedStage.weight_check || false,
+      //   weight_tolerance: selectedStage.weight_tolerance || "within_spec",
+      //   weight_notes: selectedStage.weight_notes || "",
+      //   purity_check: selectedStage.purity_check || false,
+      //   purity_verified: selectedStage.purity_verified || "",
+      //   purity_certificate_no: selectedStage.purity_certificate_no || "",
+      //   finish_check: selectedStage.finish_check || false,
+      //   finish_quality: selectedStage.finish_quality || "good",
+      //   finish_defects: selectedStage.finish_defects || "",
 
-        rework_required: selectedStage.rework_required || false,
-        rework_reason: selectedStage.rework_reason || "",
-        approved_by: selectedStage.approved_by || "",
-        approval_date: selectedStage.approval_date || "",
-        certificate_issued: selectedStage.certificate_issued || false,
-        certificate_number: selectedStage.certificate_number || "",
+      //   defects_detected: selectedStage.defects_detected || [],
+      //   defects_count: selectedStage.defects_count || 0,
+      //   critical_defects: selectedStage.critical_defects || 0,
+      //   major_defects: selectedStage.major_defects || 0,
+      //   minor_defects: selectedStage.minor_defects || 0,
 
-        inspection_cost: selectedStage.inspection_cost || "",
-        labour_cost: selectedStage.labour_cost || "",
-        equipment_cost: selectedStage.equipment_cost || "",
-        certification_cost: selectedStage.certification_cost || "",
-        other_costs: selectedStage.other_costs || "",
-        total_cost: selectedStage.total_cost || "",
-        cost_currency: selectedStage.cost_currency || "INR",
-        cost_status: selectedStage.cost_status || "estimated",
+      //   inspection_method: selectedStage.inspection_method || "visual",
+      //   measuring_tools_used: selectedStage.measuring_tools_used || [],
+      //   sample_size: selectedStage.sample_size || 1,
+      //   batch_size: selectedStage.batch_size || 1,
+      //   accepted_quantity: selectedStage.accepted_quantity || 0,
+      //   rejected_quantity: selectedStage.rejected_quantity || 0,
 
-        preparation_time: selectedStage.preparation_time || "",
-        inspection_time: selectedStage.inspection_time || "",
-        documentation_time: selectedStage.documentation_time || "",
-        approval_time: selectedStage.approval_time || "",
-        total_time_spent: selectedStage.total_time_spent || "",
-        time_breakdown: selectedStage.time_breakdown || "",
+      //   rework_required: selectedStage.rework_required || false,
+      //   rework_reason: selectedStage.rework_reason || "",
+      //   approved_by: selectedStage.approved_by || "",
+      //   approval_date: selectedStage.approval_date || "",
+      //   certificate_issued: selectedStage.certificate_issued || false,
+      //   certificate_number: selectedStage.certificate_number || "",
 
-        inspection_reports: selectedStage.inspection_reports || [],
-        defect_images: selectedStage.defect_images || [],
-        certificates: selectedStage.certificates || [],
-        file_version: selectedStage.file_version || "1.0",
-        file_revisions: selectedStage.file_revisions || 0,
-        file_status: selectedStage.file_status || "draft",
-        backup_location: selectedStage.backup_location || "",
+      //   inspection_cost: selectedStage.inspection_cost || "",
+      //   labour_cost: selectedStage.labour_cost || "",
+      //   equipment_cost: selectedStage.equipment_cost || "",
+      //   certification_cost: selectedStage.certification_cost || "",
+      //   other_costs: selectedStage.other_costs || "",
+      //   total_cost: selectedStage.total_cost || "",
+      //   cost_currency: selectedStage.cost_currency || "INR",
+      //   cost_status: selectedStage.cost_status || "estimated",
 
-        stage: selectedStage.stage,
-        remarks: selectedStage.remarks || "",
-      };
+      //   preparation_time: selectedStage.preparation_time || "",
+      //   inspection_time: selectedStage.inspection_time || "",
+      //   documentation_time: selectedStage.documentation_time || "",
+      //   approval_time: selectedStage.approval_time || "",
+      //   total_time_spent: selectedStage.total_time_spent || "",
+      //   time_breakdown: selectedStage.time_breakdown || "",
 
-      setFormData(initialData);
+      //   inspection_reports: selectedStage.inspection_reports || [],
+      //   defect_images: selectedStage.defect_images || [],
+      //   certificates: selectedStage.certificates || [],
+      //   file_version: selectedStage.file_version || "1.0",
+      //   file_revisions: selectedStage.file_revisions || 0,
+      //   file_status: selectedStage.file_status || "draft",
+      //   backup_location: selectedStage.backup_location || "",
+
+      //   stage: selectedStage.stage || "",
+      //   remarks: selectedStage.remarks || "",
+      // };
+
+      // console.log("Initializing quality check form data:", initialData);
+
+      // setFormData(initialData);
+      setSelectedLaborCosts(parsedSelectedLaborCosts);
+      setLaborBreakdown(parsedLaborBreakdown);
+
+      // Calculate labor cost from selected items
+      if (parsedSelectedLaborCosts.length > 0) {
+        calculateLaborCostFromSelection(parsedSelectedLaborCosts);
+      }
 
       // Initialize files
       if (selectedStage.files && Array.isArray(selectedStage.files)) {
@@ -329,7 +476,33 @@ const UpdateQualityCheckStage = ({
       setFormErrors({});
       calculateTotals();
     }
-  }, [selectedStage]);
+  }, [selectedStage, laborCosts]);
+
+  // Auto-recalculate total time when time fields change
+  useEffect(() => {
+    calculateTotals();
+  }, [
+    formData.preparation_time,
+    formData.inspection_time,
+    formData.documentation_time,
+    formData.approval_time,
+  ]);
+
+  // Auto-recalculate total cost when individual costs change
+  useEffect(() => {
+    calculateTotals();
+  }, [
+    formData.inspection_cost,
+    formData.labour_cost,
+    formData.equipment_cost,
+    formData.certification_cost,
+    formData.other_costs,
+  ]);
+
+  // Auto-calculate labor cost whenever selected labor costs change
+  useEffect(() => {
+    calculateLaborCostFromSelection(selectedLaborCosts);
+  }, [selectedLaborCosts]);
 
   // Calculate totals
   const calculateTotals = () => {
@@ -392,7 +565,7 @@ const UpdateQualityCheckStage = ({
       const updatedData = { ...prev };
 
       // Handle special cases for numbers
-      if (name.includes("_cost") || name === "markup_percentage") {
+      if (name.includes("_cost")) {
         updatedData[name] = value === "" ? "" : value;
       } else if (
         name.includes("_time") ||
@@ -591,6 +764,10 @@ const UpdateQualityCheckStage = ({
 
     if (!formData.start_date) {
       errors.start_date = "Start date is required";
+    }
+
+    if (selectedLaborCosts.length === 0) {
+      errors.labor_costs = "At least one labor cost type must be selected";
     }
 
     if (
@@ -878,18 +1055,39 @@ const UpdateQualityCheckStage = ({
         stage: formData.stage,
         remarks: formData.remarks || "",
 
-        // files: qualityFiles,
+        files: qualityFiles,
+
+        // Labor cost tracking
+        selected_labor_costs: selectedLaborCosts,
+        labor_cost_breakdown: laborBreakdown,
       };
 
+      console.log("🚀 Submitting Quality Check stage update:", {
+        qualityStageId: selectedStage._id,
+        data: updateData,
+        selectedLaborCostsCount: selectedLaborCosts.length,
+        laborBreakdownCount: laborBreakdown.length,
+      });
+
       if (onUpdate) {
-        const success = await onUpdate(
+        const result = await onUpdate(
           selectedStage._id,
           updateData,
           filesToUpload,
         );
 
-        if (success) {
+        console.log("Modal received result:", result);
+
+        if (result === true || (result && result.success === true)) {
+          console.log("✅ Update successful, closing modal");
           onClose();
+        } else {
+          console.log("❌ Update failed, not closing");
+          const errorMsg =
+            result?.error ||
+            result?.message ||
+            "Failed to update Quality Check stage";
+          setUploadError(errorMsg);
         }
       }
     } catch (error) {
@@ -949,6 +1147,12 @@ const UpdateQualityCheckStage = ({
         ).toFixed(1)
       : "100";
 
+  // Calculate total labor from breakdown
+  const totalCalculatedLabor = laborBreakdown.reduce(
+    (sum, item) => sum + parseFloat(item.total_cost || 0),
+    0,
+  );
+
   return (
     <div
       className="modal fade show d-block"
@@ -973,6 +1177,10 @@ const UpdateQualityCheckStage = ({
                 <div className="d-flex align-items-center gap-2 mt-1">
                   <span className="badge bg-primary">
                     <FiShield className="me-1" /> Quality Check
+                  </span>
+                  <span className="badge bg-primary">
+                    <FiUsers className="me-1" /> Labor Types:{" "}
+                    {selectedLaborCosts.length}
                   </span>
                   <span className="badge bg-info">
                     <FiUser className="me-1" /> Quality Department
@@ -1005,6 +1213,25 @@ const UpdateQualityCheckStage = ({
             >
               {/* Summary Cards */}
               <div className="row g-3 mb-4">
+                <div className="col-md-3">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-body p-3">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <h6 className="text-muted mb-1">Labor Cost</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.labour_cost || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            {selectedLaborCosts.length} type(s) selected
+                          </small>
+                        </div>
+                        <FiUsers className="text-warning" size={24} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="col-md-3">
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body p-3">
@@ -1072,56 +1299,15 @@ const UpdateQualityCheckStage = ({
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <h6 className="text-muted mb-1">Time Tracking</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="me-2">
-                              <FiTrendingUp className="text-success" />
-                            </span>
-                            <h4 className="mb-0">
-                              {formData.total_time_spent || "0"} hrs
-                            </h4>
-                          </div>
+                          <h6 className="text-muted mb-1">Total Cost</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.total_cost || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            Labor: ₹{formData.labour_cost || "0.00"}
+                          </small>
                         </div>
-                        <FiClock className="text-info" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Efficiency: {efficiency}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body p-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <h6 className="text-muted mb-1">Cost Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span
-                              className={`badge ${
-                                formData.cost_status === "estimated"
-                                  ? "bg-warning"
-                                  : formData.cost_status === "calculated"
-                                    ? "bg-info"
-                                    : "bg-success"
-                              } me-2`}
-                            >
-                              {
-                                costStatusOptions.find(
-                                  (c) => c.value === formData.cost_status,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">
-                              ₹ {formData.total_cost || "0.00"}
-                            </h4>
-                          </div>
-                        </div>
-                        <FiDollarSign className="text-warning" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Inspection: ₹{formData.inspection_cost || "0"}
+                        <FiDollarSign className="text-success" size={24} />
                       </div>
                     </div>
                   </div>
@@ -1164,7 +1350,7 @@ const UpdateQualityCheckStage = ({
                                   .includes("quality") ||
                                 emp.role_id?.role_name
                                   ?.toLowerCase()
-                                  .includes("inspector"),
+                                  .includes("designer"),
                             )
                             .map((emp) => (
                               <option key={emp._id} value={emp._id}>
@@ -1269,6 +1455,7 @@ const UpdateQualityCheckStage = ({
                           onChange={handleInputChange}
                           disabled={isDisabled}
                         >
+                          <option value="">Select Next Stage</option>
                           {nextStageOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.icon} {option.label}
@@ -2065,6 +2252,7 @@ const UpdateQualityCheckStage = ({
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
+                  selectedLaborCosts.length,
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
@@ -2086,6 +2274,75 @@ const UpdateQualityCheckStage = ({
                             </option>
                           ))}
                         </select>
+                      </div>
+                    </div>
+
+                    {/* Labor Cost Selection */}
+                    <div className="row mb-3">
+                      <div className="col-md-12">
+                        <label className="form-label fw-medium">
+                          <FiUsers className="me-1" /> Labor Cost Types{" "}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <Select
+                          isMulti
+                          options={getLaborCostOptions()}
+                          value={getLaborCostOptions().filter((option) =>
+                            selectedLaborCosts.some(
+                              (cost) => cost._id === option.value,
+                            ),
+                          )}
+                          onChange={handleLaborCostsChange}
+                          placeholder={
+                            laborCosts.length === 0
+                              ? "Loading labor cost types..."
+                              : "Select labor cost types (Quality/Inspection costs)"
+                          }
+                          isDisabled={isDisabled || laborCosts.length === 0}
+                          className="react-select-container"
+                          classNamePrefix="react-select"
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: formErrors.labor_costs
+                                ? "#dc3545"
+                                : "#dee2e6",
+                              "&:hover": {
+                                borderColor: formErrors.labor_costs
+                                  ? "#dc3545"
+                                  : "#ced4da",
+                              },
+                              backgroundColor: state.isDisabled
+                                ? "#e9ecef"
+                                : "white",
+                              minHeight: "42px",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            multiValue: (base) => ({
+                              ...base,
+                              backgroundColor: "#e3f2fd",
+                            }),
+                            multiValueLabel: (base) => ({
+                              ...base,
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }),
+                          }}
+                        />
+                        {formErrors.labor_costs && (
+                          <div className="invalid-feedback d-block">
+                            <FiAlertCircle className="me-1" />{" "}
+                            {formErrors.labor_costs}
+                          </div>
+                        )}
+                        <div className="form-text">
+                          Select one or more labor cost types
+                          (Quality/Inspection costs are included). The total
+                          labor cost will be calculated automatically.
+                        </div>
                       </div>
                     </div>
 
@@ -2111,27 +2368,6 @@ const UpdateQualityCheckStage = ({
                         <div className="form-text x-small">
                           Testing & inspection
                         </div>
-                      </div>
-
-                      <div className="col-md-3 mb-2">
-                        <label className="form-label fw-medium small">
-                          Labour Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="labour_cost"
-                            className="form-control"
-                            value={formData.labour_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">Inspector wages</div>
                       </div>
 
                       <div className="col-md-3 mb-2">
@@ -2201,19 +2437,106 @@ const UpdateQualityCheckStage = ({
 
                       <div className="col-md-3 mb-2">
                         <label className="form-label fw-medium small">
-                          Total Cost
+                          Labor Cost (Auto)
                         </label>
                         <div className="input-group input-group-sm">
                           <span className="input-group-text">₹</span>
                           <input
-                            type="text"
+                            type="number"
+                            name="labour_cost"
                             className="form-control bg-light"
-                            value={formData.total_cost || "0.00"}
+                            value={formData.labour_cost}
                             readOnly
+                            title="Automatically calculated from selected labor cost types"
                           />
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() =>
+                              calculateLaborCostFromSelection(
+                                selectedLaborCosts,
+                              )
+                            }
+                            disabled={isDisabled}
+                            title="Recalculate labor cost"
+                          >
+                            <FiRefreshCw size={14} />
+                          </button>
+                        </div>
+                        <div className="form-text x-small">
+                          Auto-calculated from {selectedLaborCosts.length}{" "}
+                          selected type(s)
                         </div>
                       </div>
                     </div>
+
+                    {/* Selected Labor Costs Breakdown */}
+                    {selectedLaborCosts.length > 0 && (
+                      <div className="row mt-3">
+                        <div className="col-md-12">
+                          <div className="card border">
+                            <div className="card-header bg-light py-2">
+                              <h6 className="mb-0 small fw-bold">
+                                Selected Labor Cost Breakdown
+                                <span className="badge bg-primary ms-2">
+                                  {selectedLaborCosts.length}
+                                </span>
+                              </h6>
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="table-responsive">
+                                <table className="table table-sm mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th className="small">Type</th>
+                                      <th className="small">Cost Type</th>
+                                      <th className="small">Amount</th>
+                                      <th className="small">Unit</th>
+                                      <th className="small text-end">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {laborBreakdown.map((item) => (
+                                      <tr key={item.id}>
+                                        <td className="small">
+                                          <strong>{item.name}</strong>
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-secondary">
+                                            {item.type}
+                                          </span>
+                                        </td>
+                                        <td className="small">
+                                          ₹{item.cost_amount}
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-info">
+                                            {item.unit}
+                                          </span>
+                                        </td>
+                                        <td className="small text-end fw-bold">
+                                          ₹{item.total_cost}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="table-active">
+                                      <td colSpan="4" className="small fw-bold">
+                                        Total Labor Cost
+                                      </td>
+                                      <td className="small text-end fw-bold fs-6">
+                                        ₹ {totalCalculatedLabor.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Cost Summary */}
                     <div className="border rounded-3 p-3 bg-light mt-3">
@@ -2227,7 +2550,7 @@ const UpdateQualityCheckStage = ({
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-2 small">
-                            <span>Labour Cost:</span>
+                            <span>Labor Cost:</span>
                             <span className="fw-bold">
                               ₹ {formData.labour_cost || "0.00"}
                             </span>
@@ -2274,9 +2597,9 @@ const UpdateQualityCheckStage = ({
                               style={{
                                 width: `${((parseFloat(formData.labour_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
-                              title="Labour Cost"
+                              title="Labor Cost"
                             >
-                              Labour
+                              Labor
                             </div>
                             <div
                               className="progress-bar bg-warning"
@@ -2978,9 +3301,22 @@ const UpdateQualityCheckStage = ({
             <div className="modal-footer border-top pt-3 bg-white">
               <div className="d-flex justify-content-between w-100 align-items-center">
                 <div className="text-muted small">
-                  <span className="me-3">🔍 Quality checks</span>
-                  <span className="me-3">⚠️ Defects tracking</span>
-                  <span>📊 Quality metrics</span>
+                  <span className="me-3">
+                    <FiUsers className="me-1" />
+                    Labor: ₹{formData.labour_cost || "0.00"}
+                  </span>
+                  <span className="me-3">
+                    <FiCheckCircle className="me-1" />
+                    Pass Rate: {passRate}%
+                  </span>
+                  <span className="me-3">
+                    <FiClock className="me-1" />
+                    {formData.total_time_spent || "0"} hrs
+                  </span>
+                  <span>
+                    <FiDollarSign className="me-1" />
+                    Total: ₹{formData.total_cost || "0.00"}
+                  </span>
                 </div>
                 <div className="d-flex gap-2">
                   <button

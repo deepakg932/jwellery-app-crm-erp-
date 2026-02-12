@@ -7,130 +7,187 @@ export default function usePolishingStages() {
   const [materials, setMaterials] = useState([]);
   const [units, setUnits] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [laborCosts, setLaborCosts] = useState([]); // Add labor costs
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Fetch Polishing stages
-const fetchPolishingStages = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError("");
+  const fetchPolishingStages = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const url = API_ENDPOINTS.getPolishingStages();
-    const res = await axios.get(url);
+      const url = API_ENDPOINTS.getPolishingStages();
+      const res = await axios.get(url);
 
-    let jobCardsData = [];
+      let jobCardsData = [];
 
-    if (res.data?.success && Array.isArray(res.data.data)) {
-      jobCardsData = res.data.data;
-    } else if (Array.isArray(res.data)) {
-      jobCardsData = res.data;
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        jobCardsData = res.data.data;
+      } else if (Array.isArray(res.data)) {
+        jobCardsData = res.data;
+      }
+
+      console.log("Polishing stages raw data:", jobCardsData);
+
+      const polishingStagesData = jobCardsData
+        .filter(jobCard => jobCard.polishing_stage)
+        .map(jobCard => {
+          const polishingStage = jobCard.polishing_stage;
+          const polishingData = polishingStage.data || {};
+          const jobCardData = jobCard.job_card || {};
+          const assignedTo = polishingStage.assigned_to || {};
+
+          // Parse files
+          let filesArray = [];
+          if (polishingData.files) {
+            if (Array.isArray(polishingData.files)) {
+              if (polishingData.files.length > 0 && typeof polishingData.files[0] === "string") {
+                try {
+                  const parsedFiles = JSON.parse(polishingData.files[0]);
+                  filesArray = Array.isArray(parsedFiles) ? parsedFiles : [];
+                } catch (e) {
+                  console.error("Error parsing files:", e);
+                  filesArray = [];
+                }
+              } else {
+                filesArray = polishingData.files;
+              }
+            } else if (typeof polishingData.files === "string") {
+              try {
+                filesArray = JSON.parse(polishingData.files);
+              } catch {
+                filesArray = [];
+              }
+            }
+          }
+
+          // Parse labor costs
+          let selectedLaborCostsArray = [];
+          let laborBreakdownArray = [];
+          
+          if (polishingData.selected_labor_costs) {
+            if (Array.isArray(polishingData.selected_labor_costs)) {
+              selectedLaborCostsArray = polishingData.selected_labor_costs;
+            } else if (typeof polishingData.selected_labor_costs === "string") {
+              try {
+                selectedLaborCostsArray = JSON.parse(polishingData.selected_labor_costs);
+              } catch {
+                selectedLaborCostsArray = [];
+              }
+            }
+          }
+
+          if (polishingData.labor_cost_breakdown) {
+            if (Array.isArray(polishingData.labor_cost_breakdown)) {
+              laborBreakdownArray = polishingData.labor_cost_breakdown;
+            } else if (typeof polishingData.labor_cost_breakdown === "string") {
+              try {
+                laborBreakdownArray = JSON.parse(polishingData.labor_cost_breakdown);
+              } catch {
+                laborBreakdownArray = [];
+              }
+            }
+          }
+          
+          return {
+            // IDs
+            _id: jobCard._id || polishingStage._id,
+            polishing_stage_id: polishingStage._id,
+            job_card_id: jobCardData._id,
+            
+            // Job card info
+            job_card_no: jobCardData.job_card_no || "N/A",
+            design_type: jobCardData.design_type || "N/A",
+            job_card_priority: jobCardData.priority,
+            job_card_images: jobCardData.images || [],
+            job_card_stage: jobCardData.stage,
+            job_card_status: jobCardData.status,
+            
+            // Department info
+            department: "POLISHING",
+            assigned_department: polishingStage.department,
+            
+            // Assignment info
+            assigned_to: assignedTo._id,
+            assigned_name: assignedTo.name,
+            assigned_email: assignedTo.email,
+            
+            // Stage status
+            status: polishingStage.status,
+            start_date: polishingStage.start_date,
+            end_date: polishingStage.end_date,
+            completed_at: polishingStage.completed_at,
+            remarks: polishingStage.remarks,
+            createdAt: jobCard.createdAt,
+            
+            // Polishing specific fields
+            material_used: polishingData.material_used || "Polish compound",
+            material_quantity: polishingData.material_quantity || "",
+            material_unit: polishingData.material_unit || "",
+            polish_type: polishingData.polish_type || "",
+            polish_grade: polishingData.polish_grade || "",
+            polishing_method: polishingData.polishing_method || "",
+            equipment_used: polishingData.equipment_used || "",
+            rpm_speed: polishingData.rpm_speed || "",
+            pressure_applied: polishingData.pressure_applied || "",
+            surface_finish: polishingData.surface_finish || "",
+            brightness_level: polishingData.brightness_level || "",
+            scratch_removal: polishingData.scratch_removal || "",
+            surface_consistency: polishingData.surface_consistency || "",
+            defects_noted: polishingData.defects_noted || "",
+            rework_required: polishingData.rework_required || false,
+            rework_reason: polishingData.rework_reason || "",
+            
+            // Time tracking
+            labour_hours: polishingData.labour_hours || "",
+            actual_hours: polishingData.actual_hours || "",
+            preparation_time: polishingData.preparation_time || "",
+            polishing_time: polishingData.polishing_time || "",
+            inspection_time: polishingData.inspection_time || "",
+            total_time_spent: polishingData.total_time_spent || "",
+            time_breakdown: polishingData.time_breakdown || "",
+            
+            // Next stage
+            next_stage: polishingData.next_stage || "",
+            stage: polishingData.stage || "",
+            
+            // Cost tracking
+            material_cost: polishingData.material_cost || "",
+            labour_cost: polishingData.labour_cost || "",
+            equipment_cost: polishingData.equipment_cost || "",
+            consumables_cost: polishingData.consumables_cost || "",
+            other_costs: polishingData.other_costs || "",
+            total_cost: polishingData.total_cost || "",
+            cost_currency: polishingData.cost_currency || "INR",
+            cost_status: polishingData.cost_status || "estimated",
+            markup_percentage: polishingData.markup_percentage || "25",
+            final_price: polishingData.final_price || "",
+            
+            // Labor cost tracking (new fields)
+            selected_labor_costs: selectedLaborCostsArray || [],
+            labor_cost_breakdown: laborBreakdownArray || [],
+            
+            // File tracking
+            file_version: polishingData.file_version || "1.0",
+            file_revisions: polishingData.file_revisions || 0,
+            file_status: polishingData.file_status || "draft",
+            backup_location: polishingData.backup_location || "",
+            files: filesArray || [],
+          };
+        });
+
+      setPolishingStages(polishingStagesData);
+      return polishingStagesData;
+    } catch (err) {
+      console.error("Fetch polishing stages error:", err);
+      setError(err.response?.data?.message || "Failed to load polishing stages");
+      setPolishingStages([]);
+      return [];
+    } finally {
+      setLoading(false);
     }
-
-    console.log("Polishing stages raw data:", jobCardsData);
-
-    const polishingStagesData = jobCardsData
-      .filter(jobCard => jobCard.polishing_stage)
-      .map(jobCard => {
-        const polishingStage = jobCard.polishing_stage;
-        const polishingData = polishingStage.data || {};
-        const jobCardData = jobCard.job_card || {};
-        const assignedTo = polishingStage.assigned_to || {};
-        
-        return {
-          // IDs
-          _id: jobCard._id || polishingStage._id,
-          polishing_stage_id: polishingStage._id,
-          job_card_id: jobCardData._id,
-          
-          // Job card info
-          job_card_no: jobCardData.job_card_no || "N/A",
-          design_type: jobCardData.design_type || "N/A",
-          job_card_priority: jobCardData.priority,
-          job_card_images: jobCardData.images || [],
-          job_card_stage: jobCardData.stage,
-          job_card_status: jobCardData.status,
-          
-          // Department info
-          department: "POLISHING",
-          assigned_department: polishingStage.department,
-          
-          // Assignment info
-          assigned_to: assignedTo._id,
-          assigned_name: assignedTo.name,
-          assigned_email: assignedTo.email,
-          
-          // Stage status
-          status: polishingStage.status,
-          start_date: polishingStage.start_date,
-          end_date: polishingStage.end_date,
-          completed_at: polishingStage.completed_at,
-          remarks: polishingStage.remarks,
-          createdAt: jobCard.createdAt,
-          
-          // Polishing specific fields
-          material_used: polishingData.material_used || "Polish compound",
-          material_quantity: polishingData.material_quantity || "",
-          material_unit: polishingData.material_unit || "",
-          polish_type: polishingData.polish_type || "",
-          polish_grade: polishingData.polish_grade || "",
-          polishing_method: polishingData.polishing_method || "",
-          equipment_used: polishingData.equipment_used || "",
-          rpm_speed: polishingData.rpm_speed || "",
-          pressure_applied: polishingData.pressure_applied || "",
-          surface_finish: polishingData.surface_finish || "",
-          brightness_level: polishingData.brightness_level || "",
-          scratch_removal: polishingData.scratch_removal || "",
-          surface_consistency: polishingData.surface_consistency || "",
-          defects_noted: polishingData.defects_noted || "",
-          rework_required: polishingData.rework_required || false,
-          rework_reason: polishingData.rework_reason || "",
-          
-          // Time tracking
-          labour_hours: polishingData.labour_hours || "",
-          actual_hours: polishingData.actual_hours || "",
-          preparation_time: polishingData.preparation_time || "",
-          polishing_time: polishingData.polishing_time || "",
-          inspection_time: polishingData.inspection_time || "",
-          total_time_spent: polishingData.total_time_spent || "",
-          time_breakdown: polishingData.time_breakdown || "",
-          
-          // Next stage
-          next_stage: polishingData.next_stage || "",
-          stage: polishingData.stage || "",
-          
-          // Cost tracking
-          material_cost: polishingData.material_cost || "",
-          labour_cost: polishingData.labour_cost || "",
-          equipment_cost: polishingData.equipment_cost || "",
-          consumables_cost: polishingData.consumables_cost || "",
-          other_costs: polishingData.other_costs || "",
-          total_cost: polishingData.total_cost || "",
-          cost_currency: polishingData.cost_currency || "INR",
-          cost_status: polishingData.cost_status || "estimated",
-          markup_percentage: polishingData.markup_percentage || "25",
-          final_price: polishingData.final_price || "",
-          
-          // File tracking
-          file_version: polishingData.file_version || "1.0",
-          file_revisions: polishingData.file_revisions || 0,
-          file_status: polishingData.file_status || "draft",
-          backup_location: polishingData.backup_location || "",
-          files: polishingData.files || [],
-        };
-      });
-
-    setPolishingStages(polishingStagesData);
-    return polishingStagesData;
-  } catch (err) {
-    console.error("Fetch polishing stages error:", err);
-    setError(err.response?.data?.message || "Failed to load polishing stages");
-    setPolishingStages([]);
-    return [];
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
   // Fetch employees
   const fetchEmployees = async () => {
@@ -144,6 +201,114 @@ const fetchPolishingStages = useCallback(async () => {
       setEmployees([]);
       return [];
     }
+  };
+
+  // Fetch labor costs from price making API - INCLUDE POLISHING COSTS
+  const fetchLaborCosts = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_ENDPOINTS.getPriceMakings());
+
+      console.log("Price making API Response for polishing:", response.data);
+
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        // Filter for polishing-related labor costs
+        const laborCostData = response.data.data.filter((item) => {
+          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
+          const stageName = item.making_stage_id?.stage_name || "";
+          const subStageName = item.making_sub_stage_id?.sub_stage_name || "";
+          const lowerCaseName = costName.toLowerCase();
+          const lowerCaseStage = stageName.toLowerCase();
+          const lowerCaseSubStage = subStageName.toLowerCase();
+          
+          // Include labor costs for polishing stage
+          return (
+            lowerCaseName.includes("labor") ||
+            lowerCaseName.includes("polish") ||
+            lowerCaseName.includes("polisher") ||
+            lowerCaseName.includes("buff") ||
+            lowerCaseName.includes("karigar") ||
+            lowerCaseName.includes("craftsman") ||
+            lowerCaseName.includes("worker") ||
+            lowerCaseStage.includes("polish") ||
+            lowerCaseSubStage.includes("polish") ||
+            lowerCaseName.includes("पॉलिश") ||
+            lowerCaseName.includes("कारीगर")
+          );
+        });
+
+        // Process and format labor costs
+        const processedCosts = laborCostData.map((item) => {
+          return {
+            ...item,
+            _id: item._id,
+            cost_name:
+              item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
+            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || "unit",
+            stage_name: item.making_stage_id?.stage_name || "General",
+            sub_stage_name:
+              item.making_sub_stage_id?.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          };
+        });
+
+        console.log("Processed labor costs for polishing:", processedCosts);
+        setLaborCosts(processedCosts);
+        return processedCosts;
+      }
+
+      setLaborCosts([]);
+      return [];
+    } catch (err) {
+      console.error("Error fetching labor costs:", err);
+      setLaborCosts([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate total labor cost based on selected labor cost items
+  const calculateTotalLaborCost = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return 0;
+
+    let totalLaborCost = 0;
+
+    selectedLaborCosts.forEach((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+      totalLaborCost += costAmount;
+    });
+
+    console.log(
+      "Calculated total labor cost for polishing:",
+      totalLaborCost,
+      "from",
+      selectedLaborCosts.length,
+      "items"
+    );
+    return totalLaborCost;
+  };
+
+  // Calculate labor breakdown for selected items
+  const calculateLaborBreakdown = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return [];
+
+    return selectedLaborCosts.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
   };
 
   // Fetch materials from stock movements API
@@ -249,13 +414,43 @@ const fetchPolishingStages = useCallback(async () => {
       setLoading(true);
       setError("");
 
+      // Calculate labor cost from selected labor costs if provided
+      let finalUpdateData = { ...updateData };
+
+      // If selected_labor_costs is provided, calculate total labor cost
+      if (
+        updateData.selected_labor_costs &&
+        Array.isArray(updateData.selected_labor_costs)
+      ) {
+        const totalLaborCost = calculateTotalLaborCost(
+          updateData.selected_labor_costs
+        );
+
+        // Update labor cost in data
+        finalUpdateData.labour_cost = totalLaborCost.toFixed(2);
+
+        // Recalculate totals with new labor cost
+        const material = parseFloat(updateData.material_cost) || 0;
+        const equipment = parseFloat(updateData.equipment_cost) || 0;
+        const consumables = parseFloat(updateData.consumables_cost) || 0;
+        const other = parseFloat(updateData.other_costs) || 0;
+        const markup = parseFloat(updateData.markup_percentage) || 25;
+
+        const total = material + totalLaborCost + equipment + consumables + other;
+        const markupAmount = (total * markup) / 100;
+        const finalPrice = total + markupAmount;
+
+        finalUpdateData.total_cost = total.toFixed(2);
+        finalUpdateData.final_price = finalPrice.toFixed(2);
+      }
+
       const url = API_ENDPOINTS.updatePolishingStage(stageId);
       
       const formData = new FormData();
 
-      Object.keys(updateData).forEach(key => {
+      Object.keys(finalUpdateData).forEach(key => {
         if (key !== 'files' && key !== 'material_name' && key !== 'unit_name') {
-          const value = updateData[key];
+          const value = finalUpdateData[key];
           if (value !== null && value !== undefined) {
             formData.append(key, value);
           }
@@ -278,10 +473,50 @@ const fetchPolishingStages = useCallback(async () => {
         formData.append("files", JSON.stringify(existingFiles));
       }
 
+      // Append selected labor costs as JSON array of IDs
+      if (
+        updateData.selected_labor_costs &&
+        Array.isArray(updateData.selected_labor_costs)
+      ) {
+        formData.append(
+          "selected_labor_costs",
+          JSON.stringify(
+            updateData.selected_labor_costs.map((cost) => cost._id)
+          )
+        );
+      }
+
+      // Append labor breakdown as JSON
+      if (
+        updateData.labor_cost_breakdown &&
+        Array.isArray(updateData.labor_cost_breakdown)
+      ) {
+        formData.append(
+          "labor_cost_breakdown",
+          JSON.stringify(updateData.labor_cost_breakdown)
+        );
+      }
+
       if (filesToUpload.length > 0) {
         filesToUpload.forEach((file, index) => {
           formData.append(`uploaded_files`, file);
         });
+      }
+
+      // Debug
+      console.log("📤 Sending Polishing update data:");
+      for (let [key, value] of formData.entries()) {
+        if (key === "uploaded_files") {
+          console.log(`${key}: File - ${value.name}`);
+        } else if (
+          key === "files" ||
+          key === "selected_labor_costs" ||
+          key === "labor_cost_breakdown"
+        ) {
+          console.log(`${key}: ${value.substring(0, 100)}...`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
       }
 
       const res = await axios.put(url, formData, {
@@ -302,6 +537,7 @@ const fetchPolishingStages = useCallback(async () => {
       console.error("Update polishing error:", err);
       
       if (err.response) {
+        console.error("Response data:", err.response.data);
         const errorMsg = err.response.data?.message || `Error: ${err.response.status}`;
         setError(errorMsg);
         return { success: false, error: errorMsg };
@@ -348,7 +584,8 @@ const fetchPolishingStages = useCallback(async () => {
         fetchPolishingStages(),
         fetchEmployees(),
         fetchMaterials(),
-        fetchUnits()
+        fetchUnits(),
+        fetchLaborCosts() // Add labor costs fetch
       ]);
     } catch (error) {
       console.error("Error fetching all polishing data:", error);
@@ -368,6 +605,7 @@ const fetchPolishingStages = useCallback(async () => {
     materials,
     units,
     employees,
+    laborCosts, // Export labor costs
     loading,
     error,
     getPolishMaterials,
@@ -376,6 +614,9 @@ const fetchPolishingStages = useCallback(async () => {
     fetchEmployees,
     fetchMaterials,
     fetchUnits,
+    fetchLaborCosts, // Export fetch function
+    calculateTotalLaborCost, // Export calculation function
+    calculateLaborBreakdown, // Export breakdown function
     updatePolishingStageWithFiles,
     fetchAllData,
   };

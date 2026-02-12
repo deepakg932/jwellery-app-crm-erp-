@@ -189,7 +189,7 @@ const EditSaleForm = ({ onClose, onSave, sale, loading = false }) => {
         exchange_details: {
           item_name: exchangeDetails.item_name || "",
           weight: exchangeDetails.weight?.toString() || "",
-          unit: exchangeDetails.unit || "",
+          unit: exchangeDetails.unit_id || "",
           weight_in_gram: exchangeDetails.weight_in_gram?.toString() || "",
           actual_rate: exchangeDetails.actual_rate?.toString() || "",
           calculated_value: exchangeDetails.calculated_value?.toString() || "",

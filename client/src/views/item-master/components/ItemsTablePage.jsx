@@ -439,7 +439,7 @@ export default function ItemsTablePage() {
           <div className="row align-items-center mb-4">
             <div className="col-md-6">
               <div className="d-flex align-items-center gap-3">
-                <h1 className="h3 fw-bold mb-0">Inventory Items</h1>
+                <h1 className="h3 fw-bold mb-0">Product Table </h1>
                 <button
                   className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
                   onClick={handleRefresh}
@@ -645,7 +645,7 @@ export default function ItemsTablePage() {
                       <td>
                         <div className="d-flex flex-column">
                           <span className="fw-medium">
-                            {item.article_no || "N/A"}
+                            {item.product_code || "N/A"}
                           </span>
                           {item._id && (
                             <small

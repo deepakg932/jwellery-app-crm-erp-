@@ -39,6 +39,7 @@ const SettingStageTable = () => {
     settingStages,
     materials,
     stones,
+    laborCosts ,
     units,
     loading,
     error,
@@ -1495,6 +1496,7 @@ const SettingStageTable = () => {
           selectedStage={selectedStage}
           employees={employees}
           materials={materials}
+          laborCosts={laborCosts}
           stones={stones}
           units={units}
           onUpdate={handleUpdateStage}

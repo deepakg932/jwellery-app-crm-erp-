@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
 import {
   FiUser,
   FiBox,
@@ -47,6 +48,7 @@ import {
   FiTarget,
   FiGrid as FiGridIcon,
   FiStar,
+  FiUsers,
 } from "react-icons/fi";
 
 const UpdateSettingStage = ({
@@ -55,6 +57,7 @@ const UpdateSettingStage = ({
   materials = [],
   stones = [],
   units = [],
+  laborCosts = [], // Add labor costs
   onUpdate,
   onClose,
   loading = false,
@@ -64,6 +67,11 @@ const UpdateSettingStage = ({
   const [settingFiles, setSettingFiles] = useState([]);
   const [availableStones, setAvailableStones] = useState([]);
   const [selectedStone, setSelectedStone] = useState(null);
+  const [selectedLaborCosts, setSelectedLaborCosts] = useState([]); // Add selected labor costs
+  const [laborBreakdown, setLaborBreakdown] = useState([]); // Add labor breakdown
+
+  console.log("Selected stage:", selectedStage);
+  console.log("Labor costs received:", laborCosts);
 
   const [formData, setFormData] = useState({
     assigned_to: "",
@@ -75,7 +83,6 @@ const UpdateSettingStage = ({
     stone_name: "",
     stone_item_code: "",
     stone_quantity: "",
-    // stone_carat: "",
     stone_cost: "",
     stone_breakage: 0,
     stone_breakage_reason: "",
@@ -99,7 +106,7 @@ const UpdateSettingStage = ({
     total_cost: "",
     cost_currency: "INR",
     cost_status: "estimated",
-    markup_percentage: "",
+    markup_percentage: "25",
     final_price: "",
     setting_time: "",
     quality_check_time: "",
@@ -120,7 +127,7 @@ const UpdateSettingStage = ({
     stones: false,
     process: false,
     quality: false,
-    cost: false,
+    cost: true,
     time: false,
     files: false,
   });
@@ -323,6 +330,93 @@ const UpdateSettingStage = ({
     { value: "archived", label: "Archived", icon: "📦" },
   ];
 
+  // Prepare options for React Select - SETTING LABOR COSTS (INCLUDING SETTERS)
+  const getLaborCostOptions = () => {
+    if (!laborCosts || laborCosts.length === 0) return [];
+
+    // Filter for setting-related labor costs
+    const filteredCosts = laborCosts.filter((cost) => {
+      const costName = (cost.cost_name || "").toLowerCase();
+      const stageName = (cost.stage_name || "").toLowerCase();
+      const subStageName = (cost.sub_stage_name || "").toLowerCase();
+      
+      // Include labor and setter costs relevant to setting
+      return (
+        costName.includes("labor") ||
+        costName.includes("setter") ||
+        costName.includes("karigar") ||
+        costName.includes("craftsman") ||
+        costName.includes("worker") ||
+        costName.includes("setting") ||
+        stageName.includes("setting") ||
+        subStageName.includes("setting") ||
+        stageName.includes("stone") ||
+        subStageName.includes("stone") ||
+        costName.includes("सेटर") ||
+        costName.includes("कारीगर")
+      );
+    });
+
+    return filteredCosts.map((cost) => ({
+      value: cost._id,
+      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      originalData: cost,
+    }));
+  };
+
+  // Handle labor cost selection change
+  const handleLaborCostsChange = (selectedOptions) => {
+    const selectedItems = selectedOptions
+      ? selectedOptions.map((option) => option.originalData)
+      : [];
+    setSelectedLaborCosts(selectedItems);
+
+    // Calculate total labor cost based on selected items
+    calculateLaborCostFromSelection(selectedItems);
+  };
+
+  // Calculate labor cost from selected items
+  const calculateLaborCostFromSelection = (selectedItems) => {
+    if (selectedItems.length === 0) {
+      setFormData((prev) => ({ ...prev, labour_cost: "0.00" }));
+      setLaborBreakdown([]);
+      return;
+    }
+
+    // Calculate breakdown for selected items
+    const breakdown = selectedItems.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || cost.cost_name_id?.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+
+    setLaborBreakdown(breakdown);
+
+    // Calculate total labor cost
+    const totalLaborCost = breakdown.reduce(
+      (sum, item) => sum + parseFloat(item.total_cost),
+      0
+    );
+
+    // Update form data with calculated labor cost
+    setFormData((prev) => ({
+      ...prev,
+      labour_cost: totalLaborCost.toFixed(2),
+    }));
+
+    // Recalculate total cost
+    calculateTotalCost();
+  };
+
   // Update available stones from both stones array and materials that are stones
   useEffect(() => {
     if (stones && stones.length > 0) {
@@ -344,9 +438,43 @@ const UpdateSettingStage = ({
 
   // Initialize form data
   useEffect(() => {
-    if (selectedStage) {
+    if (selectedStage && laborCosts.length > 0) {
       console.log("Initializing form with selected stage:", selectedStage);
       console.log("Available stones:", availableStones);
+
+      // Parse selected labor costs if they exist in the stage data
+      let parsedSelectedLaborCosts = [];
+      if (selectedStage.selected_labor_costs) {
+        if (Array.isArray(selectedStage.selected_labor_costs)) {
+          // Map the IDs to actual labor cost objects
+          parsedSelectedLaborCosts = laborCosts.filter(cost => 
+            selectedStage.selected_labor_costs.includes(cost._id)
+          );
+        } else if (typeof selectedStage.selected_labor_costs === "string") {
+          try {
+            const ids = JSON.parse(selectedStage.selected_labor_costs);
+            parsedSelectedLaborCosts = laborCosts.filter(cost => 
+              ids.includes(cost._id)
+            );
+          } catch {
+            parsedSelectedLaborCosts = [];
+          }
+        }
+      }
+
+      // Parse labor breakdown if it exists
+      let parsedLaborBreakdown = [];
+      if (selectedStage.labor_cost_breakdown) {
+        if (Array.isArray(selectedStage.labor_cost_breakdown)) {
+          parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
+        } else if (typeof selectedStage.labor_cost_breakdown === "string") {
+          try {
+            parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
+          } catch {
+            parsedLaborBreakdown = [];
+          }
+        }
+      }
 
       const initialData = {
         assigned_to: selectedStage.assigned_to || "",
@@ -362,7 +490,6 @@ const UpdateSettingStage = ({
         stone_name: selectedStage.stone_name || selectedStage.stone_type || "",
         stone_item_code: selectedStage.stone_item_code || "",
         stone_quantity: selectedStage.stone_quantity || "",
-        // stone_carat: selectedStage.stone_carat || "",
         stone_cost: selectedStage.stone_cost || "",
         stone_breakage: selectedStage.stone_breakage || 0,
         stone_breakage_reason: selectedStage.stone_breakage_reason || "",
@@ -389,7 +516,7 @@ const UpdateSettingStage = ({
         total_cost: selectedStage.total_cost || "",
         cost_currency: selectedStage.cost_currency || "INR",
         cost_status: selectedStage.cost_status || "estimated",
-        markup_percentage: selectedStage.markup_percentage || "",
+        markup_percentage: selectedStage.markup_percentage || "25",
         final_price: selectedStage.final_price || "",
         setting_time: selectedStage.setting_time || "",
         quality_check_time: selectedStage.quality_check_time || "",
@@ -403,7 +530,16 @@ const UpdateSettingStage = ({
         backup_location: selectedStage.backup_location || "",
       };
 
+      console.log("Initializing form data:", initialData);
+
       setFormData(initialData);
+      setSelectedLaborCosts(parsedSelectedLaborCosts);
+      setLaborBreakdown(parsedLaborBreakdown);
+
+      // Calculate labor cost from selected items
+      if (parsedSelectedLaborCosts.length > 0) {
+        calculateLaborCostFromSelection(parsedSelectedLaborCosts);
+      }
 
       // Find and set selected stone
       if (initialData.stone_item_code && availableStones.length > 0) {
@@ -440,9 +576,33 @@ const UpdateSettingStage = ({
       calculateTotalCost();
       calculateTotalTime();
     }
-  }, [selectedStage, availableStones]);
+  }, [selectedStage, availableStones, laborCosts]);
 
-  // Handle stone selection
+  // Auto-recalculate total time when time fields change
+  useEffect(() => {
+    calculateTotalTime();
+  }, [
+    formData.setting_time,
+    formData.quality_check_time,
+  ]);
+
+  // Auto-recalculate total cost when individual costs change
+  useEffect(() => {
+    calculateTotalCost();
+  }, [
+    formData.stone_cost_total,
+    formData.material_cost,
+    formData.labour_cost,
+    formData.tool_cost,
+    formData.other_costs,
+    formData.markup_percentage,
+  ]);
+
+  // Auto-calculate labor cost whenever selected labor costs change
+  useEffect(() => {
+    calculateLaborCostFromSelection(selectedLaborCosts);
+  }, [selectedLaborCosts]);
+
   const handleStoneChange = (stoneId) => {
     const stone = availableStones.find((s) => s._id === stoneId);
     if (stone) {
@@ -479,7 +639,7 @@ const UpdateSettingStage = ({
         const labour = Number(updatedData.labour_cost) || 0;
         const tool = Number(updatedData.tool_cost) || 0;
         const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage);
+        const markup = Number(updatedData.markup_percentage) || 25;
 
         const total = stoneCost + material + labour + tool + other;
         const markupAmount = (total * markup) / 100;
@@ -505,7 +665,7 @@ const UpdateSettingStage = ({
     const labour = Number(formData.labour_cost) || 0;
     const tool = Number(formData.tool_cost) || 0;
     const other = Number(formData.other_costs) || 0;
-    const markup = Number(formData.markup_percentage) ;
+    const markup = Number(formData.markup_percentage) || 25;
 
     console.log("SETTING COST CALCULATION:", {
       stoneCost,
@@ -585,7 +745,7 @@ const UpdateSettingStage = ({
         const labour = Number(updatedData.labour_cost) || 0;
         const tool = Number(updatedData.tool_cost) || 0;
         const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage) ;
+        const markup = Number(updatedData.markup_percentage) || 25;
 
         console.log("SETTING COST CALCULATION IN HANDLE CHANGE:", {
           stoneCost,
@@ -644,58 +804,62 @@ const UpdateSettingStage = ({
     }));
   };
 
-// Validate form
-const validateForm = () => {
-  const errors = {};
+  // Validate form
+  const validateForm = () => {
+    const errors = {};
 
-  if (!formData.assigned_to) {
-    errors.assigned_to = "Assigned Setter is required";
-  }
-
-  if (!formData.status) {
-    errors.status = "Status is required";
-  }
-
-  if (!formData.start_date) {
-    errors.start_date = "Start date is required";
-  }
-
-  if (!formData.stone_id) {
-    errors.stone_id = "Stone is required";
-  }
-
-  if (!formData.stone_quantity || Number(formData.stone_quantity) <= 0) {
-    errors.stone_quantity = "Stone quantity is required";
-  }
-
-  if (selectedStone) {
-    const availableQty = Number(selectedStone.available_quantity) || 0;
-    const requiredQty = Number(formData.stone_quantity) || 0;
-
-    if (requiredQty > availableQty) {
-      errors.stone_quantity = `Required quantity (${requiredQty}) exceeds available stock (${availableQty})`;
+    if (!formData.assigned_to) {
+      errors.assigned_to = "Assigned Setter is required";
     }
-  }
 
-  // Validate stone breakage doesn't exceed quantity
-  const stoneQty = Number(formData.stone_quantity) || 0;
-  const breakage = Number(formData.stone_breakage) || 0;
-  
-  if (breakage > stoneQty) {
-    errors.stone_breakage = "Stone breakage cannot exceed stone quantity";
-  }
+    if (!formData.status) {
+      errors.status = "Status is required";
+    }
 
-  if (
-    formData.end_date &&
-    formData.start_date &&
-    new Date(formData.end_date) < new Date(formData.start_date)
-  ) {
-    errors.end_date = "End date cannot be before start date";
-  }
+    if (!formData.start_date) {
+      errors.start_date = "Start date is required";
+    }
 
-  setFormErrors(errors);
-  return Object.keys(errors).length === 0;
-};
+    if (!formData.stone_id) {
+      errors.stone_id = "Stone is required";
+    }
+
+    if (!formData.stone_quantity || Number(formData.stone_quantity) <= 0) {
+      errors.stone_quantity = "Stone quantity is required";
+    }
+
+    if (selectedLaborCosts.length === 0) {
+      errors.labor_costs = "At least one labor cost type must be selected";
+    }
+
+    if (selectedStone) {
+      const availableQty = Number(selectedStone.available_quantity) || 0;
+      const requiredQty = Number(formData.stone_quantity) || 0;
+
+      if (requiredQty > availableQty) {
+        errors.stone_quantity = `Required quantity (${requiredQty}) exceeds available stock (${availableQty})`;
+      }
+    }
+
+    // Validate stone breakage doesn't exceed quantity
+    const stoneQty = Number(formData.stone_quantity) || 0;
+    const breakage = Number(formData.stone_breakage) || 0;
+    
+    if (breakage > stoneQty) {
+      errors.stone_breakage = "Stone breakage cannot exceed stone quantity";
+    }
+
+    if (
+      formData.end_date &&
+      formData.start_date &&
+      new Date(formData.end_date) < new Date(formData.start_date)
+    ) {
+      errors.end_date = "End date cannot be before start date";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // Handle file upload
   const handleFileUpload = async (files, category = "output") => {
@@ -924,7 +1088,6 @@ const validateForm = () => {
         stone_name: formData.stone_name,
         stone_item_code: formData.stone_item_code,
         stone_quantity: formData.stone_quantity || "1",
-        // stone_carat: formData.stone_carat || "0",
         stone_cost: formData.stone_cost || "0",
         stone_breakage: formData.stone_breakage || "0",
         stone_breakage_reason: formData.stone_breakage_reason || "",
@@ -943,7 +1106,7 @@ const validateForm = () => {
         total_cost: formData.total_cost || "0",
         cost_currency: formData.cost_currency || "INR",
         cost_status: formData.cost_status || "estimated",
-        markup_percentage: formData.markup_percentage || "",
+        markup_percentage: formData.markup_percentage || "25",
         final_price: formData.final_price || "0",
         setting_time: formData.setting_time || "0",
         quality_check_time: formData.quality_check_time || "0",
@@ -954,19 +1117,36 @@ const validateForm = () => {
         file_status: formData.file_status || "draft",
         backup_location: formData.backup_location || "",
         files: settingFiles,
+        
+        // Labor cost tracking
+        selected_labor_costs: selectedLaborCosts,
+        labor_cost_breakdown: laborBreakdown,
       };
 
-      console.log("Submitting update data:", updateData);
+      console.log("🚀 Submitting Setting stage update:", {
+        settingStageId: selectedStage._id,
+        data: updateData,
+        selectedLaborCostsCount: selectedLaborCosts.length,
+        laborBreakdownCount: laborBreakdown.length,
+      });
 
       if (onUpdate) {
-        const success = await onUpdate(
+        const result = await onUpdate(
           selectedStage._id,
           updateData,
           filesToUpload,
         );
 
-        if (success) {
+        console.log("Modal received result:", result);
+
+        if (result === true || (result && result.success === true)) {
+          console.log("✅ Update successful, closing modal");
           onClose();
+        } else {
+          console.log("❌ Update failed, not closing");
+          const errorMsg =
+            result?.error || result?.message || "Failed to update Setting stage";
+          setUploadError(errorMsg);
         }
       }
     } catch (error) {
@@ -974,8 +1154,6 @@ const validateForm = () => {
       setUploadError("Failed to update.");
     }
   };
-
-  console.log(selectedStage);
 
   // Render section header
   const renderSectionHeader = (title, sectionKey, icon, badgeCount = null) => (
@@ -1056,6 +1234,12 @@ const validateForm = () => {
     );
   };
 
+  // Calculate total labor from breakdown
+  const totalCalculatedLabor = laborBreakdown.reduce(
+    (sum, item) => sum + parseFloat(item.total_cost || 0),
+    0
+  );
+
   return (
     <div
       className="modal fade show d-block"
@@ -1093,6 +1277,10 @@ const validateForm = () => {
                       {formData.setting_type.toUpperCase()} SETTING
                     </span>
                   )}
+                  <span className="badge bg-info">
+                    <FiUsers className="me-1" /> Labor Types:{" "}
+                    {selectedLaborCosts.length}
+                  </span>
                   <span className="badge bg-dark">
                     <FiDatabaseIcon className="me-1" />
                     Next:{" "}
@@ -1126,6 +1314,25 @@ const validateForm = () => {
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
+                          <h6 className="text-muted mb-1">Labor Cost</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.labour_cost || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            {selectedLaborCosts.length} type(s) selected
+                          </small>
+                        </div>
+                        <FiUsers className="text-warning" size={24} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-3">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-body p-3">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
                           <h6 className="text-muted mb-1">Stone Tracking</h6>
                           <div className="d-flex align-items-center">
                             <span
@@ -1136,7 +1343,7 @@ const validateForm = () => {
                             <h4 className="mb-0">{stoneBreakagePercent}%</h4>
                           </div>
                         </div>
-                        <FiAperture className="text-warning" size={24} />
+                        <FiAperture className="text-primary" size={24} />
                       </div>
                       <div className="small text-muted mt-1">
                         Used: {formData.stone_quantity || "0"} of{" "}
@@ -1175,52 +1382,18 @@ const validateForm = () => {
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <h6 className="text-muted mb-1">Cost Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="badge bg-warning me-2">
-                              {
-                                costStatusOptions.find(
-                                  (c) => c.value === formData.cost_status,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">
-                              ₹ {formData.final_price || "0.00"}
-                            </h4>
-                          </div>
+                          <h6 className="text-muted mb-1">Final Price</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.final_price || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            Markup: {formData.markup_percentage || "0"}%
+                          </small>
                         </div>
-                        <FiDollarSign className="text-warning" size={24} />
+                        <FiDollarSign className="text-success" size={24} />
                       </div>
                       <div className="small text-muted mt-1">
                         Total: ₹{formData.total_cost || "0"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body p-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <h6 className="text-muted mb-1">Quality Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span
-                              className={`badge ${
-                                formData.stone_secure
-                                  ? "bg-success"
-                                  : "bg-danger"
-                              } me-2`}
-                            >
-                              {formData.stone_secure ? "SECURE" : "LOOSE"}
-                            </span>
-                            <h4 className="mb-0">{formData.precision_level}</h4>
-                          </div>
-                        </div>
-                        <FiShield className="text-success" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Setting: {formData.setting_type}
                       </div>
                     </div>
                   </div>
@@ -1263,7 +1436,7 @@ const validateForm = () => {
                                   .includes("setter") ||
                                 emp.role_id?.role_name
                                   ?.toLowerCase()
-                                  .includes("karigar"),
+                                  .includes("designer"),
                             )
                             .map((emp) => (
                               <option key={emp._id} value={emp._id}>
@@ -1376,7 +1549,7 @@ const validateForm = () => {
                     </div>
 
                     <div className="row">
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-6 mb-3">
                         <label className="form-label fw-medium">
                           <FiClock className="me-1" /> Labour Hours
                         </label>
@@ -1393,7 +1566,7 @@ const validateForm = () => {
                         />
                       </div>
 
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-6 mb-3">
                         <label className="form-label fw-medium">
                           <FiClock className="me-1" /> Actual Hours
                         </label>
@@ -1408,26 +1581,6 @@ const validateForm = () => {
                           placeholder="e.g., 3.5"
                           disabled={isDisabled}
                         />
-                      </div>
-
-                      <div className="col-md-4 mb-3">
-                        <label className="form-label fw-medium">
-                          <FiBarChart2 className="me-1" /> File Status
-                        </label>
-                        <select
-                          name="file_status"
-                          className="form-select"
-                          value={formData.file_status}
-                          onChange={handleInputChange}
-                          disabled={isDisabled}
-                        >
-                          <option value="">Select File Status</option>
-                          {fileStatusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.icon} {option.label}
-                            </option>
-                          ))}
-                        </select>
                       </div>
                     </div>
 
@@ -1572,18 +1725,6 @@ const validateForm = () => {
                                 </div>
                               </div>
                             )}
-                            {selectedStone.carat > 0 && (
-                              <div className="col-md-3">
-                                <div className="mb-2">
-                                  <small className="text-muted">
-                                    Carat Weight
-                                  </small>
-                                  <div className="fw-medium">
-                                    {selectedStone.carat} carat
-                                  </div>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1622,29 +1763,6 @@ const validateForm = () => {
                           {getAvailableStock().unit}
                         </div>
                       </div>
-                      {/* 
-                      <div className="col-md-4 mb-2">
-                        <label className="form-label fw-medium small">
-                          Total Carat Weight
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <input
-                            type="number"
-                            name="stone_carat"
-                            className="form-control"
-                            value={formData.stone_carat}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="e.g., 0.5"
-                            disabled={isDisabled}
-                          />
-                          <span className="input-group-text">carat</span>
-                        </div>
-                        <div className="form-text x-small">
-                          Total carat weight of all stones
-                        </div>
-                      </div> */}
 
                       <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
@@ -1726,13 +1844,6 @@ const validateForm = () => {
                             <span className="fw-bold">
                               {formData.stone_quantity || "0"}{" "}
                               {selectedStone?.unit_name || "pcs"}
-                            </span>
-                          </div>
-                          <div className="d-flex justify-content-between mb-2 small">
-                            <span>Total Carat:</span>
-                            <span className="fw-bold">
-                              {/* {formData.stone_carat || "0.00"}  */}
-                              carat
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-2 small">
@@ -1972,6 +2083,7 @@ const validateForm = () => {
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
+                  selectedLaborCosts.length
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
@@ -1996,8 +2108,77 @@ const validateForm = () => {
                       </div>
                     </div>
 
+                    {/* Labor Cost Selection */}
+                    <div className="row mb-3">
+                      <div className="col-md-12">
+                        <label className="form-label fw-medium">
+                          <FiUsers className="me-1" /> Labor Cost Types{" "}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <Select
+                          isMulti
+                          options={getLaborCostOptions()}
+                          value={getLaborCostOptions().filter((option) =>
+                            selectedLaborCosts.some(
+                              (cost) => cost._id === option.value
+                            )
+                          )}
+                          onChange={handleLaborCostsChange}
+                          placeholder={
+                            laborCosts.length === 0
+                              ? "Loading labor cost types..."
+                              : "Select labor cost types (Setter/Labor costs)"
+                          }
+                          isDisabled={isDisabled || laborCosts.length === 0}
+                          className="react-select-container"
+                          classNamePrefix="react-select"
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: formErrors.labor_costs
+                                ? "#dc3545"
+                                : "#dee2e6",
+                              "&:hover": {
+                                borderColor: formErrors.labor_costs
+                                  ? "#dc3545"
+                                  : "#ced4da",
+                              },
+                              backgroundColor: state.isDisabled
+                                ? "#e9ecef"
+                                : "white",
+                              minHeight: "42px",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            multiValue: (base) => ({
+                              ...base,
+                              backgroundColor: "#e3f2fd",
+                            }),
+                            multiValueLabel: (base) => ({
+                              ...base,
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }),
+                          }}
+                        />
+                        {formErrors.labor_costs && (
+                          <div className="invalid-feedback d-block">
+                            <FiAlertCircle className="me-1" />{" "}
+                            {formErrors.labor_costs}
+                          </div>
+                        )}
+                        <div className="form-text">
+                          Select one or more labor cost types (Setter costs are
+                          included). The total labor cost will be calculated
+                          automatically.
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="row g-2">
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Material Cost
                         </label>
@@ -2020,28 +2201,7 @@ const validateForm = () => {
                         </div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
-                        <label className="form-label fw-medium small">
-                          Labour Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="labour_cost"
-                            className="form-control"
-                            value={formData.labour_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">Setter wages</div>
-                      </div>
-
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Tool Cost
                         </label>
@@ -2064,7 +2224,7 @@ const validateForm = () => {
                         </div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Stone Cost
                         </label>
@@ -2080,7 +2240,7 @@ const validateForm = () => {
                         <div className="form-text x-small">Auto-calculated</div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Other Costs
                         </label>
@@ -2101,9 +2261,9 @@ const validateForm = () => {
                         <div className="form-text x-small">Miscellaneous</div>
                       </div>
 
-                      <div className="col-md-3 mb-2">
+                      <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
-                           Markup %
+                          <FiPercent className="me-1" /> Markup %
                         </label>
                         <div className="input-group input-group-sm">
                           <input
@@ -2121,13 +2281,144 @@ const validateForm = () => {
                           <span className="input-group-text">%</span>
                         </div>
                       </div>
+
+                      <div className="col-md-4 mb-2">
+                        <label className="form-label fw-medium small">
+                          Labor Cost (Auto)
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="labour_cost"
+                            className="form-control bg-light"
+                            value={formData.labour_cost}
+                            readOnly
+                            title="Automatically calculated from selected labor cost types"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() =>
+                              calculateLaborCostFromSelection(selectedLaborCosts)
+                            }
+                            disabled={isDisabled}
+                            title="Recalculate labor cost"
+                          >
+                            <FiRefreshCw size={14} />
+                          </button>
+                        </div>
+                        <div className="form-text x-small">
+                          Auto-calculated from {selectedLaborCosts.length}{" "}
+                          selected type(s)
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Selected Labor Costs Breakdown */}
+                    {selectedLaborCosts.length > 0 && (
+                      <div className="row mt-3">
+                        <div className="col-md-12">
+                          <div className="card border">
+                            <div className="card-header bg-light py-2">
+                              <h6 className="mb-0 small fw-bold">
+                                Selected Labor Cost Breakdown
+                                <span className="badge bg-primary ms-2">
+                                  {selectedLaborCosts.length}
+                                </span>
+                              </h6>
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="table-responsive">
+                                <table className="table table-sm mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th className="small">Type</th>
+                                      <th className="small">Cost Type</th>
+                                      <th className="small">Amount</th>
+                                      <th className="small">Unit</th>
+                                      <th className="small text-end">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {laborBreakdown.map((item) => (
+                                      <tr key={item.id}>
+                                        <td className="small">
+                                          <strong>{item.name}</strong>
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-secondary">
+                                            {item.type}
+                                          </span>
+                                        </td>
+                                        <td className="small">
+                                          ₹{item.cost_amount}
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-info">
+                                            {item.unit}
+                                          </span>
+                                        </td>
+                                        <td className="small text-end fw-bold">
+                                          ₹{item.total_cost}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="table-active">
+                                      <td colSpan="4" className="small fw-bold">
+                                        Total Labor Cost
+                                      </td>
+                                      <td className="small text-end fw-bold fs-6">
+                                        ₹ {totalCalculatedLabor.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Cost Summary */}
                     <div className="border rounded-3 p-3 bg-light mt-3">
                       <h6 className="fw-bold mb-3">Cost Summary</h6>
                       <div className="row">
                         <div className="col-md-6">
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Stone Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.stone_cost_total || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Material Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.material_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Labor Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.labour_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Tool Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.tool_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Other Costs:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.other_costs || "0.00"}
+                            </span>
+                          </div>
+                          <hr />
                           <div className="d-flex justify-content-between mb-2 small">
                             <span>Total Cost:</span>
                             <span className="fw-bold">
@@ -2157,8 +2448,8 @@ const validateForm = () => {
                           <div className="progress" style={{ height: "20px" }}>
                             <div
                               className="progress-bar bg-primary"
-                               style={{
-                                width: `${((parseFloat(formData.stone_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              style={{
+                                width: `${((parseFloat(formData.stone_cost_total || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Stone Cost"
                             >
@@ -2166,36 +2457,34 @@ const validateForm = () => {
                             </div>
                             <div
                               className="progress-bar bg-success"
-                               style={{
-                                width: `${((parseFloat(formData.labour_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
-                              }}
-                              title="Labour Cost"
-                            >
-                              Labour
-                            </div>
-                            <div
-                              className="progress-bar bg-warning"
-                               style={{
+                              style={{
                                 width: `${((parseFloat(formData.material_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Material Cost"
                             >
                               Material
                             </div>
-
-                               <div
-                              className="progress-bar bg-black"
-                               style={{
+                            <div
+                              className="progress-bar bg-warning"
+                              style={{
+                                width: `${((parseFloat(formData.labour_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
+                              }}
+                              title="Labor Cost"
+                            >
+                              Labor
+                            </div>
+                            <div
+                              className="progress-bar bg-info"
+                              style={{
                                 width: `${((parseFloat(formData.tool_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Tool Cost"
                             >
-                            Tool
+                              Tool
                             </div>
-
                             <div
-                              className="progress-bar bg-info"
-                             style={{
+                              className="progress-bar bg-secondary"
+                              style={{
                                 width: `${((parseFloat(formData.other_costs || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Other Costs"
@@ -2261,29 +2550,6 @@ const validateForm = () => {
                           <span className="input-group-text">hrs</span>
                         </div>
                         <div className="form-text x-small">Inspection time</div>
-                      </div>
-
-                      <div className="col-md-6 mb-2">
-                        <label className="form-label fw-medium small">
-                          Labour Hours
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <input
-                            type="number"
-                            name="labour_hours"
-                            className="form-control"
-                            value={formData.labour_hours}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.5"
-                            placeholder="0.0"
-                            disabled={isDisabled}
-                          />
-                          <span className="input-group-text">hrs</span>
-                        </div>
-                        <div className="form-text x-small">
-                          Estimated labour hours
-                        </div>
                       </div>
 
                       <div className="col-md-6 mb-2">
@@ -2652,9 +2918,22 @@ const validateForm = () => {
             <div className="modal-footer border-top pt-3 bg-white">
               <div className="d-flex justify-content-between w-100 align-items-center">
                 <div className="text-muted small">
-                  <span className="me-3">💎 Stone tracking</span>
-                  <span className="me-3">🔧 Setting process</span>
-                  <span>📊 Quality metrics</span>
+                  <span className="me-3">
+                    <FiUsers className="me-1" />
+                    Labor: ₹{formData.labour_cost || "0.00"}
+                  </span>
+                  <span className="me-3">
+                    <FiAperture className="me-1" />
+                    Stones: {formData.stone_quantity || "0"}
+                  </span>
+                  <span className="me-3">
+                    <FiClock className="me-1" />
+                    {formData.total_time_spent || "0"} hrs
+                  </span>
+                  <span>
+                    <FiDollarSign className="me-1" />
+                    Final: ₹{formData.final_price || "0.00"}
+                  </span>
                 </div>
                 <div className="d-flex gap-2">
                   <button

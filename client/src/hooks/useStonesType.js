@@ -38,7 +38,8 @@ export default function useStonesType() {
       const mappedStones = stonesData.map((s) => ({
         _id: s._id || s.id,
         stone_type: s.stone_type || s.name || "",
-        fullImageUrl: s.fullImageUrl || "",
+        // IMPORTANT: Use consistent property name - either fullImageUrl or stone_image
+        stone_image: s.fullImageUrl || s.stone_image || "",
       }));
       
       console.log("Fetched stone types:", mappedStones);
@@ -69,17 +70,21 @@ export default function useStonesType() {
       console.log("Add response:", res.data);
       
       let newStone = {};
-      if (res.data && res.data.success && res.data.stone) {
+      
+      // Based on your response structure: {success: true, stone: {...}}
+      if (res.data?.success && res.data.stone) {
         newStone = {
           _id: res.data.stone._id,
           stone_type: res.data.stone.stone_type || stoneData.stone_type,
-          stone_image: res.data.stone.stone_image || "",
+          // IMPORTANT: Use fullImageUrl from response and map to stone_image property
+          stone_image: res.data.stone.fullImageUrl || res.data.stone.stone_image || "",
         };
-      } else if (res.data) {
+      } else if (res.data?._id) {
+        // If response is the stone object directly
         newStone = {
           _id: res.data._id,
           stone_type: res.data.stone_type || stoneData.stone_type,
-          stone_image: res.data.stone_image || "",
+          stone_image: res.data.fullImageUrl || res.data.stone_image || "",
         };
       } else {
         // Fallback
@@ -120,24 +125,27 @@ export default function useStonesType() {
       console.log("Update response:", res.data);
       
       let updatedData = {};
-      if (res.data && res.data.success && res.data.stone) {
+      
+      // Based on your response structure
+      if (res.data?.success && res.data.stone) {
         updatedData = {
           _id: res.data.stone._id || id,
           stone_type: res.data.stone.stone_type || data.stone_type,
-          fullImageUrl: res.data.stone.fullImageUrl || "",
+          // IMPORTANT: Use stone_image property consistently
+          stone_image: res.data.stone.fullImageUrl || res.data.stone.stone_image || "",
         };
-      } else if (res.data) {
+      } else if (res.data?._id) {
         updatedData = {
           _id: res.data._id || id,
           stone_type: res.data.stone_type || data.stone_type,
-          fullImageUrl: res.data.fullImageUrl || "",
+          stone_image: res.data.fullImageUrl || res.data.stone_image || "",
         };
       } else {
         // Fallback
         updatedData = {
           _id: id,
           stone_type: data.stone_type,
-          fullImageUrl: "",
+          stone_image: "",
         };
       }
       

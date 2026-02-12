@@ -7,6 +7,7 @@ export default function useDesignStages() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [employees, setEmployees] = useState([]);
+  const [laborCosts, setLaborCosts] = useState([]);
 
   // Fetch all design stages
 const fetchDesignStages = useCallback(async () => {
@@ -33,28 +34,46 @@ const fetchDesignStages = useCallback(async () => {
 
     console.log("Extracted stages data:", stagesData);
 
-    // Format design stages data - now using design_stage structure
-    const mappedStages = stagesData.map((jobCard, index) => {
-      const designStage = jobCard.design_stage || {};
+    // Format design stages data
+    const mappedStages = stagesData.map((designStage, index) => {
       const assignedTo = designStage.assigned_to || {};
+      
+      // Parse labor_cost_breakdown if it exists
+      let laborBreakdown = [];
+      if (designStage.labor_cost_breakdown && Array.isArray(designStage.labor_cost_breakdown) && designStage.labor_cost_breakdown.length > 0) {
+        try {
+          // Your response: labor_cost_breakdown is an array with a stringified JSON as first element
+          const breakdownString = designStage.labor_cost_breakdown[0];
+          if (typeof breakdownString === 'string') {
+            // Parse the stringified JSON
+            laborBreakdown = JSON.parse(breakdownString);
+          } else if (Array.isArray(breakdownString)) {
+            // Already an array
+            laborBreakdown = breakdownString;
+          }
+        } catch (err) {
+          console.error("Error parsing labor_cost_breakdown:", err, designStage.labor_cost_breakdown);
+          laborBreakdown = [];
+        }
+      }
 
       return {
         // IDs
-        _id: designStage._id || jobCard._id,
-        job_card_id: jobCard._id,
-        job_card_no: jobCard.job_card_no,
+        _id: designStage._id,
+        job_card_id: designStage.job_card_id,
+        job_card_no: designStage.job_card_no,
         
         // Basic Information from Design Stage
         assigned_to: assignedTo._id || "",
         assigned_name: assignedTo.name || "Unassigned",
         assigned_email: assignedTo.email || "",
-        assigned_department: designStage.department || "Design",
+        assigned_department: designStage.department || "",
         
         // Stage Status and Timing
         status: designStage.status || "pending",
-        stage: jobCard.stage || "design", // This is the overall job card stage
-        stage_name: designStage.stage_name || `Design - ${jobCard.job_card_no}`,
-        stage_type: jobCard.stage || "design",
+        stage: designStage.stage || "", // Get from response if available
+        stage_name: designStage.stage_name || `Design Stage - ${designStage.job_card_no}`,
+        stage_type: designStage.stage_type || "", // Get from response if available
         
         // Dates
         start_date: designStage.start_date,
@@ -73,6 +92,7 @@ const fetchDesignStages = useCallback(async () => {
         inspection_time: designStage.inspection_time || 0,
         packaging_time: designStage.packaging_time || 0,
         total_time_spent: designStage.total_time_spent || 0,
+        time_breakdown: designStage.time_breakdown || "",
         
         // Design Details
         design_notes: designStage.design_notes || "",
@@ -90,14 +110,13 @@ const fetchDesignStages = useCallback(async () => {
         cost_currency: designStage.cost_currency || "INR",
         cost_status: designStage.cost_status || "estimated",
         
+        // Labor Cost Details
+        selected_labor_costs: designStage.selected_labor_costs || [],
+        labor_cost_breakdown: laborBreakdown,
+        
         // Files
         files: designStage.files || [],
         design_files: designStage.files || [],
-        
-        // Job Card Details
-        job_card_status: jobCard.status || "in_progress",
-        job_card_stage: jobCard.stage || "design",
-        job_card_priority: jobCard.priority || "medium",
       };
     });
 
@@ -131,10 +150,7 @@ const fetchDesignStages = useCallback(async () => {
   const fetchEmployees = async () => {
     try {
       const res = await axios.get(API_ENDPOINTS.getEmployees());
-
-      // Direct extraction based on your API structure
       const employeesData = res.data.data || [];
-
       setEmployees(employeesData);
       return employeesData;
     } catch (err) {
@@ -144,7 +160,91 @@ const fetchDesignStages = useCallback(async () => {
     }
   };
 
-  // Update design stage with file uploads
+  // Fetch labor costs from price making API - FILTER OUT KARIGAR COSTS
+  const fetchLaborCosts = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_ENDPOINTS.getPriceMakings());
+      
+      console.log("Price making API Response:", response.data);
+      
+      if (response.data?.success && Array.isArray(response.data.data)) {
+        // Filter ONLY labor costs (exclude karigar costs)
+        const laborCostData = response.data.data.filter(item => {
+          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
+          const lowerCaseName = costName.toLowerCase();
+          // Include only "labor" costs, exclude "karigar" costs
+          return lowerCaseName.includes("labor") && !lowerCaseName.includes("karigar");
+        });
+        
+        // Process and format labor costs - using fixed amounts (not hourly)
+        const processedCosts = laborCostData.map(item => {
+          return {
+            ...item,
+            _id: item._id,
+            cost_name: item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
+            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || "unit",
+            stage_name: item.making_stage_id?.stage_name || "General",
+            sub_stage_name: item.making_sub_stage_id?.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          };
+        });
+        
+        console.log("Processed labor costs (LABOR ONLY - no karigar):", processedCosts);
+        setLaborCosts(processedCosts);
+        return processedCosts;
+      }
+      
+      setLaborCosts([]);
+      return [];
+    } catch (err) {
+      console.error("Error fetching labor costs:", err);
+      setLaborCosts([]);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate total labor cost based on selected labor cost items
+  const calculateTotalLaborCost = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return 0;
+    
+    let totalLaborCost = 0;
+    
+    // Sum up the cost_amount from each selected labor cost
+    selectedLaborCosts.forEach(cost => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+      totalLaborCost += costAmount;
+    });
+    
+    console.log("Calculated total labor cost:", totalLaborCost, "from", selectedLaborCosts.length, "items");
+    return totalLaborCost;
+  };
+
+  // Calculate labor breakdown for selected items
+  const calculateLaborBreakdown = (selectedLaborCosts = []) => {
+    if (!selectedLaborCosts.length) return [];
+
+    return selectedLaborCosts.map(cost => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+      
+      return {
+        id: cost._id,
+        name: cost.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+  };
+
+  // Update design stage with file uploads - FIXED PAYLOAD
   const updateStageWithFiles = async (
     stageId,
     updateData,
@@ -154,144 +254,142 @@ const fetchDesignStages = useCallback(async () => {
       setLoading(true);
       setError("");
 
+      // Calculate labor cost from selected labor costs if provided
+      let finalUpdateData = { ...updateData };
+      
+      // If selected_labor_costs is provided, calculate total labor cost
+      if (updateData.selected_labor_costs && Array.isArray(updateData.selected_labor_costs)) {
+        const totalLaborCost = calculateTotalLaborCost(updateData.selected_labor_costs);
+        
+        // Update labor cost in data
+        finalUpdateData.labor_cost = totalLaborCost.toFixed(2);
+        
+        // Recalculate totals with new labor cost
+        const material = parseFloat(updateData.material_cost) || 0;
+        const other = parseFloat(updateData.other_costs) || 0;
+        const markup = parseFloat(updateData.markup_percentage) || 0;
+        
+        const total = material + totalLaborCost + other;
+        const markupAmount = (total * markup) / 100;
+        const finalPrice = total + markupAmount;
+
+        finalUpdateData.total_cost = total.toFixed(2);
+        finalUpdateData.final_price = finalPrice.toFixed(2);
+      }
+
       const url = API_ENDPOINTS.updateDesignStage(stageId);
-      console.log("Updating stage at:", url, "with data:", updateData);
+      console.log("Updating stage at:", url, "with data:", finalUpdateData);
 
       // Create FormData for file upload
       const formData = new FormData();
 
       // Basic Information Fields
-      formData.append("assigned_to", updateData.assigned_to || "");
-      formData.append("status", updateData.status || "");
-      formData.append("start_date", updateData.start_date || "");
-      formData.append("end_date", updateData.end_date || "");
-      formData.append("remarks", updateData.remarks || "");
+      formData.append("assigned_to", finalUpdateData.assigned_to || "");
+      formData.append("status", finalUpdateData.status || "");
+      formData.append("start_date", finalUpdateData.start_date || "");
+      formData.append("end_date", finalUpdateData.end_date || "");
+      formData.append("remarks", finalUpdateData.remarks || "");
       formData.append(
         "estimated_hours",
-        parseFloat(updateData.estimated_hours) || 0,
+        parseFloat(finalUpdateData.estimated_hours) || 0,
       );
-      formData.append("actual_hours", parseFloat(updateData.actual_hours) || 0);
-      formData.append("design_notes", updateData.design_notes || "");
+      formData.append("actual_hours", parseFloat(finalUpdateData.actual_hours) || 0);
+      formData.append("design_notes", finalUpdateData.design_notes || "");
       formData.append(
         "design_specifications",
-        updateData.design_specifications || "",
+        finalUpdateData.design_specifications || "",
       );
-      formData.append("stage", updateData.stage || "");
-      // formData.append("stage_type", updateData.stage_type || "");
+      formData.append("stage", finalUpdateData.stage || "");
 
       // Cost Tracking Fields
       formData.append(
         "material_cost",
-        parseFloat(updateData.material_cost) || 0,
+        parseFloat(finalUpdateData.material_cost) || 0,
       );
-      formData.append("labor_cost", parseFloat(updateData.labor_cost) || 0);
-      formData.append("tooling_cost", parseFloat(updateData.tooling_cost) || 0);
-      formData.append("machine_cost", parseFloat(updateData.machine_cost) || 0);
-      formData.append("other_costs", parseFloat(updateData.other_costs) || 0);
-      formData.append("total_cost", parseFloat(updateData.total_cost) || 0);
-      formData.append("cost_currency", updateData.cost_currency || "INR");
-      formData.append("cost_status", updateData.cost_status || "estimated");
+      formData.append("labor_cost", parseFloat(finalUpdateData.labor_cost) || 0);
+      formData.append("other_costs", parseFloat(finalUpdateData.other_costs) || 0);
+      formData.append("total_cost", parseFloat(finalUpdateData.total_cost) || 0);
+      formData.append("cost_currency", finalUpdateData.cost_currency || "INR");
+      formData.append("cost_status", finalUpdateData.cost_status || "estimated");
       formData.append(
         "markup_percentage",
-        parseFloat(updateData.markup_percentage) || 30,
+        parseFloat(finalUpdateData.markup_percentage) || 30,
       );
-      formData.append("final_price", parseFloat(updateData.final_price) || 0);
+      formData.append("final_price", parseFloat(finalUpdateData.final_price) || 0);
 
       // Time Tracking Fields
       formData.append(
         "preparation_time",
-        parseFloat(updateData.preparation_time) || 0,
+        parseFloat(finalUpdateData.preparation_time) || 0,
       );
       formData.append(
         "processing_time",
-        parseFloat(updateData.processing_time) || 0,
+        parseFloat(finalUpdateData.processing_time) || 0,
       );
       formData.append(
         "finishing_time",
-        parseFloat(updateData.finishing_time) || 0,
+        parseFloat(finalUpdateData.finishing_time) || 0,
       );
       formData.append(
         "inspection_time",
-        parseFloat(updateData.inspection_time) || 0,
+        parseFloat(finalUpdateData.inspection_time) || 0,
       );
       formData.append(
         "packaging_time",
-        parseFloat(updateData.packaging_time) || 0,
+        parseFloat(finalUpdateData.packaging_time) || 0,
       );
       formData.append(
         "total_time_spent",
-        parseFloat(updateData.total_time_spent) || 0,
+        parseFloat(finalUpdateData.total_time_spent) || 0,
       );
-      formData.append("time_breakdown", updateData.time_breakdown || "");
+      formData.append("time_breakdown", finalUpdateData.time_breakdown || "");
 
       // File Tracking Fields
-      formData.append("file_version", updateData.file_version || "1.0");
+      formData.append("file_version", finalUpdateData.file_version || "1.0");
       formData.append(
         "file_revisions",
-        parseInt(updateData.file_revisions) || 0,
+        parseInt(finalUpdateData.file_revisions) || 0,
       );
-      formData.append("file_status", updateData.file_status || "draft");
-      formData.append("backup_location", updateData.backup_location || "");
+      formData.append("file_status", finalUpdateData.file_status || "draft");
+      formData.append("backup_location", finalUpdateData.backup_location || "");
 
-      // Handle source and output files as JSON arrays
-      formData.append(
-        "source_files",
-        JSON.stringify(updateData.source_files || []),
-      );
-      formData.append(
-        "output_files",
-        JSON.stringify(updateData.output_files || []),
-      );
+      // Handle files - FIXED: Append as JSON string
+      const existingFiles = finalUpdateData.files?.filter(file => file.isExisting) || [];
+      const newFiles = finalUpdateData.files?.filter(file => !file.isExisting) || [];
+      
+      // Prepare files data for backend
+      const filesData = [...existingFiles, ...newFiles].map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        category: file.category || "output",
+        version: file.version || "1.0",
+        status: file.status || "new",
+        isExisting: file.isExisting || false
+      }));
+      
+      formData.append("files_data", JSON.stringify(filesData));
 
-      // Separate existing and new files
-      const existingFiles =
-        updateData.files
-          ?.filter(
-            (file) => (file.isExisting || file.isReference) && !file.file,
-          )
-          .map((file) => ({
-            id: file.id,
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            url: file.url,
-            category: file.category || "output",
-            version: file.version || "1.0",
-            isExisting: true,
-            uploaded_at: file.uploaded_at || new Date(),
-            status: file.status || "existing",
-          })) || [];
-
-      const newFiles =
-        updateData.files
-          ?.filter((file) => !file.isExisting && file.file)
-          .map((file) => ({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            category: file.category || "output",
-            version: file.version || "1.0",
-            status: "new",
-          })) || [];
-
-      // Send files info as JSON
-      const allFilesInfo = [...existingFiles, ...newFiles];
-      formData.append("files_info", JSON.stringify(allFilesInfo));
+      // Append selected labor costs as JSON array of IDs
+      if (updateData.selected_labor_costs && Array.isArray(updateData.selected_labor_costs)) {
+        formData.append(
+          "selected_labor_costs",
+          JSON.stringify(updateData.selected_labor_costs.map(cost => cost._id))
+        );
+      }
+      
+      // Append labor breakdown as JSON
+      if (updateData.labor_cost_breakdown && Array.isArray(updateData.labor_cost_breakdown)) {
+        formData.append(
+          "labor_cost_breakdown",
+          JSON.stringify(updateData.labor_cost_breakdown)
+        );
+      }
 
       // Append new files
       filesToUpload.forEach((file) => {
         formData.append("files", file);
       });
-
-      // Log all FormData entries for debugging
-      console.log("FormData entries:");
-      for (let pair of formData.entries()) {
-        if (pair[0] === "files") {
-          console.log(`${pair[0]}: [File] ${pair[1].name}`);
-        } else {
-          console.log(`${pair[0]}: ${pair[1]}`);
-        }
-      }
 
       const res = await axios.put(url, formData, {
         headers: {
@@ -336,6 +434,7 @@ const fetchDesignStages = useCallback(async () => {
     const fetchData = async () => {
       await fetchDesignStages();
       await fetchEmployees();
+      await fetchLaborCosts();
     };
 
     fetchData();
@@ -347,6 +446,7 @@ const fetchDesignStages = useCallback(async () => {
     // Data
     designStages,
     employees,
+    laborCosts,
 
     // Loading states
     loading,
@@ -357,6 +457,9 @@ const fetchDesignStages = useCallback(async () => {
     // Functions
     fetchDesignStages,
     fetchEmployees,
+    fetchLaborCosts,
+    calculateTotalLaborCost,
+    calculateLaborBreakdown,
     updateStageWithFiles,
   };
 }

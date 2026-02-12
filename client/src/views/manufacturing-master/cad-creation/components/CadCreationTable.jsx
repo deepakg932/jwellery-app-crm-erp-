@@ -25,6 +25,7 @@ const CadCreationTable = () => {
     loading,
     error,
     fetchCadStages,
+    laborCosts,
     employees,
     updateCadStageWithFiles,
     updateCadStageSimple, // For testing
@@ -35,7 +36,7 @@ const CadCreationTable = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [selectedStage, setSelectedStage] = useState(null);
-  console.log(cadStages)
+  console.log(cadStages);
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -58,11 +59,16 @@ const CadCreationTable = () => {
   const filteredStages = cadStages.filter((stage) => {
     const matchesSearch =
       search === "" ||
-      (stage.stage_name && stage.stage_name.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.job_card_no && stage.job_card_no.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.assigned_name && stage.assigned_name.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.design_type && stage.design_type.toLowerCase().includes(search.toLowerCase())) ||
-      (stage.assigned_department && stage.assigned_department.toLowerCase().includes(search.toLowerCase()));
+      (stage.stage_name &&
+        stage.stage_name.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.job_card_no &&
+        stage.job_card_no.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.assigned_name &&
+        stage.assigned_name.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.design_type &&
+        stage.design_type.toLowerCase().includes(search.toLowerCase())) ||
+      (stage.assigned_department &&
+        stage.assigned_department.toLowerCase().includes(search.toLowerCase()));
 
     const matchesStatus =
       statusFilter === "all" || stage.status === statusFilter;
@@ -120,39 +126,26 @@ const CadCreationTable = () => {
       console.log("🔄 handleUpdateStage called for CAD:", {
         stageId,
         updateDataKeys: Object.keys(updateData),
-        filesToUploadCount: filesToUpload?.length || 0
+        filesToUploadCount: filesToUpload?.length || 0,
       });
-      
+
       // Method 1: Full update with files
       const result = await updateCadStageWithFiles(
         stageId,
         updateData,
-        filesToUpload || []
+        filesToUpload || [],
       );
-      
-      // Method 2: Simple update (for testing - uncomment below)
-      /*
-      const result = await updateCadStageSimple(stageId, {
-        assigned_to: updateData.assigned_to,
-        status: updateData.status,
-        start_date: updateData.start_date,
-        remarks: updateData.remarks || "Updated",
-        department: "CAD"
-      });
-      */
-      
+
       console.log("📊 CAD Update result:", result);
-      
-      if (result.success) {
-        console.log("✅ CAD stage updated successfully");
-        return true;
-      } else {
-        console.error("❌ CAD update failed:", result.error);
-        return false;
-      }
+
+      // Return the result object as-is (with success property)
+      return result; // ← JUST RETURN THE RESULT OBJECT
     } catch (error) {
       console.error("Error updating CAD stage:", error);
-      return false;
+      return {
+        success: false,
+        error: error.message || "An error occurred",
+      };
     }
   };
 
@@ -185,34 +178,41 @@ const CadCreationTable = () => {
       "Complexity",
       "Total Cost",
       "Final Price",
-      "Created At"
+      "Created At",
     ];
-    
+
     const csvContent = [
       headers.join(","),
-      ...filteredStages.map(stage => [
-        stage.job_card_no || "",
-        stage.design_type || "",
-        stage.assigned_name || "Unassigned",
-        stage.assigned_department || "",
-        formatDate(stage.start_date),
-        formatDate(stage.end_date),
-        stage.status || "",
-        stage.estimated_hours || "",
-        stage.actual_hours || "",
-        stage.cad_software || "",
-        stage.complexity_level || "",
-        stage.total_cost || "0",
-        stage.final_price || "0",
-        formatDate(stage.created_at)
-      ].map(field => `"${field}"`).join(","))
+      ...filteredStages.map((stage) =>
+        [
+          stage.job_card_no || "",
+          stage.design_type || "",
+          stage.assigned_name || "Unassigned",
+          stage.assigned_department || "",
+          formatDate(stage.start_date),
+          formatDate(stage.end_date),
+          stage.status || "",
+          stage.estimated_hours || "",
+          stage.actual_hours || "",
+          stage.cad_software || "",
+          stage.complexity_level || "",
+          stage.total_cost || "0",
+          stage.final_price || "0",
+          formatDate(stage.created_at),
+        ]
+          .map((field) => `"${field}"`)
+          .join(","),
+      ),
     ].join("\n");
-    
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", `cad-stages-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute(
+      "download",
+      `cad-stages-${new Date().toISOString().split("T")[0]}.csv`,
+    );
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -223,6 +223,46 @@ const CadCreationTable = () => {
   const ViewStageModal = () => {
     if (!selectedStage) return null;
 
+    // Helper function to get cost breakdown from raw data
+    const getLaborBreakdown = () => {
+      if (
+        selectedStage.labor_cost_breakdown &&
+        Array.isArray(selectedStage.labor_cost_breakdown)
+      ) {
+        return selectedStage.labor_cost_breakdown;
+      }
+
+      if (
+        selectedStage.labor_cost_breakdown_raw &&
+        Array.isArray(selectedStage.labor_cost_breakdown_raw)
+      ) {
+        try {
+          // Parse the stringified JSON if needed
+          const parsed = JSON.parse(
+            selectedStage.labor_cost_breakdown_raw[0] || "[]",
+          );
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          console.error("Error parsing labor breakdown:", e);
+          return [];
+        }
+      }
+
+      return [];
+    };
+
+    // Get selected labor cost IDs
+    const selectedLaborIds = selectedStage.selected_labor_costs || [];
+
+    // Calculate efficiency
+    const efficiency =
+      selectedStage.estimated_hours && selectedStage.total_time_spent
+        ? (
+            (selectedStage.estimated_hours / selectedStage.total_time_spent) *
+            100
+          ).toFixed(1)
+        : "0";
+
     return (
       <div
         className="modal fade show d-block"
@@ -232,9 +272,25 @@ const CadCreationTable = () => {
         <div className="modal-dialog modal-dialog-centered modal-lg">
           <div className="modal-content rounded-3">
             <div className="modal-header border-bottom pb-3">
-              <h5 className="modal-title fw-bold fs-5">
-                CAD Creation - {selectedStage.job_card_no || selectedStage.stage_name}
-              </h5>
+              <div>
+                <h5 className="modal-title fw-bold fs-5 mb-1">
+                  CAD Creation - {selectedStage.job_card_no || "N/A"}
+                </h5>
+                <div className="d-flex align-items-center gap-2 mt-1">
+                  <span className="badge bg-primary">
+                    <FiBox className="me-1" /> Department: CAD
+                  </span>
+                  {selectedStage.cad_software && (
+                    <span className="badge bg-info">
+                      <FiPackage className="me-1" />{" "}
+                      {selectedStage.cad_software}
+                    </span>
+                  )}
+                  <span className="badge bg-secondary">
+                    Version: v{selectedStage.file_version || "1.0"}
+                  </span>
+                </div>
+              </div>
               <button
                 type="button"
                 className="btn-close"
@@ -246,177 +302,508 @@ const CadCreationTable = () => {
             </div>
 
             <div className="modal-body">
-              {/* Stage Info */}
+              {/* Basic Info Section */}
               <div className="row mb-4">
                 <div className="col-md-6">
+                  <h6 className="fw-bold mb-3 border-bottom pb-2">
+                    Basic Information
+                  </h6>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Product</label>
+                    <label className="form-label text-muted small">
+                      Job Card No
+                    </label>
                     <div className="fw-bold">
-                      <FiPackage className="me-2" />
-                      {selectedStage.design_type || "N/A"}
+                      {selectedStage.job_card_no || "N/A"}
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Status</label>
+                    <label className="form-label text-muted small">
+                      Assigned To
+                    </label>
+                    <div className="fw-bold d-flex align-items-center">
+                      <FiUser className="me-2" />
+                      {selectedStage.assigned_name || "Unassigned"}
+                      {selectedStage.assigned_to?.email && (
+                        <span className="ms-2 text-muted small">
+                          ({selectedStage.assigned_to.email})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label text-muted small">
+                      Status
+                    </label>
                     <div>{getStatusBadge(selectedStage.status)}</div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">CAD Software</label>
+                    <label className="form-label text-muted small">
+                      CAD Software
+                    </label>
                     <div>{selectedStage.cad_software || "N/A"}</div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Complexity</label>
+                    <label className="form-label text-muted small">
+                      Complexity Level
+                    </label>
                     <div>{selectedStage.complexity_level || "N/A"}</div>
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label text-muted small">Job Card ID</label>
-                    <div className="text-muted">{selectedStage.job_card_id || "N/A"}</div>
-                  </div>
                 </div>
+
                 <div className="col-md-6">
+                  <h6 className="fw-bold mb-3 border-bottom pb-2">
+                    Dates & Time
+                  </h6>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Assigned To</label>
+                    <label className="form-label text-muted small">
+                      Start Date
+                    </label>
+                    <div className="fw-bold d-flex align-items-center">
+                      <FiCalendar className="me-2" />
+                      {formatDate(selectedStage.start_date)}
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label text-muted small">
+                      End Date
+                    </label>
+                    <div className="fw-bold d-flex align-items-center">
+                      <FiCalendar className="me-2" />
+                      {formatDate(selectedStage.end_date) || "Not set"}
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label text-muted small">
+                      Completed At
+                    </label>
                     <div className="fw-bold">
-                      <FiUser className="me-2" />
-                      {selectedStage.assigned_name || "Unassigned"}
+                      {formatDate(selectedStage.completed_at) ||
+                        "Not completed"}
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Department</label>
-                    <div>{selectedStage.assigned_department || "CAD"}</div>
+                    <label className="form-label text-muted small">
+                      Created At
+                    </label>
+                    <div>{formatDate(selectedStage.createdAt)}</div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label text-muted small">Dates</label>
-                    <div>
-                      <div>Start: {formatDate(selectedStage.start_date)}</div>
-                      <div>End: {formatDate(selectedStage.end_date) || "Not set"}</div>
-                    </div>
-                  </div>
-                  <div className="mb-3">
-                    <label className="form-label text-muted small">Stage ID</label>
-                    <div className="text-muted small">{selectedStage._id}</div>
+                    <label className="form-label text-muted small">
+                      Last Updated
+                    </label>
+                    <div>{formatDate(selectedStage.updatedAt)}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Cost & Time Summary */}
-              <div className="row mb-4">
-                <div className="col-md-4">
-                  <div className="card h-100">
-                    <div className="card-body">
-                      <h6 className="card-title small">Time Tracking</h6>
-                      <div className="d-flex justify-content-between">
-                        <div>
-                          <div className="small text-muted">Estimated</div>
-                          <div className="fw-bold">{selectedStage.estimated_hours || 0} hrs</div>
-                        </div>
-                        <div>
-                          <div className="small text-muted">Actual</div>
-                          <div className="fw-bold">{selectedStage.actual_hours || 0} hrs</div>
+              {/* Time Tracking Section */}
+              <div className="card mb-4">
+                <div className="card-header bg-light">
+                  <h6 className="mb-0 fw-bold">⏱️ Time Tracking</h6>
+                </div>
+                <div className="card-body">
+                  <div className="row">
+                    <div className="col-md-3 mb-2">
+                      <div className="text-center">
+                        <div className="text-muted small">Estimated Hours</div>
+                        <div className="fw-bold fs-5">
+                          {selectedStage.estimated_hours || 0}
                         </div>
                       </div>
-                      <div className="mt-2 small text-muted">
-                        Total: {selectedStage.total_time_spent || 0} hrs
+                    </div>
+                    <div className="col-md-3 mb-2">
+                      <div className="text-center">
+                        <div className="text-muted small">Actual Hours</div>
+                        <div className="fw-bold fs-5">
+                          {selectedStage.actual_hours || 0}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3 mb-2">
+                      <div className="text-center">
+                        <div className="text-muted small">Total Time Spent</div>
+                        <div className="fw-bold fs-5">
+                          {selectedStage.total_time_spent || 0} hrs
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3 mb-2">
+                      <div className="text-center">
+                        <div className="text-muted small">Efficiency</div>
+                        <div
+                          className={`fw-bold fs-5 ${parseFloat(efficiency) > 100 ? "text-success" : "text-danger"}`}
+                        >
+                          {efficiency}%
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  <div className="row mt-3">
+                    <div className="col-md-4">
+                      <div className="small text-muted">Design Time</div>
+                      <div className="fw-medium">
+                        {selectedStage.design_time || 0} hrs
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="small text-muted">3D Modeling</div>
+                      <div className="fw-medium">
+                        {selectedStage.modeling_time || 0} hrs
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="small text-muted">Rendering</div>
+                      <div className="fw-medium">
+                        {selectedStage.rendering_time || 0} hrs
+                      </div>
+                    </div>
+                    <div className="col-md-4 mt-2">
+                      <div className="small text-muted">Revision Time</div>
+                      <div className="fw-medium">
+                        {selectedStage.revision_time || 0} hrs
+                      </div>
+                    </div>
+                    <div className="col-md-4 mt-2">
+                      <div className="small text-muted">Review Time</div>
+                      <div className="fw-medium">
+                        {selectedStage.review_time || 0} hrs
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedStage.time_breakdown && (
+                    <div className="mt-3">
+                      <div className="small text-muted">
+                        Time Breakdown Details
+                      </div>
+                      <div className="border rounded p-2 bg-light small">
+                        {selectedStage.time_breakdown}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="col-md-4">
-                  <div className="card h-100">
-                    <div className="card-body">
-                      <h6 className="card-title small">Cost Summary</h6>
-                      <div className="fw-bold fs-5">
+              </div>
+
+              {/* Cost Tracking Section */}
+              <div className="card mb-4">
+                <div className="card-header bg-light">
+                  <h6 className="mb-0 fw-bold">💰 Cost Tracking</h6>
+                </div>
+                <div className="card-body">
+                  <div className="row mb-3">
+                    <div className="col-md-3">
+                      <div className="small text-muted">Material Cost</div>
+                      <div className="fw-bold">
+                        ₹{selectedStage.material_cost || 0}
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="small text-muted">Labor Cost</div>
+                      <div className="fw-bold">
+                        ₹{selectedStage.labor_cost || 0}
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="small text-muted">Software Cost</div>
+                      <div className="fw-bold">
+                        ₹{selectedStage.software_cost || 0}
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="small text-muted">Machine Cost</div>
+                      <div className="fw-bold">
+                        ₹{selectedStage.machine_cost || 0}
+                      </div>
+                    </div>
+                    <div className="col-md-3 mt-2">
+                      <div className="small text-muted">Other Costs</div>
+                      <div className="fw-bold">
+                        ₹{selectedStage.other_costs || 0}
+                      </div>
+                    </div>
+                    <div className="col-md-3 mt-2">
+                      <div className="small text-muted">Total Cost</div>
+                      <div className="fw-bold">
                         ₹{selectedStage.total_cost || 0}
                       </div>
-                      <div className="small text-muted">
-                        Final Price: ₹{selectedStage.final_price || 0}
+                    </div>
+                    <div className="col-md-3 mt-2">
+                      <div className="small text-muted">Markup</div>
+                      <div className="fw-bold">
+                        {selectedStage.markup_percentage || 0}%
                       </div>
-                      <div className="small">
-                        Markup: {selectedStage.markup_percentage || 30}%
+                    </div>
+                    <div className="col-md-3 mt-2">
+                      <div className="small text-muted">Final Price</div>
+                      <div className="fw-bold text-success">
+                        ₹{selectedStage.final_price || 0}
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="col-md-4">
-                  <div className="card h-100">
-                    <div className="card-body">
-                      <h6 className="card-title small">File Info</h6>
-                      <div className="small">
-                        Version: v{selectedStage.file_version || "1.0"}
+
+                  {/* Labor Cost Breakdown */}
+                  {selectedLaborIds.length > 0 && (
+                    <div className="mt-3">
+                      <h6 className="fw-bold small mb-2">
+                        Selected Labor Costs ({selectedLaborIds.length})
+                      </h6>
+                      <div className="table-responsive">
+                        <table className="table table-sm table-bordered mb-0">
+                          <thead className="table-light">
+                            <tr>
+                              <th className="small">Cost ID</th>
+                              <th className="small">Name</th>
+                              <th className="small">Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedLaborIds.map((id, index) => (
+                              <tr key={index}>
+                                <td className="small font-monospace">{id}</td>
+                                <td className="small">Labor Cost</td>
+                                <td className="small">
+                                  <span className="badge bg-secondary">
+                                    Direct Cost
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      <div className="small">
-                        Revisions: {selectedStage.file_revisions || 0}
+                    </div>
+                  )}
+
+                  {/* Detailed Labor Breakdown */}
+                  {getLaborBreakdown().length > 0 && (
+                    <div className="mt-3">
+                      <h6 className="fw-bold small mb-2">
+                        Labor Cost Breakdown
+                      </h6>
+                      <div className="table-responsive">
+                        <table className="table table-sm table-bordered mb-0">
+                          <thead className="table-light">
+                            <tr>
+                              <th className="small">Name</th>
+                              <th className="small">Type</th>
+                              <th className="small">Amount</th>
+                              <th className="small">Unit</th>
+                              <th className="small">Total</th>
+                              <th className="small">Stage</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {getLaborBreakdown().map((item, index) => (
+                              <tr key={index}>
+                                <td className="small fw-medium">
+                                  {item.name || "Labor Cost"}
+                                </td>
+                                <td className="small">
+                                  <span
+                                    className={`badge ${item.type === "Direct Cost" ? "bg-primary" : "bg-info"}`}
+                                  >
+                                    {item.type || "N/A"}
+                                  </span>
+                                </td>
+                                <td className="small">
+                                  ₹{item.cost_amount || 0}
+                                </td>
+                                <td className="small">
+                                  <span className="badge bg-secondary">
+                                    {item.unit || "unit"}
+                                  </span>
+                                </td>
+                                <td className="small fw-bold">
+                                  ₹{item.total_cost || 0}
+                                </td>
+                                <td className="small">{item.stage || "CAD"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="table-active">
+                            <tr>
+                              <td
+                                colSpan="4"
+                                className="small fw-bold text-end"
+                              >
+                                Total Labor Cost:
+                              </td>
+                              <td className="small fw-bold" colSpan="2">
+                                ₹{selectedStage.labor_cost || 0}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
-                      <div className="small">
-                        Status: {selectedStage.file_status || "draft"}
+                    </div>
+                  )}
+
+                  <div className="row mt-3">
+                    <div className="col-md-6">
+                      <div className="small text-muted">Cost Status</div>
+                      <div>
+                        <span
+                          className={`badge ${
+                            selectedStage.cost_status === "estimated"
+                              ? "bg-warning"
+                              : selectedStage.cost_status === "calculated"
+                                ? "bg-info"
+                                : selectedStage.cost_status === "finalized"
+                                  ? "bg-success"
+                                  : selectedStage.cost_status === "approved"
+                                    ? "bg-success"
+                                    : "bg-secondary"
+                          }`}
+                        >
+                          {selectedStage.cost_status?.toUpperCase() ||
+                            "ESTIMATED"}
+                        </span>
                       </div>
-                      <div className="small">
-                        Files: {selectedStage.files?.length || 0}
+                    </div>
+                    <div className="col-md-6">
+                      <div className="small text-muted">Currency</div>
+                      <div className="fw-medium">
+                        {selectedStage.cost_currency || "INR"}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Remarks */}
-              {selectedStage.remarks && (
-                <div className="card mb-4">
-                  <div className="card-body">
-                    <h6 className="card-title small">Remarks</h6>
-                    <p className="mb-0 small">{selectedStage.remarks}</p>
-                  </div>
-                </div>
-              )}
+              {/* File & Remarks Section */}
+              <div className="row">
+                {/* File Info */}
+                <div className="col-md-6">
+                  <div className="card h-100">
+                    <div className="card-header bg-light">
+                      <h6 className="mb-0 fw-bold">📎 File Information</h6>
+                    </div>
+                    <div className="card-body">
+                      <div className="row mb-2">
+                        <div className="col-6">
+                          <div className="small text-muted">File Status</div>
+                          <div className="fw-medium">
+                            {selectedStage.file_status || "draft"}
+                          </div>
+                        </div>
+                        <div className="col-6">
+                          <div className="small text-muted">
+                            Current Version
+                          </div>
+                          <div className="fw-medium">
+                            v{selectedStage.file_version || "1.0"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="row mb-2">
+                        <div className="col-6">
+                          <div className="small text-muted">File Revisions</div>
+                          <div className="fw-medium">
+                            {selectedStage.file_revisions || 0}
+                          </div>
+                        </div>
+                        <div className="col-6">
+                          <div className="small text-muted">Total Files</div>
+                          <div className="fw-medium">
+                            {selectedStage.files?.length || 0}
+                          </div>
+                        </div>
+                      </div>
 
-              {/* CAD Files */}
-              {selectedStage.files && selectedStage.files.length > 0 && (
-                <div className="card">
-                  <div className="card-header">
-                    <h6 className="mb-0 small">CAD Files ({selectedStage.files.length})</h6>
-                  </div>
-                  <div className="card-body p-2">
-                    <div className="list-group">
-                      {selectedStage.files.slice(0, 3).map((file, index) => (
-                        <div
-                          key={file.id || index}
-                          className="list-group-item d-flex justify-content-between align-items-center py-1 px-2"
-                        >
-                          <div className="d-flex align-items-center">
-                            <span className="me-2">
-                              {file.name.includes(".dwg") ? "📐" : 
-                               file.name.includes(".stl") ? "🔶" :
-                               file.name.includes(".step") ? "📦" : "📎"}
-                            </span>
-                            <div className="small">
-                              <div className="fw-medium text-truncate" style={{maxWidth: '200px'}}>
-                                {file.name}
-                              </div>
-                              <small className="text-muted">
-                                {file.size ? `${(file.size / 1024).toFixed(2)} KB` : "Unknown size"}
-                              </small>
+                      {/* CAD Files */}
+                      {selectedStage.files &&
+                        selectedStage.files.length > 0 && (
+                          <div className="mt-3">
+                            <h6 className="fw-bold small mb-2">CAD Files</h6>
+                            <div className="list-group">
+                              {selectedStage.files
+                                .slice(0, 5)
+                                .map((file, index) => (
+                                  <div
+                                    key={file.id || index}
+                                    className="list-group-item d-flex justify-content-between align-items-center py-1 px-2"
+                                  >
+                                    <div className="d-flex align-items-center">
+                                      <span className="me-2">
+                                        {file.name?.includes(".3dm")
+                                          ? "🦏"
+                                          : file.name?.includes(".stl")
+                                            ? "🔶"
+                                            : file.name?.includes(".step")
+                                              ? "📦"
+                                              : file.name?.includes(".blend")
+                                                ? "🌀"
+                                                : file.name?.includes(".dwg")
+                                                  ? "📐"
+                                                  : "📎"}
+                                      </span>
+                                      <div className="small">
+                                        <div
+                                          className="fw-medium text-truncate"
+                                          style={{ maxWidth: "150px" }}
+                                        >
+                                          {file.name || `File ${index + 1}`}
+                                        </div>
+                                        <small className="text-muted">
+                                          {file.size
+                                            ? `${(file.size / 1024).toFixed(2)} KB`
+                                            : "Unknown size"}
+                                        </small>
+                                      </div>
+                                    </div>
+                                    {file.url && (
+                                      <a
+                                        href={file.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-sm btn-outline-primary"
+                                      >
+                                        <FiDownload size={12} />
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              {selectedStage.files.length > 5 && (
+                                <div className="list-group-item text-center py-1">
+                                  <small className="text-muted">
+                                    +{selectedStage.files.length - 5} more files
+                                  </small>
+                                </div>
+                              )}
                             </div>
                           </div>
-                          <a
-                            href={file.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-sm btn-outline-primary"
+                        )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Remarks */}
+                <div className="col-md-6">
+                  <div className="card h-100">
+                    <div className="card-header bg-light">
+                      <h6 className="mb-0 fw-bold">📝 Remarks & Notes</h6>
+                    </div>
+                    <div className="card-body">
+                      {selectedStage.remarks ? (
+                        <div className="border rounded p-3 bg-light h-100">
+                          <p
+                            className="mb-0 small"
+                            style={{ whiteSpace: "pre-wrap" }}
                           >
-                            <FiDownload size={12} />
-                          </a>
+                            {selectedStage.remarks}
+                          </p>
                         </div>
-                      ))}
-                      {selectedStage.files.length > 3 && (
-                        <div className="list-group-item text-center py-1">
-                          <small className="text-muted">
-                            +{selectedStage.files.length - 3} more files
-                          </small>
+                      ) : (
+                        <div className="text-center text-muted py-5">
+                          <FiPackage size={32} className="mb-2" />
+                          <p className="mb-0 small">No remarks available</p>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div className="modal-footer border-top pt-3">
@@ -438,7 +825,7 @@ const CadCreationTable = () => {
                   handleOpenUpdate(selectedStage);
                 }}
               >
-                <FiEdit2 className="me-1" size={12} /> Update
+                <FiEdit2 className="me-1" size={12} /> Update CAD Stage
               </button>
             </div>
           </div>
@@ -451,9 +838,16 @@ const CadCreationTable = () => {
     <div className="container-fluid py-3">
       {/* Error Display */}
       {error && (
-        <div className="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+        <div
+          className="alert alert-danger alert-dismissible fade show mb-3"
+          role="alert"
+        >
           <strong>Error:</strong> {error}
-          <button type="button" className="btn-close" onClick={() => setError("")} />
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setError("")}
+          />
         </div>
       )}
 
@@ -464,7 +858,8 @@ const CadCreationTable = () => {
             <div className="col-md-6">
               <h2 className="h4 fw-bold mb-1">CAD Creation Stages</h2>
               <p className="text-muted mb-0">
-                Total {cadStages.length} stages • Showing {filteredStages.length} filtered
+                Total {cadStages.length} stages • Showing{" "}
+                {filteredStages.length} filtered
               </p>
             </div>
 
@@ -562,7 +957,6 @@ const CadCreationTable = () => {
               <tr>
                 <th className="small fw-bold">#</th>
                 <th className="small fw-bold">Job Card</th>
-                <th className="small fw-bold">Product</th>
                 <th className="small fw-bold">Assigned To</th>
                 <th className="small fw-bold">Dates</th>
                 <th className="small fw-bold">Hours</th>
@@ -577,7 +971,10 @@ const CadCreationTable = () => {
                 <tr>
                   <td colSpan="9" className="text-center py-4">
                     <div className="d-flex justify-content-center">
-                      <div className="spinner-border text-primary" role="status">
+                      <div
+                        className="spinner-border text-primary"
+                        role="status"
+                      >
                         <span className="visually-hidden">Loading...</span>
                       </div>
                     </div>
@@ -593,19 +990,33 @@ const CadCreationTable = () => {
                 </tr>
               ) : (
                 currentStages.map((stage, index) => (
-                  <tr key={stage._id} className={
-                    stage.status === 'completed' || stage.status === 'approved' ? 'table-success' :
-                    stage.status === 'hold' ? 'table-warning' :
-                    stage.status === 'cancelled' ? 'table-danger' : ''
-                  }>
-                    <td className="fw-medium small">{indexOfFirstItem + index + 1}</td>
-                    
-                    <td>
-                      <div className="fw-medium small">{stage.job_card_no || "N/A"}</div>
-                      <div className="text-muted x-small">{stage.department || "CAD"}</div>
+                  <tr
+                    key={stage._id}
+                    className={
+                      stage.status === "completed" ||
+                      stage.status === "approved"
+                        ? "table-success"
+                        : stage.status === "hold"
+                          ? "table-warning"
+                          : stage.status === "cancelled"
+                            ? "table-danger"
+                            : ""
+                    }
+                  >
+                    <td className="fw-medium small">
+                      {indexOfFirstItem + index + 1}
                     </td>
-                    
+
                     <td>
+                      <div className="fw-medium small">
+                        {stage.job_card_no || "N/A"}
+                      </div>
+                      <div className="text-muted x-small">
+                        {stage.department || "CAD"}
+                      </div>
+                    </td>
+
+                    {/* <td>
                       <div className="fw-medium small">
                         <FiPackage size={10} className="me-1" />
                         {stage.design_type || "N/A"}
@@ -613,37 +1024,50 @@ const CadCreationTable = () => {
                       <div className="text-muted x-small">
                         {stage.material ? `Material: ${stage.material}` : ""}
                       </div>
-                    </td>
-                    
+                    </td> */}
+
                     <td>
                       <div>
                         <div className="fw-medium small d-flex align-items-center">
                           <FiUser size={10} className="me-1" />
                           {stage.assigned_name || "Unassigned"}
                         </div>
-                        <div className="text-muted x-small">{stage.assigned_department || "CAD"}</div>
+                        <div className="text-muted x-small">
+                          {stage.assigned_department || "CAD"}
+                        </div>
                       </div>
                     </td>
-                    
+
                     <td>
                       <div className="small">
                         <div className="d-flex align-items-center mb-1">
                           <FiCalendar size={10} className="me-1 text-primary" />
-                          <span className="x-small">Start: {formatDate(stage.start_date)}</span>
+                          <span className="x-small">
+                            Start: {formatDate(stage.start_date)}
+                          </span>
                         </div>
                         <div className="d-flex align-items-center">
-                          <FiCalendar size={10} className={`me-1 ${stage.end_date ? 'text-success' : 'text-muted'}`} />
-                          <span className="x-small">End: {formatDate(stage.end_date) || "Not set"}</span>
+                          <FiCalendar
+                            size={10}
+                            className={`me-1 ${stage.end_date ? "text-success" : "text-muted"}`}
+                          />
+                          <span className="x-small">
+                            End: {formatDate(stage.end_date) || "Not set"}
+                          </span>
                         </div>
                       </div>
                     </td>
-                    
+
                     <td>
                       <div className="d-flex align-items-center gap-1">
                         <FiClock size={10} className="text-muted" />
                         <div>
-                          <div className="x-small text-muted">Est: {stage.estimated_hours || 0}</div>
-                          <div className="x-small fw-medium">Act: {stage.actual_hours || 0}</div>
+                          <div className="x-small text-muted">
+                            Est: {stage.estimated_hours || 0}
+                          </div>
+                          <div className="x-small fw-medium">
+                            Act: {stage.actual_hours || 0}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -656,13 +1080,10 @@ const CadCreationTable = () => {
                         Final: ₹{stage.final_price || 0}
                       </div>
                     </td>
-                    
+
                     <td>
                       <div className="d-flex flex-column gap-1">
                         {getStatusBadge(stage.status)}
-                        <span className="badge bg-secondary x-small">
-                          v{stage.file_version || "1.0"}
-                        </span>
                       </div>
                     </td>
 
@@ -680,7 +1101,7 @@ const CadCreationTable = () => {
                         >
                           <FiEye size={12} />
                         </button>
-                        
+
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center"
                           onClick={() => handleOpenUpdate(stage)}
@@ -789,6 +1210,7 @@ const CadCreationTable = () => {
           onUpdate={handleUpdateStage}
           onClose={handleCloseUpdate}
           loading={loading}
+          laborCosts={laborCosts}
         />
       )}
 
@@ -798,8 +1220,12 @@ const CadCreationTable = () => {
           animation: spin 1s linear infinite;
         }
         @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
         }
         .x-small {
           font-size: 0.75rem;

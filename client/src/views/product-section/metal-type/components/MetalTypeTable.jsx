@@ -26,7 +26,7 @@ export default function MetalTypesPage() {
     (metal?.name || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  console.log(filteredMetals)
+  console.log(metalTypes)
 
   // Handle update with loading state
   const handleUpdate = async (name, imageFile) => {
@@ -276,6 +276,7 @@ export default function MetalTypesPage() {
                 </tr>
               ) : (
                 filteredMetals.map((item, index) => (
+
                   <tr key={item._id || index}>
                     <td>{index + 1}</td>
 
@@ -287,7 +288,7 @@ export default function MetalTypesPage() {
                         width="45"
                         height="45"
                         className="rounded border"
-                        tyle={{ objectFit: "cover", borderRadius: "6px" }}
+                        style={{ objectFit: "cover", borderRadius: "6px" }}
                       />
                     </td>
 

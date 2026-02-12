@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Select from "react-select";
 import {
   FiUser,
   FiBox,
@@ -39,6 +40,7 @@ import {
   FiSun,
   FiTarget,
   FiLayers,
+  FiUsers,
 } from "react-icons/fi";
 
 const UpdatePolishingStage = ({
@@ -46,6 +48,7 @@ const UpdatePolishingStage = ({
   employees = [],
   materials = [],
   units = [],
+  laborCosts = [], // Add labor costs
   onUpdate,
   onClose,
   loading = false,
@@ -55,6 +58,11 @@ const UpdatePolishingStage = ({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [polishingFiles, setPolishingFiles] = useState([]);
+  const [selectedLaborCosts, setSelectedLaborCosts] = useState([]); // Add selected labor costs
+  const [laborBreakdown, setLaborBreakdown] = useState([]); // Add labor breakdown
+
+  console.log("Selected stage:", selectedStage);
+  console.log("Labor costs received:", laborCosts);
 
   const [formData, setFormData] = useState({
     assigned_to: "",
@@ -90,7 +98,7 @@ const UpdatePolishingStage = ({
     total_cost: "",
     cost_currency: "INR",
     cost_status: "estimated",
-    markup_percentage: "",
+    markup_percentage: "25",
     final_price: "",
     preparation_time: "",
     polishing_time: "",
@@ -109,7 +117,7 @@ const UpdatePolishingStage = ({
     basic: true,
     polishing: false,
     quality: false,
-    cost: false,
+    cost: true,
     time: false,
     files: false,
   });
@@ -207,61 +215,193 @@ const UpdatePolishingStage = ({
     { value: "archived", label: "Archived", icon: "📦" },
   ];
 
+  // Prepare options for React Select - POLISHING LABOR COSTS
+  const getLaborCostOptions = () => {
+    if (!laborCosts || laborCosts.length === 0) return [];
+
+    // Filter for polishing-related labor costs
+    const filteredCosts = laborCosts.filter((cost) => {
+      const costName = (cost.cost_name || "").toLowerCase();
+      const stageName = (cost.stage_name || "").toLowerCase();
+      const subStageName = (cost.sub_stage_name || "").toLowerCase();
+      
+      // Include labor and polisher costs relevant to polishing
+      return (
+        costName.includes("labor") ||
+        costName.includes("polish") ||
+        costName.includes("polisher") ||
+        costName.includes("buff") ||
+        costName.includes("karigar") ||
+        costName.includes("craftsman") ||
+        costName.includes("worker") ||
+        costName.includes("finishing") ||
+        stageName.includes("polish") ||
+        subStageName.includes("polish") ||
+        stageName.includes("finishing") ||
+        subStageName.includes("finishing") ||
+        costName.includes("पॉलिश") ||
+        costName.includes("कारीगर")
+      );
+    });
+
+    return filteredCosts.map((cost) => ({
+      value: cost._id,
+      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      originalData: cost,
+    }));
+  };
+
+  // Handle labor cost selection change
+  const handleLaborCostsChange = (selectedOptions) => {
+    const selectedItems = selectedOptions
+      ? selectedOptions.map((option) => option.originalData)
+      : [];
+    setSelectedLaborCosts(selectedItems);
+
+    // Calculate total labor cost based on selected items
+    calculateLaborCostFromSelection(selectedItems);
+  };
+
+  // Calculate labor cost from selected items
+  const calculateLaborCostFromSelection = (selectedItems) => {
+    if (selectedItems.length === 0) {
+      setFormData((prev) => ({ ...prev, labour_cost: "0.00" }));
+      setLaborBreakdown([]);
+      return;
+    }
+
+    // Calculate breakdown for selected items
+    const breakdown = selectedItems.map((cost) => {
+      const costAmount = parseFloat(cost.cost_amount) || 0;
+
+      return {
+        id: cost._id,
+        name: cost.cost_name || cost.cost_name_id?.cost_name || "Labor",
+        type: cost.cost_type || "Direct Cost",
+        cost_amount: costAmount,
+        unit: cost.unit || "unit",
+        total_cost: costAmount.toFixed(2),
+        stage: cost.stage_name || "General",
+        sub_stage: cost.sub_stage_name || "General",
+      };
+    });
+
+    setLaborBreakdown(breakdown);
+
+    // Calculate total labor cost
+    const totalLaborCost = breakdown.reduce(
+      (sum, item) => sum + parseFloat(item.total_cost),
+      0
+    );
+
+    // Update form data with calculated labor cost
+    setFormData((prev) => ({
+      ...prev,
+      labour_cost: totalLaborCost.toFixed(2),
+    }));
+
+    // Recalculate total cost
+    calculateTotalCost();
+  };
+
   // Initialize form data
   useEffect(() => {
-    if (selectedStage) {
-      const initialData = {
-        assigned_to: selectedStage.assigned_to || "",
-        status: selectedStage.status || "",
-        start_date: selectedStage.start_date
-          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-          : "",
-        end_date: selectedStage.end_date
-          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-          : "",
-        material_used: selectedStage.material_used || "Polish compound",
-        material_quantity: selectedStage.material_quantity || "",
-        material_unit: selectedStage.material_unit || "grams",
-        polish_type: selectedStage.polish_type || "",
-        polish_grade: selectedStage.polish_grade || "",
-        polishing_method: selectedStage.polishing_method || "manual",
-        equipment_used: selectedStage.equipment_used || "",
-        rpm_speed: selectedStage.rpm_speed || "",
-        pressure_applied: selectedStage.pressure_applied || "",
-        surface_finish: selectedStage.surface_finish || "mirror",
-        brightness_level: selectedStage.brightness_level || "high",
-        scratch_removal: selectedStage.scratch_removal || "complete",
-        surface_consistency: selectedStage.surface_consistency || "excellent",
-        defects_noted: selectedStage.defects_noted || "",
-        rework_required: selectedStage.rework_required || false,
-        rework_reason: selectedStage.rework_reason || "",
-        labour_hours: selectedStage.labour_hours || "",
-        actual_hours: selectedStage.actual_hours || "",
-        next_stage: selectedStage.next_stage || "",
-        stage: selectedStage.next_stage || selectedStage.stage || "",
-        remarks: selectedStage.remarks || "",
-        material_cost: selectedStage.material_cost || "",
-        labour_cost: selectedStage.labour_cost || "",
-        equipment_cost: selectedStage.equipment_cost || "",
-        consumables_cost: selectedStage.consumables_cost || "",
-        other_costs: selectedStage.other_costs || "",
-        total_cost: selectedStage.total_cost || "",
-        cost_currency: selectedStage.cost_currency || "INR",
-        cost_status: selectedStage.cost_status || "estimated",
-        markup_percentage: selectedStage.markup_percentage || "",
-        final_price: selectedStage.final_price || "",
-        preparation_time: selectedStage.preparation_time || "",
-        polishing_time: selectedStage.polishing_time || "",
-        inspection_time: selectedStage.inspection_time || "",
-        total_time_spent: selectedStage.total_time_spent || "",
-        time_breakdown: selectedStage.time_breakdown || "",
-        file_version: selectedStage.file_version || "1.0",
-        file_revisions: selectedStage.file_revisions || 0,
-        file_status: selectedStage.file_status || "draft",
-        backup_location: selectedStage.backup_location || "",
-      };
+    if (selectedStage && laborCosts.length > 0) {
+      // Parse selected labor costs if they exist in the stage data
+      let parsedSelectedLaborCosts = [];
+      if (selectedStage.selected_labor_costs) {
+        if (Array.isArray(selectedStage.selected_labor_costs)) {
+          // Map the IDs to actual labor cost objects
+          parsedSelectedLaborCosts = laborCosts.filter(cost => 
+            selectedStage.selected_labor_costs.includes(cost._id)
+          );
+        } else if (typeof selectedStage.selected_labor_costs === "string") {
+          try {
+            const ids = JSON.parse(selectedStage.selected_labor_costs);
+            parsedSelectedLaborCosts = laborCosts.filter(cost => 
+              ids.includes(cost._id)
+            );
+          } catch {
+            parsedSelectedLaborCosts = [];
+          }
+        }
+      }
 
-      setFormData(initialData);
+      // Parse labor breakdown if it exists
+      let parsedLaborBreakdown = [];
+      if (selectedStage.labor_cost_breakdown) {
+        if (Array.isArray(selectedStage.labor_cost_breakdown)) {
+          parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
+        } else if (typeof selectedStage.labor_cost_breakdown === "string") {
+          try {
+            parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
+          } catch {
+            parsedLaborBreakdown = [];
+          }
+        }
+      }
+
+      // const initialData = {
+      //   assigned_to: selectedStage.assigned_to || "",
+      //   status: selectedStage.status || "",
+      //   start_date: selectedStage.start_date
+      //     ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+      //     : "",
+      //   end_date: selectedStage.end_date
+      //     ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+      //     : "",
+      //   material_used: selectedStage.material_used || "Polish compound",
+      //   material_quantity: selectedStage.material_quantity || "",
+      //   material_unit: selectedStage.material_unit || "grams",
+      //   polish_type: selectedStage.polish_type || "",
+      //   polish_grade: selectedStage.polish_grade || "",
+      //   polishing_method: selectedStage.polishing_method || "manual",
+      //   equipment_used: selectedStage.equipment_used || "",
+      //   rpm_speed: selectedStage.rpm_speed || "",
+      //   pressure_applied: selectedStage.pressure_applied || "",
+      //   surface_finish: selectedStage.surface_finish || "mirror",
+      //   brightness_level: selectedStage.brightness_level || "high",
+      //   scratch_removal: selectedStage.scratch_removal || "complete",
+      //   surface_consistency: selectedStage.surface_consistency || "excellent",
+      //   defects_noted: selectedStage.defects_noted || "",
+      //   rework_required: selectedStage.rework_required || false,
+      //   rework_reason: selectedStage.rework_reason || "",
+      //   labour_hours: selectedStage.labour_hours || "",
+      //   actual_hours: selectedStage.actual_hours || "",
+      //   next_stage: selectedStage.next_stage || "",
+      //   stage: selectedStage.next_stage || selectedStage.stage || "",
+      //   remarks: selectedStage.remarks || "",
+      //   material_cost: selectedStage.material_cost || "",
+      //   labour_cost: selectedStage.labour_cost || "",
+      //   equipment_cost: selectedStage.equipment_cost || "",
+      //   consumables_cost: selectedStage.consumables_cost || "",
+      //   other_costs: selectedStage.other_costs || "",
+      //   total_cost: selectedStage.total_cost || "",
+      //   cost_currency: selectedStage.cost_currency || "INR",
+      //   cost_status: selectedStage.cost_status || "estimated",
+      //   markup_percentage: selectedStage.markup_percentage || "25",
+      //   final_price: selectedStage.final_price || "",
+      //   preparation_time: selectedStage.preparation_time || "",
+      //   polishing_time: selectedStage.polishing_time || "",
+      //   inspection_time: selectedStage.inspection_time || "",
+      //   total_time_spent: selectedStage.total_time_spent || "",
+      //   time_breakdown: selectedStage.time_breakdown || "",
+      //   file_version: selectedStage.file_version || "1.0",
+      //   file_revisions: selectedStage.file_revisions || 0,
+      //   file_status: selectedStage.file_status || "draft",
+      //   backup_location: selectedStage.backup_location || "",
+      // };
+
+      // console.log("Initializing form data:", initialData);
+
+      // setFormData(initialData);
+      setSelectedLaborCosts(parsedSelectedLaborCosts);
+      setLaborBreakdown(parsedLaborBreakdown);
+
+      // Calculate labor cost from selected items
+      if (parsedSelectedLaborCosts.length > 0) {
+        calculateLaborCostFromSelection(parsedSelectedLaborCosts);
+      }
 
       if (selectedStage.files && Array.isArray(selectedStage.files)) {
         const existingFiles = selectedStage.files
@@ -283,7 +423,33 @@ const UpdatePolishingStage = ({
       calculateTotalCost();
       calculateTotalTime();
     }
-  }, [selectedStage]);
+  }, [selectedStage, laborCosts]);
+
+  // Auto-recalculate total time when time fields change
+  useEffect(() => {
+    calculateTotalTime();
+  }, [
+    formData.preparation_time,
+    formData.polishing_time,
+    formData.inspection_time,
+  ]);
+
+  // Auto-recalculate total cost when individual costs change
+  useEffect(() => {
+    calculateTotalCost();
+  }, [
+    formData.material_cost,
+    formData.labour_cost,
+    formData.equipment_cost,
+    formData.consumables_cost,
+    formData.other_costs,
+    formData.markup_percentage,
+  ]);
+
+  // Auto-calculate labor cost whenever selected labor costs change
+  useEffect(() => {
+    calculateLaborCostFromSelection(selectedLaborCosts);
+  }, [selectedLaborCosts]);
 
   // Calculate total cost
   const calculateTotalCost = () => {
@@ -292,9 +458,9 @@ const UpdatePolishingStage = ({
     const equipment = parseFloat(formData.equipment_cost) || 0;
     const consumables = parseFloat(formData.consumables_cost) || 0;
     const other = parseFloat(formData.other_costs) || 0;
+    const markup = parseFloat(formData.markup_percentage) || 25;
 
     const total = material + labour + equipment + consumables + other;
-    const markup = parseFloat(formData.markup_percentage) ;
     const markupAmount = (total * markup) / 100;
     const finalPrice = total + markupAmount;
 
@@ -364,16 +530,7 @@ const UpdatePolishingStage = ({
         const equipment = Number(updatedData.equipment_cost) || 0;
         const consumables = Number(updatedData.consumables_cost) || 0;
         const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage);
-
-        console.log("POLISHING COST CALCULATION IN HANDLE CHANGE:", {
-          material,
-          labour,
-          equipment,
-          consumables,
-          other,
-          markup,
-        });
+        const markup = Number(updatedData.markup_percentage) || 25;
 
         const total = material + labour + equipment + consumables + other;
         const markupAmount = (total * markup) / 100;
@@ -418,7 +575,7 @@ const UpdatePolishingStage = ({
         const equipment = Number(updatedData.equipment_cost) || 0;
         const consumables = Number(updatedData.consumables_cost) || 0;
         const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage);
+        const markup = Number(updatedData.markup_percentage) || 25;
 
         const total = materialCost + labour + equipment + consumables + other;
         const markupAmount = (total * markup) / 100;
@@ -452,7 +609,7 @@ const UpdatePolishingStage = ({
     const errors = {};
 
     if (!formData.assigned_to) {
-      errors.assigned_to = "Assigned Karigar is required";
+      errors.assigned_to = "Assigned Polisher is required";
     }
 
     if (!formData.status) {
@@ -461,6 +618,10 @@ const UpdatePolishingStage = ({
 
     if (!formData.start_date) {
       errors.start_date = "Start date is required";
+    }
+
+    if (selectedLaborCosts.length === 0) {
+      errors.labor_costs = "At least one labor cost type must be selected";
     }
 
     if (
@@ -475,7 +636,7 @@ const UpdatePolishingStage = ({
     return Object.keys(errors).length === 0;
   };
 
-  // Handle file upload (same as casting)
+  // Handle file upload
   const handleFileUpload = async (files, category = "output") => {
     const fileList = Array.from(files);
     if (fileList.length === 0) return [];
@@ -706,7 +867,7 @@ const UpdatePolishingStage = ({
         total_cost: formData.total_cost || "0",
         cost_currency: formData.cost_currency || "INR",
         cost_status: formData.cost_status || "estimated",
-        markup_percentage: formData.markup_percentage || "",
+        markup_percentage: formData.markup_percentage || "25",
         final_price: formData.final_price || "0",
 
         // Time data
@@ -722,17 +883,36 @@ const UpdatePolishingStage = ({
         file_status: formData.file_status || "draft",
         backup_location: formData.backup_location || "",
         files: polishingFiles,
+
+        // Labor cost tracking
+        selected_labor_costs: selectedLaborCosts,
+        labor_cost_breakdown: laborBreakdown,
       };
 
+      console.log("🚀 Submitting Polishing stage update:", {
+        polishingStageId: selectedStage._id,
+        data: updateData,
+        selectedLaborCostsCount: selectedLaborCosts.length,
+        laborBreakdownCount: laborBreakdown.length,
+      });
+
       if (onUpdate) {
-        const success = await onUpdate(
+        const result = await onUpdate(
           selectedStage._id,
           updateData,
           filesToUpload,
         );
 
-        if (success) {
+        console.log("Modal received result:", result);
+
+        if (result === true || (result && result.success === true)) {
+          console.log("✅ Update successful, closing modal");
           onClose();
+        } else {
+          console.log("❌ Update failed, not closing");
+          const errorMsg =
+            result?.error || result?.message || "Failed to update Polishing stage";
+          setUploadError(errorMsg);
         }
       }
     } catch (error) {
@@ -776,6 +956,12 @@ const UpdatePolishingStage = ({
 
   const polishMaterials = getPolishMaterials ? getPolishMaterials() : [];
 
+  // Calculate total labor from breakdown
+  const totalCalculatedLabor = laborBreakdown.reduce(
+    (sum, item) => sum + parseFloat(item.total_cost || 0),
+    0
+  );
+
   return (
     <div
       className="modal fade show d-block"
@@ -811,6 +997,10 @@ const UpdatePolishingStage = ({
                       <FiLayers className="me-1" /> {formData.polish_grade}
                     </span>
                   )}
+                  <span className="badge bg-primary">
+                    <FiUsers className="me-1" /> Labor Types:{" "}
+                    {selectedLaborCosts.length}
+                  </span>
                   <span className="badge bg-dark">
                     <FiTarget className="me-1" />
                     Finish:{" "}
@@ -839,6 +1029,25 @@ const UpdatePolishingStage = ({
             >
               {/* Summary Cards */}
               <div className="row g-3 mb-4">
+                <div className="col-md-3">
+                  <div className="card border-0 shadow-sm h-100">
+                    <div className="card-body p-3">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <h6 className="text-muted mb-1">Labor Cost</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.labour_cost || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            {selectedLaborCosts.length} type(s) selected
+                          </small>
+                        </div>
+                        <FiUsers className="text-warning" size={24} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="col-md-3">
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body p-3">
@@ -905,60 +1114,18 @@ const UpdatePolishingStage = ({
                     <div className="card-body p-3">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <h6 className="text-muted mb-1">Cost Status</h6>
-                          <div className="d-flex align-items-center">
-                            <span className="badge bg-warning me-2">
-                              {
-                                costStatusOptions.find(
-                                  (c) => c.value === formData.cost_status,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">
-                              ₹ {formData.final_price || "0.00"}
-                            </h4>
-                          </div>
+                          <h6 className="text-muted mb-1">Final Price</h6>
+                          <h4 className="mb-0">
+                            ₹ {formData.final_price || "0.00"}
+                          </h4>
+                          <small className="text-muted">
+                            Markup: {formData.markup_percentage || "0"}%
+                          </small>
                         </div>
-                        <FiDollarSign className="text-warning" size={24} />
+                        <FiDollarSign className="text-success" size={24} />
                       </div>
                       <div className="small text-muted mt-1">
                         Total: ₹{formData.total_cost || "0"}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-md-3">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body p-3">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <h6 className="text-muted mb-1">Quality Metrics</h6>
-                          <div className="d-flex align-items-center">
-                            <span
-                              className={`badge ${
-                                formData.brightness_level === "excellent"
-                                  ? "bg-success"
-                                  : formData.brightness_level === "high"
-                                    ? "bg-info"
-                                    : formData.brightness_level === "medium"
-                                      ? "bg-warning"
-                                      : "bg-secondary"
-                              } me-2`}
-                            >
-                              {
-                                brightnessLevelOptions.find(
-                                  (q) => q.value === formData.brightness_level,
-                                )?.label
-                              }
-                            </span>
-                            <h4 className="mb-0">{formData.scratch_removal}</h4>
-                          </div>
-                        </div>
-                        <FiShield className="text-success" size={24} />
-                      </div>
-                      <div className="small text-muted mt-1">
-                        Consistency: {formData.surface_consistency}
                       </div>
                     </div>
                   </div>
@@ -993,9 +1160,10 @@ const UpdatePolishingStage = ({
                           {employees
                             .filter(
                               (emp) =>
-                                emp.role_id?.role_name?.includes("polishing") ||
-                                emp.role_id?.role_name?.includes("Karigar") ||
-                                emp.role_id?.role_name?.includes("Polisher"),
+                                emp.role_id?.role_name?.toLowerCase().includes("polish") ||
+                                emp.role_id?.role_name?.toLowerCase().includes("polisher") ||
+                                emp.role_id?.role_name?.toLowerCase().includes("designer") ||
+                                emp.department?.toLowerCase().includes("polish")
                             )
                             .map((emp) => (
                               <option key={emp._id} value={emp._id}>
@@ -1622,6 +1790,7 @@ const UpdatePolishingStage = ({
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
+                  selectedLaborCosts.length
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
@@ -1643,6 +1812,75 @@ const UpdatePolishingStage = ({
                             </option>
                           ))}
                         </select>
+                      </div>
+                    </div>
+
+                    {/* Labor Cost Selection */}
+                    <div className="row mb-3">
+                      <div className="col-md-12">
+                        <label className="form-label fw-medium">
+                          <FiUsers className="me-1" /> Labor Cost Types{" "}
+                          <span className="text-danger">*</span>
+                        </label>
+                        <Select
+                          isMulti
+                          options={getLaborCostOptions()}
+                          value={getLaborCostOptions().filter((option) =>
+                            selectedLaborCosts.some(
+                              (cost) => cost._id === option.value
+                            )
+                          )}
+                          onChange={handleLaborCostsChange}
+                          placeholder={
+                            laborCosts.length === 0
+                              ? "Loading labor cost types..."
+                              : "Select labor cost types (Polisher/Labor costs)"
+                          }
+                          isDisabled={isDisabled || laborCosts.length === 0}
+                          className="react-select-container"
+                          classNamePrefix="react-select"
+                          styles={{
+                            control: (base, state) => ({
+                              ...base,
+                              borderColor: formErrors.labor_costs
+                                ? "#dc3545"
+                                : "#dee2e6",
+                              "&:hover": {
+                                borderColor: formErrors.labor_costs
+                                  ? "#dc3545"
+                                  : "#ced4da",
+                              },
+                              backgroundColor: state.isDisabled
+                                ? "#e9ecef"
+                                : "white",
+                              minHeight: "42px",
+                            }),
+                            menu: (base) => ({
+                              ...base,
+                              zIndex: 9999,
+                            }),
+                            multiValue: (base) => ({
+                              ...base,
+                              backgroundColor: "#e3f2fd",
+                            }),
+                            multiValueLabel: (base) => ({
+                              ...base,
+                              color: "#1976d2",
+                              fontWeight: "500",
+                            }),
+                          }}
+                        />
+                        {formErrors.labor_costs && (
+                          <div className="invalid-feedback d-block">
+                            <FiAlertCircle className="me-1" />{" "}
+                            {formErrors.labor_costs}
+                          </div>
+                        )}
+                        <div className="form-text">
+                          Select one or more labor cost types (Polisher costs are
+                          included). The total labor cost will be calculated
+                          automatically.
+                        </div>
                       </div>
                     </div>
 
@@ -1668,27 +1906,6 @@ const UpdatePolishingStage = ({
                         <div className="form-text x-small">
                           Polishing compound cost
                         </div>
-                      </div>
-
-                      <div className="col-md-3 mb-2">
-                        <label className="form-label fw-medium small">
-                          Labour Cost
-                        </label>
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">₹</span>
-                          <input
-                            type="number"
-                            name="labour_cost"
-                            className="form-control"
-                            value={formData.labour_cost}
-                            onChange={handleInputChange}
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                            disabled={isDisabled}
-                          />
-                        </div>
-                        <div className="form-text x-small">Polisher wages</div>
                       </div>
 
                       <div className="col-md-3 mb-2">
@@ -1758,7 +1975,7 @@ const UpdatePolishingStage = ({
 
                       <div className="col-md-3 mb-2">
                         <label className="form-label fw-medium small">
-                           Markup %
+                          <FiPercent className="me-1" /> Markup %
                         </label>
                         <div className="input-group input-group-sm">
                           <input
@@ -1776,13 +1993,144 @@ const UpdatePolishingStage = ({
                           <span className="input-group-text">%</span>
                         </div>
                       </div>
+
+                      <div className="col-md-3 mb-2">
+                        <label className="form-label fw-medium small">
+                          Labor Cost (Auto)
+                        </label>
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">₹</span>
+                          <input
+                            type="number"
+                            name="labour_cost"
+                            className="form-control bg-light"
+                            value={formData.labour_cost}
+                            readOnly
+                            title="Automatically calculated from selected labor cost types"
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary"
+                            onClick={() =>
+                              calculateLaborCostFromSelection(selectedLaborCosts)
+                            }
+                            disabled={isDisabled}
+                            title="Recalculate labor cost"
+                          >
+                            <FiRefreshCw size={14} />
+                          </button>
+                        </div>
+                        <div className="form-text x-small">
+                          Auto-calculated from {selectedLaborCosts.length}{" "}
+                          selected type(s)
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Selected Labor Costs Breakdown */}
+                    {selectedLaborCosts.length > 0 && (
+                      <div className="row mt-3">
+                        <div className="col-md-12">
+                          <div className="card border">
+                            <div className="card-header bg-light py-2">
+                              <h6 className="mb-0 small fw-bold">
+                                Selected Labor Cost Breakdown
+                                <span className="badge bg-primary ms-2">
+                                  {selectedLaborCosts.length}
+                                </span>
+                              </h6>
+                            </div>
+                            <div className="card-body p-3">
+                              <div className="table-responsive">
+                                <table className="table table-sm mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th className="small">Type</th>
+                                      <th className="small">Cost Type</th>
+                                      <th className="small">Amount</th>
+                                      <th className="small">Unit</th>
+                                      <th className="small text-end">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {laborBreakdown.map((item) => (
+                                      <tr key={item.id}>
+                                        <td className="small">
+                                          <strong>{item.name}</strong>
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-secondary">
+                                            {item.type}
+                                          </span>
+                                        </td>
+                                        <td className="small">
+                                          ₹{item.cost_amount}
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-info">
+                                            {item.unit}
+                                          </span>
+                                        </td>
+                                        <td className="small text-end fw-bold">
+                                          ₹{item.total_cost}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot>
+                                    <tr className="table-active">
+                                      <td colSpan="4" className="small fw-bold">
+                                        Total Labor Cost
+                                      </td>
+                                      <td className="small text-end fw-bold fs-6">
+                                        ₹ {totalCalculatedLabor.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Cost Summary */}
                     <div className="border rounded-3 p-3 bg-light mt-3">
                       <h6 className="fw-bold mb-3">Cost Summary</h6>
                       <div className="row">
                         <div className="col-md-6">
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Material Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.material_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Labor Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.labour_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Equipment Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.equipment_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Consumables Cost:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.consumables_cost || "0.00"}
+                            </span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-2 small">
+                            <span>Other Costs:</span>
+                            <span className="fw-bold">
+                              ₹ {formData.other_costs || "0.00"}
+                            </span>
+                          </div>
+                          <hr />
                           <div className="d-flex justify-content-between mb-2 small">
                             <span>Total Cost:</span>
                             <span className="fw-bold">
@@ -1821,37 +2169,34 @@ const UpdatePolishingStage = ({
                             </div>
                             <div
                               className="progress-bar bg-success"
-                               style={{
+                              style={{
                                 width: `${((parseFloat(formData.labour_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
-                              title="Labour Cost"
+                              title="Labor Cost"
                             >
-                              Labour
+                              Labor
                             </div>
                             <div
                               className="progress-bar bg-warning"
-                               style={{
+                              style={{
                                 width: `${((parseFloat(formData.equipment_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Equipment Cost"
                             >
                               Equipment
                             </div>
-
-                              <div
-                              className="progress-bar bg-black"
-                               style={{
+                            <div
+                              className="progress-bar bg-info"
+                              style={{
                                 width: `${((parseFloat(formData.consumables_cost || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Consumables Cost"
                             >
                               Consumables
                             </div>
-
-
                             <div
-                              className="progress-bar bg-info"
-                               style={{
+                              className="progress-bar bg-secondary"
+                              style={{
                                 width: `${((parseFloat(formData.other_costs || 0) / parseFloat(formData.total_cost || 1)) * 100).toFixed(1)}%`,
                               }}
                               title="Other Costs"
@@ -2053,7 +2398,7 @@ const UpdatePolishingStage = ({
                 )}
               </div>
 
-              {/* File Tracking Section (same as casting) */}
+              {/* File Tracking Section */}
               <div className="card mb-4">
                 {renderSectionHeader(
                   "📎 File Tracking",
@@ -2269,9 +2614,22 @@ const UpdatePolishingStage = ({
             <div className="modal-footer border-top pt-3 bg-white">
               <div className="d-flex justify-content-between w-100 align-items-center">
                 <div className="text-muted small">
-                  <span className="me-3">✨ Polishing process</span>
-                  <span className="me-3">🔍 Quality inspection</span>
-                  <span>📊 Surface finish tracking</span>
+                  <span className="me-3">
+                    <FiUsers className="me-1" />
+                    Labor: ₹{formData.labour_cost || "0.00"}
+                  </span>
+                  <span className="me-3">
+                    <FiRotateCw className="me-1" />
+                    Material: {formData.material_quantity || "0"} {formData.material_unit}
+                  </span>
+                  <span className="me-3">
+                    <FiClock className="me-1" />
+                    {formData.total_time_spent || "0"} hrs
+                  </span>
+                  <span>
+                    <FiDollarSign className="me-1" />
+                    Final: ₹{formData.final_price || "0.00"}
+                  </span>
                 </div>
                 <div className="d-flex gap-2">
                   <button

@@ -74,18 +74,22 @@ export default function useCustomers() {
       const mappedCustomers = customersData.map((item) => ({
         _id: item._id || item.id,
         // Use the exact field names from your API response
-        name: item.name || "",  // This is what your API returns
+        name: item.name || "", // This is what your API returns
         // Get the ID from the nested customer_group_id object
-        customer_group_id: item.customer_group_id?._id || item.customer_group_id || "",
+        customer_group_id:
+          item.customer_group_id?._id || item.customer_group_id || "",
         // Store the full object for reference
         customer_group_id_obj: item.customer_group_id || null,
         // Get the customer group name from the nested object
-        customer_group: item.customer_group_id?.customer_group || item.customer_group || "",
+        customer_group:
+          item.customer_group_id?.customer_group || item.customer_group || "",
         // Use the exact field name from your API
         mobile: item.mobile || "",
         whatsapp_number: item.whatsapp_number || "",
         email: item.email || "",
         tax_number: item.tax_number || "",
+        aadhar_number: item.aadhar_number || "",
+
         address: item.address || "",
         city: item.city || "",
         state: item.state || "",
@@ -133,20 +137,28 @@ export default function useCustomers() {
 
       if (res.data?.success && res.data.data) {
         const responseData = res.data.data;
-        
+
         // Find the customer group for display purposes
-        const customerGroup = customerGroups.find(group => group._id === customerData.customer_group_id);
-        
+        const customerGroup = customerGroups.find(
+          (group) => group._id === customerData.customer_group_id,
+        );
+
         const newCustomer = {
           _id: responseData._id,
           name: responseData.name || customerData.name || "",
-          customer_group_id: responseData.customer_group_id || customerData.customer_group_id,
-          customer_group_id_obj: responseData.customer_group_id || { _id: customerData.customer_group_id },
+          customer_group_id:
+            responseData.customer_group_id || customerData.customer_group_id,
+          customer_group_id_obj: responseData.customer_group_id || {
+            _id: customerData.customer_group_id,
+          },
           customer_group: customerGroup?.customer_group || "",
           mobile: responseData.mobile || customerData.mobile || "",
-          whatsapp_number: responseData.whatsapp_number || customerData.whatsapp_number || "",
+          whatsapp_number:
+            responseData.whatsapp_number || customerData.whatsapp_number || "",
           email: responseData.email || customerData.email || "",
           tax_number: responseData.tax_number || customerData.tax_number || "",
+          aadhar_number: responseData.aadhar_number || customerData.aadhar_number || "",
+
           address: responseData.address || customerData.address || "",
           city: responseData.city || customerData.city || "",
           state: responseData.state || customerData.state || "",
@@ -158,15 +170,15 @@ export default function useCustomers() {
         };
 
         console.log("New customer to add:", newCustomer);
-        
+
         // Update local state
-        setCustomers(prev => [...prev, newCustomer]);
-        
+        setCustomers((prev) => [...prev, newCustomer]);
+
         // Refetch to ensure we have the complete data
         setTimeout(() => {
           fetchCustomers();
         }, 500);
-        
+
         return newCustomer;
       } else {
         throw new Error(res.data?.message || "Failed to add customer");
@@ -187,14 +199,14 @@ export default function useCustomers() {
       setError("");
 
       const url = API_ENDPOINTS.updateCustomer(id);
-      
+
       // Prepare data for API - match your API's expected format
       const apiData = {
         ...customerData,
         status: customerData.status ? "active" : "inactive",
         name: customerData.name || "",
       };
-      
+
       console.log("Updating customer at:", url, "Data:", apiData);
 
       const res = await axios.put(url, apiData);
@@ -202,20 +214,28 @@ export default function useCustomers() {
 
       if (res.data?.success && res.data.data) {
         const responseData = res.data.data;
-        
+
         // Find the customer group for display
-        const customerGroup = customerGroups.find(group => group._id === customerData.customer_group_id);
-        
+        const customerGroup = customerGroups.find(
+          (group) => group._id === customerData.customer_group_id,
+        );
+
         const updatedData = {
           _id: responseData._id || id,
           name: responseData.name || customerData.name || "",
-          customer_group_id: responseData.customer_group_id || customerData.customer_group_id,
-          customer_group_id_obj: responseData.customer_group_id || { _id: customerData.customer_group_id },
+          customer_group_id:
+            responseData.customer_group_id || customerData.customer_group_id,
+          customer_group_id_obj: responseData.customer_group_id || {
+            _id: customerData.customer_group_id,
+          },
           customer_group: customerGroup?.customer_group || "",
           mobile: responseData.mobile || customerData.mobile || "",
-          whatsapp_number: responseData.whatsapp_number || customerData.whatsapp_number || "",
+          whatsapp_number:
+            responseData.whatsapp_number || customerData.whatsapp_number || "",
           email: responseData.email || customerData.email || "",
           tax_number: responseData.tax_number || customerData.tax_number || "",
+          aadhar_number:
+            responseData.aadhar_number || customerData.aadhar_number || "",
           address: responseData.address || customerData.address || "",
           city: responseData.city || customerData.city || "",
           state: responseData.state || customerData.state || "",
@@ -226,17 +246,19 @@ export default function useCustomers() {
         };
 
         console.log("Updated customer data:", updatedData);
-        
+
         // Update local state
-        setCustomers(prev => prev.map(item => 
-          item._id === id ? { ...item, ...updatedData } : item
-        ));
-        
+        setCustomers((prev) =>
+          prev.map((item) =>
+            item._id === id ? { ...item, ...updatedData } : item,
+          ),
+        );
+
         // Refetch to ensure consistency
         setTimeout(() => {
           fetchCustomers();
         }, 500);
-        
+
         return updatedData;
       } else {
         throw new Error(res.data?.message || "Failed to update customer");
@@ -264,7 +286,7 @@ export default function useCustomers() {
 
       if (res.data?.success || res.data?.status === true) {
         // Remove from local state
-        setCustomers(prev => prev.filter((item) => item._id !== id));
+        setCustomers((prev) => prev.filter((item) => item._id !== id));
         return true;
       } else {
         throw new Error(res.data?.message || "Failed to delete customer");
@@ -284,7 +306,7 @@ export default function useCustomers() {
       await fetchCustomerGroups();
       await fetchCustomers();
     };
-    
+
     fetchData();
   }, []);
 

@@ -159,65 +159,108 @@ export default function usePurchaseOrders() {
   };
 
   // Fetch all purchase orders
-  const fetchPurchaseOrders = async () => {
-    try {
-      setLoading(true);
-      setError("");
+ const fetchPurchaseOrders = async () => {
+  try {
+    setLoading(true);
+    setError("");
 
-      const url = API_ENDPOINTS.getPurchaseOrders();
-      console.log("Fetching purchase orders from:", url);
+    const url = API_ENDPOINTS.getPurchaseOrders();
+    console.log("Fetching purchase orders from:", url);
 
-      const res = await axios.get(url);
-      console.log("Purchase Orders API Response:", res.data);
+    const res = await axios.get(url);
+    console.log("Purchase Orders API Response:", res.data);
 
-      let purchaseOrdersData = [];
+    let purchaseOrdersData = [];
 
-      // Handle your specific response structure
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        purchaseOrdersData = res.data.data;
-      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
-        purchaseOrdersData = res.data.fetched;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        purchaseOrdersData = res.data.data;
-      } else if (Array.isArray(res.data)) {
-        purchaseOrdersData = res.data;
-      }
-
-      const mappedPurchaseOrders = purchaseOrdersData.map((item) => ({
-        _id: item._id || item.id,
-        order_number: item.po_number || item.order_number || `PO-${Date.now()}`,
-        supplier_id: item.supplier_id || {}, // Changed from supplier to supplier_id
-        supplier: item.supplier_id || {}, // Keep both for compatibility
-        branch: item.branch || {},
-        order_date: item.order_date || new Date().toISOString().split("T")[0],
-        items: item.items || [],
-        status: item.status || "draft",
-        payment_status: item.payment_status || "pending", // Added payment_status
-        total_amount: item.total_amount || 0,
-        subtotal: item.subtotal || item.total_amount || 0,
-        grand_total: item.grand_total || item.total_amount || 0,
-        vat: item.vat || 0,
-        discount: item.discount || 0,
-        shipping_cost: item.shipping_cost || 0,
-        currency: item.currency || "INR",
-        exchange_rate: item.exchange_rate || 1,
-        reference_no: item.reference_no || "",
-        notes: item.notes || "",
-        // Add other fields as needed
-        paid_amount: item.paid_amount || 0,
-        balance_amount: item.balance_amount || 0,
-        additional_payment: item.additional_payment || 0,
-      }));
-
-      console.log("Fetched purchase orders:", mappedPurchaseOrders);
-      setPurchaseOrders(mappedPurchaseOrders);
-    } catch (err) {
-      console.error("Fetch purchase orders error:", err);
-      setError("Failed to load purchase orders");
-    } finally {
-      setLoading(false);
+    // Handle response structure based on your actual API response
+    if (res.data?.success && Array.isArray(res.data.data)) {
+      purchaseOrdersData = res.data.data;
+    } else if (Array.isArray(res.data)) {
+      purchaseOrdersData = res.data;
+    } else {
+      console.warn("Unexpected API response structure:", res.data);
+      throw new Error("Invalid response format from server");
     }
-  };
+
+    // Map the data according to your API response structure
+    const mappedPurchaseOrders = purchaseOrdersData.map((item) => ({
+      _id: item._id,
+      order_number: item.po_number || `PO-${Date.now()}`,
+      supplier_id: item.supplier_id || {},
+      supplier: item.supplier_id || {}, // Keep both for compatibility
+      branch: item.branch || {},
+      order_date: item.order_date || new Date().toISOString().split("T")[0],
+      items: item.items?.map((orderItem) => ({
+        inventory_item_id: orderItem.inventory_item_id || {},
+        item_code: orderItem.inventory_item_id?.item_code || "",
+        name: orderItem.inventory_item_id?.name || "",
+        purity: orderItem.inventory_item_id?.purity || "",
+        quantity: orderItem.quantity || 0,
+        weight: orderItem.weight || 0,
+        received_quantity: orderItem.received_quantity || 0,
+        received_weight: orderItem.received_weight || 0,
+        unit_id: orderItem.unit_id || {},
+        rate: orderItem.rate || 0,
+        discount: orderItem.discount || 0,
+        tax: orderItem.tax || 0,
+        total: orderItem.total || 0,
+        _id: orderItem._id
+      })) || [],
+      status: item.status || "draft",
+      payment_status: item.payment_status || "pending",
+      total_amount: item.total_amount || 0,
+      grand_total: item.grand_total || item.total_amount || 0,
+      subtotal: item.subtotal || 0,
+      vat: item.vat || 0,
+      discount: item.discount || 0,
+      shipping_cost: item.shipping_cost || 0,
+      currency: item.currency || "INR",
+      exchange_rate: item.exchange_rate || 1,
+      reference_no: item.reference_no || "",
+      notes: item.notes || "",
+      paid_amount: item.paid_amount || 0,
+      balance_amount: item.balance_amount || 0,
+      additional_payment: item.additional_payment || 0,
+      payment_method: item.payment_method || "",
+      payment_date: item.payment_date || "",
+      payment_notes: item.payment_notes || "",
+      created_by: item.created_by || null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }));
+
+    console.log("Mapped purchase orders count:", mappedPurchaseOrders.length);
+    console.log("Sample mapped order:", mappedPurchaseOrders);
+    setPurchaseOrders(mappedPurchaseOrders);
+    
+    // Optional: Return the data if needed elsewhere
+    return mappedPurchaseOrders;
+    
+  } catch (err) {
+    console.error("Fetch purchase orders error:", err);
+    
+    // More specific error messages
+    if (err.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error("Server responded with error:", err.response.status);
+      setError(`Failed to load purchase orders: ${err.response.status} - ${err.response.data?.message || 'Server error'}`);
+    } else if (err.request) {
+      // The request was made but no response was received
+      console.error("No response received:", err.request);
+      setError("Network error - Please check your connection");
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      setError(err.message || "Failed to load purchase orders");
+    }
+    
+    // Optional: Clear data on error
+    setPurchaseOrders([]);
+    throw err; // Re-throw if you want calling code to handle it
+  } finally {
+    setLoading(false);
+  }
+};
   // Add a new purchase order
   const addPurchaseOrder = async (purchaseOrderData) => {
     try {
