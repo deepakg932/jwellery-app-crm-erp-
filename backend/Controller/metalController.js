@@ -1,4 +1,4 @@
-import { MetalType } from "../Models/models/shared.js";
+
 import Metal from "../Models/models/MetalTypeModel.js"
 
 // export const createMetal = async (req, res) => {

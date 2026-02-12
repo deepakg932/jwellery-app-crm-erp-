@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import connectDB from "./db/DbConnect.js";
 import AuthRoutes from "./routes/AuthRoutes.js";
 
-import protectedRoutes from "./routes/protectedExample.js";
+// import protectedRoutes from "./routes/protectedExample.js";
 import cors from "cors"
 import productRoutes from './routes/productRoutes.js';
 import seedRolesRoute from "./routes/seedRoles.js";
@@ -86,7 +86,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 app.use("/api/auth", AuthRoutes);
 app.use("/api/roles", roleRoutes);
-app.use("/api", protectedRoutes)
+// app.use("/api", protectedRoutes)
 app.use('/api/products', productRoutes);
 app.use("/api/roles", seedRolesRoute);
 app.use('/api/categories', categoryRoutes);

@@ -1,153 +1,3 @@
-// import mongoose from "mongoose"
-
-// const JobCardStageSchema = new mongoose.Schema(
-//   {
-//     job_card_id: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "JobCard",
-//       required: true,
-//     },
-
-//     department: {
-//       type: String,
-//       // enum: ["DESIGN", "CAD", "CASTING", "FILING", "ASSEMBLY"],
-//       // // enum: ["DESIGN", "CAD", "CASTING", "ASSEMBLY"],
-//       required: true,
-//     },
-
-//     assigned_to: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "Employee",
-//       default: null,
-//     },
-
-//     status: {
-//       type: String,
-//       enum: [
-//         "draft",
-//         "pending",
-//         "in_progress",
-//         "material_preparation",
-//         "mold_making",
-//         "burnout",
-//         "casting",
-//         "cooling",
-//         "devesting",
-//         "quality_check",
-//         "finalized",
-//         "approved",
-//         "completed",
-//         "hold",
-//         "cancelled",
-//         "rework",
-//       ],
-//       default: "draft",
-//     },
-
-//     start_date: Date,
-//     end_date: Date,
-//     completed_at: Date,
-
-//     data: {
-
-//       material_id: { type: mongoose.Schema.Types.ObjectId, ref: "InventoryItem" },
-//       material_type: String,
-//       material_item_code: String,
-//       purity: String,
-
-//       material_unit: String,
-//       material_unit_id: { type: mongoose.Schema.Types.ObjectId, ref: "Unit" },
-
-//       material_issued_qty: Number,
-//       material_used_qty: Number,
-//       material_returned_qty: Number,
-//       material_wastage_qty: Number,
-//       material_wastage_type: String,
-
-//       /* ===== CASTING PROCESS ===== */
-//       casting_method: String,
-//       mold_type: String,
-//       tree_size: Number,
-//       burnout_time: Number,
-//       casting_temperature: Number,
-//       pressure_applied: Number,
-//       vacuum_level: Number,
-
-//       /* ===== QUALITY ===== */
-//       surface_quality: String,
-//       dimensional_accuracy: String,
-//       porosity_level: String,
-//       defects: String,
-//       rework_required: Boolean,
-//       rework_reason: String,
-
-//       /* ===== TIME ===== */
-//       preparation_time: Number,
-//       mold_making_time: Number,
-//       burnout_time_track: Number,
-//       casting_time: Number,
-//       finishing_time: Number,
-//       quality_check_time: Number,
-//       labour_hours: Number,
-//       actual_hours: Number,
-//       total_time_spent: Number,
-//       time_breakdown: String,
-
-//       /* ===== COST ===== */
-//       material_cost: Number,
-//       labour_cost: Number,
-//       equipment_cost: Number,
-//       consumables_cost: Number,
-//       gas_cost: Number,
-//       other_costs: Number,
-//       total_cost: Number,
-//       markup_percentage: Number,
-//       final_price: Number,
-//       cost_currency: { type: String, default: "INR" },
-//       cost_status: {
-//         type: String,
-//         enum: ["estimated", "calculated", "finalized", "approved"],
-//         default: "estimated",
-//       },
-
-//       /* ===== FILE META ===== */
-//       file_version: { type: String, default: "1.0" },
-//       file_revisions: { type: Number, default: 0 },
-//       file_status: {
-//         type: String,
-//         enum: [
-//           "draft",
-//           "work_in_progress",
-//           "under_review",
-//           "revised",
-//           "final",
-//           "archived",
-//         ],
-//         default: "draft",
-//       },
-//       backup_location: String,
-
-//       files: [
-//         {
-//           name: String,
-//           size: Number,
-//           type: String,
-//           url: String,
-//           category: { type: String, enum: ["source", "output"], default: "output" },
-//           version: String,
-//           revision: Number,
-//           uploaded_at: Date,
-//         },
-//       ],
-//     },
-
-//     remarks: String,
-//   },
-//   { timestamps: true }
-// );
-
-// export default mongoose.model("JobCardStage", JobCardStageSchema);
-
 import mongoose from "mongoose";
 
 const JobCardStageSchema = new mongoose.Schema(
@@ -160,9 +10,9 @@ const JobCardStageSchema = new mongoose.Schema(
 
     department: {
       type: String,
-      required: true, // DESIGN | CAD | CASTING | FILING | etc
+      uppercase: true,
+      required: true,
     },
-
     assigned_to: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
@@ -197,6 +47,50 @@ const JobCardStageSchema = new mongoose.Schema(
     completed_at: Date,
 
     data: {
+  
+      estimated_hours: Number,
+      processing_time: Number,
+      finishing_time: Number,
+
+      design_notes: String,
+      design_specifications: String,
+      stage: String,
+
+      // labor_cost: Number, // US
+      selected_labor_costs: [
+        { type: mongoose.Schema.Types.ObjectId, ref: "CostMaster" },
+      ],
+      labor_cost_breakdown: [
+        {
+          id: mongoose.Schema.Types.ObjectId,
+          name: String,
+          type: String,
+          cost_amount: Number,
+          unit: String,
+          total_cost: String,
+          stage: String,
+          sub_stage: String,
+        },
+      ],
+
+    
+      cad_software: String,
+      complexity_level: {
+        type: String,
+        enum: ["simple", "low", "medium", "high", "expert"],
+      },
+
+   
+      design_time: Number,
+      modeling_time: Number,
+      rendering_time: Number,
+      revision_time: Number,
+      review_time: Number,
+
+
+      software_cost: Number,
+      machine_cost: Number,
+
       material_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "InventoryItem",
@@ -263,6 +157,7 @@ const JobCardStageSchema = new mongoose.Schema(
       preparation_time: Number,
       rough_filing_time: Number,
       fine_filing_time: Number,
+      filing_tools_used: String,
       polishing_time: Number,
       quality_check_time: Number,
 
@@ -272,7 +167,7 @@ const JobCardStageSchema = new mongoose.Schema(
       time_breakdown: String,
 
       material_cost: Number,
-      labour_cost: Number,
+      // labour_cost: Number,
       equipment_cost: Number,
       consumables_cost: Number,
       wastage_cost: Number,
@@ -289,8 +184,22 @@ const JobCardStageSchema = new mongoose.Schema(
         default: "estimated",
       },
 
-      /* ===================== 💎 STONE SETTING STAGE (NEW – ADDED) ===================== */
-      // stone info
+   
+
+      gas_cost: { type: Number, default: 0 },
+
+      mold_making_time: { type: Number, default: 0 },
+
+      burnout_time_track: { type: Number, default: 0 },
+
+      casting_time: { type: Number, default: 0 },
+
+      // selected_labor_costs: [
+      //   { type: mongoose.Schema.Types.ObjectId, ref: "CostMaster" },
+      // ],
+
+
+
       stone_id: { type: mongoose.Schema.Types.ObjectId, ref: "InventoryItem" },
       stone_type: String,
       stone_name: String,
@@ -304,7 +213,6 @@ const JobCardStageSchema = new mongoose.Schema(
       stone_breakage: Number,
       stone_breakage_reason: String,
 
-      // setting process
       setting_type: {
         type: String,
         enum: [
@@ -335,16 +243,13 @@ const JobCardStageSchema = new mongoose.Schema(
       prong_count: Number,
       bezel_thickness: Number,
 
-      // time
       setting_time: Number,
 
-      /* ===================== ✨ POLISHING STAGE (NEW – ADDED) ===================== */
-      // polishing material
-      material_used: String,
+    
+      materials_used: String,
       material_quantity: Number,
       material_unit: String,
 
-      // polishing process
       polish_type: {
         type: String,
         enum: ["rough", "fine", "final", "buff"],
@@ -361,7 +266,6 @@ const JobCardStageSchema = new mongoose.Schema(
       rpm_speed: Number,
       pressure_applied: Number,
 
-      // surface & quality
       brightness_level: {
         type: String,
         enum: ["low", "medium", "high", "very_high", "excellent"],
@@ -379,7 +283,6 @@ const JobCardStageSchema = new mongoose.Schema(
 
       defects_noted: String,
 
-      // time (polishing specific)
       inspection_time: Number,
 
       material_name: String,
@@ -387,7 +290,6 @@ const JobCardStageSchema = new mongoose.Schema(
       material_used_qty: Number,
       material_unit: String,
 
-      // plating process
       plating_type: {
         type: String,
         enum: ["electroplating", "electroless", "immersion", "brush"],
@@ -401,7 +303,6 @@ const JobCardStageSchema = new mongoose.Schema(
       bath_temperature: Number,
       ph_level: Number,
 
-      // quality
       surface_finish: {
         type: String,
         enum: ["excellent", "good", "average", "poor"],
@@ -428,7 +329,6 @@ const JobCardStageSchema = new mongoose.Schema(
       },
       rework_reason: String,
 
-      // time tracking
       preparation_time: Number,
       cleaning_time: Number,
       plating_time_track: Number,
@@ -436,9 +336,9 @@ const JobCardStageSchema = new mongoose.Schema(
       drying_time: Number,
       quality_check_time: Number,
 
-      // cost breakup
       material_cost: Number,
-      labour_cost: Number,
+      labour_cost: { type: Number, default: 0 },
+
       equipment_cost: Number,
       chemical_cost: Number,
       electricity_cost: Number,
@@ -448,19 +348,13 @@ const JobCardStageSchema = new mongoose.Schema(
       markup_percentage: Number,
       final_price: Number,
 
-      /* ===================== 🔍 QUALITY CHECK STAGE ===================== */
-      // basic quality
-      /* ===================== ✅ QUALITY CHECK STAGE ===================== */
-
-      // basic quality
-      // check_points: [String], // dimensions, weight, purity, finish etc
+      check_points: [String],
       overall_status: {
         type: String,
         enum: ["pending", "passed", "failed", "rework", "hold"],
         default: "pending",
       },
 
-      // dimensions
       dimensions_check: Boolean,
       dimensions_tolerance: {
         type: String,
@@ -468,7 +362,6 @@ const JobCardStageSchema = new mongoose.Schema(
       },
       dimensions_notes: String,
 
-      // weight
       weight_check: Boolean,
       weight_tolerance: {
         type: String,
@@ -476,12 +369,10 @@ const JobCardStageSchema = new mongoose.Schema(
       },
       weight_notes: String,
 
-      // purity
       purity_check: Boolean,
       purity_verified: String,
       purity_certificate_no: String,
 
-      // finish
       finish_check: Boolean,
       finish_quality: {
         type: String,
@@ -489,14 +380,12 @@ const JobCardStageSchema = new mongoose.Schema(
       },
       finish_defects: String,
 
-      // defects tracking
       defects_detected: [String],
       defects_count: Number,
       critical_defects: Number,
       major_defects: Number,
       minor_defects: Number,
 
-      // inspection
       inspection_method: {
         type: String,
         enum: [
@@ -509,13 +398,12 @@ const JobCardStageSchema = new mongoose.Schema(
           "destructive",
         ],
       },
-      // measuring_tools_used: [String],
+      measuring_tools_used: [String],
       sample_size: Number,
       batch_size: Number,
       accepted_quantity: Number,
       rejected_quantity: Number,
 
-      // approval & rework
       rework_required: Boolean,
       rework_reason: String,
       approved_by: String,
@@ -523,15 +411,13 @@ const JobCardStageSchema = new mongoose.Schema(
       certificate_issued: Boolean,
       certificate_number: String,
 
-      // cost
       inspection_cost: Number,
-      labour_cost: Number,
+      // labour_cost: Number,
       equipment_cost: Number,
       certification_cost: Number,
       other_costs: Number,
       total_cost: Number,
 
-      // time
       preparation_time: Number,
       inspection_time: Number,
       documentation_time: Number,
@@ -540,100 +426,84 @@ const JobCardStageSchema = new mongoose.Schema(
       time_breakdown: String,
 
 
+      // // materials used
+      // materials_used: [String],
 
+      box_used: { type: Boolean, default: false },
+      box_type: { type: String, default: "standard" },
+      box_quantity: { type: Number, default: 1 },
+      box_cost: { type: Number, default: 0 },
 
+      certificate_used: { type: Boolean, default: false },
+      certificate_type: { type: String, default: "standard" },
+      certificate_quantity: { type: Number, default: 1 },
+      certificate_cost: { type: Number, default: 0 },
 
+      cotton_used: { type: Boolean, default: false },
+      cotton_quantity: { type: Number, default: 0 },
+      cotton_cost: { type: Number, default: 0 },
 
+      // additional_materials: [
+      //   {
+      //     name: String,
+      //     quantity: Number,
+      //     unit: {
+      //       type: String,
+      //       enum: ["pieces", "grams", "meters", "sheets"],
+      //       default: "pieces",
+      //     },
+      //     cost: Number,
+      //   },
+      // ],
 
+      quality_check: { type: Boolean, default: false },
+      quality_score: { type: Number, default: 100 },
+      quality_remarks: String,
 
+      material_cost: { type: Number, default: 0 },
+      // labour_cost: { type: Number, default: 0 },
+      equipment_cost: { type: Number, default: 0 },
+      other_costs: { type: Number, default: 0 },
+      total_cost: { type: Number, default: 0 },
 
+      markup_percentage: { type: Number, default: 15 },
+      final_price: { type: Number, default: 0 },
 
-      /* ===================== 📦 PACKAGING STAGE ===================== */
+      cost_currency: { type: String, default: "INR" },
+      cost_status: {
+        type: String,
+        enum: ["estimated", "calculated", "finalized", "approved"],
+        default: "estimated",
+      },
 
-// // materials used
-// materials_used: [String],
+      preparation_time: { type: Number, default: 0 },
+      packaging_time: { type: Number, default: 0 },
+      labeling_time: { type: Number, default: 0 },
+      quality_time: { type: Number, default: 0 },
+      documentation_time: { type: Number, default: 0 },
+      total_time_spent: { type: Number, default: 0 },
+      time_breakdown: String,
 
-box_used: { type: Boolean, default: false },
-box_type: { type: String, default: "standard" },
-box_quantity: { type: Number, default: 1 },
-box_cost: { type: Number, default: 0 },
+      packaging_type: {
+        type: String,
+        enum: ["standard", "premium", "gift", "eco_friendly", "luxury"],
+        default: "standard",
+      },
 
-certificate_used: { type: Boolean, default: false },
-certificate_type: { type: String, default: "standard" },
-certificate_quantity: { type: Number, default: 1 },
-certificate_cost: { type: Number, default: 0 },
+      sealing_method: {
+        type: String,
+        enum: ["sticker", "tape", "seal", "ribbon", "shrink_wrap"],
+        default: "sticker",
+      },
 
-cotton_used: { type: Boolean, default: false },
-cotton_quantity: { type: Number, default: 0 },
-cotton_cost: { type: Number, default: 0 },
+      weight_after_packaging: Number,
 
-// additional_materials: [
-//   {
-//     name: String,
-//     quantity: Number,
-//     unit: {
-//       type: String,
-//       enum: ["pieces", "grams", "meters", "sheets"],
-//       default: "pieces",
-//     },
-//     cost: Number,
-//   },
-// ],
+      barcode_generated: { type: Boolean, default: false },
+      barcode_number: String,
 
-// quality check
-quality_check: { type: Boolean, default: false },
-quality_score: { type: Number, default: 100 },
-quality_remarks: String,
+      // invoice_generated: { type: Boolean, default: false },
+      invoice_number: String,
 
-// cost tracking
-material_cost: { type: Number, default: 0 },
-labour_cost: { type: Number, default: 0 },
-equipment_cost: { type: Number, default: 0 },
-other_costs: { type: Number, default: 0 },
-total_cost: { type: Number, default: 0 },
-
-markup_percentage: { type: Number, default: 15 },
-final_price: { type: Number, default: 0 },
-
-cost_currency: { type: String, default: "INR" },
-cost_status: {
-  type: String,
-  enum: ["estimated", "calculated", "finalized", "approved"],
-  default: "estimated",
-},
-
-// time tracking
-preparation_time: { type: Number, default: 0 },
-packaging_time: { type: Number, default: 0 },
-labeling_time: { type: Number, default: 0 },
-quality_time: { type: Number, default: 0 },
-documentation_time: { type: Number, default: 0 },
-total_time_spent: { type: Number, default: 0 },
-time_breakdown: String,
-
-// packaging process
-packaging_type: {
-  type: String,
-  enum: ["standard", "premium", "gift", "eco_friendly", "luxury"],
-  default: "standard",
-},
-
-sealing_method: {
-  type: String,
-  enum: ["sticker", "tape", "seal", "ribbon", "shrink_wrap"],
-  default: "sticker",
-},
-
-weight_after_packaging: Number,
-
-barcode_generated: { type: Boolean, default: false },
-barcode_number: String,
-
-// invoice_generated: { type: Boolean, default: false },
-invoice_number: String,
-
-
-      // helper
       next_stage: String,
 
       file_version: { type: String, default: "1.0" },

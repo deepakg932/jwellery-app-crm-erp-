@@ -1,29 +1,24 @@
-
-
 import mongoose from "mongoose";
 
 const SalesOrderSchema = new mongoose.Schema(
   {
-    sale_date: { type: Date},
+    sale_date: { type: Date },
 
     reference_no: String,
 
     paid_amount: {
-  type: Number,
-  default: 0,
-},
-
+      type: Number,
+      default: 0,
+    },
 
     customer_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-      
     },
 
     branch_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
-   
     },
 
     items: [
@@ -31,11 +26,11 @@ const SalesOrderSchema = new mongoose.Schema(
         product_id: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
-          
         },
+
         product_name: String,
         product_code: String,
-        quantity: { type: Number},
+        quantity: { type: Number },
         price_before_tax: Number,
         gst_rate: Number,
         gst_amount: Number,
@@ -52,12 +47,18 @@ const SalesOrderSchema = new mongoose.Schema(
 
     exchange_details: {
       item_name: String,
-     weight: Number,              // 🔥 original value (10)
-  unit: String,     // 🔥 normalized (10000)
-  weight_in_gram: Number,   // ✅ YE LINE ADD KARO
+      weight: Number, // 🔥 original value (10)
+      unit: String, // 🔥 normalized (10000)
+      weight_in_gram: Number, // ✅ YE LINE ADD KARO
+      unit_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Unit",
+      },
+      unit_name: String, // ✅ YE ADD KARO
+      unit_code: String, // optional but useful (g / kg)
 
-  actual_rate: Number,         // per gram
-  calculated_value: Number,
+      actual_rate: Number, // per gram
+      calculated_value: Number,
 
       image: String,
     },
@@ -91,8 +92,7 @@ const SalesOrderSchema = new mongoose.Schema(
       ref: "User",
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
-
 
 export default mongoose.model("Sale", SalesOrderSchema);

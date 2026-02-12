@@ -1,6 +1,6 @@
 import  express from "express"
 const router   = express.Router();
-import { authMiddleware } from "../middleware/auth.js";
+// import { authMiddleware } from "../middleware/auth.js";
 import { createSupplier ,updateSupplier,getSuppliers,deleteSupplier} from "../Controller/supplierController.js"
 
 

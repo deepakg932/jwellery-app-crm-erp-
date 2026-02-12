@@ -8,7 +8,6 @@ export const createCustomer = async (req, res) => {
 
    
 
-    // 🔁 DUPLICATE MOBILE CHECK
     const existing = await Customer.findOne({ mobile: data.phone });
     if (existing) {
       return res.status(400).json({
@@ -17,7 +16,7 @@ export const createCustomer = async (req, res) => {
       });
     }
 
-    // 🔍 VALIDATE CUSTOMER GROUP ID
+
     if (!mongoose.Types.ObjectId.isValid(data.customer_group_id)) {
       return res.status(400).json({
         success: false,
@@ -33,10 +32,11 @@ export const createCustomer = async (req, res) => {
       });
     }
 
-    // ✅ CREATE CUSTOMER
     const customer = await Customer.create({
       customer_group_id: data.customer_group_id,
+      
       name: data.customer_name,
+      aadhar_number:data.aadhar_number,
       mobile: data.phone,
       whatsapp_number: data.whatsapp_number || null,
       email: data.email || null,
@@ -49,7 +49,6 @@ export const createCustomer = async (req, res) => {
       status: data.status ? "active" : "inactive",
     });
 
-    // 🔥 POPULATED RESPONSE (GROUP NAME INCLUDED)
     const populatedCustomer = await Customer.findById(customer._id)
       .populate("customer_group_id", "customer_group");
 

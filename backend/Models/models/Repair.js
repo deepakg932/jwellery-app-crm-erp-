@@ -28,10 +28,11 @@ const RepairSchema = new mongoose.Schema(
       default: null, 
     },
 
+    
 
     product_name: {
       type: String,
-      required: true,
+  
     },
 
     product_module: String,
@@ -39,19 +40,24 @@ const RepairSchema = new mongoose.Schema(
    
     problem_description: {
       type: String,
-      required: true,
+  
     },
 
     employee_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
-      required: true,
+
     },
 
+  repair_images: [
+    {
+      type: String,
+    },
+  ],
 
     repair_charge: {
       type: Number,
-      required: true,
+
     },
 
     paid_amount: {
@@ -79,7 +85,7 @@ const RepairSchema = new mongoose.Schema(
    
     receiving_date: {
       type: Date,
-      required: true,
+
     },
 
     delivery_date: Date,

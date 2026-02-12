@@ -90,6 +90,12 @@ const InventoryItemSchema = new mongoose.Schema(
       default: "active",
     },
 
+    purchase_rate_unit: {
+      type: String,
+      // enum: ["KG", "GRAM", "PIECE"],
+      default: "KG",
+    },
+
     created_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

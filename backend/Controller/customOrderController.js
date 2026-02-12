@@ -114,6 +114,7 @@ export const createCustomOrder = async (req, res) => {
   try {
     const {
       customer_id,
+      aadhar_number,
       unit_id,
       weight,
       purity_id,
@@ -163,6 +164,7 @@ export const createCustomOrder = async (req, res) => {
       order_number: await generateCustomOrderNumber(),
       customer_id,
       unit_id,
+      
       weight,
       purity_id,
       metal_type_id,

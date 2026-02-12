@@ -4,7 +4,7 @@ const SupplierSchema = new mongoose.Schema(
   {
     supplier_name: { type: String, required: true },
     company_name:{type:String,required:true},
-    contact_person_number:{type:Number,required:true},
+    contact_person_number:{type:Number,unique:true,required:true},
     supplier_code: { type: String, unique: true },
     payment_terms: { type: String },
     gst_number: { type: String },
@@ -19,7 +19,7 @@ const SupplierSchema = new mongoose.Schema(
     city: String,
     pincode: String,
 
-    contact_person: String,
+    contact_person:{type:String,unique:true,required:true},
     phone: String,
     email: String,
     address: String,

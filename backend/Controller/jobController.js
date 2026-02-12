@@ -1,18 +1,11 @@
-
 import JobCard from "../Models/models/JobCard.js";
 import Employee from "../Models/models/EmployeeModel.js";
 import Quotation from "../Models/models/QuatationModel.js";
 // import StageMaster from "../Models/models/StageMaster.js"
-import JobCardStage from "../Models/models/JobCardStage.js"
+import JobCardStage from "../Models/models/JobCardStage.js";
 import Product from "../Models/models/ProductModel.js";
 import { generateProductCode } from "../helper/generateProductCode.js";
 import { round2 } from "../helper/round2.js";
-import DesignStage from "../Models/models/DesignStage.js";
-
-
-
-
-
 
 const generateJobCardNo = async () => {
   const count = await JobCard.countDocuments();
@@ -22,7 +15,6 @@ const generateJobCardNo = async () => {
 // export const createJobCard = async (req, res) => {
 //   try {
 //     const payload = req.body;
-
 
 //     const items =
 //       typeof payload.items === "string"
@@ -45,7 +37,6 @@ const generateJobCardNo = async () => {
 //       await quotation.save();
 //     }
 
-   
 //     const finalItems = [];
 
 //     for (const item of items) {
@@ -57,7 +48,6 @@ const generateJobCardNo = async () => {
 //         product = await Product.findOne({ product_code: item.product_code });
 //       }
 
- 
 //       if (!product) {
 //         return res.status(400).json({
 //           success: false,
@@ -80,7 +70,6 @@ const generateJobCardNo = async () => {
 //       });
 //     }
 
-  
 //     const totalAmount = round2(
 //       finalItems.reduce((sum, i) => sum + i.total_amount, 0)
 //     );
@@ -90,10 +79,8 @@ const generateJobCardNo = async () => {
 //       Math.max(totalAmount - advanceAmount, 0)
 //     );
 
-
 //     const imagePaths =
 //       req.files?.map((f) => `/uploads/jobCards/${f.filename}`) || [];
-
 
 //     const jobCard = await JobCard.create({
 //       job_card_no: await generateJobCardNo(),
@@ -115,9 +102,6 @@ const generateJobCardNo = async () => {
 //       images: imagePaths,
 //     });
 
-
-
-
 // //     const firstStage = await StageMaster.findOne({
 // //   stage_code: "STG001",
 // //   is_active: true,
@@ -131,8 +115,6 @@ const generateJobCardNo = async () => {
 // //   status: "in_progress",
 // //   start_date: new Date(),
 // // });
-
-
 
 //     const populated = await JobCard.findById(jobCard._id)
 //       .populate("assigned_to", "name employee_code mobile")
@@ -154,14 +136,6 @@ const generateJobCardNo = async () => {
 //     });
 //   }
 // };
-
-
-
-
-
-
-
-
 
 // export const createJobCard = async (req, res) => {
 //   try {
@@ -311,8 +285,6 @@ const generateJobCardNo = async () => {
 //   }
 // };
 
-
-
 export const getJobCards = async (req, res) => {
   try {
     const jobCards = await JobCard.find()
@@ -323,14 +295,11 @@ export const getJobCards = async (req, res) => {
       .populate("images")
       .sort({ createdAt: -1 });
 
-   return res.json({success: true,data: jobCards,});
+    return res.json({ success: true, data: jobCards });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
-
 
 export const assignKarigar = async (req, res) => {
   try {
@@ -348,7 +317,7 @@ export const assignKarigar = async (req, res) => {
         assignedKarigar: karigarId,
         status: "in_progress",
       },
-      { new: true }
+      { new: true },
     ).populate("assigned_to", "name mobile employee_code");
 
     res.json(job);
@@ -356,9 +325,6 @@ export const assignKarigar = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-
-
-
 
 export const deleteJobCard = async (req, res) => {
   try {
@@ -387,8 +353,133 @@ export const deleteJobCard = async (req, res) => {
   }
 };
 
+// export const createJobCard = async (req, res) => {
+//   try {
+//     const payload = req.body;
 
+//     const items =
+//       typeof payload.items === "string"
+//         ? JSON.parse(payload.items)
+//         : payload.items;
 
+//     if (!Array.isArray(items) || items.length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Items are required",
+//       });
+//     }
+
+//     if (payload.quotation_id) {
+//       const quotation = await Quotation.findById(payload.quotation_id);
+//       if (!quotation) {
+//         return res.status(404).json({ message: "Quotation not found" });
+//       }
+//       quotation.status = "converted";
+//       await quotation.save();
+//     }
+
+//     const finalItems = [];
+
+//     for (const item of items) {
+//       const product = await Product.findById(item.product_id);
+
+//       if (!product) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Invalid product",
+//         });
+//       }
+
+//       const qty = Number(item.quantity) || 1;
+//       const price = Number(item.unit_price) || 0;
+
+//       finalItems.push({
+//         product_id: product._id,
+//         product_code: product.product_code,
+//         product_name: product.product_name,
+//         description: item.description || "",
+//         quantity: qty,
+//         unit_price: price,
+//         total_amount: qty * price,
+//         notes: item.notes || "",
+//       });
+//     }
+
+//     const totalAmount = round2(
+//       finalItems.reduce((sum, i) => sum + i.total_amount, 0)
+//     );
+
+//     const advanceAmount = round2(payload.advance_amount || 0);
+//     const balanceAmount = round2(
+//       Math.max(totalAmount - advanceAmount, 0)
+//     );
+
+//     const imagePaths =
+//       req.files?.map((f) => `/uploads/jobCards/${f.filename}`) || [];
+
+//     let stage = "not started";
+
+//     if (payload.status === "approved") {
+//       stage = "design stage";
+//     }
+
+//     const jobCard = await JobCard.create({
+//       job_card_no: await generateJobCardNo(),
+//       quotation_id: payload.quotation_id || null,
+//       quotation_number: payload.quotation_number || null,
+//       customer_id: payload.customer_id || null,
+
+//       job_card_date: payload.job_card_date,
+//       expected_delivery_date: payload.expected_delivery_date,
+//       delivery_date: payload.delivery_date || null,
+
+//       items: finalItems,
+//       note: payload.note || "",
+//       instructions: payload.instructions || "",
+
+//       priority: payload.priority || "medium",
+//       status: payload.status || "pending",
+//       stage,
+
+//       total_amount: totalAmount,
+//       advance_amount: advanceAmount,
+//       balance_amount: balanceAmount,
+
+//       assigned_to: payload.assigned_to || null,
+//       images: imagePaths,
+//     });
+
+//     if (payload.status === "approved") {
+//       await JobCardStage.create({
+//         job_card_id: jobCard._id,
+//        department: "Design",
+//         status: "in_progress",
+//         start_date: new Date(),
+//         assigned_to: payload.assigned_to || null,
+//         data: {},
+//       });
+//        jobCard.stage = "design";
+//   jobCard.status = "in_progress";
+//   await jobCard.save();
+//     }
+
+//     const populated = await JobCard.findById(jobCard._id)
+//       .populate("assigned_to", "name employee_code mobile")
+//       .populate("items.product_id", "product_name product_code");
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "Job Card created successfully",
+//       data: populated,
+//     });
+//   } catch (error) {
+//     console.error("Create Job Card Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 
 export const updateJobCard = async (req, res) => {
   try {
@@ -409,7 +500,6 @@ export const updateJobCard = async (req, res) => {
         : payload.items
       : null;
 
-  
     let finalItems = existingJobCard.items;
 
     if (items && Array.isArray(items)) {
@@ -421,7 +511,9 @@ export const updateJobCard = async (req, res) => {
         if (item.product_id) {
           product = await Product.findById(item.product_id);
         } else if (item.product_code) {
-          product = await Product.findOne({ product_code: item.product_code });
+          product = await Product.findOne({
+            product_code: item.product_code,
+          });
         }
 
         if (!product) {
@@ -443,107 +535,69 @@ export const updateJobCard = async (req, res) => {
           description: item.description || "",
           quantity: qty,
           unit_price: price,
-          total_amount: round2(qty * price),
+          total_amount: Math.round(qty * price),
           notes: item.notes || "",
         });
       }
     }
 
-    
-    const totalAmount = round2(
-      finalItems.reduce((sum, i) => sum + i.total_amount, 0)
+    const totalAmount = Math.round(
+      finalItems.reduce((sum, i) => sum + i.total_amount, 0),
     );
 
-    const advanceAmount = round2(
-      payload.advance_amount ?? existingJobCard.advance_amount ?? 0
+    const advanceAmount = Number(
+      payload.advance_amount ?? existingJobCard.advance_amount ?? 0,
     );
 
-    const balanceAmount = round2(
-      Math.max(totalAmount - advanceAmount, 0)
-    );
+    const balanceAmount = Math.max(totalAmount - advanceAmount, 0);
 
+    if (payload.status === "approved") {
+      existingJobCard.status = "in_progress";
+      existingJobCard.stage = "design";
 
+      const designStageExists = await JobCardStage.findOne({
+        job_card_id: existingJobCard._id,
+        department: "Design",
+      });
 
-if (payload.status === "approved") {
-  existingJobCard.status = "in_progress"; // 🔥 IMPORTANT
-  existingJobCard.stage = "design";
+      if (!designStageExists) {
+        await JobCardStage.create({
+          job_card_id: existingJobCard._id,
+          department: "Design",
+          assigned_to: existingJobCard.assigned_to || null,
+          status: "in_progress",
+          start_date: new Date(),
+          data: { files: [] },
+        });
+      }
+    }
 
-  const exists = await JobCardStage.findOne({
-    job_card_id: existingJobCard._id,
-     status: "in_progress",
-    
-    
-  });
-
-  if (!exists) {
-    await JobCardStage.create({
-      job_card_id: existingJobCard._id,
-       department: "Design",
-      // department: existingJobCard?.department,
-       assigned_to: existingJobCard.assigned_to,
-      status: "in_progress",
-      start_date: new Date(),
-      data: {},
-    });
-  }
-}
-
-
-
-
-
- 
-// if (payload.status === "approved") {
-
-//   existingJobCard.stage = "design stage";
-//   // const firstStage = await DesignStage.findOne({ is_active: true })
-//   //   .sort({ order: 1 });
-
-//   // if (!firstStage) {
-//   //   return res.status(400).json({
-//   //     success: false,
-//   //     message: "No Design Stage configured"
-//   //   });
-//   // }
-
-//   const exists = await JobCardStage.findOne({
-//     job_card_id: existingJobCard._id,
-//     // stage_id: firstStage._id,
-//   });
-
-//   if (!exists) {
-//     await JobCardStage.create({
-//       job_card_id: existingJobCard._id,
-//       // stage_id: firstStage._id,
-//       // stage_name: firstStage.stage_name,
-//       department: "Design",
-//       status: "in_progress",
-//       start_date: new Date(),
-//       data: {},
-//     });
-//   }
-// }
-
-
-
-    existingJobCard.status =
-      payload.status ?? existingJobCard.status;
+    existingJobCard.status = payload.status ?? existingJobCard.status;
 
     existingJobCard.items = finalItems;
     existingJobCard.note = payload.note ?? existingJobCard.note;
+
     existingJobCard.instructions =
       payload.instructions ?? existingJobCard.instructions;
-    existingJobCard.priority =
-      payload.priority ?? existingJobCard.priority;
+
+    existingJobCard.priority = payload.priority ?? existingJobCard.priority;
+
+    existingJobCard.assigned_to =
+      payload.assigned_to ?? existingJobCard.assigned_to;
 
     existingJobCard.total_amount = totalAmount;
     existingJobCard.advance_amount = advanceAmount;
     existingJobCard.balance_amount = balanceAmount;
 
     if (req.files?.length) {
-      existingJobCard.images = req.files.map(
-        (f) => `/uploads/jobCards/${f.filename}`
+      const BASE_URL = process.env.APP_URL;
+
+      const newImages = req.files.map(
+        (file) => `${BASE_URL}/uploads/jobCards/${file.filename}`,
       );
+
+      existingJobCard.images = newImages;
+      // existingJobCard.images.push(...newImages); // append
     }
 
     await existingJobCard.save();
@@ -566,15 +620,10 @@ if (payload.status === "approved") {
   }
 };
 
-
-
-
-
 export const createJobCard = async (req, res) => {
   try {
     const payload = req.body;
 
-   
     const items =
       typeof payload.items === "string"
         ? JSON.parse(payload.items)
@@ -587,21 +636,24 @@ export const createJobCard = async (req, res) => {
       });
     }
 
-    
+    // ================= QUOTATION =================
     if (payload.quotation_id) {
       const quotation = await Quotation.findById(payload.quotation_id);
       if (!quotation) {
-        return res.status(404).json({ message: "Quotation not found" });
+        return res.status(404).json({
+          success: false,
+          message: "Quotation not found",
+        });
       }
       quotation.status = "converted";
       await quotation.save();
     }
 
+    // ================= ITEMS =================
     const finalItems = [];
 
     for (const item of items) {
       const product = await Product.findById(item.product_id);
-
       if (!product) {
         return res.status(400).json({
           success: false,
@@ -624,26 +676,27 @@ export const createJobCard = async (req, res) => {
       });
     }
 
-  
-    const totalAmount = round2(
-      finalItems.reduce((sum, i) => sum + i.total_amount, 0)
+    // ================= TOTAL =================
+    const totalAmount = Math.round(
+      finalItems.reduce((sum, i) => sum + i.total_amount, 0),
     );
 
-    const advanceAmount = round2(payload.advance_amount || 0);
-    const balanceAmount = round2(
-      Math.max(totalAmount - advanceAmount, 0)
-    );
+    const advanceAmount = Number(payload.advance_amount || 0);
+    const balanceAmount = Math.max(totalAmount - advanceAmount, 0);
 
-    
-    const imagePaths =
-      req.files?.map((f) => `/uploads/jobCards/${f.filename}`) || [];
+    // ================= 🔥 IMAGES WITH APP_URL =================
+    const BASE_URL = process.env.APP_URL;
 
-    let stage = "not started";
+    const imageUrls =
+      req.files?.map(
+        (file) => `${BASE_URL}/uploads/jobCards/${file.filename}`,
+      ) || [];
 
-    if (payload.status === "approved") {
-      stage = "design stage";
-    }
+    // ================= STAGE =================
+    let stage = "not_started";
+    if (payload.status === "approved") stage = "design";
 
+    // ================= CREATE =================
     const jobCard = await JobCard.create({
       job_card_no: await generateJobCardNo(),
       quotation_id: payload.quotation_id || null,
@@ -667,22 +720,23 @@ export const createJobCard = async (req, res) => {
       balance_amount: balanceAmount,
 
       assigned_to: payload.assigned_to || null,
-      images: imagePaths,
+      images: imageUrls, // 🔥 FINAL IMAGE URLS
     });
 
-   
+    // ================= DESIGN STAGE =================
     if (payload.status === "approved") {
       await JobCardStage.create({
         job_card_id: jobCard._id,
-       department: "Design",
+        department: "Design",
         status: "in_progress",
         start_date: new Date(),
         assigned_to: payload.assigned_to || null,
-        data: {},
+        data: { files: [] },
       });
-       jobCard.stage = "design";
-  jobCard.status = "in_progress";
-  await jobCard.save();
+
+      jobCard.stage = "design";
+      jobCard.status = "in_progress";
+      await jobCard.save();
     }
 
     const populated = await JobCard.findById(jobCard._id)
@@ -703,264 +757,251 @@ export const createJobCard = async (req, res) => {
   }
 };
 
+// export const getDesignStageJobs = async (req, res) => {
+//   try {
+//     const data = await JobCard.aggregate([
+//       {
+//         $match: {},
+//       },
 
+//       {
+//         $lookup: {
+//           from: "jobcardstages",
+//           let: { jobCardId: "$_id" },
+//           pipeline: [
+//             {
+//               $match: {
+//                 $expr: {
+//                   $and: [
+//                     { $eq: ["$job_card_id", "$$jobCardId"] },
+//                     { $eq: ["$department", "Design"] },
+//                   ],
+//                 },
+//               },
+//             },
+//             {
+//               $lookup: {
+//                 from: "employees",
+//                 localField: "assigned_to",
+//                 foreignField: "_id",
+//                 as: "assigned_to",
+//               },
+//             },
+//             {
+//               $unwind: {
+//                 path: "$assigned_to",
+//                 preserveNullAndEmptyArrays: true,
+//               },
+//             },
+//           ],
+//           as: "design_stage",
+//         },
+//       },
 
+//       {
+//         $unwind: "$design_stage",
+//       },
 
+//       /* 🔥 CLEAN RESPONSE (ONLY REQUIRED FIELDS) */
+//       {
+//         $project: {
+//           _id: 1,
+//           job_card_no: 1,
+//           stage: 1,
+//           status: 1,
 
+//           design_stage: {
+//             _id: "$design_stage._id",
+//             department: "$design_stage.department",
+//             status: "$design_stage.status",
+//             remarks: "$design_stage.remarks",
+//             start_date: "$design_stage.start_date",
+//             end_date: "$design_stage.end_date",
+//             completed_at: "$design_stage.completed_at",
 
+//             assigned_to: {
+//               _id: "$design_stage.assigned_to._id",
+//               name: "$design_stage.assigned_to.name",
+//               mobile: "$design_stage.assigned_to.mobile",
+//               email: "$design_stage.assigned_to.email",
+//             },
 
-export const getDesignStageJobs = async (req, res) => {
-  try {
-    const data = await JobCard.aggregate([
-      {
-        $match: {},
-      },
+//             /* TIME */
+//             estimated_hours: "$design_stage.data.estimated_hours",
+//             actual_hours: "$design_stage.data.actual_hours",
+//             preparation_time: "$design_stage.data.preparation_time",
+//             processing_time: "$design_stage.data.processing_time",
+//             finishing_time: "$design_stage.data.finishing_time",
+//             inspection_time: "$design_stage.data.inspection_time",
+//             packaging_time: "$design_stage.data.packaging_time",
+//             total_time_spent: "$design_stage.data.total_time_spent",
 
-      {
-        $lookup: {
-          from: "jobcardstages",
-          let: { jobCardId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$job_card_id", "$$jobCardId"] },
-                    { $eq: ["$department", "Design"] },
-                  ],
-                },
-              },
-            },
-            {
-              $lookup: {
-                from: "employees",
-                localField: "assigned_to",
-                foreignField: "_id",
-                as: "assigned_to",
-              },
-            },
-            {
-              $unwind: {
-                path: "$assigned_to",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-          ],
-          as: "design_stage",
-        },
-      },
+//             /* COST */
+//             material_cost: "$design_stage.data.material_cost",
+//             labor_cost: "$design_stage.data.labor_cost",
+//             tooling_cost: "$design_stage.data.tooling_cost",
+//             machine_cost: "$design_stage.data.machine_cost",
+//             other_costs: "$design_stage.data.other_costs",
+//             total_cost: "$design_stage.data.total_cost",
+//             markup_percentage: "$design_stage.data.markup_percentage",
+//             final_price: "$design_stage.data.final_price",
+//             cost_currency: "$design_stage.data.cost_currency",
+//             cost_status: "$design_stage.data.cost_status",
 
-      {
-        $unwind: "$design_stage",
-      },
+//             /* DESIGN */
+//             design_notes: "$design_stage.data.design_notes",
+//             design_specifications: "$design_stage.data.design_specifications",
 
-      /* 🔥 CLEAN RESPONSE (ONLY REQUIRED FIELDS) */
-      {
-        $project: {
-          _id: 1,
-          job_card_no: 1,
-          stage: 1,
-          status: 1,
+//             /* FILES */
+//             files: { $ifNull: ["$design_stage.data.files", []] },
 
-          design_stage: {
-            _id: "$design_stage._id",
-            department: "$design_stage.department",
-            status: "$design_stage.status",
-            remarks: "$design_stage.remarks",
-            start_date: "$design_stage.start_date",
-            end_date: "$design_stage.end_date",
-            completed_at: "$design_stage.completed_at",
+//             createdAt: "$design_stage.createdAt",
+//             updatedAt: "$design_stage.updatedAt",
+//           },
+//         },
+//       },
 
-            assigned_to: {
-              _id: "$design_stage.assigned_to._id",
-              name: "$design_stage.assigned_to.name",
-              mobile: "$design_stage.assigned_to.mobile",
-              email: "$design_stage.assigned_to.email",
-            },
+//       {
+//         $sort: { "design_stage.updatedAt": -1 },
+//       },
+//     ]);
 
-            /* TIME */
-            estimated_hours: "$design_stage.data.estimated_hours",
-            actual_hours: "$design_stage.data.actual_hours",
-            preparation_time: "$design_stage.data.preparation_time",
-            processing_time: "$design_stage.data.processing_time",
-            finishing_time: "$design_stage.data.finishing_time",
-            inspection_time: "$design_stage.data.inspection_time",
-            packaging_time: "$design_stage.data.packaging_time",
-            total_time_spent: "$design_stage.data.total_time_spent",
+//     return res.json({
+//       success: true,
+//       data,
+//     });
+//   } catch (error) {
+//     console.error("getDesignStageJobs error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 
-            /* COST */
-            material_cost: "$design_stage.data.material_cost",
-            labor_cost: "$design_stage.data.labor_cost",
-            tooling_cost: "$design_stage.data.tooling_cost",
-            machine_cost: "$design_stage.data.machine_cost",
-            other_costs: "$design_stage.data.other_costs",
-            total_cost: "$design_stage.data.total_cost",
-            markup_percentage: "$design_stage.data.markup_percentage",
-            final_price: "$design_stage.data.final_price",
-            cost_currency: "$design_stage.data.cost_currency",
-            cost_status: "$design_stage.data.cost_status",
+// export const getCadStageJobs = async (req, res) => {
+//   try {
+//     const data = await JobCard.aggregate([
+//       /* 🔥 ONLY FILTER BY STATUS (NOT STAGE) */
+//       {
+//         $match: {
+//           status: { $in: ["approved", "in_progress"] },
+//         },
+//       },
 
-            /* DESIGN */
-            design_notes: "$design_stage.data.design_notes",
-            design_specifications: "$design_stage.data.design_specifications",
+//       /* CAD STAGE LOOKUP */
+//       {
+//         $lookup: {
+//           from: "jobcardstages",
+//           let: { jobCardId: "$_id" },
+//           pipeline: [
+//             {
+//               $match: {
+//                 $expr: {
+//                   $and: [
+//                     { $eq: ["$job_card_id", "$$jobCardId"] },
+//                     { $eq: ["$department", "CAD"] }, // 🔥 MAIN FILTER
+//                   ],
+//                 },
+//               },
+//             },
+//             {
+//               $lookup: {
+//                 from: "employees",
+//                 localField: "assigned_to",
+//                 foreignField: "_id",
+//                 as: "assigned_to",
+//               },
+//             },
+//             {
+//               $unwind: {
+//                 path: "$assigned_to",
+//                 preserveNullAndEmptyArrays: true,
+//               },
+//             },
+//           ],
+//           as: "cad_stage",
+//         },
+//       },
 
-            /* FILES */
-            files: { $ifNull: ["$design_stage.data.files", []] },
+//       /* CAD STAGE MUST EXIST */
+//       { $unwind: "$cad_stage" },
 
-            createdAt: "$design_stage.createdAt",
-            updatedAt: "$design_stage.updatedAt",
-          },
-        },
-      },
+//       /* JOBCARD ASSIGNED TO */
+//       {
+//         $lookup: {
+//           from: "employees",
+//           localField: "assigned_to",
+//           foreignField: "_id",
+//           as: "job_assigned_to",
+//         },
+//       },
+//       {
+//         $unwind: {
+//           path: "$job_assigned_to",
+//           preserveNullAndEmptyArrays: true,
+//         },
+//       },
 
-      {
-        $sort: { "design_stage.updatedAt": -1 },
-      },
-    ]);
+//       /* FINAL RESPONSE */
+//       {
+//         $project: {
+//           job_card_id: "$_id",
+//           job_card_no: 1,
+//           job_card_date: 1,
+//           expected_delivery_date: 1,
+//           delivery_date: 1,
+//           priority: 1,
+//           images: 1,
+//           stage: 1, // 🔥 CURRENT STAGE (casting / assembly)
+//           status: 1,
+//           createdAt: 1,
 
-    return res.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    console.error("getDesignStageJobs error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+//           assigned_to: {
+//             _id: "$job_assigned_to._id",
+//             name: "$job_assigned_to.name",
+//             mobile: "$job_assigned_to.mobile",
+//             email: "$job_assigned_to.email",
+//           },
 
+//           cad_stage_id: "$cad_stage._id",
 
+//           cad_stage: {
+//             _id: "$cad_stage._id",
+//             department: "$cad_stage.department",
+//             status: "$cad_stage.status",
+//             start_date: "$cad_stage.start_date",
+//             end_date: "$cad_stage.end_date",
+//             completed_at: "$cad_stage.completed_at",
+//             remarks: "$cad_stage.remarks",
 
+//             assigned_to: {
+//               _id: "$cad_stage.assigned_to._id",
+//               name: "$cad_stage.assigned_to.name",
+//               mobile: "$cad_stage.assigned_to.mobile",
+//               email: "$cad_stage.assigned_to.email",
+//             },
 
+//             data: "$cad_stage.data",
+//           },
+//         },
+//       },
 
-export const getCadStageJobs = async (req, res) => {
-  try {
-    const data = await JobCard.aggregate([
-      /* 🔥 ONLY FILTER BY STATUS (NOT STAGE) */
-      {
-        $match: {
-          status: { $in: ["approved", "in_progress"] },
-        },
-      },
+//       { $sort: { createdAt: -1 } },
+//     ]);
 
-      /* CAD STAGE LOOKUP */
-      {
-        $lookup: {
-          from: "jobcardstages",
-          let: { jobCardId: "$_id" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$job_card_id", "$$jobCardId"] },
-                    { $eq: ["$department", "CAD"] }, // 🔥 MAIN FILTER
-                  ],
-                },
-              },
-            },
-            {
-              $lookup: {
-                from: "employees",
-                localField: "assigned_to",
-                foreignField: "_id",
-                as: "assigned_to",
-              },
-            },
-            {
-              $unwind: {
-                path: "$assigned_to",
-                preserveNullAndEmptyArrays: true,
-              },
-            },
-          ],
-          as: "cad_stage",
-        },
-      },
-
-      /* CAD STAGE MUST EXIST */
-      { $unwind: "$cad_stage" },
-
-      /* JOBCARD ASSIGNED TO */
-      {
-        $lookup: {
-          from: "employees",
-          localField: "assigned_to",
-          foreignField: "_id",
-          as: "job_assigned_to",
-        },
-      },
-      {
-        $unwind: {
-          path: "$job_assigned_to",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-
-      /* FINAL RESPONSE */
-      {
-        $project: {
-          job_card_id: "$_id",
-          job_card_no: 1,
-          job_card_date: 1,
-          expected_delivery_date: 1,
-          delivery_date: 1,
-          priority: 1,
-          images: 1,
-          stage: 1,              // 🔥 CURRENT STAGE (casting / assembly)
-          status: 1,
-          createdAt: 1,
-
-          assigned_to: {
-            _id: "$job_assigned_to._id",
-            name: "$job_assigned_to.name",
-            mobile: "$job_assigned_to.mobile",
-            email: "$job_assigned_to.email",
-          },
-
-          cad_stage_id: "$cad_stage._id",
-
-          cad_stage: {
-            _id: "$cad_stage._id",
-            department: "$cad_stage.department",
-            status: "$cad_stage.status",
-            start_date: "$cad_stage.start_date",
-            end_date: "$cad_stage.end_date",
-            completed_at: "$cad_stage.completed_at",
-            remarks: "$cad_stage.remarks",
-
-            assigned_to: {
-              _id: "$cad_stage.assigned_to._id",
-              name: "$cad_stage.assigned_to.name",
-              mobile: "$cad_stage.assigned_to.mobile",
-              email: "$cad_stage.assigned_to.email",
-            },
-
-            data: "$cad_stage.data",
-          },
-        },
-      },
-
-      { $sort: { createdAt: -1 } },
-    ]);
-
-    return res.json({
-      success: true,
-      data,
-    });
-  } catch (error) {
-    console.error("getCadStageJobs error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
-
-
-
+//     return res.json({
+//       success: true,
+//       data,
+//     });
+//   } catch (error) {
+//     console.error("getCadStageJobs error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 
 export const getCastingStageJobs = async (req, res) => {
   try {
@@ -1054,8 +1095,6 @@ export const getCastingStageJobs = async (req, res) => {
   }
 };
 
-
-
 export const getFilingStageJobs = async (req, res) => {
   try {
     const data = await JobCardStage.aggregate([
@@ -1135,9 +1174,6 @@ export const getFilingStageJobs = async (req, res) => {
     });
   }
 };
-
-
-
 
 export const getStoneSettingStageJobs = async (req, res) => {
   try {
@@ -1234,8 +1270,6 @@ export const getStoneSettingStageJobs = async (req, res) => {
   }
 };
 
-
-
 export const getPolishingStageJobs = async (req, res) => {
   try {
     const data = await JobCardStage.aggregate([
@@ -1321,7 +1355,6 @@ export const getPolishingStageJobs = async (req, res) => {
     });
   }
 };
-
 
 export const getPlatingStageJobs = async (req, res) => {
   try {
@@ -1519,15 +1552,9 @@ export const getQualityStageJobs = async (req, res) => {
   }
 };
 
-
 export const getPackagesStageJobs = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 20,
-      status,
-      search,
-    } = req.query;
+    const { page = 1, limit = 20, status, search } = req.query;
 
     const skip = (page - 1) * limit;
 
@@ -1558,10 +1585,11 @@ export const getPackagesStageJobs = async (req, res) => {
     /* ================= SEARCH ================= */
     if (search) {
       const keyword = search.toLowerCase();
-      stages = stages.filter((s) =>
-        s.job_card_id?.job_card_no?.toLowerCase().includes(keyword) ||
-        s.job_card_id?.client_name?.toLowerCase().includes(keyword) ||
-        s.job_card_id?.product_name?.toLowerCase().includes(keyword)
+      stages = stages.filter(
+        (s) =>
+          s.job_card_id?.job_card_no?.toLowerCase().includes(keyword) ||
+          s.job_card_id?.client_name?.toLowerCase().includes(keyword) ||
+          s.job_card_id?.product_name?.toLowerCase().includes(keyword),
       );
     }
 
@@ -1611,11 +1639,276 @@ export const getPackagesStageJobs = async (req, res) => {
   }
 };
 
+export const getDesignStageJobs = async (req, res) => {
+  try {
+    const data = await JobCard.aggregate([
+      /* ================= JOB CARD ================= */
+      {
+        $lookup: {
+          from: "jobcardstages",
+          let: { jobCardId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$job_card_id", "$$jobCardId"] },
+                    { $eq: [{ $toUpper: "$department" }, "DESIGN"] },
+                  ],
+                },
+              },
+            },
+            { $sort: { updatedAt: -1 } },
+            { $limit: 1 },
 
+            /* ===== EMPLOYEE ===== */
+            {
+              $lookup: {
+                from: "employees",
+                localField: "assigned_to",
+                foreignField: "_id",
+                as: "assigned_to",
+              },
+            },
+            {
+              $unwind: {
+                path: "$assigned_to",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+          ],
+          as: "stage",
+        },
+      },
 
+      { $unwind: "$stage" },
 
+      /* ================= FINAL SHAPE ================= */
+      {
+        $project: {
+          _id: "$stage._id",
+          job_card_id: "$_id",
+          job_card_no: "$job_card_no",
 
+          department: "$stage.department",
 
+          /* ===== ROOT ===== */
+          status: "$stage.status",
+          remarks: "$stage.remarks",
+          start_date: "$stage.start_date",
+          end_date: "$stage.end_date",
+          completed_at: "$stage.completed_at",
 
+          assigned_to: {
+            _id: "$stage.assigned_to._id",
+            name: "$stage.assigned_to.name",
+            email: "$stage.assigned_to.email",
+            mobile: "$stage.assigned_to.mobile",
+          },
 
+          /* ===== DATA (ONLY WHAT FRONTEND SENDS) ===== */
+          estimated_hours: "$stage.data.estimated_hours",
+          actual_hours: "$stage.data.actual_hours",
 
+          design_notes: "$stage.data.design_notes",
+          design_specifications: "$stage.data.design_specifications",
+          stage: "$stage.data.stage",
+          stage_type: "$stage.data.stage_type",
+
+          /* ===== LABOR ===== */
+          labor_cost: "$stage.data.labor_cost",
+
+          selected_labor_costs: {
+            $ifNull: ["$stage.data.selected_labor_costs", []],
+          },
+
+          labor_cost_breakdown: {
+            $cond: [
+              { $isArray: "$stage.data.labor_cost_breakdown" },
+              "$stage.data.labor_cost_breakdown",
+              [],
+            ],
+          },
+
+          /* ===== COST ===== */
+          material_cost: "$stage.data.material_cost",
+          other_costs: "$stage.data.other_costs",
+          total_cost: "$stage.data.total_cost",
+          markup_percentage: "$stage.data.markup_percentage",
+          final_price: "$stage.data.final_price",
+          cost_currency: "$stage.data.cost_currency",
+          cost_status: "$stage.data.cost_status",
+
+          /* ===== TIME ===== */
+          preparation_time: "$stage.data.preparation_time",
+          processing_time: "$stage.data.processing_time",
+          finishing_time: "$stage.data.finishing_time",
+          inspection_time: "$stage.data.inspection_time",
+          packaging_time: "$stage.data.packaging_time",
+          total_time_spent: "$stage.data.total_time_spent",
+          time_breakdown: "$stage.data.time_breakdown",
+
+          /* ===== FILES ===== */
+          files: { $ifNull: ["$stage.data.files", []] },
+
+          createdAt: "$stage.createdAt",
+          updatedAt: "$stage.updatedAt",
+        },
+      },
+
+      { $sort: { updatedAt: -1 } },
+    ]);
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("getDesignStageJobs error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const getCadStageJobs = async (req, res) => {
+  try {
+    const data = await JobCard.aggregate([
+      {
+        $lookup: {
+          from: "jobcardstages",
+          let: { jobCardId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ["$job_card_id", "$$jobCardId"] },
+                    { $eq: [{ $toUpper: "$department" }, "CAD"] },
+                  ],
+                },
+              },
+            },
+            { $sort: { updatedAt: -1 } },
+            { $limit: 1 },
+
+            {
+              $lookup: {
+                from: "employees",
+                localField: "assigned_to",
+                foreignField: "_id",
+                as: "assigned_to",
+              },
+            },
+            {
+              $unwind: {
+                path: "$assigned_to",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+          ],
+          as: "stage",
+        },
+      },
+
+      { $unwind: "$stage" },
+
+      {
+        $project: {
+          _id: "$stage._id",
+          job_card_id: "$_id",
+          job_card_no: "$job_card_no",
+
+          department: "$stage.department",
+          status: "$stage.status",
+          remarks: "$stage.remarks",
+
+          start_date: "$stage.start_date",
+          end_date: "$stage.end_date",
+          completed_at: "$stage.completed_at",
+
+          assigned_to: {
+            _id: "$stage.assigned_to._id",
+            name: "$stage.assigned_to.name",
+            email: "$stage.assigned_to.email",
+            mobile: "$stage.assigned_to.mobile",
+          },
+
+          /* ===== HOURS ===== */
+          estimated_hours: "$stage.data.estimated_hours",
+          actual_hours: "$stage.data.actual_hours",
+
+          /* ===== CAD ===== */
+          cad_software: "$stage.data.cad_software",
+          complexity_level: "$stage.data.complexity_level",
+
+          /* ===== TIME (FRONTEND NAMES) ===== */
+          design_time: "$stage.data.preparation_time",
+          modeling_time: "$stage.data.processing_time",
+          rendering_time: "$stage.data.finishing_time",
+          revision_time: "$stage.data.revision_time",
+
+          review_time: "$stage.data.inspection_time",
+          total_time_spent: "$stage.data.total_time_spent",
+          time_breakdown: "$stage.data.time_breakdown",
+
+          /* ===== COST ===== */
+          material_cost: "$stage.data.material_cost",
+          labor_cost: "$stage.data.labor_cost",
+          software_cost: "$stage.data.software_cost",
+          machine_cost: "$stage.data.machine_cost",
+          other_costs: "$stage.data.other_costs",
+          total_cost: "$stage.data.total_cost",
+          markup_percentage: "$stage.data.markup_percentage",
+          final_price: "$stage.data.final_price",
+          cost_currency: "$stage.data.cost_currency",
+          cost_status: "$stage.data.cost_status",
+
+          /* ===== LABOR ===== */
+          selected_labor_costs: {
+            $ifNull: ["$stage.data.selected_labor_costs", []],
+          },
+
+          labor_cost_breakdown_raw: {
+            $ifNull: ["$stage.data.labor_cost_breakdown", []],
+          },
+
+          files: { $ifNull: ["$stage.data.files", []] },
+
+          createdAt: "$stage.createdAt",
+          updatedAt: "$stage.updatedAt",
+        },
+      },
+    ]);
+
+    /* 🔥 FIX STRING → ARRAY */
+    const fixedData = data.map((item) => {
+      let breakdown = item.labor_cost_breakdown_raw;
+
+      if (Array.isArray(breakdown) && typeof breakdown[0] === "string") {
+        try {
+          breakdown = JSON.parse(breakdown[0]);
+        } catch (e) {
+          breakdown = [];
+        }
+      }
+
+      return {
+        ...item,
+        labor_cost_breakdown: breakdown,
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: fixedData,
+    });
+  } catch (error) {
+    console.error("getCadStageJobs error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};

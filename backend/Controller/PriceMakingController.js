@@ -2,23 +2,23 @@ import Pricemaking from "../Models/models/PricemakingModel.js";
 
 export const createPriceMaking = async (req, res) => {
   try {
-    const { stage_name, sub_stage_name, cost_type, cost_amount, unit_name } =
+    const { making_stage_id, making_sub_stage_id, cost_type_id, cost_amount, unit_id } =
       req.body;
     console.log(req.body, "req.body");
-    if (
-      !stage_name ||
-      !sub_stage_name ||
-      !cost_type ||
-      !unit_name ||
-      !cost_amount
-    ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Please provide all required fields.",
-        });
-    }
+    // if (
+    //   !stage_name ||
+    //   !sub_stage_name ||
+    //   !cost_type_id ||
+    //   !unit_name ||
+    //   !cost_amount
+    // ) {
+    //   return res
+    //     .status(400)
+    //     .json({
+    //       success: false,
+    //       message: "Please provide all required fields.",
+    //     });
+    // }
     const check = await Pricemaking.findOne({ cost_amount });
     if (check) {
       return res
@@ -26,31 +26,31 @@ export const createPriceMaking = async (req, res) => {
         .json({ success: false, message: "Price Making already exists." });
     }
     let finalAmount = cost_amount;
-    console.log(unit_name, "unit_name");
+    console.log(unit_id, "unit_id");
 
-    if (unit_name === "dozen") {
-      finalAmount = cost_amount / 12; // per piece rate
+    if (unit_id === "dozen") {
+      finalAmount = cost_amount / 12; 
     }
 
-    if (unit_name === "ten-gram") {
-      finalAmount = cost_amount / 10; // per gram rate
+    if (unit_id === "ten-gram") {
+      finalAmount = cost_amount / 10; 
     }
 
-    if (unit_name === "gram") {
-      finalAmount = cost_amount; // same
+    if (unit_id === "gram") {
+      finalAmount = cost_amount; 
     }
 
-    if (unit_name === "piece") {
-      finalAmount = cost_amount; // same
+    if (unit_id === "piece") {
+      finalAmount = cost_amount; 
     }
 
     const priceMaking = await Pricemaking.create({
-      stage_name,
-      sub_stage_name,
-      cost_type,
+      making_stage_id,
+      making_sub_stage_id,
+      cost_type_id,
       cost_amount,
       finalAmount: finalAmount,
-      unit_name,
+      unit_id,
     });
     console.log("Created Price Making:", priceMaking);
     return res.json({
@@ -63,78 +63,113 @@ export const createPriceMaking = async (req, res) => {
   }
 };
 
-export const getPriceMakings = async (req, res) => {
-  try {
-    const { 
-      stage_name, 
-      sub_stage_name, 
-      cost_type, 
-      is_active,
-      search,
-      page = 1, 
-      limit = 10 
-    } = req.query;
+// export const getPriceMakings = async (req, res) => {
+//   try {
+//     const { 
+//       making_stage_id, 
+//       making_sub_stage_id, 
+//       cost_type_id, 
+//       is_active,
+//       search,
+//       page = 1, 
+//       limit = 10 
+//     } = req.query;
     
-    // Build filter
-    const filter = {};
+//     const filter = {};
     
-    // Exact match filters
-    if (stage_name) filter.stage_name = stage_name;
-    if (sub_stage_name) filter.sub_stage_name = sub_stage_name;
-    if (cost_type) filter.cost_type = cost_type;
-    if (is_active !== undefined) filter.is_active = is_active === 'true';
+  
+//     if (making_stage_id) filter.making_stage_id = making_stage_id;
+//     if (making_sub_stage_id) filter.making_sub_stage_id = making_sub_stage_id;
+//     if (cost_type_id) filter.cost_type_id = cost_type_id;
+//     if (is_active !== undefined) filter.is_active = is_active === 'true';
+
+
+//     const skip = (parseInt(page) - 1) * parseInt(limit);
+//     let query = Pricemaking.find(filter)
+//       .populate("making_stage_id", "stage_name")
+//       .populate("making_sub_stage_id", "sub_stage_name")
+//       .populate("cost_type_id", "cost_type")
+//       .populate("unit_id", "unit_name unit_code")
+//       .sort({ createdAt: -1 })
+//       .skip(skip)
+//       .limit(Number(limit));
     
-    // Search across multiple fields
-    if (search) {
-      filter.$or = [
-        { stage_name: { $regex: search, $options: "i" } },
-        { sub_stage_name: { $regex: search, $options: "i" } },
-        { cost_type: { $regex: search, $options: "i" } },
-        { unit_name: { $regex: search, $options: "i" } }
-      ];
-    }
+  
+//     // if (search) {
+//     //   filter.$or = [
+//     //     { making_stage_id: { $regex: search, $options: "i" } },
+//     //     { making_sub_stage_id: { $regex: search, $options: "i" } },
+//     //     { cost_type_id: { $regex: search, $options: "i" } },
+//     //     { unit_id: { $regex: search, $options: "i" } }
+//     //   ];
+//     // }
     
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+   
+//      let priceMakings = await query;
+
+
+//       if (search) {
+//       const keyword = search.toLowerCase();
+
+//       priceMakings = priceMakings.filter((item) => {
+//         return (
+//           item?.making_stage_id?.stage_name
+//             ?.toLowerCase()
+//             .includes(keyword) ||
+//           item?.making_sub_stage_id?.sub_stage_name
+//             ?.toLowerCase()
+//             .includes(keyword) ||
+//           item?.cost_type_id?.cost_type
+//             ?.toLowerCase()
+//             .includes(keyword) ||
+//           item?.unit_id?.unit_name
+//             ?.toLowerCase()
+//             .includes(keyword)
+//         );
+//       });
+//     }
+
+
+//     const totalCount = await Pricemaking.countDocuments(filter);
+
+
+//     // const [priceMakings, totalCount] = await Promise.all([
+//     //   Pricemaking.find(filter)
+//     //     .sort({ createdAt: -1 })
+//     //     .skip(skip)
+//     //     .limit(parseInt(limit)),
+//     //   Pricemaking.countDocuments(filter)
+//     // ]);
     
-    // Execute query
-    const [priceMakings, totalCount] = await Promise.all([
-      Pricemaking.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit)),
-      Pricemaking.countDocuments(filter)
-    ]);
+//     console.log(`Fetched ${priceMakings.length} price makings`);
     
-    console.log(`Fetched ${priceMakings.length} price makings`);
-    
-    return res.json({ 
-      success: true, 
-      data: priceMakings,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(totalCount / parseInt(limit)),
-        totalCount,
-        limit: parseInt(limit)
-      }
-    });
-  } catch (err) {
-    console.error("Error fetching price makings:", err);
-    return res.status(500).json({ 
-      success: false, 
-      error: err.message 
-    });
-  }
-};
+//     return res.json({ 
+//       success: true, 
+//       data: priceMakings,
+//       pagination: {
+//         currentPage: parseInt(page),
+//         totalPages: Math.ceil(totalCount / parseInt(limit)),
+//         totalCount,
+//         limit: parseInt(limit)
+//       }
+//     });
+//   } catch (err) {
+//     console.error("Error fetching price makings:", err);
+//     return res.status(500).json({ 
+//       success: false, 
+//       error: err.message 
+//     });
+//   }
+// };
 
 export const updatePriceMaking = async (req, res) => {
   try {
-    const { stage_name, sub_stage_name, cost_type, cost_amount, name } =
+    const { making_stage_id, making_sub_stage_id, cost_type_id, cost_amount, name } =
       req.body;
     console.log(req.body, "req.body");
     const updated = await Pricemaking.findByIdAndUpdate(
       req.params.id,
-      { stage_name, sub_stage_name, cost_type, cost_amount, name },
+      { making_stage_id, making_sub_stage_id, cost_type_id, cost_amount, name },
       { new: true }
     );
     console.log("Updated Price Making:", updated);
@@ -159,5 +194,92 @@ export const deletePriceMaking = async (req, res) => {
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+
+
+
+export const getPriceMakings = async (req, res) => {
+  try {
+    const {
+      making_stage_id,
+      making_sub_stage_id,
+      cost_type_id,
+      is_active,
+      search,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const filter = {};
+
+    if (making_stage_id) filter.making_stage_id = making_stage_id;
+    if (making_sub_stage_id) filter.making_sub_stage_id = making_sub_stage_id;
+    if (cost_type_id) filter.cost_type_id = cost_type_id;
+    if (is_active !== undefined)
+      filter.is_active = is_active === "true";
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    let priceMakings = await Pricemaking.find(filter)
+      .populate("making_stage_id", "stage_name")
+      .populate("making_sub_stage_id", "sub_stage_name")
+      .populate({
+        path: "cost_type_id",
+        select: "cost_type cost_name_id",
+        populate: {
+          path: "cost_name_id",
+          select: "cost_name",
+        },
+      })
+      .populate("unit_id", "name code")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+   
+    if (search) {
+      const keyword = search.toLowerCase();
+
+      priceMakings = priceMakings.filter((item) => {
+        return (
+          item?.making_stage_id?.stage_name
+            ?.toLowerCase()
+            .includes(keyword) ||
+          item?.making_sub_stage_id?.sub_stage_name
+            ?.toLowerCase()
+            .includes(keyword) ||
+          item?.cost_type_id?.cost_type
+            ?.toLowerCase()
+            .includes(keyword) ||
+          item?.cost_type_id?.cost_name_id?.cost_name
+            ?.toLowerCase()
+            .includes(keyword) ||
+          item?.unit_id?.unit_name
+            ?.toLowerCase()
+            .includes(keyword)
+        );
+      });
+    }
+
+    const totalCount = await Pricemaking.countDocuments(filter);
+
+    return res.json({
+      success: true,
+      data: priceMakings,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(totalCount / Number(limit)),
+        totalCount,
+        limit: Number(limit),
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching price makings:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+    });
   }
 };

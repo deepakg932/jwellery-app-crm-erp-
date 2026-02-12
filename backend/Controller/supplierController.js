@@ -1,79 +1,79 @@
 import Suppliers from "../Models/models/SuppliersModel.js";
 
-export const createSupplier = async (req, res) => {
-  try {
-    const {
-      supplier_name,
-      company_name,
-      contact_person_number,
-      supplier_code,
-      contact_person,
-      tax_number,
-      phone,
-      payment_terms,
-      payment_type,
-      email,
-      address,
-      country,
-      state,
-      city,
-      pincode,
-      gst_number,
-    } = req.body;
+// export const createSupplier = async (req, res) => {
+//   try {
+//     const {
+//       supplier_name,
+//       company_name,
+//       contact_person_number,
+//       supplier_code,
+//       contact_person,
+//       tax_number,
+//       phone,
+//       payment_terms,
+//       payment_type,
+//       email,
+//       address,
+//       country,
+//       state,
+//       city,
+//       pincode,
+//       gst_number,
+//     } = req.body;
 
-    console.log(req.body, "Request body received");
+//     console.log(req.body, "Request body received");
 
-    if (!supplier_name || !email || !phone || !address) {
-      return res.status(400).json({ status: false, emessage: "All fields are required" });
-    }
+//     if (!supplier_name || !email || !phone || !address) {
+//       return res.status(400).json({ status: false, emessage: "All fields are required" });
+//     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({status: false,message: "Please provide a valid email address",});
-    }
+//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+//     if (!emailRegex.test(email)) {
+//       return res.status(400).json({status: false,message: "Please provide a valid email address",});
+//     }
 
-    // const existingSupplier = await Suppliers.findOne({ supplier_name });
-    // if (existingSupplier) {
-    //   return res.status(409).json({status: false,message:"Supplier with this name already exists. Please use a different name.",});
-    // }
+//     // const existingSupplier = await Suppliers.findOne({ supplier_name });
+//     // if (existingSupplier) {
+//     //   return res.status(409).json({status: false,message:"Supplier with this name already exists. Please use a different name.",});
+//     // }
 
-    const existingCode = await Suppliers.findOne({ supplier_code });
-    console.log(existingCode, "exiting");
-    if (existingCode) {
-      return res.status(409).json({ status: false, message: "Supplier code already exists" });}
-    const existingEmail = await Suppliers.findOne({ email });
-    console.log(existingEmail, "existingEmail");
-    if (existingEmail) {
-      return res.status(409).json({status: false,message: "Email already registered to another supplier.",});
-    }
+//     const existingCode = await Suppliers.findOne({ supplier_code });
+//     console.log(existingCode, "exiting");
+//     if (existingCode) {
+//       return res.status(409).json({ status: false, message: "Supplier code already exists" });}
+//     const existingEmail = await Suppliers.findOne({ email });
+//     console.log(existingEmail, "existingEmail");
+//     if (existingEmail) {
+//       return res.status(409).json({status: false,message: "Email already registered to another supplier.",});
+//     }
 
-    const newSupplier = await Suppliers.create({
-      supplier_name,
-      company_name,
-      contact_person_number,
-      supplier_code,
-      contact_person,
-      email,
-      phone,
-      address,
-      payment_type,
-      tax_number,
-      payment_terms,
-      country,
-      state,
-      city,
-      pincode,
-      gst_number,
-    });
+//     const newSupplier = await Suppliers.create({
+//       supplier_name,
+//       company_name,
+//       contact_person_number,
+//       supplier_code,
+//       contact_person,
+//       email,
+//       phone,
+//       address,
+//       payment_type,
+//       tax_number,
+//       payment_terms,
+//       country,
+//       state,
+//       city,
+//       pincode,
+//       gst_number,
+//     });
 
-    console.log(newSupplier, "Supplier created successfully","kkkkkkkkkk");
+//     console.log(newSupplier, "Supplier created successfully","kkkkkkkkkk");
  
 
-    return res.status(200).json({status: true,message: "Supplier created successfully",data: newSupplier,});
-  } catch (err) {
-    console.error(err, "Error in createSupplier");
-    return res.status(500).json({ status: false, message: "Server error", error: err.message }) }
-};
+//     return res.status(200).json({status: true,message: "Supplier created successfully",data: newSupplier,});
+//   } catch (err) {
+//     console.error(err, "Error in createSupplier");
+//     return res.status(500).json({ status: false, message: "Server error", error: err.message }) }
+// };
 
 export const getSuppliers = async (req, res) => {
   try {
@@ -201,5 +201,146 @@ export const deleteSupplier = async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.status(500).json({ status: false, message: "Server error", error: err.message });
+  }
+};
+
+
+
+export const createSupplier = async (req, res) => {
+  try {
+    const {
+      supplier_name,
+      company_name,
+      contact_person_number,
+      supplier_code,
+      contact_person,
+      tax_number,
+      phone,
+      payment_terms,
+      payment_type,
+      email,
+      address,
+      country,
+      state,
+      city,
+      pincode,
+      gst_number,
+    } = req.body;
+
+    // 🔹 Required Fields
+    if (!supplier_name || !email || !phone || !address) {
+      return res.status(400).json({
+        status: false,
+        message: "Supplier name, email, phone and address are required",
+      });
+    }
+
+    // 🔹 Email Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        status: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    // 🔹 Same Record Check
+    if (
+      contact_person_number &&
+      phone &&
+      contact_person_number === phone
+    ) {
+      return res.status(400).json({
+        status: false,
+        message:
+          "Phone number and Contact Person number cannot be the same",
+      });
+    }
+
+    // 🔹 Supplier Code Unique
+    const existingCode = await Suppliers.findOne({ supplier_code });
+    if (existingCode) {
+      return res.status(409).json({
+        status: false,
+        message: "Supplier code already exists",
+      });
+    }
+
+    // 🔹 Email Unique
+    const existingEmail = await Suppliers.findOne({ email });
+    if (existingEmail) {
+      return res.status(409).json({
+        status: false,
+        message: "Email already registered to another supplier",
+      });
+    }
+
+    // 🔥 Phone Duplicate Check
+    if (phone) {
+      const existingPhone = await Suppliers.findOne({
+        $or: [
+          { phone: phone },
+          { contact_person_number: phone },
+        ],
+      });
+
+      if (existingPhone) {
+        return res.status(409).json({
+          status: false,
+          message: "Phone number already exists",
+        });
+      }
+    }
+
+    // 🔥 Contact Person Number Duplicate Check
+    if (contact_person_number) {
+      const existingContactNumber = await Suppliers.findOne({
+        $or: [
+          { phone: contact_person_number },
+          { contact_person_number: contact_person_number },
+        ],
+      });
+
+      if (existingContactNumber) {
+        return res.status(409).json({
+          status: false,
+          message: "Contact person number already exists",
+        });
+      }
+    }
+
+    // 🔹 Create Supplier
+    const newSupplier = await Suppliers.create({
+      supplier_name,
+      company_name,
+      contact_person_number,
+      supplier_code,
+      contact_person,
+      email,
+      phone,
+      address,
+      payment_type,
+      tax_number,
+      payment_terms,
+      country,
+      state,
+      city,
+      pincode,
+      gst_number,
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Supplier created successfully",
+      data: newSupplier,
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: false,
+      message: "Server error",
+      error: err.message,
+    });
   }
 };

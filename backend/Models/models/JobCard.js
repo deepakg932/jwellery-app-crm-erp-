@@ -97,8 +97,8 @@ current_department: {
 
 
     total_amount: Number,
-    advance_amount: Number,
-    balance_amount: Number,
+    // advance_amount: Number,
+    // balance_amount: Number,
 
     assigned_to: {
       type: mongoose.Schema.Types.ObjectId,

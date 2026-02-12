@@ -36,7 +36,9 @@ const customerSchema = new mongoose.Schema(
     state: String,
     country: String,
     pincode: String,
-
+    aadhar_number: {
+      type: Number,
+    },
     status: {
       type: String,
       enum: ["active", "inactive"],
@@ -49,7 +51,7 @@ const customerSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 export default mongoose.model("Customer", customerSchema);

@@ -61,7 +61,7 @@ const PurchaseOrderSchema = new mongoose.Schema(
       },
     ],
 
-    vat: { type: Number, default: 0 },
+    vat: { type: String, default: 0 },
     discount: { type: Number, default: 0 },
     shipping_cost: { type: Number, default: 0 },
 

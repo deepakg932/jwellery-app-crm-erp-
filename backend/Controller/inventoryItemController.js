@@ -267,6 +267,10 @@ export const getInventoryPagination = async (req, res) => {
         path: "sub_category",
         select: "name"
       })
+      .populate({
+        path:"branch",
+        select:"branch_name"
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
