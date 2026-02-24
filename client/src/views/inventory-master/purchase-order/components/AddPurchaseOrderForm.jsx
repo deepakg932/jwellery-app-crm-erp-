@@ -39,7 +39,6 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     subtotal: 0,
     grand_total: 0,
     payment_status: "pending",
-    reference_no: "",
     exchange_rate: 1,
     currency: "INR",
     branch_id: "",
@@ -253,6 +252,13 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
   // };
 
   const calculateItemTotal = (quantity, weight, rate, unitId) => {
+    console.log("calculateItemTotal called with:", {
+      quantity,
+      weight,
+      rate,
+      unitId,
+    });
+
     const qty = parseFloat(quantity) || 0;
     const wt = parseFloat(weight) || 0;
     const rt = parseFloat(rate) || 0;
@@ -278,17 +284,6 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
 
     if (amount <= 0) return 0;
 
-    // DEBUG: Log unit information
-    console.log("Unit details:", {
-      unitId,
-      unitName: unit.name,
-      unitCode: unit.code,
-      isWeightUnit: isWeightUnit(unitId),
-      isWeightBased,
-      amount,
-      rate: rt,
-    });
-
     if (isWeightBased) {
       // Get the unit name properly
       const unitName = (unit.name || "").toLowerCase();
@@ -300,40 +295,29 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
       if (unitName.includes("kg") || unitCode.includes("kg")) {
         // Already in kilograms, no conversion needed
         amountInKg = amount;
-        console.log("KG unit detected, no conversion needed");
       } else if (unitName.includes("g") || unitCode.includes("g")) {
         // Convert grams to kilograms
         amountInKg = amount / 1000;
-        console.log(
-          "G unit detected, converting grams to kg:",
-          amount,
-          "g =",
-          amountInKg,
-          "kg",
-        );
       } else if (unitName.includes("mg") || unitCode.includes("mg")) {
         // Convert milligrams to kilograms
         amountInKg = amount / 1000000;
       }
 
-      console.log(
-        "Weight calculation:",
-        amountInKg,
-        "kg ×",
-        rt,
-        "= ₹",
-        amountInKg * rt,
-      );
-      return amountInKg * rt;
+      const result = amountInKg * rt;
+      console.log("Weight calculation result:", result);
+      return result;
     } else {
       // For quantity units
       const conversionFactor = unit.conversion_factor || 1;
       const amountInBaseUnit = amount / conversionFactor;
-      return amountInBaseUnit * rt;
+      const result = amountInBaseUnit * rt;
+      console.log("Quantity calculation result:", result);
+      return result;
     }
   };
+
   const calculateTotals = () => {
-    // Calculate item total based on quantity or weight, rate, and unit conversion
+    // Calculate item total
     const itemTotal = formData.items
       .filter((item) => item.inventory_item_id)
       .reduce((total, item) => {
@@ -348,19 +332,41 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
         );
       }, 0);
 
-    // Calculate VAT, Discount, and Shipping Cost
-    const vatAmount = (itemTotal * (parseFloat(formData.vat) || 0)) / 100;
+    // Parse values as numbers - ensure we're using the current values
+    const vatPercent = parseFloat(formData.vat) || 0;
     const discountAmount = parseFloat(formData.discount) || 0;
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
 
+    // Calculate VAT based on item total
+    const vatAmount = (itemTotal * vatPercent) / 100;
+
+    // Set subtotal as item total
     const subtotal = itemTotal;
+
+    // Calculate grand total: itemTotal + VAT - Discount + Shipping
     const grandTotal = itemTotal + vatAmount - discountAmount + shippingCost;
 
+    // Ensure grandTotal is not negative
+    const finalGrandTotal = grandTotal > 0 ? grandTotal : 0;
+
+    console.log("===== CALCULATION DEBUG =====");
+    console.log("Item Total:", itemTotal);
+    console.log("VAT %:", vatPercent);
+    console.log("VAT Amount:", vatAmount);
+    console.log("Discount Amount:", discountAmount);
+    console.log("Shipping Cost:", shippingCost);
+    console.log(
+      "Formula:",
+      `${itemTotal} + ${vatAmount} - ${discountAmount} + ${shippingCost} = ${finalGrandTotal}`,
+    );
+    console.log("============================");
+
+    // Update all totals at once
     setFormData((prev) => ({
       ...prev,
       total_amount: itemTotal,
       subtotal: subtotal,
-      grand_total: grandTotal,
+      grand_total: finalGrandTotal,
     }));
   };
 
@@ -598,6 +604,28 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
   //   }
   // };
 
+  useEffect(() => {
+    calculateTotals();
+  }, [
+    formData.items, // Items changes
+    formData.vat, // VAT changes
+    formData.discount, // Discount changes
+    formData.shipping_cost, // Shipping cost changes
+    formData.exchange_rate, // Exchange rate changes
+    JSON.stringify(
+      formData.items.map((item) => ({
+        quantity: item.quantity,
+        weight: item.weight,
+        rate: item.rate,
+        unit_id: item.unit_id,
+      })),
+    ), // Deep watch item values
+    units, // Units changes
+  ]);
+
+  // Remove the duplicate useEffect that was causing issues
+  // Keep only ONE calculateTotals useEffect
+
   const handleUnitChange = (index, unitId) => {
     const updatedItems = [...formData.items];
     const currentItem = updatedItems[index];
@@ -783,28 +811,42 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     }
   };
 
-const handleChange = (e) => {
-  const { name, value } = e.target;
-  
-  // Add % automatically for VAT
-  const newValue = name === "vat" 
-    ? `${value.replace(/[^0-9.]/g, '')}`
-    : value;
-    
-  setFormData(prev => ({ ...prev, [name]: newValue }));
-  
-  // Clear error
-  if (errors[name]) setErrors(prev => ({ ...prev, [name]: "" }));
-  
-  // Recalculate if needed
-  if (["vat", "discount", "shipping_cost", "exchange_rate"].includes(name)) {
-    setTimeout(() => calculateTotals(), 0);
-  }
-};
+  const handleChange = (e) => {
+    const { name, value, type } = e.target;
 
+    // For number inputs, keep as string but ensure it's valid
+    let newValue = value;
+
+    if (type === "number") {
+      // Allow empty string or valid numbers
+      newValue = value === "" ? "" : value;
+    }
+
+    // Handle VAT specially - remove % symbol and non-numeric
+    if (name === "vat") {
+      newValue = value.replace(/[^0-9.]/g, "");
+    }
+
+    console.log(
+      `Field ${name} changed to:`,
+      newValue,
+      "Type:",
+      typeof newValue,
+    );
+
+    // Update state
+    setFormData((prev) => ({ ...prev, [name]: newValue }));
+
+    // Clear error if any
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+
+    // No need to call calculateTotals here - the useEffect will handle it
+  };
   // Remove item row
   const removeItem = (index) => {
-    if (formData.items.length > 1) {
+    if (formData.items.length > 0) {
       const updatedItems = formData.items.filter((_, i) => i !== index);
       setFormData((prev) => ({
         ...prev,
@@ -847,6 +889,8 @@ const handleChange = (e) => {
     formData.shipping_cost,
     formData.items,
     formData.exchange_rate,
+    // Add units as dependency since calculateItemTotal depends on it
+    units,
   ]);
 
   // Close search results when clicking outside
@@ -898,7 +942,6 @@ const handleChange = (e) => {
       subtotal: parseFloat(formData.subtotal) || 0,
       grand_total: parseFloat(formData.grand_total) || 0,
       payment_status: formData.payment_status,
-      reference_no: formData.reference_no,
       exchange_rate: parseFloat(formData.exchange_rate) || 1,
       currency: formData.currency,
       branch_id: formData.branch_id,
@@ -927,7 +970,7 @@ const handleChange = (e) => {
     //   ],
     //   notes: "",
     //   total_amount: 0,
-    //   vat: "0%", 
+    //   vat: "0%",
     //   discount: 0,
     //   shipping_cost: 0,
     //   subtotal: 0,
@@ -969,7 +1012,6 @@ const handleChange = (e) => {
       subtotal: 0,
       grand_total: 0,
       payment_status: "pending",
-      reference_no: "",
       exchange_rate: 1,
       currency: "INR",
       branch_id: "",
@@ -1029,7 +1071,7 @@ const handleChange = (e) => {
             >
               {/* Top Row - New Fields */}
               <div className="row mb-4">
-                <div className="col-md-3 mb-3">
+                <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">
                     Order Date <span className="text-danger">*</span>
                   </label>
@@ -1048,7 +1090,7 @@ const handleChange = (e) => {
                   )}
                 </div>
 
-                <div className="col-md-3 mb-3">
+                {/* <div className="col-md-3 mb-3">
                   <label className="form-label fw-medium">
                     Currency <span className="text-danger">*</span>
                   </label>
@@ -1071,9 +1113,9 @@ const handleChange = (e) => {
                   {errors.currency && (
                     <div className="invalid-feedback">{errors.currency}</div>
                   )}
-                </div>
+                </div> */}
 
-                <div className="col-md-3 mb-3">
+                {/* <div className="col-md-3 mb-3">
                   <label className="form-label fw-medium">
                     Exchange Rate <span className="text-danger">*</span>
                   </label>
@@ -1098,9 +1140,9 @@ const handleChange = (e) => {
                       {errors.exchange_rate}
                     </div>
                   )}
-                </div>
+                </div> */}
 
-                <div className="col-md-3 mb-3">
+                <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">
                     Branch <span className="text-danger">*</span>
                   </label>
@@ -1131,10 +1173,6 @@ const handleChange = (e) => {
                     <div className="invalid-feedback">{errors.branch_id}</div>
                   )}
                 </div>
-              </div>
-
-              {/* Second Row - Supplier and Amount Fields */}
-              <div className="row mb-4">
                 <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">
                     Supplier <span className="text-danger">*</span>
@@ -1159,6 +1197,34 @@ const handleChange = (e) => {
                     <div className="invalid-feedback">{errors.supplier_id}</div>
                   )}
                 </div>
+              </div>
+
+              {/* Second Row - Supplier and Amount Fields */}
+              <div className="row mb-4">
+                {/* <div className="col-md-4 mb-3">
+                  <label className="form-label fw-medium">
+                    Supplier <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="supplier_id"
+                    className={`form-select ${
+                      errors.supplier_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.supplier_id}
+                    onChange={handleChange}
+                    disabled={isDisabled}
+                  >
+                    <option value="">Select Supplier</option>
+                    {suppliers?.map((supplier) => (
+                      <option key={supplier._id} value={supplier._id}>
+                        {supplier.name || supplier.supplier_name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.supplier_id && (
+                    <div className="invalid-feedback">{errors.supplier_id}</div>
+                  )}
+                </div> */}
 
                 {/* Discount Field */}
                 <div className="col-md-4 mb-3">
@@ -1175,8 +1241,8 @@ const handleChange = (e) => {
                       onChange={handleChange}
                       disabled={isDisabled}
                       min="0"
-                      step="0.01"
-                      placeholder="0.00"
+                      step="1"
+                      placeholder="0"
                     />
                   </div>
                   <small className="text-muted">Flat discount amount</small>
@@ -1191,16 +1257,14 @@ const handleChange = (e) => {
                     </span>
                     <input
                       type="number"
-                      className={`form-control ${
-                        errors.shipping_cost ? "is-invalid" : ""
-                      }`}
+                      className={`form-control ${errors.shipping_cost ? "is-invalid" : ""}`}
                       name="shipping_cost"
                       value={formData.shipping_cost}
                       onChange={handleChange}
                       disabled={isDisabled}
                       min="0"
-                      step="0.01"
-                      placeholder="0.00"
+                      step="1"
+                      placeholder="0"
                     />
                   </div>
                   <small className="text-muted">
@@ -1212,10 +1276,7 @@ const handleChange = (e) => {
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Third Row - Totals and Reference */}
-              <div className="row mb-4">
                 <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">VAT (%)</label>
                   <div className="input-group">
@@ -1234,8 +1295,30 @@ const handleChange = (e) => {
                     Value Added Tax percentage (e.g., "10%")
                   </small>
                 </div>
+              </div>
 
-                <div className="col-md-4 mb-3">
+              {/* Third Row - Totals and Reference */}
+              {/* <div className="row mb-4"> */}
+              {/* <div className="col-md-4 mb-3">
+                  <label className="form-label fw-medium">VAT (%)</label>
+                  <div className="input-group">
+                    <input
+                      type="text" // Change from number to text
+                      className="form-control"
+                      name="vat"
+                      value={formData.vat}
+                      onChange={handleChange}
+                      disabled={isDisabled}
+                      placeholder="0%"
+                    />
+                    <span className="input-group-text">%</span>
+                  </div>
+                  <small className="text-muted">
+                    Value Added Tax percentage (e.g., "10%")
+                  </small>
+                </div> */}
+
+              {/* <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">Grand Total</label>
                   <div className="input-group">
                     <span className="input-group-text">
@@ -1257,9 +1340,9 @@ const handleChange = (e) => {
                   <small className="text-muted">
                     Converted to base currency at {formData.exchange_rate}:1
                   </small>
-                </div>
+                </div> */}
 
-                <div className="col-md-4 mb-3">
+              {/* <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">Reference No.</label>
                   <input
                     type="text"
@@ -1270,8 +1353,8 @@ const handleChange = (e) => {
                     disabled={isDisabled}
                     placeholder="PO-REF-001"
                   />
-                </div>
-              </div>
+                </div> */}
+              {/* </div> */}
 
               {/* Order Table Section */}
               <div className="border rounded-3 p-3 mb-4">
@@ -1361,10 +1444,10 @@ const handleChange = (e) => {
                         </th>
                         <th style={{ minWidth: "120px" }}>Unit</th>
                         <th style={{ minWidth: "120px" }}>Rate</th>
-                        <th style={{ minWidth: "100px" }}>Discount</th>
-                        <th style={{ minWidth: "100px" }}>Tax</th>
+                        {/* <th style={{ minWidth: "100px" }}>Discount</th> */}
+                        {/* <th style={{ minWidth: "100px" }}>Tax</th> */}
                         <th style={{ minWidth: "120px" }}>Subtotal</th>
-                        <th style={{ minWidth: "60px" }}>Action</th>
+                        {/* <th style={{ minWidth: "60px" }}>Action</th> */}
                       </tr>
                     </thead>
                     <tbody>
@@ -1600,7 +1683,7 @@ const handleChange = (e) => {
                                   </div>
                                 )}
                               </td>
-                              <td>
+                              {/* <td>
                                 <input
                                   type="text"
                                   className="form-control bg-light"
@@ -1609,8 +1692,8 @@ const handleChange = (e) => {
                                   ).toFixed(2)}`}
                                   readOnly
                                 />
-                              </td>
-                              <td>
+                              </td> */}
+                              {/* <td>
                                 <input
                                   type="text"
                                   className="form-control bg-light"
@@ -1619,7 +1702,7 @@ const handleChange = (e) => {
                                   ).toFixed(2)}`}
                                   readOnly
                                 />
-                              </td>
+                              </td> */}
                               <td>
                                 <input
                                   type="text"
@@ -1639,7 +1722,7 @@ const handleChange = (e) => {
                                     isDisabled ||
                                     formData.items.filter(
                                       (i) => i.inventory_item_id,
-                                    ).length === 1
+                                    ).length === 0
                                   }
                                   title="Remove item"
                                 >
@@ -1802,7 +1885,7 @@ const handleChange = (e) => {
                           </div>
                           <div className="mb-2">
                             <span className="text-muted">
-                              VAT ({formData.vat || 0}%):
+                              GST ({formData.vat || 0}%):
                             </span>
                             <span className="float-end fw-medium">
                               {getCurrencySymbol()}
@@ -1838,13 +1921,13 @@ const handleChange = (e) => {
                               {parseFloat(formData.grand_total || 0).toFixed(2)}
                             </span>
                           </div>
-                          <div className="mb-2">
+                          {/* <div className="mb-2">
                             <span className="text-muted">Exchange Rate:</span>
                             <span className="float-end fw-medium">
                               {formData.exchange_rate}:1
                             </span>
-                          </div>
-                          <div className="mb-2">
+                          </div> */}
+                          {/* <div className="mb-2">
                             <span className="text-muted">In INR:</span>
                             <span className="float-end fw-medium">
                               ₹
@@ -1852,7 +1935,7 @@ const handleChange = (e) => {
                                 formData.grand_total * formData.exchange_rate
                               ).toFixed(2)}
                             </span>
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     </div>

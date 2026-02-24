@@ -307,7 +307,7 @@ const AddSupplierForm = ({ onClose, onSave, loading = false }) => {
                 {/* Contact Person */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
-                    Contact Person <span className="text-danger">*</span>
+                    Contact Person Name <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"

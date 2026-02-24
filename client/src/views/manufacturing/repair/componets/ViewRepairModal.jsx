@@ -712,12 +712,12 @@ const ViewRepairModal = ({ repair, onClose }) => {
                           {repair.customer_id?.mobile || repair.customer_mobile || "N/A"}
                         </span>
                       </div>
-                      <div className="mb-2">
+                      {/* <div className="mb-2">
                         <span className="text-muted">Customer ID:</span>
                         <span className="fw-medium ms-2 text-muted small">
                           {repair.customer_id?._id || "N/A"}
                         </span>
-                      </div>
+                      </div> */}
                     </div>
                     <div className="col-md-6">
                       <h6 className="fw-bold mb-3">Service Details</h6>
@@ -727,15 +727,35 @@ const ViewRepairModal = ({ repair, onClose }) => {
                           {repair.employee_id?.name || repair.employee_name || "N/A"}
                         </span>
                       </div>
+                      {repair.employee_id?.role_id?.role_name && (
+                        <div className="mb-2">
+                          <span className="text-muted">Employee Role:</span>
+                          <span className="fw-medium ms-2">
+                            <span className="badge bg-primary">
+                              {repair.employee_id.role_id.role_name}
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      {repair.employee_id?.email && (
+                        <div className="mb-2">
+                          <span className="text-muted">Email:</span>
+                          <span className="fw-medium ms-2 text-primary">
+                            {repair.employee_id.email}
+                          </span>
+                        </div>
+                      )}
+                      {repair.employee_id?.phone && (
+                        <div className="mb-2">
+                          <span className="text-muted">Phone:</span>
+                          <span className="fw-medium ms-2">
+                            {repair.employee_id.phone}
+                          </span>
+                        </div>
+                      )}
                       <div className="mb-2">
                         <span className="text-muted">Payment Account:</span>
                         <span className="fw-medium ms-2">{getAccountBadge(repair.account || "cash")}</span>
-                      </div>
-                      <div className="mb-2">
-                        <span className="text-muted">Employee ID:</span>
-                        <span className="fw-medium ms-2 text-muted small">
-                          {repair.employee_id?._id || "N/A"}
-                        </span>
                       </div>
                     </div>
                   </div>

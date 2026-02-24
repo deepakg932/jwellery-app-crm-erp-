@@ -157,13 +157,15 @@ const UpdateQualityCheckStage = ({
 
   // Available options
   const statusOptions = [
-    { value: "pending", label: "Pending", color: "secondary", icon: "⏳" },
-    { value: "in_progress", label: "In Progress", color: "info", icon: "🔍" },
-    { value: "passed", label: "Passed", color: "success", icon: "✅" },
-    { value: "failed", label: "Failed", color: "danger", icon: "❌" },
-    { value: "rework", label: "Rework Required", color: "warning", icon: "🔄" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
+    // { value: "pending", label: "Pending", color: "secondary", icon: "⏳" },
+    // { value: "in_progress", label: "In Progress", color: "info", icon: "🔍" },
+    // { value: "passed", label: "Passed", color: "success", icon: "✅" },
+    // { value: "failed", label: "Failed", color: "danger", icon: "❌" },
+    // { value: "rework", label: "Rework Required", color: "warning", icon: "🔄" },
+    // { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
     { value: "completed", label: "Completed", color: "success", icon: "🏁" },
+    { value: "draft", label: "Draft", color: "pending", icon: "🏁" },
+    { value: "cancelled", label: "Cancelled", color: "reject", icon: "🏁" },
   ];
 
   const checkPointOptions = [
@@ -251,24 +253,7 @@ const UpdateQualityCheckStage = ({
 
       // Include labor and quality check costs relevant to quality stage
       return (
-        costName.includes("labor") ||
-        costName.includes("quality") ||
-        costName.includes("inspection") ||
-        costName.includes("inspector") ||
-        costName.includes("check") ||
-        costName.includes("testing") ||
-        costName.includes("verification") ||
-        costName.includes("karigar") ||
-        costName.includes("craftsman") ||
-        costName.includes("worker") ||
-        stageName.includes("quality") ||
-        subStageName.includes("quality") ||
-        stageName.includes("inspection") ||
-        subStageName.includes("inspection") ||
-        stageName.includes("check") ||
-        subStageName.includes("check") ||
-        costName.includes("गुणवत्ता") ||
-        costName.includes("कारीगर")
+        costName
       );
     });
 

@@ -65,7 +65,7 @@ const UpdateCastingStage = ({
   const [purityOptions, setPurityOptions] = useState([]);
   const [selectedLaborCosts, setSelectedLaborCosts] = useState([]);
   const [laborBreakdown, setLaborBreakdown] = useState([]);
-  
+
   const [formData, setFormData] = useState({
     assigned_to: "",
     status: "",
@@ -126,7 +126,7 @@ const UpdateCastingStage = ({
     file_status: "draft",
     backup_location: "",
   });
-console.log(laborCosts)
+  console.log(laborCosts);
   const [formErrors, setFormErrors] = useState({});
   const fileInputRef = useRef(null);
   const [expandedSections, setExpandedSections] = useState({
@@ -141,32 +141,36 @@ console.log(laborCosts)
 
   // Status options
   const statusOptions = [
-    {
-      value: "not_started",
-      label: "Not Started",
-      color: "secondary",
-      icon: "⏳",
-    },
-    {
-      value: "material_preparation",
-      label: "Material Preparation",
-      color: "info",
-      icon: "⚗️",
-    },
-    { value: "mold_making", label: "Mold Making", color: "info", icon: "🫧" },
-    { value: "burnout", label: "Burnout", color: "warning", icon: "🔥" },
-    { value: "casting", label: "Casting", color: "warning", icon: "🌡️" },
-    { value: "cooling", label: "Cooling", color: "info", icon: "❄️" },
-    { value: "devesting", label: "Devesting", color: "info", icon: "🔨" },
-    {
-      value: "quality_check",
-      label: "Quality Check",
-      color: "warning",
-      icon: "🔍",
-    },
-    { value: "completed", label: "Completed", color: "success", icon: "✅" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
-    { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
+    // {
+    //   value: "not_started",
+    //   label: "Not Started",
+    //   color: "secondary",
+    //   icon: "⏳",
+    // },
+    // {
+    //   value: "material_preparation",
+    //   label: "Material Preparation",
+    //   color: "info",
+    //   icon: "⚗️",
+    // },
+    // { value: "mold_making", label: "Mold Making", color: "info", icon: "🫧" },
+    // { value: "burnout", label: "Burnout", color: "warning", icon: "🔥" },
+    // { value: "casting", label: "Casting", color: "warning", icon: "🌡️" },
+    // { value: "cooling", label: "Cooling", color: "info", icon: "❄️" },
+    // { value: "devesting", label: "Devesting", color: "info", icon: "🔨" },
+    // {
+    //   value: "quality_check",
+    //   label: "Quality Check",
+    //   color: "warning",
+    //   icon: "🔍",
+    // },
+    { value: "draft", label: "Draft", color: "secondary", icon: "✏️" },
+    { value: "cancelled", label: "Cancelled", color: "danger", icon: "❌" },
+
+    { value: "approved", label: "Approved", color: "success", icon: "✅" },
+
+    // { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
+    // { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
   ];
 
   // Wastage type options
@@ -257,7 +261,7 @@ console.log(laborCosts)
   ];
 
   const nextStageOptions = defaultNextStageOptions;
-  
+
   // Cost status options
   const costStatusOptions = [
     { value: "estimated", label: "Estimated", color: "warning", icon: "📊" },
@@ -283,12 +287,12 @@ console.log(laborCosts)
     // Filter out any karigar costs that might have slipped through
     const filteredCosts = laborCosts.filter((cost) => {
       const costName = (cost.cost_name || "").toLowerCase();
-      return !costName.includes("karigar");
+      return !costName.includes("Labour Charge");
     });
 
     return filteredCosts.map((cost) => ({
       value: cost._id,
-      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      label: `${cost.cost_name || "labour charge"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
       originalData: cost,
     }));
   };
@@ -358,175 +362,169 @@ console.log(laborCosts)
   // Update available materials
   useEffect(() => {
     if (materials && materials.length > 0) {
-      const jewelryMaterials = materials.filter(
-        (material) =>
-          material.name?.toLowerCase().includes("gold") ||
-          material.name?.toLowerCase().includes("silver") ||
-          material.name?.toLowerCase().includes("platinum") ||
-          material.name?.toLowerCase().includes("palladium") ||
-          material.name?.toLowerCase().includes("brass") ||
-          material.name?.toLowerCase().includes("bronze"),
-      );
+      const jewelryMaterials = materials.filter((material) => material.name);
       setAvailableMaterials(jewelryMaterials);
     }
   }, [materials]);
-  
 
   // Initialize form data
-  // useEffect(() => {
-  //   if (selectedStage) {
-  //     const initialData = {
-  //       assigned_to: selectedStage.assigned_to || "",
-  //       status: selectedStage.status || "",
-  //       start_date: selectedStage.start_date
-  //         ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-  //         : "",
-  //       end_date: selectedStage.end_date
-  //         ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-  //         : "",
-  //       material_id: selectedStage.material_id || "",
-  //       material_type: selectedStage.material_type || "",
-  //       material_item_code: selectedStage.material_item_code || "",
-  //       material_issued_qty: selectedStage.material_issued_qty || "",
-  //       material_used_qty: selectedStage.material_used_qty || "",
-  //       material_returned_qty: selectedStage.material_returned_qty || "",
-  //       material_wastage_qty: selectedStage.material_wastage_qty || "",
-  //       material_wastage_type: selectedStage.material_wastage_type || "normal",
-  //       purity: selectedStage.purity || "",
-  //       material_unit: selectedStage.material_unit || "",
-  //       material_unit_id: selectedStage.material_unit_id || "",
-  //       casting_method: selectedStage.casting_method || "lost_wax",
-  //       mold_type: selectedStage.mold_type || "rubber",
-  //       tree_size: selectedStage.tree_size || "",
-  //       burnout_time: selectedStage.burnout_time || "",
-  //       casting_temperature: selectedStage.casting_temperature || "",
-  //       pressure_applied: selectedStage.pressure_applied || "",
-  //       vacuum_level: selectedStage.vacuum_level || "",
-  //       surface_quality: selectedStage.surface_quality || "good",
-  //       dimensional_accuracy:
-  //         selectedStage.dimensional_accuracy || "within_tolerance",
-  //       porosity_level: selectedStage.porosity_level || "low",
-  //       defects: selectedStage.defects || "",
-  //       rework_required: selectedStage.rework_required || false,
-  //       rework_reason: selectedStage.rework_reason || "",
-  //       labour_hours: selectedStage.labour_hours || "",
-  //       actual_hours: selectedStage.actual_hours || "",
-  //       next_stage: selectedStage.next_stage || "",
-  //       stage: selectedStage.next_stage || selectedStage.stage || "",
-  //       remarks: selectedStage.remarks || "",
-  //       material_cost: selectedStage.material_cost || "",
-  //       labour_cost: selectedStage.labour_cost || "",
-  //       equipment_cost: selectedStage.equipment_cost || "",
-  //       consumables_cost: selectedStage.consumables_cost || "",
-  //       gas_cost: selectedStage.gas_cost || "",
-  //       other_costs: selectedStage.other_costs || "",
-  //       total_cost: selectedStage.total_cost || "",
-  //       cost_currency: selectedStage.cost_currency || "INR",
-  //       cost_status: selectedStage.cost_status || "estimated",
-  //       markup_percentage: selectedStage.markup_percentage || "25",
-  //       final_price: selectedStage.final_price || "",
-  //       preparation_time: selectedStage.preparation_time || "",
-  //       mold_making_time: selectedStage.mold_making_time || "",
-  //       burnout_time_track: selectedStage.burnout_time_track || "",
-  //       casting_time: selectedStage.casting_time || "",
-  //       finishing_time: selectedStage.finishing_time || "",
-  //       quality_check_time: selectedStage.quality_check_time || "",
-  //       total_time_spent: selectedStage.total_time_spent || "",
-  //       time_breakdown: selectedStage.time_breakdown || "",
-  //       file_version: selectedStage.file_version || "1.0",
-  //       file_revisions: selectedStage.file_revisions || 0,
-  //       source_files: selectedStage.source_files || [],
-  //       output_files: selectedStage.output_files || [],
-  //       file_status: selectedStage.file_status || "draft",
-  //       backup_location: selectedStage.backup_location || "",
-  //     };
 
-  //     setFormData(initialData);
+  useEffect(() => {
+    if (selectedStage) {
+      const initialData = {
+        assigned_to: selectedStage.assigned_to || "",
+        status: selectedStage.status || "",
+        start_date: selectedStage.start_date
+          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+          : "",
+        end_date: selectedStage.end_date
+          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+          : "",
+        material_id: selectedStage.material_id || "",
+        material_type: selectedStage.material_type || "",
+        material_item_code: selectedStage.material_item_code || "",
+        material_issued_qty: selectedStage.material_issued_qty || "",
+        material_used_qty: selectedStage.material_used_qty || "",
+        material_returned_qty: selectedStage.material_returned_qty || "",
+        material_wastage_qty: selectedStage.material_wastage_qty || "",
+        material_wastage_type: selectedStage.material_wastage_type || "normal",
+        purity: selectedStage.purity || "",
+        material_unit: selectedStage.material_unit || "",
+        material_unit_id: selectedStage.material_unit_id || "",
+        casting_method: selectedStage.casting_method || "lost_wax",
+        mold_type: selectedStage.mold_type || "rubber",
+        tree_size: selectedStage.tree_size || "",
+        burnout_time: selectedStage.burnout_time || "",
+        casting_temperature: selectedStage.casting_temperature || "",
+        pressure_applied: selectedStage.pressure_applied || "",
+        vacuum_level: selectedStage.vacuum_level || "",
+        surface_quality: selectedStage.surface_quality || "good",
+        dimensional_accuracy:
+          selectedStage.dimensional_accuracy || "within_tolerance",
+        porosity_level: selectedStage.porosity_level || "low",
+        defects: selectedStage.defects || "",
+        rework_required: selectedStage.rework_required || false,
+        rework_reason: selectedStage.rework_reason || "",
+        labour_hours: selectedStage.labour_hours || "",
+        actual_hours: selectedStage.actual_hours || "",
+        next_stage: selectedStage.next_stage || "",
+        stage: selectedStage.next_stage || selectedStage.stage || "",
+        remarks: selectedStage.remarks || "",
+        material_cost: selectedStage.material_cost || "",
+        labour_cost: selectedStage.labour_cost || "",
+        equipment_cost: selectedStage.equipment_cost || "",
+        consumables_cost: selectedStage.consumables_cost || "",
+        gas_cost: selectedStage.gas_cost || "",
+        other_costs: selectedStage.other_costs || "",
+        total_cost: selectedStage.total_cost || "",
+        cost_currency: selectedStage.cost_currency || "INR",
+        cost_status: selectedStage.cost_status || "estimated",
+        markup_percentage: selectedStage.markup_percentage || "25",
+        final_price: selectedStage.final_price || "",
+        preparation_time: selectedStage.preparation_time || "",
+        mold_making_time: selectedStage.mold_making_time || "",
+        burnout_time_track: selectedStage.burnout_time_track || "",
+        casting_time: selectedStage.casting_time || "",
+        finishing_time: selectedStage.finishing_time || "",
+        quality_check_time: selectedStage.quality_check_time || "",
+        total_time_spent: selectedStage.total_time_spent || "",
+        time_breakdown: selectedStage.time_breakdown || "",
+        file_version: selectedStage.file_version || "1.0",
+        file_revisions: selectedStage.file_revisions || 0,
+        source_files: selectedStage.source_files || [],
+        output_files: selectedStage.output_files || [],
+        file_status: selectedStage.file_status || "draft",
+        backup_location: selectedStage.backup_location || "",
+      };
 
-  //     if (initialData.material_id && materials.length > 0) {
-  //       const material = materials.find(
-  //         (m) =>
-  //           m._id === initialData.material_id ||
-  //           m.material_id === initialData.material_id,
-  //       );
-  //       if (material) {
-  //         setSelectedMaterial(material);
-  //       }
-  //     }
+      setFormData(initialData);
 
-  //     // Initialize selected labor costs from existing data
-  //     if (selectedStage.selected_labor_costs && Array.isArray(selectedStage.selected_labor_costs)) {
-  //       setSelectedLaborCosts(selectedStage.selected_labor_costs);
-  //       calculateLaborCostFromSelection(selectedStage.selected_labor_costs);
-  //     }
+      if (initialData.material_id && materials.length > 0) {
+        const material = materials.find(
+          (m) =>
+            m._id === initialData.material_id ||
+            m.material_id === initialData.material_id,
+        );
+        if (material) {
+          setSelectedMaterial(material);
+        }
+      }
 
-  //     if (selectedStage.files && Array.isArray(selectedStage.files)) {
-  //       const existingFiles = selectedStage.files
-  //         .filter((file) => file.isExisting)
-  //         .map((file) => ({
-  //           ...file,
-  //           id: file.id || file._id || Math.random().toString(36).substr(2, 9),
-  //           isExisting: true,
-  //           file: null,
-  //           category: file.category || "output",
-  //           version: file.version || "1.0",
-  //         }));
-  //       setCastingFiles(existingFiles);
-  //     } else {
-  //       setCastingFiles([]);
-  //     }
+      // Initialize selected labor costs from existing data
+      if (
+        selectedStage.selected_labor_costs &&
+        Array.isArray(selectedStage.selected_labor_costs)
+      ) {
+        setSelectedLaborCosts(selectedStage.selected_labor_costs);
+        calculateLaborCostFromSelection(selectedStage.selected_labor_costs);
+      }
 
-  //     setFormErrors({});
-  //     calculateMaterialBalance();
-  //     calculateTotalCost();
-  //     calculateTotalTime();
-  //   }
-  // }, [selectedStage, materials]);
+      if (selectedStage.files && Array.isArray(selectedStage.files)) {
+        const existingFiles = selectedStage.files
+          .filter((file) => file.isExisting)
+          .map((file) => ({
+            ...file,
+            id: file.id || file._id || Math.random().toString(36).substr(2, 9),
+            isExisting: true,
+            file: null,
+            category: file.category || "output",
+            version: file.version || "1.0",
+          }));
+        setCastingFiles(existingFiles);
+      } else {
+        setCastingFiles([]);
+      }
 
+      setFormErrors({});
+      calculateMaterialBalance();
+      calculateTotalCost();
+      calculateTotalTime();
+    }
+  }, [selectedStage, materials]);
 
   // Initialize selected labor costs from existing data
-useEffect(() => {
-  if (selectedStage && laborCosts.length > 0) {
-    if (selectedStage.selected_labor_costs && Array.isArray(selectedStage.selected_labor_costs)) {
-      // Map the IDs to actual labor cost objects
-      const initialSelectedCosts = laborCosts.filter(cost => 
-        selectedStage.selected_labor_costs.includes(cost._id)
-      );
-      
-      if (initialSelectedCosts.length > 0) {
-        setSelectedLaborCosts(initialSelectedCosts);
-        calculateLaborCostFromSelection(initialSelectedCosts);
+  useEffect(() => {
+    if (selectedStage && laborCosts.length > 0) {
+      if (
+        selectedStage.selected_labor_costs &&
+        Array.isArray(selectedStage.selected_labor_costs)
+      ) {
+        // Map the IDs to actual labor cost objects
+        const initialSelectedCosts = laborCosts.filter((cost) =>
+          selectedStage.selected_labor_costs.includes(cost._id),
+        );
+
+        if (initialSelectedCosts.length > 0) {
+          setSelectedLaborCosts(initialSelectedCosts);
+          calculateLaborCostFromSelection(initialSelectedCosts);
+        }
       }
     }
-  }
-}, [selectedStage, laborCosts]);
+  }, [selectedStage, laborCosts]);
 
+  useEffect(() => {
+    calculateTotalTime();
+  }, [
+    formData.preparation_time,
+    formData.mold_making_time,
+    formData.burnout_time_track,
+    formData.casting_time,
+    formData.finishing_time,
+    formData.quality_check_time,
+  ]);
 
-useEffect(() => {
-  calculateTotalTime();
-}, [
-  formData.preparation_time,
-  formData.mold_making_time,
-  formData.burnout_time_track,
-  formData.casting_time,
-  formData.finishing_time,
-  formData.quality_check_time,
-]);
-
-
-// Auto-recalculate total cost when individual costs change
-useEffect(() => {
-  calculateTotalCost();
-}, [
-  formData.material_cost,
-  formData.equipment_cost,
-  formData.consumables_cost,
-  formData.gas_cost,
-  formData.other_costs,
-  formData.markup_percentage,
-  formData.labour_cost, // This will auto-update when labor costs are selected
-]);
-
+  // Auto-recalculate total cost when individual costs change
+  useEffect(() => {
+    calculateTotalCost();
+  }, [
+    formData.material_cost,
+    formData.equipment_cost,
+    formData.consumables_cost,
+    formData.gas_cost,
+    formData.other_costs,
+    formData.markup_percentage,
+    formData.labour_cost, // This will auto-update when labor costs are selected
+  ]);
 
   // Handle material selection
   const handleMaterialChange = (materialId) => {
@@ -685,9 +683,9 @@ useEffect(() => {
       // Calculate material balance if material quantities changed
       if (name.includes("material_")) {
         calculateMaterialBalance();
-        
+
         // Also recalculate material cost
-        if (selectedMaterial && (name.includes("_qty"))) {
+        if (selectedMaterial && name.includes("_qty")) {
           const issued = Number(updatedData.material_issued_qty) || 0;
           const returned = Number(updatedData.material_returned_qty) || 0;
           const unitCost = Number(selectedMaterial.cost) || 0;
@@ -1070,7 +1068,9 @@ useEffect(() => {
           onClose();
         } else {
           const errorMsg =
-            result?.error || result?.message || "Failed to update Casting stage";
+            result?.error ||
+            result?.message ||
+            "Failed to update Casting stage";
           setUploadError(errorMsg);
         }
       }
@@ -1617,9 +1617,9 @@ useEffect(() => {
                                   Available Stock
                                 </small>
                                 <div className="fw-medium">
-                                   {selectedMaterial.unit_name?.toLowerCase()
-                                ? `${selectedMaterial.available_weight}`
-                                : `${selectedMaterial.available_quantity || 0}`}
+                                  {selectedMaterial.unit_name?.toLowerCase()
+                                    ? `${selectedMaterial.available_weight}`
+                                    : `${selectedMaterial.available_quantity || 0}`}
                                   {selectedMaterial.unit_code}
                                 </div>
                               </div>
@@ -2396,7 +2396,7 @@ useEffect(() => {
                 {expandedSections.cost && (
                   <div className="card-body">
                     <div className="row mb-3">
-                      <div className="col-md-12">
+                      {/* <div className="col-md-12">
                         <label className="form-label fw-medium">
                           Cost Status
                         </label>
@@ -2413,7 +2413,7 @@ useEffect(() => {
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div> */}
                     </div>
 
                     <div className="row g-2">
@@ -3148,7 +3148,9 @@ useEffect(() => {
                               className="progress-bar bg-secondary"
                               style={{
                                 width: `${
-                                  (parseFloat(formData.quality_check_time || 0) /
+                                  (parseFloat(
+                                    formData.quality_check_time || 0,
+                                  ) /
                                     parseFloat(
                                       formData.total_time_spent || 1,
                                     )) *

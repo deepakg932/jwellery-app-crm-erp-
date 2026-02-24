@@ -102,7 +102,7 @@ export default function PriceMakingTable() {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 2
-    }).format(amount || 0);
+    }).format( amount || 0);
   };
 
   // Get badge color based on cost type
@@ -173,7 +173,7 @@ export default function PriceMakingTable() {
             <p>
               Are you sure you want to delete this price making entry?
             </p>
-            {selectedItem && (
+            {/* {selectedItem && (
               <div className="alert alert-warning py-2 mt-3">
                 <small>
                   <strong>Cost Type:</strong> {selectedItem?.cost_type}<br/>
@@ -182,7 +182,7 @@ export default function PriceMakingTable() {
                   <strong>Amount:</strong> {formatCurrency(selectedItem?.cost_amount)}
                 </small>
               </div>
-            )}
+            )} */}
           </div>
 
           <div className="modal-footer border-top pt-3">
@@ -347,7 +347,6 @@ export default function PriceMakingTable() {
                     
                     {/* Cost Amount */}
                     <td className="fw-bold text-success">
-                      <FiDollarSign className="me-1" size={14} />
                       {formatCurrency(item.cost_amount)}
                     </td>
 

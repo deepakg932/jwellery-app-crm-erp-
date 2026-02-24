@@ -9,106 +9,139 @@ export default function useCadStages() {
   const [employees, setEmployees] = useState([]);
   const [laborCosts, setLaborCosts] = useState([]);
 
-  const fetchCadStages = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError("");
+const fetchCadStages = useCallback(async () => {
+  try {
+    setLoading(true);
+    setError("");
 
-      const url = API_ENDPOINTS.getCadStages();
-      console.log("Fetching CAD stages from:", url);
+    const url = API_ENDPOINTS.getCadStages();
+    console.log("Fetching CAD stages from:", url);
 
-      const res = await axios.get(url);
-      console.log("API Response:", res.data);
+    const res = await axios.get(url);
+    console.log("API Response:", res.data);
 
-      let cadStagesData = [];
+    let cadStagesData = [];
 
-      // Extract CAD stages from response
-      if (res.data?.success && Array.isArray(res.data.data)) {
-        cadStagesData = res.data.data.map((cadStage) => {
-          console.log("Processing CAD stage:", cadStage);
+    // Extract CAD stages from response
+    if (res.data?.success && Array.isArray(res.data.data)) {
+      cadStagesData = res.data.data.map((cadStage) => {
+        console.log("Processing CAD stage:", cadStage);
+        
+        // Parse labor_cost_breakdown_raw if it's a string
+        let parsedLaborCostBreakdownRaw = [];
+        if (cadStage.labor_cost_breakdown_raw && cadStage.labor_cost_breakdown_raw.length > 0) {
+          try {
+            // Handle if it's a string that needs parsing
+            if (typeof cadStage.labor_cost_breakdown_raw[0] === 'string') {
+              parsedLaborCostBreakdownRaw = JSON.parse(cadStage.labor_cost_breakdown_raw[0]);
+            } else {
+              parsedLaborCostBreakdownRaw = cadStage.labor_cost_breakdown_raw;
+            }
+          } catch (e) {
+            console.error("Error parsing labor_cost_breakdown_raw:", e);
+            parsedLaborCostBreakdownRaw = cadStage.labor_cost_breakdown_raw;
+          }
+        }
 
-          return {
-            // Core IDs
-            _id: cadStage._id,
-            cad_stage_id: cadStage._id,
-            job_card_id: cadStage.job_card_id,
+        return {
+          // Core IDs
+          _id: cadStage._id,
+          cad_stage_id: cadStage._id,
+          job_card_id: cadStage.job_card_id,
 
-            // Job Card Info
-            job_card_no: cadStage.job_card_no,
+          // Job Card Info
+          job_card_no: cadStage.job_card_no,
 
-            // CAD Stage Basic Info
-            assigned_to: cadStage.assigned_to?._id,
-            assigned_name: cadStage.assigned_to?.name,
-            assigned_department: cadStage.department,
-            status: cadStage.status,
-            start_date: cadStage.start_date,
-            end_date: cadStage.end_date,
-            completed_at: cadStage.completed_at,
-            remarks: cadStage.remarks,
+          // CAD Stage Basic Info
+          assigned_to: cadStage.assigned_to?._id,
+          assigned_name: cadStage.assigned_to?.name,
+          assigned_email: cadStage.assigned_to?.email,
+          assigned_department: cadStage.department,
+          status: cadStage.status,
+          start_date: cadStage.start_date,
+          end_date: cadStage.end_date,
+          completed_at: cadStage.completed_at,
+          remarks: cadStage.remarks,
 
-            // Time tracking
-            estimated_hours: cadStage.estimated_hours,
-            actual_hours: cadStage.actual_hours,
-            design_time: cadStage.design_time,
-            modeling_time: cadStage.modeling_time,
-            rendering_time: cadStage.rendering_time,
-            revision_time: cadStage.revision_time,
-            review_time: cadStage.review_time,
-            total_time_spent: cadStage.total_time_spent,
-            time_breakdown: cadStage.time_breakdown,
+          // Time tracking
+          estimated_hours: cadStage.estimated_hours,
+          actual_hours: cadStage.actual_hours,
+          design_time: cadStage.design_time || 0,
+          revision_time: cadStage.revision_time || 0,
+          total_time_spent: cadStage.total_time_spent,
+          time_breakdown: cadStage.time_breakdown,
 
-            // CAD Details
-            cad_software: cadStage.cad_software,
-            complexity_level: cadStage.complexity_level,
+          // CAD Details
+          cad_software: cadStage.cad_software,
+          complexity_level: cadStage.complexity_level,
 
-            // Cost Tracking
-            material_cost: cadStage.material_cost,
-            labor_cost: cadStage.labor_cost,
-            software_cost: cadStage.software_cost,
-            machine_cost: cadStage.machine_cost,
-            other_costs: cadStage.other_costs,
-            total_cost: cadStage.total_cost,
-            markup_percentage: cadStage.markup_percentage,
-            final_price: cadStage.final_price,
-            cost_currency: cadStage.cost_currency,
-            cost_status: cadStage.cost_status,
+          // Cost Tracking
+          material_cost: cadStage.material_cost || 0,
+          labor_cost: cadStage.labor_cost || 0,
+          software_cost: cadStage.software_cost || 0,
+          machine_cost: cadStage.machine_cost || 0,
+          other_costs: cadStage.other_costs || 0,
+          total_cost: cadStage.total_cost,
+          markup_percentage: cadStage.markup_percentage,
+          final_price: cadStage.final_price,
+          cost_currency: cadStage.cost_currency,
+          cost_status: cadStage.cost_status,
 
-            // File Tracking
-            file_version: cadStage.file_version,
-            file_revisions: cadStage.file_revisions || 0,
-            file_status: cadStage.file_status,
-            files: cadStage.files || [],
+          // File Tracking (adjust based on your actual file structure)
+          file_version: cadStage.file_version || 1,
+          file_revisions: cadStage.file_revisions || 0,
+          file_status: cadStage.file_status || 'pending',
+          files: cadStage.files || [],
 
-            // Selected labor costs (if available)
-            selected_labor_costs: cadStage.selected_labor_costs || [],
-            labor_cost_breakdown: cadStage.labor_cost_breakdown || [],
-            labor_cost_breakdown_raw: cadStage.labor_cost_breakdown_raw || [],
+          // Selected labor costs (if available)
+          selected_labor_costs: cadStage.selected_labor_costs || [],
+          labor_cost_breakdown: cadStage.labor_cost_breakdown || [],
+          labor_cost_breakdown_raw: parsedLaborCostBreakdownRaw,
 
-            // Dates
-            createdAt: cadStage.createdAt,
-            updatedAt: cadStage.updatedAt,
+          // Dates
+          createdAt: cadStage.createdAt,
+          updatedAt: cadStage.updatedAt,
 
-            // For UpdateCadCreation component compatibility
-            stage: "", // Next stage field - empty initially
-            source_files: [], // Extract from files if needed
-            output_files: [], // Extract from files if needed
-            backup_location: "", // Might be in files array
-          };
-        });
-      }
-
-      console.log("Processed CAD stages:", cadStagesData);
-      setCadStages(cadStagesData);
-      return cadStagesData;
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setError(err.response?.data?.message || "Failed to load CAD stages");
-      setCadStages([]);
-      return [];
-    } finally {
-      setLoading(false);
+          // For UpdateCadCreation component compatibility
+          stage: getNextStage(cadStage.status), // Determine next stage based on current status
+          source_files: cadStage.files?.filter(f => f.type === 'source') || [], // Filter if files have type
+          output_files: cadStage.files?.filter(f => f.type === 'output') || [], // Filter if files have type
+          backup_location: getBackupLocation(cadStage.files), // Extract from files if available
+        };
+      });
     }
-  }, []);
+
+    console.log("Processed CAD stages:", cadStagesData);
+    setCadStages(cadStagesData);
+    return cadStagesData;
+  } catch (err) {
+    console.error("Fetch error:", err);
+    setError(err.response?.data?.message || "Failed to load CAD stages");
+    setCadStages([]);
+    return [];
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+// Helper function to determine next stage based on current status
+const getNextStage = (currentStatus) => {
+  const stageFlow = {
+    'pending': 'in-progress',
+    'in-progress': 'review',
+    'review': 'approved',
+    'approved': 'completed',
+    'rejected': 'rework'
+  };
+  return stageFlow[currentStatus] || '';
+};
+
+// Helper function to extract backup location from files
+const getBackupLocation = (files) => {
+  if (!files || !Array.isArray(files)) return '';
+  const backupFile = files.find(f => f.type === 'backup' || f.isBackup);
+  return backupFile?.path || backupFile?.url || '';
+};
 
   // Fetch employees
   const fetchEmployees = async () => {
@@ -133,40 +166,66 @@ export default function useCadStages() {
       console.log("Price making API Response:", response.data);
 
       if (response.data?.success && Array.isArray(response.data.data)) {
-        // Filter ONLY labor costs (exclude karigar costs)
-        const laborCostData = response.data.data.filter((item) => {
-          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
-          const lowerCaseName = costName.toLowerCase();
-          // Include only "labor" costs, exclude "karigar" costs
-          return (
-            lowerCaseName.includes("labor") &&
-            !lowerCaseName.includes("karigar")
-          );
+        const allItems = response.data.data;
+
+        const potentialLaborItems = allItems.filter((item) => {
+          const candidates = [
+            item.cost_name,
+            item.cost_type_id?.cost_name,
+            item.cost_type_id?.cost_name_id?.cost_name,
+            item.cost_type?.cost_name,
+            item.cost_type_id?.cost_type,
+            item.cost_type,
+          ].filter(Boolean);
+
+          const joined = candidates.join(" ").toLowerCase();
+
+          const isLabor = (joined.includes("labor") || joined.includes("labour")) && !joined.includes("karigar");
+
+          const explicitFlag = item.is_labor === true || item.isLabor === true || item.cost_category === "labor";
+
+          return isLabor || explicitFlag;
         });
 
-        // Process and format labor costs - using fixed amounts (not hourly)
+        const laborCostData = potentialLaborItems.length > 0 ? potentialLaborItems : allItems.filter(item => {
+          const ct = (item.cost_type || "").toString().toLowerCase();
+          return ct.includes("labor") || ct.includes("labour");
+        });
+
         const processedCosts = laborCostData.map((item) => {
+          const resolvedName = item.cost_name || item.cost_type_id?.cost_name_id?.cost_name || item.cost_type?.cost_name || item.cost_type || "Labor Cost";
           return {
             ...item,
             _id: item._id,
-            cost_name:
-              item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
-            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_name: resolvedName,
+            cost_type: item.cost_type_id?.cost_type || item.cost_type || "Direct Cost",
             cost_amount: parseFloat(item.cost_amount) || 0,
-            unit: item.unit_id?.name || "unit",
-            stage_name: item.making_stage_id?.stage_name || "General",
-            sub_stage_name:
-              item.making_sub_stage_id?.sub_stage_name || "General",
+            unit: item.unit_id?.name || item.unit || "unit",
+            stage_name: item.making_stage_id?.stage_name || item.making_stage || "General",
+            sub_stage_name: item.making_sub_stage_id?.sub_stage_name || item.making_sub_stage || "General",
             is_active: item.is_active !== false,
           };
         });
 
-        console.log(
-          "Processed labor costs (LABOR ONLY - no karigar):",
-          processedCosts,
-        );
-        setLaborCosts(processedCosts);
-        return processedCosts;
+        // Fallback: if filtering produced no results, map all items so UI has options
+        let finalCosts = processedCosts;
+        if (finalCosts.length === 0 && Array.isArray(allItems) && allItems.length > 0) {
+          finalCosts = allItems.map((item) => ({
+            ...item,
+            _id: item._id,
+            cost_name: item.cost_name || item.cost_type_id?.cost_name_id?.cost_name || item.cost_type || "Cost",
+            cost_type: item.cost_type || item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || item.unit || "unit",
+            stage_name: item.making_stage_id?.stage_name || item.making_stage || "General",
+            sub_stage_name: item.making_sub_stage_id?.sub_stage_name || item.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          }));
+        }
+
+        console.log("Processed labor costs (robust):", finalCosts);
+        setLaborCosts(finalCosts);
+        return finalCosts;
       }
 
       setLaborCosts([]);

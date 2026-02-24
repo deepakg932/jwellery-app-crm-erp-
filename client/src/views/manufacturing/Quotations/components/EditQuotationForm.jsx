@@ -73,7 +73,7 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
   const statusOptions = [
     { value: "draft", label: "Draft" },
     { value: "sent", label: "Sent" },
-    { value: "accepted", label: "Accepted" },
+    { value: "approved", label: "Approved" },
     { value: "rejected", label: "Rejected" },
     { value: "expired", label: "Expired" },
     { value: "converted", label: "Converted to Order" },
@@ -88,9 +88,23 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
       const customerId =
         quotation.customer_id?._id || quotation.customer_id || "";
 
-      // Extract branch ID (it might be an object with _id)
-      const branchId = quotation.branch_id?._id || quotation.branch_id || "";
 
+        
+
+      // // Extract branch ID (it might be an object with _id)
+      // const branchId = quotation.branch_id?._id || quotation.branch_id || "";
+
+let branchId = "";
+    if (quotation.branch_id) {
+      if (typeof quotation.branch_id === 'object' && quotation.branch_id._id) {
+        branchId = quotation.branch_id._id; // Extract just the ID from object
+      } else if (typeof quotation.branch_id === 'string') {
+        branchId = quotation.branch_id;
+      }
+    }
+    console.log("Extracted branch ID:", branchId);
+
+    console.log("Extracted branch ID:", branchId);
       // Format dates from API response
       const formatDateForInput = (dateString) => {
         if (!dateString) return "";
@@ -148,7 +162,8 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
         subtotal: quotation.subtotal || 0,
         total_amount: quotation.total_amount || 0,
         grand_total: quotation.grand_total || 0,
-        branch_id: branchId,
+          branch_id: branchId, // Use the extracted branch ID
+        // branch_id: branchId,
         status: quotation.status || "draft",
         valid_days: quotation.valid_days || 30,
       };
@@ -527,46 +542,77 @@ const EditQuotationForm = ({ quotation, onClose, onSave, loading = false }) => {
     };
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+const handleSubmit = (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    const payload = {
-      _id: quotation._id,
-      quotation_number: quotation.quotation_number,
-      customer_id: formData.customer_id,
-      quotation_date: formData.quotation_date,
-      expiry_date: formData.expiry_date,
-      items: formData.items
-        .filter((item) => item.product_id)
-        .map((item) => ({
-          product_id: item.product_id,
-          product_code: item.product_code,
-          product_name: item.product_name,
-          quantity: parseFloat(item.quantity) || 1,
-          unit_price: parseFloat(item.unit_price) || 0,
-          discount: parseFloat(item.discount) || 0,
-          tax_rate: parseFloat(item.tax_rate) || 0,
-          tax_amount: parseFloat(item.tax_amount) || 0,
-          net_price: parseFloat(item.net_price) || 0,
-          subtotal: parseFloat(item.subtotal) || 0,
-        })),
-      note: formData.note,
-      terms_conditions: formData.terms_conditions,
-      shipping_cost: parseFloat(formData.shipping_cost) || 0,
-      discount: parseFloat(formData.discount) || 0,
-      tax_amount: parseFloat(formData.tax_amount) || 0,
-      subtotal: parseFloat(formData.subtotal) || 0,
-      total_amount: parseFloat(formData.total_amount) || 0,
-      grand_total: parseFloat(formData.grand_total) || 0,
-      branch_id: formData.branch_id,
-      status: formData.status,
-      valid_days: parseInt(formData.valid_days) || 30,
-    };
+  // // Clean the branch_id - extract just the ID if it contains extra text
+  // let cleanBranchId = formData.branch_id;
+  
+  // // If branch_id contains parentheses or extra text, extract just the ID part
+  // if (formData.branch_id && typeof formData.branch_id === 'string') {
+  //   // Check if it contains parentheses (like "343ergdf (IND9047)")
+  //   const match = formData.branch_id.match(/^([a-f0-9]+)/i);
+  //   if (match) {
+  //     cleanBranchId = match[1]; // Extract just the hex ID
+  //   }
+  // }
 
-    console.log("Updating quotation data:", payload);
-    onSave(payload);
+
+  let cleanBranchId = formData.branch_id;
+
+if (
+  cleanBranchId &&
+  typeof cleanBranchId === "string" &&
+  cleanBranchId.includes("(")
+) {
+  // if user mistakenly selected label text
+  const branch = branches.find(
+    (b) =>
+      `${b.branch_name} (${b.branch_code})` === formData.branch_id
+  );
+
+  if (branch) {
+    cleanBranchId = branch._id;
+  }
+}
+
+  const payload = {
+    _id: quotation._id,
+    quotation_number: quotation.quotation_number,
+    customer_id: formData.customer_id,
+    quotation_date: formData.quotation_date,
+    expiry_date: formData.expiry_date,
+    items: formData.items
+      .filter((item) => item.product_id)
+      .map((item) => ({
+        product_id: item.product_id,
+        product_code: item.product_code,
+        product_name: item.product_name,
+        quantity: parseFloat(item.quantity) || 1,
+        unit_price: parseFloat(item.unit_price) || 0,
+        discount: parseFloat(item.discount) || 0,
+        tax_rate: parseFloat(item.tax_rate) || 0,
+        tax_amount: parseFloat(item.tax_amount) || 0,
+        net_price: parseFloat(item.net_price) || 0,
+        subtotal: parseFloat(item.subtotal) || 0,
+      })),
+    note: formData.note,
+    terms_conditions: formData.terms_conditions,
+    shipping_cost: parseFloat(formData.shipping_cost) || 0,
+    discount: parseFloat(formData.discount) || 0,
+    tax_amount: parseFloat(formData.tax_amount) || 0,
+    subtotal: parseFloat(formData.subtotal) || 0,
+    total_amount: parseFloat(formData.total_amount) || 0,
+    grand_total: parseFloat(formData.grand_total) || 0,
+    branch_id: cleanBranchId, // Use the cleaned branch ID
+    status: formData.status,
+    valid_days: parseInt(formData.valid_days) || 30,
   };
+
+  console.log("Updating quotation data with cleaned branch_id:", payload.branch_id);
+  onSave(payload);
+};
 
   const handleClose = () => {
     setFormData({

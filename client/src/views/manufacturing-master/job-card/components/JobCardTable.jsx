@@ -294,10 +294,10 @@ const JobCardTable = () => {
 
   // Open edit modal
   const handleOpenEdit = (jobCard) => {
-    if (jobCard.status === "completed" || jobCard.status === "delivered") {
-      alert("Cannot edit a completed or delivered job card");
-      return;
-    }
+    // if (jobCard.status === "completed" || jobCard.status === "delivered") {
+    //   alert("Cannot edit a completed or delivered job card");
+    //   return;
+    // }
     setSelectedItem(jobCard);
     setShowEditModal(true);
   };
@@ -479,10 +479,10 @@ const JobCardTable = () => {
                       <thead>
                         <tr>
                           <th>Item</th>
-                          <th>Description</th>
+                          {/* <th>Description</th> */}
                           <th className="text-end">Qty</th>
-                          <th className="text-end">Price</th>
-                          <th className="text-end">Total</th>
+                          {/* <th className="text-end">Price</th> */}
+                          {/* <th className="text-end">Total</th> */}
                         </tr>
                       </thead>
                       <tbody>
@@ -494,22 +494,22 @@ const JobCardTable = () => {
                                   {item.product_name}
                                 </div>
                                 <div className="small text-muted">
-                                  {item.product_code}
+                                  {item.article_no}
                                 </div>
                               </div>
                             </td>
-                            <td>
+                            {/* <td>
                               <small className="text-muted">
                                 {item.description || "No description"}
                               </small>
-                            </td>
+                            </td> */}
                             <td className="text-end">{item.quantity}</td>
-                            <td className="text-end">
+                            {/* <td className="text-end">
                               {formatCurrency(item.unit_price)}
                             </td>
                             <td className="text-end fw-medium">
                               {formatCurrency(item.total_amount)}
-                            </td>
+                            </td> */}
                           </tr>
                         ))}
                       </tbody>
@@ -601,7 +601,7 @@ const JobCardTable = () => {
                     </div>
                   </div>
                 </div>
-                <div className="col-md-6">
+                {/* <div className="col-md-6">
                   <div className="card border">
                     <div className="card-body">
                       <h6 className="fw-bold mb-3">Amount Summary</h6>
@@ -626,7 +626,7 @@ const JobCardTable = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
 
@@ -887,7 +887,6 @@ const JobCardTable = () => {
                 <th>Priority</th>
                 <th>Status</th>
                 <th>Assigned To</th>
-                <th className="text-end">Amount</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
@@ -1004,10 +1003,6 @@ const JobCardTable = () => {
                       </small>
                     </td>
 
-                    <td className="text-end fw-bold">
-                      {formatCurrency(jobCard.total_amount)}
-                    </td>
-
                     {/* ACTION BUTTONS */}
                     <td>
                       <div className="d-flex justify-content-end gap-2">
@@ -1026,12 +1021,13 @@ const JobCardTable = () => {
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                           onClick={() => handleOpenEdit(jobCard)}
-                          disabled={
-                            (actionLoading.type &&
-                              actionLoading.id === jobCard._id) ||
-                            jobCard.status === "completed" ||
-                            jobCard.status === "delivered"
-                          }
+                          // disabled={
+                          //   (actionLoading.type &&
+                          //     actionLoading.id === jobCard._id) ||
+                          //   jobCard.status === "completed" ||
+                          //   jobCard.status === "delivered"
+                          // }
+                            // disabled={jobCard.status === "completed" || jobCard.status === "delivered"}
                           title="Edit"
                         >
                           {actionLoading.type === "update" &&

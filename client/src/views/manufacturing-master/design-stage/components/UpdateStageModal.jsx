@@ -109,25 +109,21 @@ const UpdateStageModal = ({
 
   // Status options
   const defaultStatusOptions = [
-    { value: "draft", label: "Draft", color: "secondary", icon: "✏️" },
-    { value: "in_progress", label: "In Progress", color: "info", icon: "⚡" },
+    { value: "draft", label: "Draft", color: "secondary", },
     {
       value: "first_review",
       label: "First Review",
       color: "warning",
-      icon: "👁️",
+      
     },
     {
       value: "client_review",
       label: "Client Review",
       color: "warning", 
-      icon: "👤",
+      
     },
-    { value: "revisions", label: "Revisions", color: "warning", icon: "🔄" },
-    { value: "finalized", label: "Finalized", color: "success", icon: "✅" },
-    { value: "approved", label: "Approved", color: "success", icon: "👍" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
-    { value: "cancelled", label: "Cancelled", color: "danger", icon: "❌" },
+    { value: "approved", label: "Approved", color: "success",  },
+    { value: "cancelled", label: "Cancelled", color: "danger", },
   ];
 
   // Next Stage Options
@@ -158,20 +154,18 @@ const UpdateStageModal = ({
 
   // Cost Status Options
   const costStatusOptions = [
-    { value: "estimated", label: "Estimated", color: "warning", icon: "📊" },
-    { value: "calculated", label: "Calculated", color: "info", icon: "🧮" },
-    { value: "finalized", label: "Finalized", color: "success", icon: "✅" },
-    { value: "approved", label: "Approved", color: "success", icon: "👍" },
+    { value: "estimated", label: "Estimated", color: "warning",  },
+    { value: "calculated", label: "Calculated", color: "info", },
+    { value: "finalized", label: "Finalized", color: "success", },
+    { value: "approved", label: "Approved", color: "success", },
   ];
 
   // File Status Options
   const fileStatusOptions = [
-    { value: "draft", label: "Draft", icon: "📄" },
-    { value: "work_in_progress", label: "Work in Progress", icon: "⚙️" },
-    { value: "under_review", label: "Under Review", icon: "👁️" },
-    { value: "revised", label: "Revised", icon: "🔄" },
-    { value: "final", label: "Final", icon: "✅" },
-    { value: "archived", label: "Archived", icon: "📦" },
+    { value: "draft", label: "Draft",  },
+    { value: "work_in_progress", label: "Work in Progress", },
+    { value: "under_review", label: "Under Review",  },
+    { value: "archived", label: "Archived",  },
   ];
 
   // Use props or defaults
@@ -328,6 +322,8 @@ const UpdateStageModal = ({
     }
   }, [selectedStage]);
 
+
+
   const calculateTotalCost = () => {
     const material = Number(formData.material_cost) || 0;
     const labor = Number(formData.labor_cost) || 0;
@@ -360,6 +356,15 @@ const UpdateStageModal = ({
       estimated_hours: total.toFixed(1),
     }));
   };
+
+  useEffect(() => {
+    calculateTotalCost();
+  }, [
+    formData.material_cost,
+    formData.other_costs,
+    formData.markup_percentage,
+    formData.labor_cost, // This will auto-update when labor costs are selected
+  ]);
 
   // Handle form input change
   const handleInputChange = (e) => {
@@ -1054,7 +1059,7 @@ const UpdateStageModal = ({
                     </div>
 
                     <div className="row">
-                      <div className="col-md-4 mb-3">
+                      {/* <div className="col-md-4 mb-3">
                         <label className="form-label fw-medium">
                           <FiTool className="me-1" /> Stage Type
                         </label>
@@ -1072,9 +1077,9 @@ const UpdateStageModal = ({
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div> */}
 
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-6 mb-3">
                         <label className="form-label fw-medium">
                           <FiTrendingUp className="me-1" /> Next Stage
                         </label>
@@ -1094,7 +1099,7 @@ const UpdateStageModal = ({
                         </select>
                       </div>
 
-                      <div className="col-md-4 mb-3">
+                      <div className="col-md-6 mb-3">
                         <label className="form-label fw-medium">
                           <FiBarChart2 className="me-1" /> File Status
                         </label>
@@ -1255,7 +1260,7 @@ const UpdateStageModal = ({
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
-                    <div className="row mb-3">
+                    {/* <div className="row mb-3">
                       <div className="col-md-12">
                         <label className="form-label fw-medium">
                           Cost Status
@@ -1274,7 +1279,7 @@ const UpdateStageModal = ({
                           ))}
                         </select>
                       </div>
-                    </div>
+                    </div> */}
 
                     <div className="row g-2">
                       <div className="col-md-4 mb-2">

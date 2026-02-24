@@ -145,19 +145,61 @@ const ReturnDetailsModal = ({ returnItem, onClose }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {returnItem.items.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.product_name}</td>
-                          <td>{item.product_code}</td>
-                          <td className="text-center">{item.original_quantity}</td>
-                          <td className="text-center">{item.return_quantity}</td>
-                          <td>{formatCurrency(item.selling_total)}</td>
-                          <td className="fw-medium">
-                            {formatCurrency(item.final_total * (item.return_quantity / item.original_quantity))}
-                          </td>
-                          <td>{item.return_reason}</td>
-                        </tr>
-                      ))}
+                      {returnItem.items.map((item, index) => {
+                        // Look up product details from the original sale
+                        const saleItem = returnItem.sale_id?.items?.find(
+                          (si) => 
+                            si.product_id?._id === item.product_id?._id ||
+                            si._id === item.product_id?._id
+                        );
+
+                        const productName =
+                          item.product_name ||
+                          saleItem?.product_name ||
+                          item.product?.name ||
+                          item.product_id?.name ||
+                          item.product_id?.product_name ||
+                          "Unknown Product";
+
+                        // Use article_no as product code
+                        const productCode =
+                          item.product_id?.article_no ||
+                          saleItem?.product_id?.article_no ||
+                          item.product_code ||
+                          item.product?.product_code ||
+                          item.product_id?.item_code ||
+                          item.product_id?.code ||
+                          "N/A";
+
+                        // Get original quantity from sale items
+                        const originalQty =
+                          saleItem?.quantity ||
+                          item.original_quantity ||
+                          item.original_qty ||
+                          item.ordered_quantity ||
+                          item.quantity ||
+                          item.product?.ordered_quantity ||
+                          0;
+
+                        const returnedQty = item.return_quantity || 0;
+
+                        const finalAmount = parseFloat(item.final_total || item.selling_total || 0);
+                        const lineTotal = originalQty > 0
+                          ? finalAmount * (returnedQty / originalQty)
+                          : finalAmount * returnedQty;
+
+                        return (
+                          <tr key={index}>
+                            <td>{productName}</td>
+                            <td>{productCode}</td>
+                            <td className="text-center">{originalQty || "-"}</td>
+                            <td className="text-center">{returnedQty}</td>
+                            <td>{formatCurrency(item.selling_total)}</td>
+                            <td className="fw-medium">{formatCurrency(lineTotal)}</td>
+                            <td>{item.return_reason}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

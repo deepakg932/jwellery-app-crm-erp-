@@ -116,6 +116,8 @@ const PolishingStageTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentStages = filteredStages.slice(indexOfFirstItem, indexOfLastItem);
 
+console.log(currentStages)
+
   // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";

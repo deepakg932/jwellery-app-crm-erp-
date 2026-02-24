@@ -36,7 +36,7 @@ const PurchaseOrderPaymentModal = ({
   // Initialize form when purchase order changes
   useEffect(() => {
     if (purchaseOrder) {
-      const totalAmount = purchaseOrder.total_amount || 0;
+      const totalAmount = purchaseOrder.grand_total || 0;
       const currentPaidAmount = purchaseOrder.paid_amount || 0;
       const remainingBalance = totalAmount - currentPaidAmount;
       
@@ -60,7 +60,7 @@ const PurchaseOrderPaymentModal = ({
 
   if (!showModal || !purchaseOrder) return null;
 
-  const totalAmount = purchaseOrder.total_amount || 0;
+  const totalAmount = purchaseOrder.grand_total || 0;
   const currentPaidAmount = purchaseOrder.paid_amount || 0;
   const balanceAmount = purchaseOrder.balance_amount || (totalAmount - currentPaidAmount);
   
@@ -105,7 +105,7 @@ const PurchaseOrderPaymentModal = ({
 
   // Handle additional payment change
   const handleAdditionalPaymentChange = (e) => {
-    const value = parseFloat(e.target.value) || 0;
+    const value = parseFloat(e.target.value);
     const limitedValue = Math.min(value, maxAdditionalPayment);
     
     setPaymentForm((prev) => ({

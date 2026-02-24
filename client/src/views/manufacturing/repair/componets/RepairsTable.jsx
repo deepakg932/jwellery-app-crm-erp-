@@ -339,17 +339,17 @@ const RepairsTable = () => {
           <div className="modal-body">
             <p>
               Are you sure you want to delete repair{" "}
-              <strong>{selectedRepair?.repair_number}</strong>?
+              {/* <strong>{selectedRepair?.repair_number}</strong>? */}
             </p>
             <p className="text-muted small">
-              Product: <strong>{selectedRepair?.product_name || "N/A"}</strong>
+              {/* Product: <strong>{selectedRepair?.product_name || "N/A"}</strong> */}
               <br />
-              Customer:{" "}
-              <strong>{selectedRepair?.customer_name || "N/A"}</strong>
+              {/* Customer:{" "} */}
+              {/* <strong>{selectedRepair?.customer_name || "N/A"}</strong> */}
               <br />
-              Status: <strong>{selectedRepair?.status}</strong>
+              {/* Status: <strong>{selectedRepair?.status}</strong> */}
             </p>
-            <p className="text-muted small">This action cannot be undone.</p>
+            {/* <p className="text-muted small">This action cannot be undone.</p> */}
           </div>
 
           <div className="modal-footer border-top pt-3">

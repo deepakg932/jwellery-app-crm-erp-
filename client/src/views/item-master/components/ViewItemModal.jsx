@@ -184,7 +184,7 @@ const ViewItemModal = ({ show, onHide, item, formData = {} }) => {
                 <div className="row mb-2">
                   <div className="col-5 fw-medium text-muted">Product Code:</div>
                   <div className="col-7">
-                    <span className="badge bg-light text-dark border">{item.product_code || "N/A"}</span>
+                    <span className="badge bg-light text-dark border">{item.article_no || "N/A"}</span>
                   </div>
                 </div>
                 
@@ -587,7 +587,7 @@ const ViewItemModal = ({ show, onHide, item, formData = {} }) => {
                         </tr>
                         
                         {/* Additional calculated fields if they exist */}
-                        {item.base_total && (
+                        {/* {item.base_total && (
                           <tr>
                             <td className="fw-bold">Base Total:</td>
                             <td className="text-end">₹{item.base_total.toFixed(2)}</td>
@@ -599,7 +599,7 @@ const ViewItemModal = ({ show, onHide, item, formData = {} }) => {
                             <td className="fw-bold">Price Making Costs Total:</td>
                             <td className="text-end">₹{item.total_price_making_costs.toFixed(2)}</td>
                           </tr>
-                        )}
+                        )} */}
                       </tbody>
                     </table>
                   </div>

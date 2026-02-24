@@ -91,7 +91,7 @@ const UpdateCadCreation = ({
     file_status: "draft",
     backup_location: "",
   });
-
+console.log(selectedStage)
   const [selectedLaborCosts, setSelectedLaborCosts] = useState([]);
   const [formErrors, setFormErrors] = useState({});
   const [previewFile, setPreviewFile] = useState(null);
@@ -108,23 +108,23 @@ const UpdateCadCreation = ({
   // Status options
   const statusOptions = [
     { value: "draft", label: "Draft", color: "secondary", icon: "✏️" },
-    { value: "in_progress", label: "In Progress", color: "info", icon: "⚡" },
-    {
-      value: "first_review",
-      label: "First Review",
-      color: "warning",
-      icon: "👁️",
-    },
+    // { value: "in_progress", label: "In Progress", color: "info", icon: "⚡" },
+    // {
+    //   value: "first_review",
+    //   label: "First Review",
+    //   color: "warning",
+    //   icon: "👁️",
+    // },
     {
       value: "client_review",
       label: "Client Review",
       color: "warning",
       icon: "👤",
     },
-    { value: "revisions", label: "Revisions", color: "warning", icon: "🔄" },
-    { value: "finalized", label: "Finalized", color: "success", icon: "✅" },
+    // { value: "revisions", label: "Revisions", color: "warning", icon: "🔄" },
+    // { value: "finalized", label: "Finalized", color: "success", icon: "✅" },
     { value: "approved", label: "Approved", color: "success", icon: "👍" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
+    // { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
     { value: "cancelled", label: "Cancelled", color: "danger", icon: "❌" },
   ];
 
@@ -299,84 +299,151 @@ const UpdateCadCreation = ({
   formData.labor_cost, // This will auto-update when selectedLaborCosts change
 ]);
   // Initialize form data when selectedStage changes
-  useEffect(() => {
-    if (selectedStage) {
-      setFormData({
-        assigned_to: selectedStage.assigned_to || "",
-        status: selectedStage.status || "",
-        start_date: selectedStage.start_date
-          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-          : "",
-        end_date: selectedStage.end_date
-          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-          : "",
-        estimated_hours: selectedStage.estimated_hours || "",
-        actual_hours: selectedStage.actual_hours || "",
-        cad_software: selectedStage.cad_software || "",
-        complexity_level: selectedStage.complexity_level || "",
-        remarks: selectedStage.remarks || "",
-        stage: selectedStage.stage || "", // Initialize Next Stage
-
-        // Cost Tracking
-        material_cost: selectedStage.material_cost || "",
-        labor_cost: selectedStage.labor_cost || "",
-        software_cost: selectedStage.software_cost || "",
-        machine_cost: selectedStage.machine_cost || "",
-        other_costs: selectedStage.other_costs || "",
-        total_cost: selectedStage.total_cost || "",
-        cost_currency: selectedStage.cost_currency || "INR",
-        cost_status: selectedStage.cost_status || "estimated",
-        markup_percentage: selectedStage.markup_percentage || "",
-        final_price: selectedStage.final_price || "",
-
-        // Time Tracking
-        design_time: selectedStage.design_time || "",
-        modeling_time: selectedStage.modeling_time || "",
-        rendering_time: selectedStage.rendering_time || "",
-        revision_time: selectedStage.revision_time || "",
-        review_time: selectedStage.review_time || "",
-        total_time_spent: selectedStage.total_time_spent || "",
-        time_breakdown: selectedStage.time_breakdown || "",
-
-        // File Tracking
-        file_version: selectedStage.file_version || "1.0",
-        file_revisions: selectedStage.file_revisions || 0,
-        source_files: selectedStage.source_files || [],
-        output_files: selectedStage.output_files || [],
-        file_status: selectedStage.file_status || "draft",
-        backup_location: selectedStage.backup_location || "",
-      });
-
-      // Initialize selected labor costs
-      // You might want to load previously selected labor costs here
-      // For now, we'll start with empty
-      setSelectedLaborCosts([]);
-      setLaborBreakdown([]);
-
-      // Initialize CAD files
-      if (selectedStage.files && Array.isArray(selectedStage.files)) {
-        const existingFiles = selectedStage.files
-          .filter((file) => file.isExisting)
-          .map((file) => ({
-            ...file,
-            id: file.id || file._id || Math.random().toString(36).substr(2, 9),
-            isExisting: true,
-            file: null,
-            category: file.category || "output",
-            version: file.version || "1.0",
-          }));
-        setCadFiles(existingFiles);
-      } else {
-        setCadFiles([]);
+ useEffect(() => {
+  if (selectedStage) {
+    // Parse labor cost breakdown if needed
+    let laborBreakdownData = [];
+    if (selectedStage.labor_cost_breakdown && Array.isArray(selectedStage.labor_cost_breakdown)) {
+      laborBreakdownData = selectedStage.labor_cost_breakdown;
+    } else if (selectedStage.labor_cost_breakdown_raw && selectedStage.labor_cost_breakdown_raw.length > 0) {
+      try {
+        // Handle if it's a string that needs parsing
+        if (typeof selectedStage.labor_cost_breakdown_raw[0] === 'string') {
+          laborBreakdownData = JSON.parse(selectedStage.labor_cost_breakdown_raw[0]);
+        } else {
+          laborBreakdownData = selectedStage.labor_cost_breakdown_raw;
+        }
+      } catch (e) {
+        console.error("Error parsing labor_cost_breakdown_raw:", e);
       }
-
-      setFormErrors({});
-
-      // Calculate total cost and time
-      calculateTotalCost();
-      calculateTotalTime();
     }
-  }, [selectedStage]);
+
+    setFormData({
+      // Core IDs
+      _id: selectedStage._id || "",
+      cad_stage_id: selectedStage.cad_stage_id || selectedStage._id || "",
+      job_card_id: selectedStage.job_card_id || "",
+
+      // Job Card Info
+      job_card_no: selectedStage.job_card_no || "",
+
+      // Assigned To Info
+      assigned_to: selectedStage.assigned_to || "",
+      assigned_name: selectedStage.assigned_name || "",
+      assigned_email: selectedStage.assigned_email || "",
+      assigned_department: selectedStage.assigned_department || selectedStage.department || "",
+
+      // CAD Stage Basic Info
+      status: selectedStage.status || "",
+      start_date: selectedStage.start_date
+        ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+        : "",
+      end_date: selectedStage.end_date
+        ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+        : "",
+      completed_at: selectedStage.completed_at
+        ? new Date(selectedStage.completed_at).toISOString().split("T")[0]
+        : "",
+      remarks: selectedStage.remarks || "",
+      stage: selectedStage.stage || getNextStage(selectedStage.status), // Initialize Next Stage
+
+      // Time tracking
+      estimated_hours: selectedStage.estimated_hours || "",
+      actual_hours: selectedStage.actual_hours || "",
+      design_time: selectedStage.design_time || "",
+      revision_time: selectedStage.revision_time || "",
+      total_time_spent: selectedStage.total_time_spent || "",
+      time_breakdown: selectedStage.time_breakdown || "",
+
+      // CAD Details
+      cad_software: selectedStage.cad_software || "",
+      complexity_level: selectedStage.complexity_level || "",
+
+      // Cost Tracking
+      material_cost: selectedStage.material_cost || "",
+      software_cost: selectedStage.software_cost || "",
+      machine_cost: selectedStage.machine_cost || "",
+      other_costs: selectedStage.other_costs || "",
+      total_cost: selectedStage.total_cost || "",
+      markup_percentage: selectedStage.markup_percentage || "",
+      final_price: selectedStage.final_price || "",
+      cost_currency: selectedStage.cost_currency || "INR",
+      cost_status: selectedStage.cost_status || "estimated",
+
+      // File Tracking
+      file_version: selectedStage.file_version || "1.0",
+      file_revisions: selectedStage.file_revisions || 0,
+      file_status: selectedStage.file_status || "draft",
+      
+      // Source/Output files (filtered from files array)
+      source_files: selectedStage.source_files || 
+                   (selectedStage.files?.filter(f => f.category === 'source' || f.type === 'source') || []),
+      output_files: selectedStage.output_files || 
+                   (selectedStage.files?.filter(f => f.category === 'output' || f.type === 'output') || []),
+      backup_location: selectedStage.backup_location || 
+                      getBackupLocation(selectedStage.files) || "",
+    });
+
+    // Initialize selected labor costs from the response
+    if (selectedStage.selected_labor_costs && Array.isArray(selectedStage.selected_labor_costs)) {
+      setSelectedLaborCosts(selectedStage.selected_labor_costs);
+    } else {
+      setSelectedLaborCosts([]);
+    }
+
+    // Set labor breakdown from parsed data
+    setLaborBreakdown(laborBreakdownData);
+
+    // Initialize CAD files
+    if (selectedStage.files && Array.isArray(selectedStage.files)) {
+      const existingFiles = selectedStage.files.map((file) => ({
+        ...file,
+        id: file.id || file._id || Math.random().toString(36).substr(2, 9),
+        isExisting: true,
+        file: null,
+        category: file.category || file.type || "output",
+        version: file.version || selectedStage.file_version || "1.0",
+        name: file.name || file.filename || "Unknown file",
+        size: file.size || 0,
+        url: file.url || file.path || "",
+        uploadedAt: file.uploadedAt || file.createdAt || new Date().toISOString(),
+      }));
+      setCadFiles(existingFiles);
+    } else {
+      setCadFiles([]);
+    }
+
+    setFormErrors({});
+
+    // Calculate total cost and time
+    calculateTotalCost();
+    calculateTotalTime();
+  }
+}, [selectedStage]);
+
+// Helper function to determine next stage based on current status
+const getNextStage = (currentStatus) => {
+  const stageFlow = {
+    'pending': 'in-progress',
+    'in-progress': 'review',
+    'review': 'approved',
+    'approved': 'completed',
+    'rejected': 'rework',
+    'completed': 'archived'
+  };
+  return stageFlow[currentStatus] || '';
+};
+
+// Helper function to extract backup location from files
+const getBackupLocation = (files) => {
+  if (!files || !Array.isArray(files)) return '';
+  const backupFile = files.find(f => 
+    f.category === 'backup' || 
+    f.type === 'backup' || 
+    f.isBackup
+  );
+  return backupFile?.path || backupFile?.url || backupFile?.location || '';
+};
 
   // Calculate total cost
   const calculateTotalCost = () => {
@@ -1273,7 +1340,7 @@ const UpdateCadCreation = ({
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
-                    <div className="row mb-3">
+                    {/* <div className="row mb-3">
                       <div className="col-md-12">
                         <label className="form-label fw-medium">
                           Cost Status
@@ -1292,7 +1359,7 @@ const UpdateCadCreation = ({
                           ))}
                         </select>
                       </div>
-                    </div>
+                    </div> */}
 
                     <div className="row g-2">
                       <div className="col-md-4 mb-2">

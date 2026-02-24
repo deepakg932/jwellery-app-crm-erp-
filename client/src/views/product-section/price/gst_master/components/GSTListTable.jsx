@@ -141,7 +141,7 @@ export default function GSTListTable() {
 
           <div className="modal-body">
             <p>Are you sure you want to delete this GST record?</p>
-            <div className="alert alert-warning py-2 mt-3">
+            {/* <div className="alert alert-warning py-2 mt-3">
               <small>
                 <strong>SGST:</strong> {formatPercentage(selectedItem?.sgst_percentage)}<br/>
                 <strong>CGST:</strong> {formatPercentage(selectedItem?.cgst_percentage)}<br/>
@@ -149,7 +149,7 @@ export default function GSTListTable() {
                 <strong>UTGST:</strong> {formatPercentage(selectedItem?.utgst_percentage)}<br/>
                 <strong>Total:</strong> {formatPercentage(selectedItem?.total_percentage)}
               </small>
-            </div>
+            </div> */}
           </div>
 
           <div className="modal-footer border-top pt-3">

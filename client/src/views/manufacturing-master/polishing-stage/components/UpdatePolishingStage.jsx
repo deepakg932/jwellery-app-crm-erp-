@@ -124,31 +124,31 @@ const UpdatePolishingStage = ({
 
   // Options
   const statusOptions = [
-    {
-      value: "not_started",
-      label: "Not Started",
-      color: "secondary",
-      icon: "⏳",
-    },
-    { value: "preparation", label: "Preparation", color: "info", icon: "⚗️" },
-    {
-      value: "rough_polish",
-      label: "Rough Polish",
-      color: "warning",
-      icon: "🔨",
-    },
-    {
-      value: "fine_polish",
-      label: "Fine Polish",
-      color: "warning",
-      icon: "✨",
-    },
-    { value: "buffing", label: "Buffing", color: "info", icon: "🌀" },
-    { value: "cleaning", label: "Cleaning", color: "info", icon: "🧼" },
-    { value: "inspection", label: "Inspection", color: "warning", icon: "🔍" },
-    { value: "completed", label: "Completed", color: "success", icon: "✅" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
-    { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
+    // {
+    //   value: "not_started",
+    //   label: "Not Started",
+    //   color: "secondary",
+    //   icon: "⏳",
+    // },
+    // { value: "preparation", label: "Preparation", color: "info", icon: "⚗️" },
+    // {
+    //   value: "rough_polish",
+    //   label: "Rough Polish",
+    //   color: "warning",
+    //   icon: "🔨",
+    // },
+    // {
+    //   value: "fine_polish",
+    //   label: "Fine Polish",
+    //   color: "warning",
+    //   icon: "✨",
+    // },
+    // { value: "buffing", label: "Buffing", color: "info", icon: "🌀" },
+    // { value: "cleaning", label: "Cleaning", color: "info", icon: "🧼" },
+    // { value: "inspection", label: "Inspection", color: "warning", icon: "🔍" },
+    { value: "Approved", label: "Approved", color: "success", icon: "✅" },
+    { value: "Draft", label: "draft", color: "danger", icon: "⏸️" },
+    { value: "Cancelled", label: "cancelled", color: "danger", icon: "🔄" },
   ];
 
   const polishTypeOptions = [
@@ -227,20 +227,7 @@ const UpdatePolishingStage = ({
       
       // Include labor and polisher costs relevant to polishing
       return (
-        costName.includes("labor") ||
-        costName.includes("polish") ||
-        costName.includes("polisher") ||
-        costName.includes("buff") ||
-        costName.includes("karigar") ||
-        costName.includes("craftsman") ||
-        costName.includes("worker") ||
-        costName.includes("finishing") ||
-        stageName.includes("polish") ||
-        subStageName.includes("polish") ||
-        stageName.includes("finishing") ||
-        subStageName.includes("finishing") ||
-        costName.includes("पॉलिश") ||
-        costName.includes("कारीगर")
+        costName
       );
     });
 
@@ -341,60 +328,60 @@ const UpdatePolishingStage = ({
         }
       }
 
-      // const initialData = {
-      //   assigned_to: selectedStage.assigned_to || "",
-      //   status: selectedStage.status || "",
-      //   start_date: selectedStage.start_date
-      //     ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-      //     : "",
-      //   end_date: selectedStage.end_date
-      //     ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-      //     : "",
-      //   material_used: selectedStage.material_used || "Polish compound",
-      //   material_quantity: selectedStage.material_quantity || "",
-      //   material_unit: selectedStage.material_unit || "grams",
-      //   polish_type: selectedStage.polish_type || "",
-      //   polish_grade: selectedStage.polish_grade || "",
-      //   polishing_method: selectedStage.polishing_method || "manual",
-      //   equipment_used: selectedStage.equipment_used || "",
-      //   rpm_speed: selectedStage.rpm_speed || "",
-      //   pressure_applied: selectedStage.pressure_applied || "",
-      //   surface_finish: selectedStage.surface_finish || "mirror",
-      //   brightness_level: selectedStage.brightness_level || "high",
-      //   scratch_removal: selectedStage.scratch_removal || "complete",
-      //   surface_consistency: selectedStage.surface_consistency || "excellent",
-      //   defects_noted: selectedStage.defects_noted || "",
-      //   rework_required: selectedStage.rework_required || false,
-      //   rework_reason: selectedStage.rework_reason || "",
-      //   labour_hours: selectedStage.labour_hours || "",
-      //   actual_hours: selectedStage.actual_hours || "",
-      //   next_stage: selectedStage.next_stage || "",
-      //   stage: selectedStage.next_stage || selectedStage.stage || "",
-      //   remarks: selectedStage.remarks || "",
-      //   material_cost: selectedStage.material_cost || "",
-      //   labour_cost: selectedStage.labour_cost || "",
-      //   equipment_cost: selectedStage.equipment_cost || "",
-      //   consumables_cost: selectedStage.consumables_cost || "",
-      //   other_costs: selectedStage.other_costs || "",
-      //   total_cost: selectedStage.total_cost || "",
-      //   cost_currency: selectedStage.cost_currency || "INR",
-      //   cost_status: selectedStage.cost_status || "estimated",
-      //   markup_percentage: selectedStage.markup_percentage || "25",
-      //   final_price: selectedStage.final_price || "",
-      //   preparation_time: selectedStage.preparation_time || "",
-      //   polishing_time: selectedStage.polishing_time || "",
-      //   inspection_time: selectedStage.inspection_time || "",
-      //   total_time_spent: selectedStage.total_time_spent || "",
-      //   time_breakdown: selectedStage.time_breakdown || "",
-      //   file_version: selectedStage.file_version || "1.0",
-      //   file_revisions: selectedStage.file_revisions || 0,
-      //   file_status: selectedStage.file_status || "draft",
-      //   backup_location: selectedStage.backup_location || "",
-      // };
+      const initialData = {
+        assigned_to: selectedStage.assigned_to || "",
+        status: selectedStage.status || "",
+        start_date: selectedStage.start_date
+          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+          : "",
+        end_date: selectedStage.end_date
+          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+          : "",
+        material_used: selectedStage.material_used || "Polish compound",
+        material_quantity: selectedStage.material_quantity || "",
+        material_unit: selectedStage.material_unit || "grams",
+        polish_type: selectedStage.polish_type || "",
+        polish_grade: selectedStage.polish_grade || "",
+        polishing_method: selectedStage.polishing_method || "manual",
+        equipment_used: selectedStage.equipment_used || "",
+        rpm_speed: selectedStage.rpm_speed || "",
+        pressure_applied: selectedStage.pressure_applied || "",
+        surface_finish: selectedStage.surface_finish || "mirror",
+        brightness_level: selectedStage.brightness_level || "high",
+        scratch_removal: selectedStage.scratch_removal || "complete",
+        surface_consistency: selectedStage.surface_consistency || "excellent",
+        defects_noted: selectedStage.defects_noted || "",
+        rework_required: selectedStage.rework_required || false,
+        rework_reason: selectedStage.rework_reason || "",
+        labour_hours: selectedStage.labour_hours || "",
+        actual_hours: selectedStage.actual_hours || "",
+        next_stage: selectedStage.next_stage || "",
+        stage: selectedStage.next_stage || selectedStage.stage || "",
+        remarks: selectedStage.remarks || "",
+        material_cost: selectedStage.material_cost || "",
+        labour_cost: selectedStage.labour_cost || "",
+        equipment_cost: selectedStage.equipment_cost || "",
+        consumables_cost: selectedStage.consumables_cost || "",
+        other_costs: selectedStage.other_costs || "",
+        total_cost: selectedStage.total_cost || "",
+        cost_currency: selectedStage.cost_currency || "INR",
+        cost_status: selectedStage.cost_status || "estimated",
+        markup_percentage: selectedStage.markup_percentage || "25",
+        final_price: selectedStage.final_price || "",
+        preparation_time: selectedStage.preparation_time || "",
+        polishing_time: selectedStage.polishing_time || "",
+        inspection_time: selectedStage.inspection_time || "",
+        total_time_spent: selectedStage.total_time_spent || "",
+        time_breakdown: selectedStage.time_breakdown || "",
+        file_version: selectedStage.file_version || "1.0",
+        file_revisions: selectedStage.file_revisions || 0,
+        file_status: selectedStage.file_status || "draft",
+        backup_location: selectedStage.backup_location || "",
+      };
 
-      // console.log("Initializing form data:", initialData);
+      console.log("Initializing form data:", initialData);
 
-      // setFormData(initialData);
+      setFormData(initialData);
       setSelectedLaborCosts(parsedSelectedLaborCosts);
       setLaborBreakdown(parsedLaborBreakdown);
 
@@ -1795,7 +1782,7 @@ const UpdatePolishingStage = ({
                 {expandedSections.cost && (
                   <div className="card-body">
                     <div className="row mb-3">
-                      <div className="col-md-12">
+                      {/* <div className="col-md-12">
                         <label className="form-label fw-medium">
                           Cost Status
                         </label>
@@ -1812,7 +1799,7 @@ const UpdatePolishingStage = ({
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div> */}
                     </div>
 
                     {/* Labor Cost Selection */}

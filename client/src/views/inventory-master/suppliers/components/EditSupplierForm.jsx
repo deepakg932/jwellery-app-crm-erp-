@@ -49,9 +49,64 @@ const EditSupplierForm = ({
   // Load supplier data when component mounts or supplier changes
   useEffect(() => {
     if (supplier) {
-      const countryCode = supplier.country_code || "";
-      const stateCode = supplier.state_code || "";
+      let countryCode = supplier.country_code || supplier.country || "";
+      let stateCode = supplier.state_code || supplier.state || "";
       
+      // If countryCode looks like a full name (has spaces or is very long), find the ISO code
+      if (countryCode && countryCode.length > 3) {
+        const foundCountry = Country.getAllCountries().find(c => 
+          c.name.toLowerCase() === countryCode.toLowerCase() ||
+          c.isoCode.toLowerCase() === countryCode.toLowerCase()
+        );
+        if (foundCountry) {
+          countryCode = foundCountry.isoCode;
+        }
+      }
+
+      console.log("Loading supplier data:", {
+        supplier_country_code: supplier.country_code,
+        supplier_country: supplier.country,
+        supplier_state_code: supplier.state_code,
+        supplier_state: supplier.state,
+        resolvedCountry: countryCode,
+        resolvedState: stateCode
+      });
+
+      // First, load states and cities BEFORE setting form data
+      let formattedStates = [];
+      let formattedCities = [];
+
+      if (countryCode) {
+        const countryStates = State.getStatesOfCountry(countryCode);
+        formattedStates = countryStates.map(state => ({
+          value: state.isoCode,
+          label: state.name
+        }));
+        setStates(formattedStates);
+
+        // If stateCode looks like a full name, find the ISO code
+        if (stateCode && stateCode.length > 3) {
+          const foundState = countryStates.find(s =>
+            s.name.toLowerCase() === stateCode.toLowerCase() ||
+            s.isoCode.toLowerCase() === stateCode.toLowerCase()
+          );
+          if (foundState) {
+            stateCode = foundState.isoCode;
+          }
+        }
+
+        // Load cities if state code is also available
+        if (stateCode) {
+          const stateCities = City.getCitiesOfState(countryCode, stateCode);
+          formattedCities = stateCities.map(city => ({
+            value: city.name,
+            label: city.name
+          }));
+          setCities(formattedCities);
+        }
+      }
+
+      // Now set the form data with the country and state codes
       setFormData({
         supplier_name: supplier.supplier_name || "",
         company_name: supplier.company_name || "",
@@ -70,26 +125,6 @@ const EditSupplierForm = ({
         address: supplier.address || "",
         status: supplier.status !== false,
       });
-
-      // Load states for the supplier's country
-      if (countryCode) {
-        const countryStates = State.getStatesOfCountry(countryCode);
-        const formattedStates = countryStates.map(state => ({
-          value: state.isoCode,
-          label: state.name
-        }));
-        setStates(formattedStates);
-      }
-
-      // Load cities for the supplier's state
-      if (countryCode && stateCode) {
-        const stateCities = City.getCitiesOfState(countryCode, stateCode);
-        const formattedCities = stateCities.map(city => ({
-          value: city.name,
-          label: city.name
-        }));
-        setCities(formattedCities);
-      }
 
       setErrors({});
     }
@@ -312,7 +347,7 @@ const EditSupplierForm = ({
                 {/* Contact Person */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
-                    Contact Person <span className="text-danger">*</span>
+                    Contact Person Name <span className="text-danger">*</span>
                   </label>
                   <input
                     type="text"

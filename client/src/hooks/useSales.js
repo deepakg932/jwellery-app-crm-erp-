@@ -16,8 +16,36 @@ export default function useSales() {
   const [loadingItems, setLoadingItems] = useState(false);
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [customerGroups, setCustomerGroups] = useState([]);
+  
 
   // Fetch all employees
+
+  const fetchCustomerGroups = async () => {
+    try {
+      const res = await axios.get(API_ENDPOINTS.getCustomerGroups());
+      let groupsData = [];
+
+      if (res.data?.data && Array.isArray(res.data.data)) {
+        groupsData = res.data.data;
+      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        groupsData = res.data.fetched;
+      } else if (Array.isArray(res.data)) {
+        groupsData = res.data;
+      }
+
+      const mappedGroups = groupsData.map((group) => ({
+        _id: group._id || group.id,
+        customer_group: group.customer_group || group.name || "",
+        status: group.status || "active",
+      }));
+
+      setCustomerGroups(mappedGroups);
+    } catch (err) {
+      console.error("Fetch customer groups error:", err);
+    }
+  };
+
   const fetchEmployees = async () => {
     try {
       setLoadingEmployees(true);
@@ -74,36 +102,45 @@ export default function useSales() {
   };
 
   // Fetch customers (for dropdown)
-  const fetchCustomers = async () => {
-    try {
-      setLoadingCustomers(true);
-      const res = await axios.get(API_ENDPOINTS.getCustomers());
-      let customersData = [];
+const fetchCustomers = async () => {
+  try {
+    setLoadingCustomers(true);
+    const res = await axios.get(API_ENDPOINTS.getCustomers());
+    let customersData = [];
 
-      console.log("Customers API Response:", res.data);
+    console.log("Customers API Response:", res.data);
 
-      // Handle customer response structure
-      if (res.data?.success && Array.isArray(res.data.data)) {
+    // Handle your specific response structure
+    if (res.data?.success) {
+      if (Array.isArray(res.data.data)) {
         customersData = res.data.data;
-      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
-        customersData = res.data.fetched;
-      } else if (Array.isArray(res.data)) {
-        customersData = res.data;
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        customersData = res.data.data;
+      } else if (res.data.data && typeof res.data.data === 'object') {
+        customersData = [res.data.data];
       }
-
-      console.log("Processed customers:", customersData);
-      setCustomers(customersData);
-      return customersData;
-    } catch (err) {
-      console.error("Error fetching customers:", err);
-      setError("Failed to load customers");
-      return [];
-    } finally {
-      setLoadingCustomers(false);
+    } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+      customersData = res.data.fetched;
+    } else if (Array.isArray(res.data)) {
+      customersData = res.data;
     }
-  };
+    
+    // Map the data to include both name and customer_name for consistency
+    customersData = customersData.map(customer => ({
+      ...customer,
+      customer_name: customer.name || customer.customer_name || "",
+      name: customer.name || customer.customer_name || "",
+    }));
+
+    console.log("Processed customers:", customersData);
+    setCustomers(customersData);
+    return customersData;
+  } catch (err) {
+    console.error("Error fetching customers:", err);
+    setError("Failed to load customers");
+    return [];
+  } finally {
+    setLoadingCustomers(false);
+  }
+};
 
   // Fetch items (products) for dropdown - using getAllItems
   const fetchItems = useCallback(async (page = 1, limit = 100) => {
@@ -396,6 +433,90 @@ export default function useSales() {
       setLoading(false);
     }
   };
+
+const addCustomer = async (customerData) => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const url = API_ENDPOINTS.createCustomer();
+
+    // Format data for API
+    const apiData = {
+      ...customerData,
+      name: customerData.name || customerData.customer_name || "",
+      mobile: customerData.mobile || "",
+      customer_group_id: customerData.customer_group_id,
+      status: customerData.status ? "active" : "inactive",
+    };
+
+    console.log("Adding customer:", apiData);
+
+    const res = await axios.post(url, apiData);
+    console.log("Add customer response:", res.data);
+
+    if (res.data?.success) {
+      // FIX: Check the actual response structure
+      // Your response shows: { success: true, data: [customerObject] }
+      let responseData;
+      
+      if (Array.isArray(res.data.data)) {
+        // If data is an array, take the first element
+        responseData = res.data.data[0];
+      } else if (res.data.data && typeof res.data.data === 'object') {
+        // If data is an object, use it directly
+        responseData = res.data.data;
+      } else {
+        // If no data property, use the whole response
+        responseData = res.data;
+      }
+
+      // If we still don't have responseData, throw error
+      if (!responseData || !responseData._id) {
+        console.error("Unexpected response structure:", res.data);
+        throw new Error("Invalid response structure from server");
+      }
+
+      const newCustomer = {
+        _id: responseData._id,
+        name: responseData.name || "",
+        customer_name: responseData.name || "", // Add customer_name for dropdown
+        customer_code: responseData.customer_code || "",
+        mobile: responseData.mobile || "",
+        email: responseData.email || "",
+        customer_group_id: responseData.customer_group_id,
+        address: responseData.address || "",
+        city: responseData.city || "",
+        state: responseData.state || "",
+        country: responseData.country || "",
+        pincode: responseData.pincode || "",
+        status: responseData.status === "active",
+        createdAt: responseData.createdAt || new Date().toISOString(),
+      };
+
+      // IMMEDIATELY update the customers state with the new customer
+      setCustomers((prev) => {
+        // Check if customer already exists
+        const exists = prev.some(c => c._id === newCustomer._id);
+        if (exists) {
+          return prev;
+        }
+        return [newCustomer, ...prev];
+      });
+
+      console.log("New customer added to state:", newCustomer);
+      return newCustomer;
+    } else {
+      throw new Error(res.data?.message || "Failed to add customer");
+    }
+  } catch (err) {
+    console.error("Add customer error:", err);
+    setError(err.response?.data?.message || "Failed to add customer");
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   const addSale = async (formData) => {
     try {
@@ -693,102 +814,103 @@ export default function useSales() {
   };
 
   // Update a sale
-const updateSale = async (id, formData) => {
-  try {
-    setLoading(true);
-    setError("");
+  const updateSale = async (id, formData) => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const url = API_ENDPOINTS.updateSaleItem(id);
-    console.log("=== UPDATING SALE ===");
-    console.log("Update URL:", url);
+      const url = API_ENDPOINTS.updateSaleItem(id);
+      console.log("=== UPDATING SALE ===");
+      console.log("Update URL:", url);
 
-    // Create FormData from the passed formData (should be FormData object)
-    const requestData = new FormData();
+      // Create FormData from the passed formData (should be FormData object)
+      const requestData = new FormData();
 
-    // Copy all entries from the formData to requestData
-    if (formData.entries) {
-      for (let [key, value] of formData.entries()) {
-        requestData.append(key, value);
-      }
-    } else {
-      // If formData is not FormData, convert it
-      for (let key in formData) {
-        if (formData[key] !== undefined && formData[key] !== null) {
-          if (key === 'items' && Array.isArray(formData[key])) {
-            requestData.append(key, JSON.stringify(formData[key]));
-          } else if (formData[key] instanceof File) {
-            requestData.append(key, formData[key]);
-          } else {
-            requestData.append(key, formData[key].toString());
+      // Copy all entries from the formData to requestData
+      if (formData.entries) {
+        for (let [key, value] of formData.entries()) {
+          requestData.append(key, value);
+        }
+      } else {
+        // If formData is not FormData, convert it
+        for (let key in formData) {
+          if (formData[key] !== undefined && formData[key] !== null) {
+            if (key === "items" && Array.isArray(formData[key])) {
+              requestData.append(key, JSON.stringify(formData[key]));
+            } else if (formData[key] instanceof File) {
+              requestData.append(key, formData[key]);
+            } else {
+              requestData.append(key, formData[key].toString());
+            }
           }
         }
       }
-    }
 
-    // DEBUG: Log what we're sending
-    console.log("Sending FormData:");
-    for (let [key, value] of requestData.entries()) {
-      if (value instanceof File) {
-        console.log(`${key}: [File: ${value.name}, size: ${value.size}]`);
-      } else {
-        console.log(`${key}:`, value);
+      // DEBUG: Log what we're sending
+      console.log("Sending FormData:");
+      for (let [key, value] of requestData.entries()) {
+        if (value instanceof File) {
+          console.log(`${key}: [File: ${value.name}, size: ${value.size}]`);
+        } else {
+          console.log(`${key}:`, value);
+        }
       }
+
+      // Send the request
+      const config = {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 30000,
+      };
+
+      console.log("Sending update request...");
+      const res = await axios.put(url, requestData, config);
+      console.log("Update sale response:", res.data);
+
+      if (res.data?.success) {
+        const responseData = res.data.data || res.data;
+        console.log("Response data:", responseData);
+
+        // Update local state
+        setSales((prev) =>
+          prev.map((sale) =>
+            sale._id === id ? { ...sale, ...responseData } : sale,
+          ),
+        );
+
+        // Refresh data
+        setTimeout(() => {
+          fetchSales();
+        }, 1000);
+
+        return responseData;
+      } else {
+        throw new Error(res.data?.message || "Failed to update sale");
+      }
+    } catch (err) {
+      console.error("Update sale error:", err);
+
+      let errorMessage = "Failed to update sale";
+
+      if (err.response) {
+        console.error("Error response:", err.response.data);
+        errorMessage =
+          err.response.data?.message ||
+          err.response.data?.error ||
+          `Server error: ${err.response.status}`;
+      } else if (err.request) {
+        errorMessage = "No response from server. Please check your connection.";
+      } else {
+        errorMessage = err.message || "Failed to update sale";
+      }
+
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
     }
-
-    // Send the request
-    const config = {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      timeout: 30000,
-    };
-
-    console.log("Sending update request...");
-    const res = await axios.put(url, requestData, config);
-    console.log("Update sale response:", res.data);
-
-    if (res.data?.success) {
-      const responseData = res.data.data || res.data;
-      console.log("Response data:", responseData);
-
-      // Update local state
-      setSales((prev) =>
-        prev.map((sale) =>
-          sale._id === id ? { ...sale, ...responseData } : sale
-        )
-      );
-
-      // Refresh data
-      setTimeout(() => {
-        fetchSales();
-      }, 1000);
-
-      return responseData;
-    } else {
-      throw new Error(res.data?.message || "Failed to update sale");
-    }
-  } catch (err) {
-    console.error("Update sale error:", err);
-    
-    let errorMessage = "Failed to update sale";
-    
-    if (err.response) {
-      console.error("Error response:", err.response.data);
-      errorMessage = err.response.data?.message || 
-                    err.response.data?.error || 
-                    `Server error: ${err.response.status}`;
-    } else if (err.request) {
-      errorMessage = "No response from server. Please check your connection.";
-    } else {
-      errorMessage = err.message || "Failed to update sale";
-    }
-    
-    setError(errorMessage);
-    throw new Error(errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Delete a sale
   const deleteSale = async (id) => {
@@ -828,6 +950,7 @@ const updateSale = async (id, formData) => {
         fetchUnits(),
         fetchBranches(),
         fetchEmployees(),
+        fetchCustomerGroups(),
       ]);
     };
 
@@ -843,6 +966,7 @@ const updateSale = async (id, formData) => {
     // Data
     sales,
     customers,
+    customerGroups,
     items,
     units,
     branches,
@@ -863,10 +987,12 @@ const updateSale = async (id, formData) => {
     fetchSales,
     fetchCustomers,
     fetchItems,
+    fetchCustomerGroups,
     fetchUnits,
     fetchEmployees,
     fetchBranches,
     addSale,
+    addCustomer,
     updateSalePayment,
     updateSale,
     deleteSale,

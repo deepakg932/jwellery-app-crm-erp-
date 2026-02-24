@@ -460,254 +460,513 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
   };
 
   // Function to print the invoice
-  const printInvoice = () => {
-    const printContent = modalRef.current.innerHTML;
-    const originalContent = document.body.innerHTML;
+  // const printInvoice = () => {
+  //   const printContent = modalRef.current.innerHTML;
+  //   const originalContent = document.body.innerHTML;
 
-    document.body.innerHTML = `
-      <html>
-        <head>
-          <title>Purchase Order Invoice - ${purchaseOrder.po_number || purchaseOrder._id}</title>
-          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-          <style>
-            @media print {
-              body { padding: 20px; }
-              .no-print { display: none !important; }
-              .modal-content { border: none; box-shadow: none; }
-              .table { border: 1px solid #dee2e6; }
-              .bg-light { background-color: #f8f9fa !important; }
-              .text-primary { color: #0d6efd !important; }
-              .fw-bold { font-weight: bold !important; }
-            }
-            .invoice-header {
-              border-bottom: 2px solid #0d6efd;
-              padding-bottom: 20px;
-              margin-bottom: 30px;
-            }
-            .summary-box {
-              border: 1px solid #dee2e6;
-              border-radius: 5px;
-              padding: 15px;
-              background-color: #f8f9fa;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container-fluid">
-            <div class="row mb-4">
-              <div class="col-12">
-                <div class="invoice-header">
-                  <h1 class="text-center">PURCHASE ORDER INVOICE</h1>
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <p class="mb-1"><strong>PO Number:</strong> ${purchaseOrder.po_number || "N/A"}</p>
-                      <p class="mb-1"><strong>Date:</strong> ${formatDate(purchaseOrder.order_date)}</p>
-                    </div>
-                    <div class="text-end">
-                      <p class="mb-1"><strong>Status:</strong> ${purchaseOrder.status?.toUpperCase() || "DRAFT"}</p>
-                      <p class="mb-1"><strong>Payment:</strong> ${purchaseOrder.payment_status?.toUpperCase() || "PENDING"}</p>
-                    </div>
+  //   document.body.innerHTML = `
+  //     <html>
+  //       <head>
+  //         <title>Purchase Order Invoice - ${purchaseOrder.po_number || purchaseOrder._id}</title>
+  //         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  //         <style>
+  //           @media print {
+  //             body { padding: 20px; }
+  //             .no-print { display: none !important; }
+  //             .modal-content { border: none; box-shadow: none; }
+  //             .table { border: 1px solid #dee2e6; }
+  //             .bg-light { background-color: #f8f9fa !important; }
+  //             .text-primary { color: #0d6efd !important; }
+  //             .fw-bold { font-weight: bold !important; }
+  //           }
+  //           .invoice-header {
+  //             border-bottom: 2px solid #0d6efd;
+  //             padding-bottom: 20px;
+  //             margin-bottom: 30px;
+  //           }
+  //           .summary-box {
+  //             border: 1px solid #dee2e6;
+  //             border-radius: 5px;
+  //             padding: 15px;
+  //             background-color: #f8f9fa;
+  //           }
+  //         </style>
+  //       </head>
+  //       <body>
+  //         <div class="container-fluid">
+  //           <div class="row mb-4">
+  //             <div class="col-12">
+  //               <div class="invoice-header">
+  //                 <h1 class="text-center">PURCHASE ORDER INVOICE</h1>
+  //                 <div class="d-flex justify-content-between align-items-center">
+  //                   <div>
+  //                     <p class="mb-1"><strong>PO Number:</strong> ${purchaseOrder.po_number || "N/A"}</p>
+  //                     <p class="mb-1"><strong>Date:</strong> ${formatDate(purchaseOrder.order_date)}</p>
+  //                   </div>
+  //                   <div class="text-end">
+  //                     <p class="mb-1"><strong>Status:</strong> ${purchaseOrder.status?.toUpperCase() || "DRAFT"}</p>
+  //                     <p class="mb-1"><strong>Payment:</strong> ${purchaseOrder.payment_status?.toUpperCase() || "PENDING"}</p>
+  //                   </div>
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           </div>
+            
+  //           <!-- Supplier and Branch Info -->
+  //           <div class="row mb-4">
+  //             <div class="col-md-6">
+  //               <div class="card">
+  //                 <div class="card-header bg-primary text-white">
+  //                   <h6 class="mb-0">Supplier Information</h6>
+  //                 </div>
+  //                 <div class="card-body">
+  //                   <p class="mb-1"><strong>Name:</strong> ${supplier.name}</p>
+  //                   ${supplier.code ? `<p class="mb-1"><strong>Code:</strong> ${supplier.code}</p>` : ""}
+  //                   ${supplier.phone ? `<p class="mb-1"><strong>Phone:</strong> ${supplier.phone}</p>` : ""}
+  //                   ${supplier.email ? `<p class="mb-1"><strong>Email:</strong> ${supplier.email}</p>` : ""}
+  //                 </div>
+  //               </div>
+  //             </div>
+  //             <div class="col-md-6">
+  //               <div class="card">
+  //                 <div class="card-header bg-dark text-white">
+  //                   <h6 class="mb-0">Branch Information</h6>
+  //                 </div>
+  //                 <div class="card-body">
+  //                   <p class="mb-1"><strong>Branch:</strong> ${branch.name}</p>
+  //                   ${branch.code ? `<p class="mb-1"><strong>Code:</strong> ${branch.code}</p>` : ""}
+  //                   <p class="mb-1"><strong>Currency:</strong> ${purchaseOrder.currency || "INR"}</p>
+  //                   ${purchaseOrder.exchange_rate ? `<p class="mb-1"><strong>Exchange Rate:</strong> ${purchaseOrder.exchange_rate}:1</p>` : ""}
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           </div>
+            
+  //           <!-- Order Items Table -->
+  //           <div class="row mb-4">
+  //             <div class="col-12">
+  //               <h5 class="mb-3">Order Items</h5>
+  //               <table class="table table-bordered">
+  //                 <thead class="table-dark">
+  //                   <tr>
+  //                     <th>#</th>
+  //                     <th>Item Code</th>
+  //                     <th>Item Name</th>
+  //                     <th>Purity</th>
+  //                     <th>Qty/Weight</th>
+  //                     <th>Unit</th>
+  //                     <th>Rate</th>
+  //                     <th>Discount</th>
+  //                     <th>Tax</th>
+  //                     <th>Total</th>
+  //                   </tr>
+  //                 </thead>
+  //                 <tbody>
+  //                   ${
+  //                     purchaseOrder.items
+  //                       ?.map((item, index) => {
+  //                         const inventoryItem = item.inventory_item_id;
+  //                         return `
+  //                       <tr>
+  //                         <td>${index + 1}</td>
+  //                         <td>${inventoryItem?.item_code || "N/A"}</td>
+  //                         <td>${inventoryItem?.name || "Unknown Item"}</td>
+  //                         <td>${inventoryItem?.purity || "N/A"}</td>
+  //                         <td>${item.quantity || item.weight || "0"}</td>
+  //                         <td>${item.unit_id?.name || item.unit_id?.code || "N/A"}</td>
+  //                         <td>${formatCurrency(item.rate)}</td>
+  //                         <td>${formatCurrency(item.discount)}</td>
+  //                         <td>${formatCurrency(item.tax)}</td>
+  //                         <td>${formatCurrency(item.total || calculateItemTotal(item))}</td>
+  //                       </tr>
+  //                     `;
+  //                       })
+  //                       .join("") ||
+  //                     '<tr><td colspan="10" class="text-center">No items found</td></tr>'
+  //                   }
+  //                 </tbody>
+  //               </table>
+  //             </div>
+  //           </div>
+            
+  //           <!-- Summary -->
+  //           <div class="row">
+  //             <div class="col-md-8">
+  //               ${
+  //                 purchaseOrder.notes
+  //                   ? `
+  //                 <div class="card mb-3">
+  //                   <div class="card-header">
+  //                     <h6 class="mb-0">Notes</h6>
+  //                   </div>
+  //                   <div class="card-body">
+  //                     <p class="mb-0">${purchaseOrder.notes}</p>
+  //                   </div>
+  //                 </div>
+  //               `
+  //                   : ""
+  //               }
+  //               ${
+  //                 purchaseOrder.payment_notes
+  //                   ? `
+  //                 <div class="card mb-3">
+  //                   <div class="card-header">
+  //                     <h6 class="mb-0">Payment Notes</h6>
+  //                   </div>
+  //                   <div class="card-body">
+  //                     <p class="mb-0">${purchaseOrder.payment_notes}</p>
+  //                   </div>
+  //                 </div>
+  //               `
+  //                   : ""
+  //               }
+  //             </div>
+  //             <div class="col-md-4">
+  //               <div class="summary-box">
+  //                 <h6 class="mb-3 border-bottom pb-2">Invoice Summary</h6>
+  //                 <div class="d-flex justify-content-between mb-2">
+  //                   <span>Subtotal:</span>
+  //                   <span>${formatCurrency(totals.subtotal)}</span>
+  //                 </div>
+  //                 <div class="d-flex justify-content-between mb-2">
+  //                   <span>VAT (${purchaseOrder.vat || 0}%):</span>
+  //                   <span>${formatCurrency(totals.vat)}</span>
+  //                 </div>
+  //                 <div class="d-flex justify-content-between mb-2">
+  //                   <span>Discount:</span>
+  //                   <span class="text-danger">-${formatCurrency(totals.discount)}</span>
+  //                 </div>
+  //                 <div class="d-flex justify-content-between mb-2">
+  //                   <span>Shipping Cost:</span>
+  //                   <span>${formatCurrency(totals.shipping)}</span>
+  //                 </div>
+  //                 <hr />
+  //                 <div class="d-flex justify-content-between">
+  //                   <strong>Grand Total:</strong>
+  //                   <strong class="text-primary">${formatCurrency(totals.grandTotal)}</strong>
+  //                 </div>
+  //                 <hr />
+  //                 <div class="d-flex justify-content-between mb-2">
+  //                   <span>Paid Amount:</span>
+  //                   <span class="text-success">${formatCurrency(purchaseOrder.paid_amount || 0)}</span>
+  //                 </div>
+  //                 <div class="d-flex justify-content-between mb-2">
+  //                   <span>Balance Amount:</span>
+  //                   <span class="text-warning">${formatCurrency(purchaseOrder.balance_amount || totals.grandTotal)}</span>
+  //                 </div>
+  //                 ${
+  //                   purchaseOrder.additional_payment
+  //                     ? `
+  //                   <div class="d-flex justify-content-between mb-2">
+  //                     <span>Additional Payment:</span>
+  //                     <span class="text-info">${formatCurrency(purchaseOrder.additional_payment)}</span>
+  //                   </div>
+  //                 `
+  //                     : ""
+  //                 }
+  //                 ${
+  //                   purchaseOrder.exchange_rate &&
+  //                   purchaseOrder.exchange_rate !== 1
+  //                     ? `
+  //                   <div class="mt-2 small">
+  //                     <div class="d-flex justify-content-between">
+  //                       <span>In INR (Converted):</span>
+  //                       <span>₹${(totals.grandTotal * (purchaseOrder.exchange_rate || 1)).toFixed(2)}</span>
+  //                     </div>
+  //                     <div class="text-muted">
+  //                       Exchange Rate: ${purchaseOrder.exchange_rate}:1
+  //                     </div>
+  //                   </div>
+  //                 `
+  //                     : ""
+  //                 }
+  //               </div>
+  //             </div>
+  //           </div>
+            
+  //           <!-- Footer -->
+  //           <div class="row mt-4 pt-3 border-top">
+  //             <div class="col-12 text-center">
+  //               <p class="text-muted mb-0">Thank you for your business!</p>
+  //               <p class="text-muted small">Generated on: ${new Date().toLocaleDateString()}</p>
+  //             </div>
+  //           </div>
+  //         </div>
+          
+  //         <div class="no-print text-center mt-4">
+  //           <button onclick="window.print()" class="btn btn-primary me-2">
+  //             Print Invoice
+  //           </button>
+  //           <button onclick="window.close()" class="btn btn-secondary">
+  //             Close
+  //           </button>
+  //         </div>
+  //       </body>
+  //     </html>
+  //   `;
+
+  //   window.print();
+  //   document.body.innerHTML = originalContent;
+  // };
+
+const printInvoice = () => {
+  // Create an iframe
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'absolute';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = 'none';
+  
+  document.body.appendChild(iframe);
+  
+  // Get the content to print from your modal data
+  const printContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Purchase Order Invoice - ${purchaseOrder.po_number || purchaseOrder._id}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          @media print {
+            body { padding: 20px; }
+            .no-print { display: none !important; }
+            .modal-content { border: none; box-shadow: none; }
+            .table { border: 1px solid #dee2e6; }
+            .bg-light { background-color: #f8f9fa !important; }
+            .text-primary { color: #0d6efd !important; }
+            .fw-bold { font-weight: bold !important; }
+          }
+          .invoice-header {
+            border-bottom: 2px solid #0d6efd;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+          .summary-box {
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #f8f9fa;
+          }
+          body { padding: 20px; font-family: Arial, sans-serif; }
+        </style>
+      </head>
+      <body>
+        <div class="container-fluid">
+          <div class="row mb-4">
+            <div class="col-12">
+              <div class="invoice-header">
+                <h1 class="text-center">PURCHASE ORDER INVOICE</h1>
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <p class="mb-1"><strong>PO Number:</strong> ${purchaseOrder.po_number || "N/A"}</p>
+                    <p class="mb-1"><strong>Date:</strong> ${formatDate(purchaseOrder.order_date)}</p>
+                  </div>
+                  <div class="text-end">
+                    <p class="mb-1"><strong>Status:</strong> ${purchaseOrder.status?.toUpperCase() || "DRAFT"}</p>
+                    <p class="mb-1"><strong>Payment:</strong> ${purchaseOrder.payment_status?.toUpperCase() || "PENDING"}</p>
                   </div>
                 </div>
-              </div>
-            </div>
-            
-            <!-- Supplier and Branch Info -->
-            <div class="row mb-4">
-              <div class="col-md-6">
-                <div class="card">
-                  <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0">Supplier Information</h6>
-                  </div>
-                  <div class="card-body">
-                    <p class="mb-1"><strong>Name:</strong> ${supplier.name}</p>
-                    ${supplier.code ? `<p class="mb-1"><strong>Code:</strong> ${supplier.code}</p>` : ""}
-                    ${supplier.phone ? `<p class="mb-1"><strong>Phone:</strong> ${supplier.phone}</p>` : ""}
-                    ${supplier.email ? `<p class="mb-1"><strong>Email:</strong> ${supplier.email}</p>` : ""}
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="card">
-                  <div class="card-header bg-dark text-white">
-                    <h6 class="mb-0">Branch Information</h6>
-                  </div>
-                  <div class="card-body">
-                    <p class="mb-1"><strong>Branch:</strong> ${branch.name}</p>
-                    ${branch.code ? `<p class="mb-1"><strong>Code:</strong> ${branch.code}</p>` : ""}
-                    <p class="mb-1"><strong>Currency:</strong> ${purchaseOrder.currency || "INR"}</p>
-                    ${purchaseOrder.exchange_rate ? `<p class="mb-1"><strong>Exchange Rate:</strong> ${purchaseOrder.exchange_rate}:1</p>` : ""}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Order Items Table -->
-            <div class="row mb-4">
-              <div class="col-12">
-                <h5 class="mb-3">Order Items</h5>
-                <table class="table table-bordered">
-                  <thead class="table-dark">
-                    <tr>
-                      <th>#</th>
-                      <th>Item Code</th>
-                      <th>Item Name</th>
-                      <th>Purity</th>
-                      <th>Qty/Weight</th>
-                      <th>Unit</th>
-                      <th>Rate</th>
-                      <th>Discount</th>
-                      <th>Tax</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${
-                      purchaseOrder.items
-                        ?.map((item, index) => {
-                          const inventoryItem = item.inventory_item_id;
-                          return `
-                        <tr>
-                          <td>${index + 1}</td>
-                          <td>${inventoryItem?.item_code || "N/A"}</td>
-                          <td>${inventoryItem?.name || "Unknown Item"}</td>
-                          <td>${inventoryItem?.purity || "N/A"}</td>
-                          <td>${item.quantity || item.weight || "0"}</td>
-                          <td>${item.unit_id?.name || item.unit_id?.code || "N/A"}</td>
-                          <td>${formatCurrency(item.rate)}</td>
-                          <td>${formatCurrency(item.discount)}</td>
-                          <td>${formatCurrency(item.tax)}</td>
-                          <td>${formatCurrency(item.total || calculateItemTotal(item))}</td>
-                        </tr>
-                      `;
-                        })
-                        .join("") ||
-                      '<tr><td colspan="10" class="text-center">No items found</td></tr>'
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-            <!-- Summary -->
-            <div class="row">
-              <div class="col-md-8">
-                ${
-                  purchaseOrder.notes
-                    ? `
-                  <div class="card mb-3">
-                    <div class="card-header">
-                      <h6 class="mb-0">Notes</h6>
-                    </div>
-                    <div class="card-body">
-                      <p class="mb-0">${purchaseOrder.notes}</p>
-                    </div>
-                  </div>
-                `
-                    : ""
-                }
-                ${
-                  purchaseOrder.payment_notes
-                    ? `
-                  <div class="card mb-3">
-                    <div class="card-header">
-                      <h6 class="mb-0">Payment Notes</h6>
-                    </div>
-                    <div class="card-body">
-                      <p class="mb-0">${purchaseOrder.payment_notes}</p>
-                    </div>
-                  </div>
-                `
-                    : ""
-                }
-              </div>
-              <div class="col-md-4">
-                <div class="summary-box">
-                  <h6 class="mb-3 border-bottom pb-2">Invoice Summary</h6>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Subtotal:</span>
-                    <span>${formatCurrency(totals.subtotal)}</span>
-                  </div>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>VAT (${purchaseOrder.vat || 0}%):</span>
-                    <span>${formatCurrency(totals.vat)}</span>
-                  </div>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Discount:</span>
-                    <span class="text-danger">-${formatCurrency(totals.discount)}</span>
-                  </div>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Shipping Cost:</span>
-                    <span>${formatCurrency(totals.shipping)}</span>
-                  </div>
-                  <hr />
-                  <div class="d-flex justify-content-between">
-                    <strong>Grand Total:</strong>
-                    <strong class="text-primary">${formatCurrency(totals.grandTotal)}</strong>
-                  </div>
-                  <hr />
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Paid Amount:</span>
-                    <span class="text-success">${formatCurrency(purchaseOrder.paid_amount || 0)}</span>
-                  </div>
-                  <div class="d-flex justify-content-between mb-2">
-                    <span>Balance Amount:</span>
-                    <span class="text-warning">${formatCurrency(purchaseOrder.balance_amount || totals.grandTotal)}</span>
-                  </div>
-                  ${
-                    purchaseOrder.additional_payment
-                      ? `
-                    <div class="d-flex justify-content-between mb-2">
-                      <span>Additional Payment:</span>
-                      <span class="text-info">${formatCurrency(purchaseOrder.additional_payment)}</span>
-                    </div>
-                  `
-                      : ""
-                  }
-                  ${
-                    purchaseOrder.exchange_rate &&
-                    purchaseOrder.exchange_rate !== 1
-                      ? `
-                    <div class="mt-2 small">
-                      <div class="d-flex justify-content-between">
-                        <span>In INR (Converted):</span>
-                        <span>₹${(totals.grandTotal * (purchaseOrder.exchange_rate || 1)).toFixed(2)}</span>
-                      </div>
-                      <div class="text-muted">
-                        Exchange Rate: ${purchaseOrder.exchange_rate}:1
-                      </div>
-                    </div>
-                  `
-                      : ""
-                  }
-                </div>
-              </div>
-            </div>
-            
-            <!-- Footer -->
-            <div class="row mt-4 pt-3 border-top">
-              <div class="col-12 text-center">
-                <p class="text-muted mb-0">Thank you for your business!</p>
-                <p class="text-muted small">Generated on: ${new Date().toLocaleDateString()}</p>
               </div>
             </div>
           </div>
           
-          <div class="no-print text-center mt-4">
-            <button onclick="window.print()" class="btn btn-primary me-2">
-              Print Invoice
-            </button>
-            <button onclick="window.close()" class="btn btn-secondary">
-              Close
-            </button>
+          <!-- Supplier and Branch Info -->
+          <div class="row mb-4">
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header bg-primary text-white">
+                  <h6 class="mb-0">Supplier Information</h6>
+                </div>
+                <div class="card-body">
+                  <p class="mb-1"><strong>Name:</strong> ${supplier.name}</p>
+                  ${supplier.code ? `<p class="mb-1"><strong>Code:</strong> ${supplier.code}</p>` : ""}
+                  ${supplier.phone ? `<p class="mb-1"><strong>Phone:</strong> ${supplier.phone}</p>` : ""}
+                  ${supplier.email ? `<p class="mb-1"><strong>Email:</strong> ${supplier.email}</p>` : ""}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header bg-dark text-white">
+                  <h6 class="mb-0">Branch Information</h6>
+                </div>
+                <div class="card-body">
+                  <p class="mb-1"><strong>Branch:</strong> ${branch.name}</p>
+                  ${branch.code ? `<p class="mb-1"><strong>Code:</strong> ${branch.code}</p>` : ""}
+                  <p class="mb-1"><strong>Currency:</strong> ${purchaseOrder.currency || "INR"}</p>
+                  ${purchaseOrder.exchange_rate ? `<p class="mb-1"><strong>Exchange Rate:</strong> ${purchaseOrder.exchange_rate}:1</p>` : ""}
+                </div>
+              </div>
+            </div>
           </div>
-        </body>
-      </html>
-    `;
-
-    window.print();
-    document.body.innerHTML = originalContent;
-  };
+          
+          <!-- Order Items Table -->
+          <div class="row mb-4">
+            <div class="col-12">
+              <h5 class="mb-3">Order Items</h5>
+              <table class="table table-bordered">
+                <thead class="table-dark">
+                  <tr>
+                    <th>#</th>
+                    <th>Item Code</th>
+                    <th>Item Name</th>
+                    <th>Purity</th>
+                    <th>Qty/Weight</th>
+                    <th>Unit</th>
+                    <th>Rate</th>
+                    <th>Discount</th>
+                    <th>Tax</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${
+                    purchaseOrder.items
+                      ?.map((item, index) => {
+                        const inventoryItem = item.inventory_item_id;
+                        return `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td>${inventoryItem?.item_code || "N/A"}</td>
+                        <td>${inventoryItem?.name || "Unknown Item"}</td>
+                        <td>${inventoryItem?.purity || "N/A"}</td>
+                        <td>${item.quantity || item.weight || "0"}</td>
+                        <td>${item.unit_id?.name || item.unit_id?.code || "N/A"}</td>
+                        <td>${formatCurrency(item.rate)}</td>
+                        <td>${formatCurrency(item.discount)}</td>
+                        <td>${formatCurrency(item.tax)}</td>
+                        <td>${formatCurrency(item.total || calculateItemTotal(item))}</td>
+                      </tr>
+                    `;
+                      })
+                      .join("") ||
+                    '<tr><td colspan="10" class="text-center">No items found</td></tr>'
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Summary -->
+          <div class="row">
+            <div class="col-md-8">
+              ${
+                purchaseOrder.notes
+                  ? `
+                <div class="card mb-3">
+                  <div class="card-header">
+                    <h6 class="mb-0">Notes</h6>
+                  </div>
+                  <div class="card-body">
+                    <p class="mb-0">${purchaseOrder.notes}</p>
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+              ${
+                purchaseOrder.payment_notes
+                  ? `
+                <div class="card mb-3">
+                  <div class="card-header">
+                    <h6 class="mb-0">Payment Notes</h6>
+                  </div>
+                  <div class="card-body">
+                    <p class="mb-0">${purchaseOrder.payment_notes}</p>
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+            </div>
+            <div class="col-md-4">
+              <div class="summary-box">
+                <h6 class="mb-3 border-bottom pb-2">Invoice Summary</h6>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Subtotal:</span>
+                  <span>${formatCurrency(totals.subtotal)}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>VAT (${purchaseOrder.vat || 0}%):</span>
+                  <span>${formatCurrency(totals.vat)}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Discount:</span>
+                  <span class="text-danger">-${formatCurrency(totals.discount)}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Shipping Cost:</span>
+                  <span>${formatCurrency(totals.shipping)}</span>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between">
+                  <strong>Grand Total:</strong>
+                  <strong class="text-primary">${formatCurrency(totals.grandTotal)}</strong>
+                </div>
+                <hr />
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Paid Amount:</span>
+                  <span class="text-success">${formatCurrency(purchaseOrder.paid_amount || 0)}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span>Balance Amount:</span>
+                  <span class="text-warning">${formatCurrency(purchaseOrder.balance_amount || totals.grandTotal)}</span>
+                </div>
+                ${
+                  purchaseOrder.additional_payment
+                    ? `
+                  <div class="d-flex justify-content-between mb-2">
+                    <span>Additional Payment:</span>
+                    <span class="text-info">${formatCurrency(purchaseOrder.additional_payment)}</span>
+                  </div>
+                `
+                    : ""
+                }
+                ${
+                  purchaseOrder.exchange_rate &&
+                  purchaseOrder.exchange_rate !== 1
+                    ? `
+                  <div class="mt-2 small">
+                    <div class="d-flex justify-content-between">
+                      <span>In INR (Converted):</span>
+                      <span>₹${(totals.grandTotal * (purchaseOrder.exchange_rate || 1)).toFixed(2)}</span>
+                    </div>
+                    <div class="text-muted">
+                      Exchange Rate: ${purchaseOrder.exchange_rate}:1
+                    </div>
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="row mt-4 pt-3 border-top">
+            <div class="col-12 text-center">
+              <p class="text-muted mb-0">Thank you for your business!</p>
+              <p class="text-muted small">Generated on: ${new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+  
+  // Write content to iframe
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(printContent);
+  iframe.contentDocument.close();
+  
+  // Print the iframe content
+  iframe.contentWindow.print();
+  
+  // Remove iframe after printing (with a small delay to ensure print dialog opens)
+  setTimeout(() => {
+    document.body.removeChild(iframe);
+  }, 1000);
+};
 
   return (
     <div
@@ -719,7 +978,7 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
       <div className="modal-dialog modal-dialog-centered modal-xl">
         <div className="modal-content rounded-3">
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Purchase Order Invoice</h5>
+            <h5 className="modal-title fw-bold fs-5 ">Purchase Order Invoice</h5>
             <div className="d-flex gap-2">
               <button
                 type="button"
@@ -730,7 +989,7 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
                 <FiPrinter size={14} />
                 Print
               </button>
-              <button
+              {/* <button
                 type="button"
                 className="btn btn-sm btn-outline-success d-flex align-items-center gap-1"
                 onClick={downloadPDF}
@@ -738,7 +997,7 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
               >
                 <FiFile size={14} />
                 PDF
-              </button>
+              </button> */}
               <button
                 type="button"
                 className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
@@ -748,13 +1007,13 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
                 <FiExcel size={14} />
                 Excel
               </button>
+            </div>
               <button
                 type="button"
                 className="btn-close"
                 onClick={onClose}
                 aria-label="Close"
               ></button>
-            </div>
           </div>
 
           <div className="modal-body">
@@ -801,22 +1060,22 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
                             : "N/A"}
                         </span>
                       </div>
-                      <div className="col-6 mb-2">
+                      {/* <div className="col-6 mb-2">
                         <small className="text-muted d-block">
                           Reference No.
                         </small>
                         <span>{purchaseOrder.reference_no || "N/A"}</span>
-                      </div>
-                      <div className="col-6 mb-2">
+                      </div> */}
+                      {/* <div className="col-6 mb-2">
                         <small className="text-muted d-block">Currency</small>
                         <span>{purchaseOrder.currency || "INR"}</span>
-                      </div>
-                      <div className="col-6 mb-2">
+                      </div> */}
+                      {/* <div className="col-6 mb-2">
                         <small className="text-muted d-block">
                           Exchange Rate
                         </small>
                         <span>{purchaseOrder.exchange_rate || 1}:1</span>
-                      </div>
+                      </div> */}
                       <div className="col-6 mb-2">
                         <small className="text-muted d-block">
                           Payment Status
@@ -912,8 +1171,8 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
                       <th>Qty/Weight</th>
                       <th>Unit</th>
                       <th>Rate</th>
-                      <th>Discount</th>
-                      <th>Tax</th>
+                      {/* <th>Discount</th> */}
+                      {/* <th>Tax</th> */}
                       <th>Received Qty</th>
                       <th>Received Weight</th>
                       <th className="text-end">Total</th>
@@ -972,16 +1231,16 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
                                 {formatCurrency(item.rate || 0)}
                               </span>
                             </td>
-                            <td>
+                            {/* <td>
                               <span className="text-danger">
                                 {formatCurrency(item.discount || 0)}
                               </span>
-                            </td>
-                            <td>
+                            </td> */}
+                            {/* <td>
                               <span className="text-warning">
                                 {formatCurrency(item.tax || 0)}
                               </span>
-                            </td>
+                            </td> */}
                             <td>
                               <span
                                 className={
@@ -1160,14 +1419,14 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
                 <FiPrinter size={16} />
                 Print
               </button>
-              <button
+              {/* <button
                 type="button"
                 className="btn btn-success d-flex align-items-center gap-1"
                 onClick={downloadPDF}
               >
                 <FiDownload size={16} />
                 Download PDF
-              </button>
+              </button> */}
               <button
                 type="button"
                 className="btn btn-info d-flex align-items-center gap-1 text-white"

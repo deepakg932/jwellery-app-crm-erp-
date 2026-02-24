@@ -127,26 +127,26 @@ const UpdatePlatingStage = ({
   });
 
   const statusOptions = [
-    {
-      value: "not_started",
-      label: "Not Started",
-      color: "secondary",
-      icon: "⏳",
-    },
-    { value: "preparation", label: "Preparation", color: "info", icon: "🧪" },
-    { value: "cleaning", label: "Cleaning", color: "info", icon: "🚿" },
-    { value: "plating", label: "Plating", color: "warning", icon: "⚡" },
-    { value: "rinsing", label: "Rinsing", color: "info", icon: "💧" },
-    { value: "drying", label: "Drying", color: "info", icon: "🌬️" },
-    {
-      value: "quality_check",
-      label: "Quality Check",
-      color: "warning",
-      icon: "🔍",
-    },
-    { value: "completed", label: "Completed", color: "success", icon: "✅" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
-    { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
+    // {
+    //   value: "not_started",
+    //   label: "Not Started",
+    //   color: "secondary",
+    //   icon: "⏳",
+    // },
+    // { value: "preparation", label: "Preparation", color: "info", icon: "🧪" },
+    // { value: "cleaning", label: "Cleaning", color: "info", icon: "🚿" },
+    // { value: "plating", label: "Plating", color: "warning", icon: "⚡" },
+    // { value: "rinsing", label: "Rinsing", color: "info", icon: "💧" },
+    // { value: "drying", label: "Drying", color: "info", icon: "🌬️" },
+    // {
+    //   value: "quality_check",
+    //   label: "Quality Check",
+    //   color: "warning",
+    //   icon: "🔍",
+    // },
+    { value: "Approved", label: "approved", color: "success", icon: "✅" },
+    { value: "Draft", label: "draft", color: "danger", icon: "⏸️" },
+    { value: "Cancelled", label: "cancelled", color: "danger", icon: "🔄" },
   ];
 
   const platingTypeOptions = [
@@ -212,21 +212,7 @@ const UpdatePlatingStage = ({
       
       // Include labor and plating costs relevant to plating stage
       return (
-        costName.includes("labor") ||
-        costName.includes("plating") ||
-        costName.includes("plater") ||
-        costName.includes("electroplate") ||
-        costName.includes("karigar") ||
-        costName.includes("craftsman") ||
-        costName.includes("worker") ||
-        costName.includes("bath") ||
-        costName.includes("solution") ||
-        stageName.includes("plate") ||
-        subStageName.includes("plate") ||
-        stageName.includes("finishing") ||
-        subStageName.includes("finishing") ||
-        costName.includes("प्लेटिंग") ||
-        costName.includes("कारीगर")
+        costName
       );
     });
 

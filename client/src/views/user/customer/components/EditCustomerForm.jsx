@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiUpload } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
+import { toast } from "react-toastify";
 
 const EditCustomerForm = ({
   onClose,
@@ -24,21 +25,21 @@ const EditCustomerForm = ({
     pincode: "",
     status: true,
   });
-  console.log(customerGroups);
+
   const [errors, setErrors] = useState({});
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
 
-  // Initialize countries on component mount
+  // Initialize countries on component mount - use names as values
   useEffect(() => {
     const allCountries = Country.getAllCountries();
     const formattedCountries = allCountries.map((country) => ({
-      value: country.isoCode,
+      value: country.name,
       label: country.name,
+      isoCode: country.isoCode,
       phoneCode: country.phonecode,
     }));
-
     setCountries(formattedCountries);
   }, []);
 
@@ -47,42 +48,21 @@ const EditCustomerForm = ({
     if (customer) {
       console.log("Customer data received in EditCustomerForm:", customer);
 
-      // Convert country name to country code
-      const countryObj = Country.getAllCountries().find(
-        (c) => c.name === customer.country || c.isoCode === customer.country,
-      );
-
-      console.log("Found country object:", countryObj);
-      console.log("Customer country:", customer.country);
-
-      // Find customer group ID - handle both direct ID and nested object
+      // Find customer group ID
       let groupId = "";
       if (customer.customer_group_id) {
-        // If it's an object with _id property
         if (
           typeof customer.customer_group_id === "object" &&
           customer.customer_group_id._id
         ) {
           groupId = customer.customer_group_id._id;
-        }
-        // If it's just a string ID
-        else if (typeof customer.customer_group_id === "string") {
+        } else if (typeof customer.customer_group_id === "string") {
           groupId = customer.customer_group_id;
         }
       }
 
-      // Use the correct field name from your API - customer has 'name' not 'customer_name'
       const customerName = customer.name || customer.customer_name || "";
       const customerPhone = customer.mobile || customer.phone || "";
-
-      console.log("Setting form data with:", {
-        customer_name: customerName,
-        customer_group_id: groupId,
-        phone: customerPhone,
-        country: countryObj?.isoCode || "IN",
-        state: customer.state || "",
-        city: customer.city || "",
-      });
 
       setFormData({
         customer_name: customerName,
@@ -91,9 +71,9 @@ const EditCustomerForm = ({
         email: customer.email || "",
         whatsapp_number: customer.whatsapp_number || "",
         tax_number: customer.tax_number || "",
-        aadhar_number: customer.aadhar_number,
+        aadhar_number: customer.aadhar_number || "",
         address: customer.address || "",
-        country: countryObj?.isoCode || "IN", // Default to India if not found
+        country: customer.country || "India",
         state: customer.state || "",
         city: customer.city || "",
         pincode: customer.pincode || "",
@@ -101,195 +81,274 @@ const EditCustomerForm = ({
       });
 
       // Load states for the customer's country
-      const countryCode = countryObj?.isoCode || "IN";
-      console.log("Loading states for country code:", countryCode);
-
-      if (countryCode) {
-        const countryStates = State.getStatesOfCountry(countryCode);
-        console.log("Available states:", countryStates);
-
-        const formattedStates = countryStates.map((state) => ({
-          value: state.isoCode,
-          label: state.name,
-        }));
-        setStates(formattedStates);
+      if (customer.country) {
+        const countryObj = Country.getAllCountries().find(
+          (c) => c.name === customer.country
+        );
+        
+        if (countryObj) {
+          const countryStates = State.getStatesOfCountry(countryObj.isoCode);
+          const formattedStates = countryStates.map((state) => ({
+            value: state.name,
+            label: state.name,
+          }));
+          setStates(formattedStates);
+        }
       }
 
       // Load cities for the customer's state
-      const stateValue = customer.state || "";
-      console.log("Loading cities for state:", stateValue);
-
-      if (countryCode && stateValue) {
-        // Try to find state by name if isoCode doesn't match
-        let stateCode = stateValue;
-        const stateObj = State.getStatesOfCountry(countryCode).find(
-          (s) => s.isoCode === stateValue || s.name === stateValue,
+      if (customer.country && customer.state) {
+        const countryObj = Country.getAllCountries().find(
+          (c) => c.name === customer.country
         );
+        
+        if (countryObj) {
+          const stateObj = State.getStatesOfCountry(countryObj.isoCode).find(
+            (s) => s.name === customer.state
+          );
 
-        if (stateObj) {
-          stateCode = stateObj.isoCode;
-          console.log("Found state object:", stateObj);
-
-          const stateCities = City.getCitiesOfState(countryCode, stateCode);
-          console.log("Available cities:", stateCities);
-
-          const formattedCities = stateCities.map((city) => ({
-            value: city.name,
-            label: city.name,
-          }));
-          setCities(formattedCities);
+          if (stateObj) {
+            const stateCities = City.getCitiesOfState(
+              countryObj.isoCode,
+              stateObj.isoCode
+            );
+            const formattedCities = stateCities.map((city) => ({
+              value: city.name,
+              label: city.name,
+            }));
+            setCities(formattedCities);
+          }
         }
       }
 
       setErrors({});
-    } else {
-      console.log("No customer data provided");
     }
   }, [customer]);
 
   // Update states when country changes
   useEffect(() => {
     if (formData.country) {
-      console.log("Country changed to:", formData.country);
-      const countryStates = State.getStatesOfCountry(formData.country);
-      const formattedStates = countryStates.map((state) => ({
-        value: state.isoCode,
-        label: state.name,
-      }));
+      const countryObj = Country.getAllCountries().find(
+        (c) => c.name === formData.country
+      );
+      
+      if (countryObj) {
+        const countryStates = State.getStatesOfCountry(countryObj.isoCode);
+        const formattedStates = countryStates.map((state) => ({
+          value: state.name,
+          label: state.name,
+        }));
 
-      console.log("Setting states:", formattedStates);
-      setStates(formattedStates);
-
-      // Reset state and city if country changes
-      setFormData((prev) => ({
-        ...prev,
-        state: "",
-        city: "",
-      }));
-      setCities([]);
+        setStates(formattedStates);
+        // Only reset state if it's not the same as the current one
+        if (
+          formData.state &&
+          !formattedStates.find((s) => s.value === formData.state)
+        ) {
+          setFormData((prev) => ({ ...prev, state: "", city: "" }));
+        }
+        setCities([]);
+      }
     }
   }, [formData.country]);
 
   // Update cities when state changes
   useEffect(() => {
     if (formData.country && formData.state) {
-      console.log("State changed to:", formData.state);
-      const stateCities = City.getCitiesOfState(
-        formData.country,
-        formData.state,
+      const countryObj = Country.getAllCountries().find(
+        (c) => c.name === formData.country
       );
-      const formattedCities = stateCities.map((city) => ({
-        value: city.name,
-        label: city.name,
-      }));
+      
+      if (countryObj) {
+        const stateObj = State.getStatesOfCountry(countryObj.isoCode).find(
+          (s) => s.name === formData.state
+        );
 
-      console.log("Setting cities:", formattedCities);
-      setCities(formattedCities);
+        if (stateObj) {
+          const stateCities = City.getCitiesOfState(
+            countryObj.isoCode,
+            stateObj.isoCode
+          );
+          const formattedCities = stateCities.map((city) => ({
+            value: city.name,
+            label: city.name,
+          }));
 
-      // Reset city if state changes
-      setFormData((prev) => ({ ...prev, city: "" }));
+          setCities(formattedCities);
+          // Only reset city if it's not in the new city list
+          if (
+            formData.city &&
+            !formattedCities.find((c) => c.value === formData.city)
+          ) {
+            setFormData((prev) => ({ ...prev, city: "" }));
+          }
+        }
+      }
     }
   }, [formData.country, formData.state]);
 
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.customer_name.trim()) {
+    const s = (val) => (val === undefined || val === null ? "" : String(val));
+
+    const customerName = s(formData.customer_name).trim();
+    const customerGroup = s(formData.customer_group_id).trim();
+    const phone = s(formData.phone).trim();
+    const email = s(formData.email).trim();
+    const whatsapp = s(formData.whatsapp_number).trim();
+    const aadhar = s(formData.aadhar_number).trim();
+    const address = s(formData.address).trim();
+    const country = s(formData.country).trim();
+    const state = s(formData.state).trim();
+    const city = s(formData.city).trim();
+    const pincode = s(formData.pincode).trim();
+
+    if (!customerName) {
       newErrors.customer_name = "Customer name is required";
     }
 
-    if (!formData.customer_group_id.trim()) {
+    if (!customerGroup) {
       newErrors.customer_group_id = "Customer group is required";
     }
 
-    if (!formData.phone.trim()) {
+    if (!phone) {
       newErrors.phone = "Phone number is required";
-    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
+    } else if (!/^\d{10}$/.test(phone)) {
       newErrors.phone = "Phone number must be 10 digits";
     }
 
-    if (
-      formData.email.trim() &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())
-    ) {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       newErrors.email = "Please enter a valid email address";
     }
 
-    if (
-      formData.whatsapp_number.trim() &&
-      !/^\d{10}$/.test(formData.whatsapp_number.trim())
-    ) {
+    if (whatsapp && !/^\d{10}$/.test(whatsapp)) {
       newErrors.whatsapp_number = "WhatsApp number must be 10 digits";
     }
 
-    if (!formData.address.trim()) {
+    if (!aadhar) {
+      newErrors.aadhar_number = "Aadhar number is required";
+    } else if (!/^\d{12}$/.test(aadhar)) {
+      newErrors.aadhar_number = "Aadhar number must be 12 digits";
+    }
+
+    if (!address) {
       newErrors.address = "Address is required";
     }
 
-    if (!formData.country.trim()) {
+    if (!country) {
       newErrors.country = "Country is required";
     }
 
-    if (!formData.state.trim()) {
+    if (!state) {
       newErrors.state = "State is required";
     }
 
-    if (!formData.city.trim()) {
+    if (!city) {
       newErrors.city = "City is required";
     }
 
-    if (!formData.pincode.trim()) {
+    if (!pincode) {
       newErrors.pincode = "Pincode is required";
-    } else if (!/^\d{6}$/.test(formData.pincode.trim())) {
+    } else if (!/^\d{6}$/.test(pincode)) {
       newErrors.pincode = "Pincode must be 6 digits";
     }
 
     setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors)[0]);
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Get country and state names from their codes
-    const selectedCountry = countries.find((c) => c.value === formData.country);
-    const selectedState = states.find((s) => s.value === formData.state);
+    const toastId = toast.loading("Updating customer...");
 
-    console.log("Selected country:", selectedCountry);
-    console.log("Selected state:", selectedState);
+    try {
+      const selectedCountry = countries.find((c) => c.value === formData.country);
+      
+      // Find country isoCode for state/city lookup
+      const countryObj = Country.getAllCountries().find(
+        (c) => c.name === formData.country
+      );
+      
+      let stateIsoCode = formData.state;
+      if (countryObj) {
+        const stateObj = State.getStatesOfCountry(countryObj.isoCode).find(
+          (s) => s.name === formData.state
+        );
+        if (stateObj) {
+          stateIsoCode = stateObj.isoCode;
+        }
+      }
 
-    const payload = {
-      id: customer?._id, // Include customer ID for update
-      name: formData.customer_name.trim(), // Use 'name' as per your API
-      customer_group_id: formData.customer_group_id,
-      mobile: formData.phone.trim(), // Use 'mobile' as per your API
-      email: formData.email.trim(),
-      whatsapp_number: formData.whatsapp_number.trim(),
-      tax_number: formData.tax_number.trim(),
-      aadhar_number: formData.aadhar_number.trim(),
-      address: formData.address.trim(),
-      country: selectedCountry ? selectedCountry.label : formData.country,
-      country_code: formData.country,
-      state: selectedState ? selectedState.label : formData.state,
-      state_code: formData.state,
-      city: formData.city.trim(),
-      pincode: formData.pincode.trim(),
-      status: formData.status ? "active" : "inactive", // Convert to string format
-    };
+      const payload = {
+        id: customer?._id,
+        name: formData.customer_name.trim(),
+        customer_group_id: formData.customer_group_id,
+        mobile: formData.phone.trim(),
+        email: formData.email.trim(),
+        whatsapp_number: formData.whatsapp_number.trim(),
+        tax_number: formData.tax_number.trim(),
+        aadhar_number: formData.aadhar_number,
+        address: formData.address.trim(),
+        country: selectedCountry ? selectedCountry.label : formData.country,
+        country_code: selectedCountry?.isoCode || "",
+        state: formData.state.trim(),
+        state_code: stateIsoCode,
+        city: formData.city.trim(),
+        pincode: formData.pincode.trim(),
+        status: formData.status ? "active" : "inactive",
+      };
 
-    console.log("Updating customer data:", payload);
-    onSave(payload);
+      console.log("Updating customer data:", payload);
+      await onSave(payload);
+
+      toast.update(toastId, {
+        render: "Customer updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      setErrors({});
+      onClose();
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      toast.dismiss(toastId);
+
+      if (
+        error.response?.data?.message ===
+        "Customer with this phone already exists"
+      ) {
+        toast.error(
+          "This phone number is already registered. Please use a different phone number.",
+          { autoClose: 5000 }
+        );
+        setErrors((prev) => ({
+          ...prev,
+          phone: "This phone number is already registered",
+        }));
+      } else {
+        const errorMessage =
+          error.response?.data?.message ||
+          "Failed to update customer. Please try again.";
+        toast.error(errorMessage, { autoClose: 4000 });
+      }
+    }
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -299,24 +358,13 @@ const EditCustomerForm = ({
     if (!loading) onClose();
   };
 
-  // Helper function to get country by name (for backward compatibility)
-  const getCountryByLabel = (countryName) => {
-    const country = countries.find((c) => c.label === countryName);
-    return country ? country.value : "";
+  // Get country phone code
+  const getPhoneCode = () => {
+    const countryObj = Country.getAllCountries().find(
+      (c) => c.name === formData.country
+    );
+    return countryObj ? `+${countryObj.phonecode}` : "+91";
   };
-
-  // When formData.country changes, try to find by label if not found by value
-  useEffect(() => {
-    if (
-      formData.country &&
-      !countries.find((c) => c.value === formData.country)
-    ) {
-      const countryByLabel = getCountryByLabel(formData.country);
-      if (countryByLabel) {
-        setFormData((prev) => ({ ...prev, country: countryByLabel }));
-      }
-    }
-  }, [formData.country, countries]);
 
   return (
     <div
@@ -363,7 +411,7 @@ const EditCustomerForm = ({
                   )}
                 </div>
 
-                {/* Customer Group - FIXED: Use group.customer_group instead of group.customer_group_id */}
+                {/* Customer Group */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
                     Customer Group <span className="text-danger">*</span>
@@ -380,21 +428,10 @@ const EditCustomerForm = ({
                     <option value="">Select Customer Group</option>
                     {customerGroups.map((group) => (
                       <option key={group._id} value={group._id}>
-                        {group.customer_group}{" "}
-                        {/* FIX: Changed from customer_group_id to customer_group */}
+                        {group.customer_group}
                       </option>
                     ))}
                   </select>
-                  {/* {errors.customer_group_id && (
-                    <div className="invalid-feedback">
-                      {errors.customer_group_id}
-                    </div>
-                  )} */}
-                  {/* {customerGroups.length === 0 && (
-                    <div className="form-text text-warning">
-                      No customer groups available.
-                    </div>
-                  )} */}
                 </div>
 
                 {/* Phone */}
@@ -403,10 +440,7 @@ const EditCustomerForm = ({
                     Phone Number <span className="text-danger">*</span>
                   </label>
                   <div className="input-group">
-                    <span className="input-group-text">
-                      {countries.find((c) => c.value === formData.country)
-                        ?.phoneCode || "+91"}
-                    </span>
+                    <span className="input-group-text">{getPhoneCode()}</span>
                     <input
                       type="tel"
                       name="phone"
@@ -451,10 +485,7 @@ const EditCustomerForm = ({
                     WhatsApp Number
                   </label>
                   <div className="input-group">
-                    <span className="input-group-text">
-                      {countries.find((c) => c.value === formData.country)
-                        ?.phoneCode || "+91"}
-                    </span>
+                    <span className="input-group-text">{getPhoneCode()}</span>
                     <input
                       type="tel"
                       name="whatsapp_number"
@@ -483,13 +514,20 @@ const EditCustomerForm = ({
                   <input
                     type="tel"
                     name="aadhar_number"
-                    className="form-control form-control-lg"
+                    className={`form-control form-control-lg ${
+                      errors.aadhar_number ? "is-invalid" : ""
+                    }`}
                     placeholder="e.g., 456335223985"
                     value={formData.aadhar_number}
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  <div className="form-text">12-digit adhar (Optional)</div>
+                  {errors.aadhar_number && (
+                    <div className="invalid-feedback d-block">
+                      {errors.aadhar_number}
+                    </div>
+                  )}
+                  <div className="form-text">12-digit aadhar (Required)</div>
                 </div>
 
                 {/* Tax Number */}
@@ -554,12 +592,6 @@ const EditCustomerForm = ({
                   {errors.country && (
                     <div className="invalid-feedback">{errors.country}</div>
                   )}
-                  {formData.country &&
-                    !countries.find((c) => c.value === formData.country) && (
-                      <div className="form-text text-warning">
-                        Country not found in list. Please select from dropdown.
-                      </div>
-                    )}
                 </div>
 
                 {/* State */}
@@ -586,12 +618,6 @@ const EditCustomerForm = ({
                   {errors.state && (
                     <div className="invalid-feedback">{errors.state}</div>
                   )}
-                  {formData.state &&
-                    !states.find((s) => s.value === formData.state) && (
-                      <div className="form-text text-warning">
-                        State not found in list. Please select from dropdown.
-                      </div>
-                    )}
                 </div>
 
                 {/* City */}

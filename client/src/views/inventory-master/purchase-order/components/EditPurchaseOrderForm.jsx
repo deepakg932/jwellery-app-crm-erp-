@@ -26,7 +26,7 @@ const EditPurchaseOrderForm = ({
     items: [],
     notes: "",
     total_amount: 0,
-    vat: "0%", // Initialize with percentage format
+    vat: "0", // Initialize as number without % for calculation
     discount: 0,
     shipping_cost: 0,
     subtotal: 0,
@@ -37,8 +37,6 @@ const EditPurchaseOrderForm = ({
     currency: "INR",
     branch_id: "",
   });
-
-  console.log(purchaseOrder.items);
 
   const [errors, setErrors] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -271,19 +269,37 @@ const EditPurchaseOrderForm = ({
         );
       }, 0);
 
-    // Calculate VAT, Discount, and Shipping Cost
-    const vatAmount = (itemTotal * (parseFloat(formData.vat) || 0)) / 100;
+    // Parse values as numbers
+    const vatPercent = parseFloat(formData.vat) || 0;
     const discountAmount = parseFloat(formData.discount) || 0;
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
 
+    // Calculate VAT based on item total
+    const vatAmount = (itemTotal * vatPercent) / 100;
+
+    // Set subtotal as item total (before VAT, discount, shipping)
     const subtotal = itemTotal;
+
+    // Calculate grand total: itemTotal + VAT - Discount + Shipping
     const grandTotal = itemTotal + vatAmount - discountAmount + shippingCost;
+
+    // Ensure grandTotal is not negative
+    const finalGrandTotal = grandTotal > 0 ? grandTotal : 0;
+
+    console.log("===== CALCULATION DEBUG =====");
+    console.log("Item Total:", itemTotal);
+    console.log("VAT %:", vatPercent);
+    console.log("VAT Amount:", vatAmount);
+    console.log("Discount Amount:", discountAmount);
+    console.log("Shipping Cost:", shippingCost);
+    console.log("Formula:", `${itemTotal} + ${vatAmount} - ${discountAmount} + ${shippingCost} = ${finalGrandTotal}`);
+    console.log("============================");
 
     setFormData((prev) => ({
       ...prev,
       total_amount: itemTotal,
       subtotal: subtotal,
-      grand_total: grandTotal,
+      grand_total: finalGrandTotal,
     }));
   };
 
@@ -314,7 +330,7 @@ const EditPurchaseOrderForm = ({
     setShowSearchResults(true);
   };
 
-  // Handle item selection from search results - UPDATED VERSION
+  // Handle item selection from search results
   const handleItemSelect = (item) => {
     // Find the first empty item slot or add a new one
     let itemIndex = formData.items.findIndex((item) => !item.inventory_item_id);
@@ -388,8 +404,8 @@ const EditPurchaseOrderForm = ({
       discount_amount: inventoryData.discount_amount,
       tax_amount: inventoryData.tax_amount,
       rate: inventoryData.final_price,
-      quantity: initialQuantity, // Will be used for quantity-based units
-      weight: initialWeight, // Will be used for weight-based units
+      quantity: initialQuantity,
+      weight: initialWeight,
       unit_id: item.default_unit_id || "",
       total: 0,
     };
@@ -402,11 +418,6 @@ const EditPurchaseOrderForm = ({
     setSearchQuery("");
     setShowSearchResults(false);
     setSearchResults([]);
-
-    // Recalculate totals if unit is selected
-    if (item.default_unit_id) {
-      setTimeout(() => calculateTotals(), 0);
-    }
   };
 
   const handleUnitChange = (index, unitId) => {
@@ -446,7 +457,6 @@ const EditPurchaseOrderForm = ({
     }
   };
 
-  // Replace the existing handleQuantityWeightChange with this
   const handleQuantityWeightChange = (index, field, value) => {
     const item = formData.items[index];
 
@@ -484,8 +494,6 @@ const EditPurchaseOrderForm = ({
       items: updatedItems,
     }));
 
-    calculateTotals();
-
     // Clear quantity/weight error if any
     if (errors[`items[${index}].quantity_weight`]) {
       setErrors((prev) => {
@@ -495,12 +503,6 @@ const EditPurchaseOrderForm = ({
       });
     }
   };
-
-  useEffect(() => {
-    if (units && units.length > 0) {
-      calculateTotals();
-    }
-  }, [units]);
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...formData.items];
@@ -535,8 +537,6 @@ const EditPurchaseOrderForm = ({
       items: updatedItems,
     }));
 
-    calculateTotals();
-
     // Clear specific errors when field is updated
     if (errors[`items[${index}].${field}`]) {
       setErrors((prev) => {
@@ -555,46 +555,43 @@ const EditPurchaseOrderForm = ({
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
 
-    // For VAT field, add % sign automatically
+    // For number inputs, keep as string but ensure it's valid
+    let newValue = value;
+
+    if (type === "number") {
+      // Allow empty string or valid numbers
+      newValue = value === "" ? "" : value;
+    }
+
+    // Handle VAT specially - remove % symbol and non-numeric
     if (name === "vat") {
-      // Remove any non-numeric characters (except decimal point)
-      const cleanedValue = value.replace(/[^0-9.]/g, "");
-      // Add % sign
-      const formattedValue = cleanedValue ? `${cleanedValue}` : "";
-
-      setFormData((prev) => ({
-        ...prev,
-        [name]: formattedValue,
-      }));
-    } else {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      newValue = value.replace(/[^0-9.]/g, "");
     }
 
+    console.log(`Field ${name} changed to:`, newValue, "Type:", typeof newValue);
+
+    // Update state
+    setFormData(prev => ({ ...prev, [name]: newValue }));
+
+    // Clear error if any
     if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-
-    // Recalculate totals for these fields
-    if (
-      name === "vat" ||
-      name === "discount" ||
-      name === "shipping_cost" ||
-      name === "exchange_rate"
-    ) {
-      setTimeout(() => calculateTotals(), 0);
+      setErrors(prev => ({ ...prev, [name]: "" }));
     }
   };
 
-  // Initialize form data when purchaseOrder prop changes - IMPROVED VERSION
+  // Initialize form data when purchaseOrder prop changes
   useEffect(() => {
     if (purchaseOrder && units && units.length > 0) {
       console.log("Editing purchase order:", purchaseOrder);
       console.log("Available units:", units);
+
+      // Extract numeric VAT value from string (remove % if present)
+      let vatValue = purchaseOrder.vat || "0";
+      if (typeof vatValue === 'string' && vatValue.includes('%')) {
+        vatValue = vatValue.replace('%', '');
+      }
 
       // Map the purchase order data to match the form structure
       const items =
@@ -604,7 +601,7 @@ const EditPurchaseOrderForm = ({
             (inv) =>
               inv._id === (item.inventory_item?._id || item.inventory_item_id),
           );
-console.log(inventoryItems)
+          
           // Find the unit
           const unit = units.find(
             (u) => u._id === (item.unit_id?._id || item.unit_id),
@@ -658,7 +655,7 @@ console.log(inventoryItems)
               ],
         notes: purchaseOrder.notes || "",
         total_amount: purchaseOrder.total_amount || 0,
-        vat: purchaseOrder.vat || 0,
+        vat: vatValue,
         discount: purchaseOrder.discount || 0,
         shipping_cost: purchaseOrder.shipping_cost || 0,
         subtotal: purchaseOrder.subtotal || purchaseOrder.total_amount || 0,
@@ -673,6 +670,24 @@ console.log(inventoryItems)
     }
   }, [purchaseOrder, units, inventoryItems]);
 
+  // Single useEffect to watch ALL fields that affect calculations
+  useEffect(() => {
+    calculateTotals();
+  }, [
+    formData.items,           // Items changes
+    formData.vat,             // VAT changes
+    formData.discount,        // Discount changes  
+    formData.shipping_cost,   // Shipping cost changes
+    formData.exchange_rate,   // Exchange rate changes
+    JSON.stringify(formData.items.map(item => ({
+      quantity: item.quantity,
+      weight: item.weight,
+      rate: item.rate,
+      unit_id: item.unit_id
+    }))), // Deep watch item values
+    units // Units changes
+  ]);
+
   // Remove item row
   const removeItem = (index) => {
     if (formData.items.length > 1) {
@@ -681,8 +696,6 @@ console.log(inventoryItems)
         ...prev,
         items: updatedItems,
       }));
-
-      calculateTotals();
     }
   };
 
@@ -706,19 +719,7 @@ console.log(inventoryItems)
       ...prev,
       items: updatedItems,
     }));
-
-    calculateTotals();
   };
-
-  useEffect(() => {
-    calculateTotals();
-  }, [
-    formData.vat,
-    formData.discount,
-    formData.shipping_cost,
-    formData.items,
-    formData.exchange_rate,
-  ]);
 
   // Close search results when clicking outside
   useEffect(() => {
@@ -741,7 +742,7 @@ console.log(inventoryItems)
     // Filter out empty items
     const validItems = formData.items.filter((item) => item.inventory_item_id);
 
-    // Ensure VAT has % sign
+    // Ensure VAT has % sign for submission
     const vatValue = formData.vat;
     const vatWithPercentage = vatValue.includes("%")
       ? vatValue
@@ -902,7 +903,7 @@ console.log(inventoryItems)
             >
               {/* Top Row - New Fields */}
               <div className="row mb-4">
-                <div className="col-md-3 mb-3">
+                <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">
                     Order Date <span className="text-danger">*</span>
                   </label>
@@ -921,59 +922,7 @@ console.log(inventoryItems)
                   )}
                 </div>
 
-                <div className="col-md-3 mb-3">
-                  <label className="form-label fw-medium">
-                    Currency <span className="text-danger">*</span>
-                  </label>
-                  <select
-                    name="currency"
-                    className={`form-select ${
-                      errors.currency ? "is-invalid" : ""
-                    }`}
-                    value={formData.currency}
-                    onChange={handleChange}
-                    disabled={isDisabled}
-                  >
-                    <option value="">Select Currency</option>
-                    {currencies.map((currency) => (
-                      <option key={currency.code} value={currency.code}>
-                        {currency.name} ({currency.symbol})
-                      </option>
-                    ))}
-                  </select>
-                  {errors.currency && (
-                    <div className="invalid-feedback">{errors.currency}</div>
-                  )}
-                </div>
-
-                <div className="col-md-3 mb-3">
-                  <label className="form-label fw-medium">
-                    Exchange Rate <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="exchange_rate"
-                    className={`form-control ${
-                      errors.exchange_rate ? "is-invalid" : ""
-                    }`}
-                    value={formData.exchange_rate}
-                    onChange={handleChange}
-                    disabled={isDisabled}
-                    min="0"
-                    step="0.01"
-                    placeholder="1.0"
-                  />
-                  <small className="text-muted">
-                    Rate to convert to base currency (INR)
-                  </small>
-                  {errors.exchange_rate && (
-                    <div className="invalid-feedback">
-                      {errors.exchange_rate}
-                    </div>
-                  )}
-                </div>
-
-                <div className="col-md-3 mb-3">
+                <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">
                     Branch <span className="text-danger">*</span>
                   </label>
@@ -1003,10 +952,7 @@ console.log(inventoryItems)
                     <div className="invalid-feedback">{errors.branch_id}</div>
                   )}
                 </div>
-              </div>
 
-              {/* Second Row - Supplier and Amount Fields */}
-              <div className="row mb-4">
                 <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">
                     Supplier <span className="text-danger">*</span>
@@ -1031,7 +977,10 @@ console.log(inventoryItems)
                     <div className="invalid-feedback">{errors.supplier_id}</div>
                   )}
                 </div>
+              </div>
 
+              {/* Second Row - Supplier and Amount Fields */}
+              <div className="row mb-4">
                 {/* Discount Field */}
                 <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">Discount</label>
@@ -1047,8 +996,8 @@ console.log(inventoryItems)
                       onChange={handleChange}
                       disabled={isDisabled}
                       min="0"
-                      step="0.01"
-                      placeholder="0.00"
+                      step="1"
+                      placeholder="0"
                     />
                   </div>
                   <small className="text-muted">Flat discount amount</small>
@@ -1071,8 +1020,8 @@ console.log(inventoryItems)
                       onChange={handleChange}
                       disabled={isDisabled}
                       min="0"
-                      step="0.01"
-                      placeholder="0.00"
+                      step="1"
+                      placeholder="0"
                     />
                   </div>
                   <small className="text-muted">
@@ -1084,65 +1033,24 @@ console.log(inventoryItems)
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Third Row - Totals and Reference */}
-              <div className="row mb-4">
-                {/* VAT Field */}
                 <div className="col-md-4 mb-3">
-                  <label className="form-label fw-medium">VAT (%)</label>
+                  <label className="form-label fw-medium">GST (%)</label>
                   <div className="input-group">
                     <input
-                      type="text" // Change from number to text
+                      type="text"
                       className="form-control"
                       name="vat"
                       value={formData.vat}
                       onChange={handleChange}
                       disabled={isDisabled}
-                      placeholder="10%"
+                      placeholder="10"
                     />
                     <span className="input-group-text">%</span>
                   </div>
                   <small className="text-muted">
                     Value Added Tax percentage
                   </small>
-                </div>
-
-                <div className="col-md-4 mb-3">
-                  <label className="form-label fw-medium">Grand Total</label>
-                  <div className="input-group">
-                    <span className="input-group-text">
-                      {getCurrencySymbol()}
-                    </span>
-                    <input
-                      type="text"
-                      className="form-control bg-light fw-bold"
-                      value={formData.grand_total.toFixed(2)}
-                      readOnly
-                    />
-                    <span className="input-group-text bg-light">
-                      ≈ ₹
-                      {(formData.grand_total * formData.exchange_rate).toFixed(
-                        2,
-                      )}
-                    </span>
-                  </div>
-                  <small className="text-muted">
-                    Converted to base currency at {formData.exchange_rate}:1
-                  </small>
-                </div>
-
-                <div className="col-md-4 mb-3">
-                  <label className="form-label fw-medium">Reference No.</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="reference_no"
-                    value={formData.reference_no}
-                    onChange={handleChange}
-                    disabled={isDisabled}
-                    placeholder="PO-REF-001"
-                  />
                 </div>
               </div>
 
@@ -1216,7 +1124,7 @@ console.log(inventoryItems)
                   </div>
                 </div>
 
-                {/* Order Table - Fixed CSS */}
+                {/* Order Table */}
                 <div
                   className="table-responsive"
                   style={{ maxHeight: "400px", overflowY: "auto" }}
@@ -1228,8 +1136,6 @@ console.log(inventoryItems)
                         <th style={{ minWidth: "150px" }}>Quantity/Weight</th>
                         <th style={{ minWidth: "120px" }}>Unit</th>
                         <th style={{ minWidth: "120px" }}>Rate</th>
-                        <th style={{ minWidth: "100px" }}>Discount</th>
-                        <th style={{ minWidth: "100px" }}>Tax</th>
                         <th style={{ minWidth: "120px" }}>Subtotal</th>
                         <th style={{ minWidth: "60px" }}>Action</th>
                       </tr>
@@ -1269,56 +1175,52 @@ console.log(inventoryItems)
 
                               <td>
                                 {item.unit_id && isWeightUnit(item.unit_id) ? (
-                                  <>
-                                    <input
-                                      type="number"
-                                      className={`form-control ${
-                                        errors[
-                                          `items[${originalIndex}].quantity_weight`
-                                        ]
-                                          ? "is-invalid"
-                                          : ""
-                                      }`}
-                                      placeholder="Enter Weight"
-                                      value={item.weight || ""}
-                                      onChange={(e) =>
-                                        handleQuantityWeightChange(
-                                          originalIndex,
-                                          "weight",
-                                          e.target.value,
-                                        )
-                                      }
-                                      disabled={isDisabled}
-                                      min="0"
-                                      step="0.001"
-                                    />
-                                  </>
+                                  <input
+                                    type="number"
+                                    className={`form-control ${
+                                      errors[
+                                        `items[${originalIndex}].quantity_weight`
+                                      ]
+                                        ? "is-invalid"
+                                        : ""
+                                    }`}
+                                    placeholder="Enter Weight"
+                                    value={item.weight || ""}
+                                    onChange={(e) =>
+                                      handleQuantityWeightChange(
+                                        originalIndex,
+                                        "weight",
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={isDisabled}
+                                    min="0"
+                                    step="0.001"
+                                  />
                                 ) : item.unit_id &&
                                   isQuantityUnit(item.unit_id) ? (
-                                  <>
-                                    <input
-                                      type="number"
-                                      className={`form-control ${
-                                        errors[
-                                          `items[${originalIndex}].quantity_weight`
-                                        ]
-                                          ? "is-invalid"
-                                          : ""
-                                      }`}
-                                      placeholder="Enter Quantity"
-                                      value={item.quantity || ""}
-                                      onChange={(e) =>
-                                        handleQuantityWeightChange(
-                                          originalIndex,
-                                          "quantity",
-                                          e.target.value,
-                                        )
-                                      }
-                                      disabled={isDisabled}
-                                      min="0"
-                                      step="1"
-                                    />
-                                  </>
+                                  <input
+                                    type="number"
+                                    className={`form-control ${
+                                      errors[
+                                        `items[${originalIndex}].quantity_weight`
+                                      ]
+                                        ? "is-invalid"
+                                        : ""
+                                    }`}
+                                    placeholder="Enter Quantity"
+                                    value={item.quantity || ""}
+                                    onChange={(e) =>
+                                      handleQuantityWeightChange(
+                                        originalIndex,
+                                        "quantity",
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={isDisabled}
+                                    min="0"
+                                    step="1"
+                                  />
                                 ) : (
                                   <>
                                     <input
@@ -1410,26 +1312,6 @@ console.log(inventoryItems)
                               <td>
                                 <input
                                   type="text"
-                                  className="form-control bg-light"
-                                  value={`${getCurrencySymbol()}${parseFloat(
-                                    item.discount_amount || 0,
-                                  ).toFixed(2)}`}
-                                  readOnly
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control bg-light"
-                                  value={`${getCurrencySymbol()}${parseFloat(
-                                    item.tax_amount || 0,
-                                  ).toFixed(2)}`}
-                                  readOnly
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
                                   className="form-control bg-light fw-medium"
                                   value={`${getCurrencySymbol()}${parseFloat(
                                     item.total || 0,
@@ -1479,7 +1361,7 @@ console.log(inventoryItems)
                   </table>
                 </div>
 
-                {/* Summary Section - Updated with Shipping Cost */}
+                {/* Summary Section */}
                 <div className="row mt-4">
                   <div className="col-md-6">
                     <div className="mb-3">
@@ -1521,7 +1403,7 @@ console.log(inventoryItems)
                           </div>
                           <div className="mb-2">
                             <span className="text-muted">
-                              VAT ({formData.vat || 0}%):
+                              GST ({formData.vat || 0}%):
                             </span>
                             <span className="float-end fw-medium">
                               {getCurrencySymbol()}
@@ -1555,21 +1437,6 @@ console.log(inventoryItems)
                             <span className="float-end fw-bold fs-5 text-primary">
                               {getCurrencySymbol()}
                               {parseFloat(formData.grand_total || 0).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="mb-2">
-                            <span className="text-muted">Exchange Rate:</span>
-                            <span className="float-end fw-medium">
-                              {formData.exchange_rate}:1
-                            </span>
-                          </div>
-                          <div className="mb-2">
-                            <span className="text-muted">In INR:</span>
-                            <span className="float-end fw-medium">
-                              ₹
-                              {(
-                                formData.grand_total * formData.exchange_rate
-                              ).toFixed(2)}
                             </span>
                           </div>
                         </div>

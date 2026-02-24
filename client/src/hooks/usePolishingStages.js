@@ -204,59 +204,74 @@ export default function usePolishingStages() {
   };
 
   // Fetch labor costs from price making API - INCLUDE POLISHING COSTS
-  const fetchLaborCosts = async () => {
+ const fetchLaborCosts = async () => {
     try {
       setLoading(true);
       const response = await axios.get(API_ENDPOINTS.getPriceMakings());
 
-      console.log("Price making API Response for polishing:", response.data);
+      console.log("Price making API Response:", response.data);
 
       if (response.data?.success && Array.isArray(response.data.data)) {
-        // Filter for polishing-related labor costs
-        const laborCostData = response.data.data.filter((item) => {
-          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
-          const stageName = item.making_stage_id?.stage_name || "";
-          const subStageName = item.making_sub_stage_id?.sub_stage_name || "";
-          const lowerCaseName = costName.toLowerCase();
-          const lowerCaseStage = stageName.toLowerCase();
-          const lowerCaseSubStage = subStageName.toLowerCase();
-          
-          // Include labor costs for polishing stage
-          return (
-            lowerCaseName.includes("labor") ||
-            lowerCaseName.includes("polish") ||
-            lowerCaseName.includes("polisher") ||
-            lowerCaseName.includes("buff") ||
-            lowerCaseName.includes("karigar") ||
-            lowerCaseName.includes("craftsman") ||
-            lowerCaseName.includes("worker") ||
-            lowerCaseStage.includes("polish") ||
-            lowerCaseSubStage.includes("polish") ||
-            lowerCaseName.includes("पॉलिश") ||
-            lowerCaseName.includes("कारीगर")
-          );
+        const allItems = response.data.data;
+
+        const potentialLaborItems = allItems.filter((item) => {
+          const candidates = [
+            item.cost_name,
+            item.cost_type_id?.cost_name,
+            item.cost_type_id?.cost_name_id?.cost_name,
+            item.cost_type?.cost_name,
+            item.cost_type_id?.cost_type,
+            item.cost_type,
+          ].filter(Boolean);
+
+          const joined = candidates.join(" ").toLowerCase();
+
+          const isLabor = (joined.includes("labor") || joined.includes("labour")) && !joined.includes("karigar");
+
+          const explicitFlag = item.is_labor === true || item.isLabor === true || item.cost_category === "labor";
+
+          return isLabor || explicitFlag;
         });
 
-        // Process and format labor costs
+        const laborCostData = potentialLaborItems.length > 0 ? potentialLaborItems : allItems.filter(item => {
+          const ct = (item.cost_type || "").toString().toLowerCase();
+          return ct.includes("labor") || ct.includes("labour");
+        });
+
         const processedCosts = laborCostData.map((item) => {
+          const resolvedName = item.cost_name || item.cost_type_id?.cost_name_id?.cost_name || item.cost_type?.cost_name || item.cost_type || "Labor Cost";
           return {
             ...item,
             _id: item._id,
-            cost_name:
-              item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
-            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_name: resolvedName,
+            cost_type: item.cost_type_id?.cost_type || item.cost_type || "Direct Cost",
             cost_amount: parseFloat(item.cost_amount) || 0,
-            unit: item.unit_id?.name || "unit",
-            stage_name: item.making_stage_id?.stage_name || "General",
-            sub_stage_name:
-              item.making_sub_stage_id?.sub_stage_name || "General",
+            unit: item.unit_id?.name || item.unit || "unit",
+            stage_name: item.making_stage_id?.stage_name || item.making_stage || "General",
+            sub_stage_name: item.making_sub_stage_id?.sub_stage_name || item.making_sub_stage || "General",
             is_active: item.is_active !== false,
           };
         });
 
-        console.log("Processed labor costs for polishing:", processedCosts);
-        setLaborCosts(processedCosts);
-        return processedCosts;
+        // Fallback: if filtering produced no results, map all items so UI has options
+        let finalCosts = processedCosts;
+        if (finalCosts.length === 0 && Array.isArray(allItems) && allItems.length > 0) {
+          finalCosts = allItems.map((item) => ({
+            ...item,
+            _id: item._id,
+            cost_name: item.cost_name || item.cost_type_id?.cost_name_id?.cost_name || item.cost_type || "Cost",
+            cost_type: item.cost_type || item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || item.unit || "unit",
+            stage_name: item.making_stage_id?.stage_name || item.making_stage || "General",
+            sub_stage_name: item.making_sub_stage_id?.sub_stage_name || item.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          }));
+        }
+
+        console.log("Processed labor costs (robust):", finalCosts);
+        setLaborCosts(finalCosts);
+        return finalCosts;
       }
 
       setLaborCosts([]);

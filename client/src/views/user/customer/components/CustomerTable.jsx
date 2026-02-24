@@ -12,6 +12,7 @@ import { RiDeleteBin6Line } from "react-icons/ri";
 import AddCustomerForm from "./AddCustomerForm";
 import EditCustomerForm from "./EditCustomerForm";
 import useCustomers from "@/hooks/useCustomers";
+import { Link } from "react-router";
 
 const CustomerTable = () => {
   const {
@@ -32,7 +33,7 @@ const CustomerTable = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
 
-  console.log(customers)
+  console.log(customers);
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -45,7 +46,7 @@ const CustomerTable = () => {
       customer.phone?.includes(search) ||
       customer.mobile?.includes(search) ||
       customer.whatsapp_number?.includes(search) ||
-      customer.address?.toLowerCase().includes(search.toLowerCase())
+      customer.address?.toLowerCase().includes(search.toLowerCase()),
   );
   // Reset to first page when search changes
   useEffect(() => {
@@ -61,7 +62,7 @@ const CustomerTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentCustomers = filteredCustomers.slice(
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   );
 
   // Format date
@@ -83,6 +84,7 @@ const CustomerTable = () => {
       setShowAddModal(false);
     } catch (error) {
       console.error("Add failed:", error);
+      throw error; // <-- re-throw so form can handle it
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -91,7 +93,6 @@ const CustomerTable = () => {
   // Edit customer
   const handleEditCustomer = async (updatedCustomer) => {
     if (!selectedItem) return;
-
     setActionLoading({ type: "update", id: selectedItem._id });
     try {
       await updateCustomer(selectedItem._id, updatedCustomer);
@@ -99,6 +100,7 @@ const CustomerTable = () => {
       setSelectedItem(null);
     } catch (error) {
       console.error("Update failed:", error);
+      throw error; // <-- re-throw
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -107,7 +109,6 @@ const CustomerTable = () => {
   // Delete customer
   const handleDeleteCustomer = async () => {
     if (!selectedItem) return;
-
     setActionLoading({ type: "delete", id: selectedItem._id });
     try {
       await deleteCustomer(selectedItem._id);
@@ -115,6 +116,7 @@ const CustomerTable = () => {
       setSelectedItem(null);
     } catch (error) {
       console.error("Delete failed:", error);
+      throw error; // <-- re-throw
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -381,7 +383,14 @@ const CustomerTable = () => {
                 currentCustomers.map((customer, index) => (
                   <tr key={customer._id || index}>
                     <td>{indexOfFirstItem + index + 1}</td>
-                    <td className="fw-semibold">{customer.name}</td>
+
+                    <Link
+                      to={`/customer/${customer._id}`}
+                      className="text-decoration-none d-table-cell text-dark"
+                    >
+                      <td className="fw-semibold">{customer.name}</td>
+                    </Link>
+
                     <td>
                       <span className="badge bg-info text-dark fw-semibold">
                         {customer.customer_group || "General"}
@@ -590,12 +599,10 @@ const CustomerTable = () => {
           }}
           onSave={handleEditCustomer}
           customer={selectedItem}
-            customerGroups={customerGroups}
+          customerGroups={customerGroups}
           loading={
             actionLoading.type === "update" &&
             actionLoading.id === selectedItem._id
-
-      
           }
         />
       )}

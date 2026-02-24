@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiUpload, FiUser, FiCamera } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
+import { toast } from 'react-toastify';
 
 const EditEmployeeForm = ({
   onClose,
@@ -32,6 +33,8 @@ const EditEmployeeForm = ({
   const [cities, setCities] = useState([]);
   const [imagePreview, setImagePreview] = useState(null);
 
+  console.log(employee)
+
   // Initialize countries on component mount
   useEffect(() => {
     const allCountries = Country.getAllCountries();
@@ -57,7 +60,7 @@ const EditEmployeeForm = ({
         address: employee.address || "",
         city: employee.city || "",
         state: employee.state || "",
-        country: employee.country || "India",
+        country: employee.country ,
         pincode: employee.pincode || "",
         role_id: employee.role_id || "",
         basic_salary: employee.basic_salary || "",
@@ -72,7 +75,7 @@ const EditEmployeeForm = ({
       // Load states for the employee's country
       if (employee.country) {
         const countryObj = Country.getAllCountries().find(
-          (c) => c.name === employee.country
+          (c) => c.name === employee.country,
         );
         if (countryObj) {
           const countryStates = State.getStatesOfCountry(countryObj.isoCode);
@@ -87,16 +90,16 @@ const EditEmployeeForm = ({
       // Load cities for the employee's state
       if (employee.country && employee.state) {
         const countryObj = Country.getAllCountries().find(
-          (c) => c.name === employee.country
+          (c) => c.name === employee.country,
         );
         const stateObj = State.getStatesOfCountry(countryObj?.isoCode).find(
-          (s) => s.name === employee.state
+          (s) => s.name === employee.state,
         );
 
         if (countryObj && stateObj) {
           const stateCities = City.getCitiesOfState(
             countryObj.isoCode,
-            stateObj.isoCode
+            stateObj.isoCode,
           );
           const formattedCities = stateCities.map((city) => ({
             value: city.name,
@@ -111,62 +114,62 @@ const EditEmployeeForm = ({
   }, [employee]);
 
   // Update states when country changes
-  useEffect(() => {
-    if (formData.country) {
-      const countryObj = Country.getAllCountries().find(
-        (c) => c.name === formData.country
-      );
-      if (countryObj) {
-        const countryStates = State.getStatesOfCountry(countryObj.isoCode);
-        const formattedStates = countryStates.map((state) => ({
-          value: state.name,
-          label: state.name,
-        }));
+  // useEffect(() => {
+  //   if (formData.country) {
+  //     const countryObj = Country.getAllCountries().find(
+  //       (c) => c.name === formData.country,
+  //     );
+  //     if (countryObj) {
+  //       const countryStates = State.getStatesOfCountry(countryObj.isoCode);
+  //       const formattedStates = countryStates.map((state) => ({
+  //         value: state.name,
+  //         label: state.name,
+  //       }));
 
-        setStates(formattedStates);
-        // Only reset state if it's not the same as the current one
-        if (
-          formData.state &&
-          !formattedStates.find((s) => s.value === formData.state)
-        ) {
-          setFormData((prev) => ({ ...prev, state: "", city: "" }));
-        }
-        setCities([]);
-      }
-    }
-  }, [formData.country]);
+  //       setStates(formattedStates);
+  //       // Only reset state if it's not the same as the current one
+  //       if (
+  //         formData.state &&
+  //         !formattedStates.find((s) => s.value === formData.state)
+  //       ) {
+  //         setFormData((prev) => ({ ...prev, state: "", city: "" }));
+  //       }
+  //       setCities([]);
+  //     }
+  //   }
+  // }, [formData.country]);
 
   // Update cities when state changes
-  useEffect(() => {
-    if (formData.country && formData.state) {
-      const countryObj = Country.getAllCountries().find(
-        (c) => c.name === formData.country
-      );
-      const stateObj = State.getStatesOfCountry(countryObj?.isoCode).find(
-        (s) => s.name === formData.state
-      );
+  // useEffect(() => {
+  //   if (formData.country && formData.state) {
+  //     const countryObj = Country.getAllCountries().find(
+  //       (c) => c.name === formData.country,
+  //     );
+  //     const stateObj = State.getStatesOfCountry(countryObj?.isoCode).find(
+  //       (s) => s.name === formData.state,
+  //     );
 
-      if (countryObj && stateObj) {
-        const stateCities = City.getCitiesOfState(
-          countryObj.isoCode,
-          stateObj.isoCode
-        );
-        const formattedCities = stateCities.map((city) => ({
-          value: city.name,
-          label: city.name,
-        }));
+  //     if (countryObj && stateObj) {
+  //       const stateCities = City.getCitiesOfState(
+  //         countryObj.isoCode,
+  //         stateObj.isoCode,
+  //       );
+  //       const formattedCities = stateCities.map((city) => ({
+  //         value: city.name,
+  //         label: city.name,
+  //       }));
 
-        setCities(formattedCities);
-        // Only reset city if it's not in the new city list
-        if (
-          formData.city &&
-          !formattedCities.find((c) => c.value === formData.city)
-        ) {
-          setFormData((prev) => ({ ...prev, city: "" }));
-        }
-      }
-    }
-  }, [formData.country, formData.state]);
+  //       setCities(formattedCities);
+  //       // Only reset city if it's not in the new city list
+  //       if (
+  //         formData.city &&
+  //         !formattedCities.find((c) => c.value === formData.city)
+  //       ) {
+  //         setFormData((prev) => ({ ...prev, city: "" }));
+  //       }
+  //     }
+  //   }
+  // }, [formData.country, formData.state]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -233,6 +236,9 @@ const EditEmployeeForm = ({
     }
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors)[0]);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -266,10 +272,13 @@ const EditEmployeeForm = ({
   };
 
   // Remove the loading condition check and simplify
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
+  const toastId = toast.loading("");
+
+  try {
     const payload = {
       id: employee?._id,
       name: formData.name.trim(),
@@ -290,9 +299,42 @@ const EditEmployeeForm = ({
 
     console.log("Updating employee data:", payload);
 
-    // Directly call onSave - let the parent component handle closing
-    onSave(payload);
-  };
+    // Wait for the update operation to complete
+    await onSave(payload);
+
+    // Success - update toast
+    toast.update(toastId, {
+      render: 'Employee updated successfully!',
+      type: 'success',
+      isLoading: false,
+      autoClose: 3000,
+    });
+
+    // Parent component will close the modal on success
+    // No need to reset form here as component will unmount
+
+  } catch (error) {
+    console.error('Error updating employee:', error);
+
+    // Error - update toast with error message
+    toast.update(toastId, {
+      render: error.response?.data?.message || 'Failed to update employee. Please try again.',
+      type: 'error',
+      isLoading: false,
+      autoClose: 4000,
+    });
+
+    // Highlight phone field if duplicate error
+    if (error.response?.data?.message?.includes("phone already exists")) {
+      setErrors(prev => ({
+        ...prev,
+        phone: "This phone number is already registered"
+      }));
+    }
+    
+    // DO NOT close modal - keep open for user to correct
+  }
+};
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -314,7 +356,7 @@ const EditEmployeeForm = ({
   // Get country phone code
   const getPhoneCode = () => {
     const countryObj = Country.getAllCountries().find(
-      (c) => c.name === formData.country
+      (c) => c.name === formData.country,
     );
     return countryObj ? `+${countryObj.phonecode}` : "+91";
   };

@@ -123,7 +123,6 @@ export default function ItemsTablePage() {
   // Handle bulk status update
   const handleBulkStatusUpdate = async (selectedIds, status) => {
     if (!selectedIds || selectedIds.length === 0) {
-      alert("Please select at least one product");
       return;
     }
 
@@ -132,21 +131,12 @@ export default function ItemsTablePage() {
     try {
       const response = await bulkUpdateProductStatus(selectedIds, status);
 
-      alert(
-        response.message ||
-          `${
-            response.modifiedCount || selectedIds.length
-          } products updated to ${status}`
-      );
+
 
       setSelectedProducts([]);
       await refreshItems();
     } catch (error) {
-      alert(
-        `Failed to update status: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+  
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -276,7 +266,6 @@ export default function ItemsTablePage() {
       await refreshItems();
     } catch (error) {
       console.error("Failed to add item:", error);
-      alert(`Failed to add item: ${error.message}`);
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -292,10 +281,10 @@ export default function ItemsTablePage() {
       setShowEditModal(false);
       setSelectedItem(null);
       await refreshItems();
-      alert("Item updated successfully!");
+    
     } catch (error) {
       console.error("Failed to update item:", error);
-      alert(`Failed to update item: ${error.message}`);
+      
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -312,7 +301,7 @@ export default function ItemsTablePage() {
       setSelectedItem(null);
       await refreshItems();
     } catch (error) {
-      alert(`Failed to delete item: ${error.message}`);
+      console.error("Failed to delete item:", error);
     } finally {
       setActionLoading({ type: null, id: null });
     }
@@ -323,7 +312,7 @@ export default function ItemsTablePage() {
     try {
       await refreshItems();
     } catch (error) {
-      alert(`Failed to refresh items: ${error.message}`);
+      console.error("Failed to refresh items:", error);
     }
   };
 
@@ -645,16 +634,16 @@ export default function ItemsTablePage() {
                       <td>
                         <div className="d-flex flex-column">
                           <span className="fw-medium">
-                            {item.product_code || "N/A"}
+                            {item.article_no || "N/A"}
                           </span>
-                          {item._id && (
+                          {/* {item._id && (
                             <small
                               className="text-muted"
                               style={{ fontSize: "0.7rem" }}
                             >
                               ID: {item._id.substring(0, 8)}...
                             </small>
-                          )}
+                          )} */}
                         </div>
                       </td>
 
@@ -763,12 +752,12 @@ export default function ItemsTablePage() {
                             </span>
                           </div>
                         )}
-                        {item.createdAt && !isEditingStatus && (
+                        {/* {item.createdAt && !isEditingStatus && (
                           <div className="text-muted small mt-1">
                             Created:{" "}
                             {new Date(item.createdAt).toLocaleDateString()}
                           </div>
-                        )}
+                        )} */}
                       </td>
 
                       {/* ACTION BUTTONS */}

@@ -148,12 +148,7 @@ export default function CostTypeTable() {
               Are you sure you want to delete{" "}
               <strong>{selectedItem?.cost_type}</strong>?
             </p>
-            <div className="alert alert-warning py-2 mt-3">
-              <small>
-                <strong>Note:</strong> This will delete the cost type
-                association. Associated costs will not be affected.
-              </small>
-            </div>
+          
           </div>
 
           <div className="modal-footer border-top pt-3">

@@ -13,6 +13,7 @@ import { RiDeleteBin6Line } from "react-icons/ri";
 import AddEmployeeForm from "./AddEmployeeForm";
 import EditEmployeeForm from "./EditEmployeeForm";
 import useEmployees from "@/hooks/useEmployees";
+import { toast } from 'react-toastify';
 
 const EmployeeTable = () => {
   const {
@@ -90,40 +91,33 @@ const EmployeeTable = () => {
 
   // Add new employee
   const handleAddEmployee = async (employeeData) => {
-    setActionLoading({ type: "add", id: null });
-    try {
-      await addEmployee(employeeData);
-      setShowAddModal(false);
-    } catch (error) {
-      console.error("Add failed:", error);
-    } finally {
-      setActionLoading({ type: null, id: null });
-    }
-  };
+  setActionLoading({ type: "add", id: null });
+  try {
+    await addEmployee(employeeData);
+    setShowAddModal(false);
+  } catch (error) {
+    console.error("Add failed:", error);
+    throw error; // <-- re-throw so form can show error toast
+  } finally {
+    setActionLoading({ type: null, id: null });
+  }
+};
 
   // Edit employee
-  const handleEditEmployee = async (updatedEmployee) => {
-    if (!selectedItem) return;
-
-    console.log("Starting edit for:", selectedItem._id);
-
-    // Set loading state
-    setActionLoading({ type: "update", id: selectedItem._id });
-
-    try {
-      await updateEmployee(selectedItem._id, updatedEmployee);
-      console.log("Edit successful");
-
-      // Close modal after successful update
-      setShowEditModal(false);
-      setSelectedItem(null);
-    } catch (error) {
-      console.error("Update failed:", error);
-    } finally {
-      // Always reset loading state
-      setActionLoading({ type: null, id: null });
-    }
-  };
+const handleEditEmployee = async (updatedEmployee) => {
+  if (!selectedItem) return;
+  setActionLoading({ type: "update", id: selectedItem._id });
+  try {
+    await updateEmployee(selectedItem._id, updatedEmployee);
+    setShowEditModal(false);
+    setSelectedItem(null);
+  } catch (error) {
+    console.error("Update failed:", error);
+    throw error; // <-- re-throw
+  } finally {
+    setActionLoading({ type: null, id: null });
+  }
+};
 
   const handleCloseEdit = () => {
     console.log("handleCloseEdit called");
@@ -139,38 +133,33 @@ const EmployeeTable = () => {
   };
 
   // Delete employee
-  const handleDeleteEmployee = async () => {
-    if (!selectedItem) return;
-
-    console.log("Starting delete for:", selectedItem._id);
-
-    // Set loading state with the employee ID
-    setActionLoading({ type: "delete", id: selectedItem._id });
-
-    try {
-      // Call deleteEmployee and wait for response
-      const result = await deleteEmployee(selectedItem._id);
-
-      console.log("Delete result:", result);
-
-      if (result?.success) {
-        // Close modal only on successful deletion
-        console.log("Delete successful, closing modal");
-        setShowDeleteModal(false);
-        setSelectedItem(null);
-      } else {
-        // Keep modal open on error
-        console.log("Delete failed, keeping modal open");
-        // You could show an error message here
-      }
-    } catch (error) {
-      console.error("Delete failed with error:", error);
-      // Keep modal open on error
-    } finally {
-      // Always reset loading state
-      setActionLoading({ type: null, id: null });
-    }
-  };
+const handleDeleteEmployee = async () => {
+  if (!selectedItem) return;
+  setActionLoading({ type: "delete", id: selectedItem._id });
+  const toastId = toast.loading("Deleting employee...");
+  try {
+    const result = await deleteEmployee(selectedItem._id);
+    toast.update(toastId, {
+      render: "Employee deleted successfully!",
+      type: "success",
+      isLoading: false,
+      autoClose: 3000,
+    });
+    setShowDeleteModal(false);
+    setSelectedItem(null);
+  } catch (error) {
+    console.error("Delete failed:", error);
+    toast.update(toastId, {
+      render: error.response?.data?.message || "Failed to delete employee",
+      type: "error",
+      isLoading: false,
+      autoClose: 4000,
+    });
+    // Modal stays open
+  } finally {
+    setActionLoading({ type: null, id: null });
+  }
+};
 
   // Open edit modal
   const handleOpenEdit = (employee) => {

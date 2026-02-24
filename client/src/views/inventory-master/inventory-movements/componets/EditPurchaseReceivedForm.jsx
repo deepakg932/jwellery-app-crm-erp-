@@ -37,7 +37,7 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
 
   // Initialize form data when stockIn prop changes
   useEffect(() => {
-    if (stockIn) {
+    if (stockIn && Object.keys(stockIn).length > 0) {
       console.log("Initializing form with stockIn:", stockIn);
       
       // Get supplier name
@@ -45,6 +45,8 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
       if (stockIn.supplier_id) {
         if (typeof stockIn.supplier_id === 'object') {
           supplierName = stockIn.supplier_id.supplier_name || stockIn.supplier_id.name || "";
+        } else {
+          supplierName = stockIn.supplier_name || "";
         }
       }
       
@@ -52,7 +54,9 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
       let branchName = "";
       if (stockIn.branch_id) {
         if (typeof stockIn.branch_id === 'object') {
-          branchName = stockIn.branch_id.name || "";
+          branchName = stockIn.branch_id.branch_name || stockIn.branch_id.name || "";
+        } else {
+          branchName = stockIn.branch_name || "";
         }
       }
       
@@ -63,31 +67,29 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
         
         return {
           po_item_id: item.po_item_id || null,
-          inventory_item_id: inventoryItem._id || item.inventory_item_id || "",
-          inventory_item_name: inventoryItem.name || "Unknown Item",
-          sku_code: inventoryItem.item_code || "N/A",
+          inventory_item_id: typeof inventoryItem === 'object' ? inventoryItem._id : inventoryItem,
+          inventory_item_name: typeof inventoryItem === 'object' ? inventoryItem.name : "Unknown Item",
+          sku_code: typeof inventoryItem === 'object' ? inventoryItem.item_code : "N/A",
           ordered_quantity: item.ordered_quantity || 0,
           ordered_weight: item.ordered_weight || 0,
-          unit_id: unit._id || item.unit_id || "",
-          unit_name: unit.name || "pcs",
-          unit_code: unit.code || "",
-          rate: item.cost || 0,
+          unit_id: typeof unit === 'object' ? unit._id : unit,
+          unit_name: typeof unit === 'object' ? unit.name : "pcs",
+          unit_code: typeof unit === 'object' ? unit.code : "",
+          rate: item.cost || item.rate || 0,
           total: item.total_cost || 0,
-
-          // Only received fields (removed quantity and weight)
           received_quantity: item.received_quantity || "",
           received_weight: item.received_weight || "",
-          cost: item.cost || 0,
+          cost: item.cost || item.rate || 0,
         };
       }) || [];
 
       console.log("Initialized items:", itemsData);
 
       setFormData({
-        po_id: stockIn.po_id?._id || stockIn.po_id || "",
-        supplier_id: stockIn.supplier_id?._id || stockIn.supplier_id || "",
+        po_id: typeof stockIn.po_id === 'object' ? stockIn.po_id._id : stockIn.po_id || "",
+        supplier_id: typeof stockIn.supplier_id === 'object' ? stockIn.supplier_id._id : stockIn.supplier_id || "",
         supplier_name: supplierName,
-        branch_id: stockIn.branch_id?._id || stockIn.branch_id || "",
+        branch_id: typeof stockIn.branch_id === 'object' ? stockIn.branch_id._id : stockIn.branch_id || "",
         branch_name: branchName,
         received_date: stockIn.received_date ? 
                       new Date(stockIn.received_date).toISOString().split('T')[0] : 
@@ -97,15 +99,17 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
         total_cost: stockIn.total_cost || 0,
         status: stockIn.status || "received",
       });
+    }
+  }, [stockIn]);
 
-      // Find and set the selected PO if exists
-      if (stockIn.po_id) {
-        const poId = stockIn.po_id._id || stockIn.po_id;
-        const foundPO = purchaseOrders.find(p => p._id === poId);
-        if (foundPO) {
-          console.log("Found PO for editing:", foundPO);
-          setSelectedPO(foundPO);
-        }
+  // Set selected PO when purchaseOrders are loaded
+  useEffect(() => {
+    if (stockIn?.po_id && purchaseOrders.length > 0) {
+      const poId = typeof stockIn.po_id === 'object' ? stockIn.po_id._id : stockIn.po_id;
+      const foundPO = purchaseOrders.find(p => p._id === poId);
+      if (foundPO) {
+        console.log("Found PO for editing:", foundPO);
+        setSelectedPO(foundPO);
       }
     }
   }, [stockIn, purchaseOrders]);
@@ -120,37 +124,73 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
       return;
     }
 
-    // Filter purchase orders by PO number or supplier name
+    // Filter purchase orders by PO number, reference number, or supplier name
     const results = purchaseOrders.filter(
       (po) =>
+        // Match by PO number (priority)
         (po.po_number &&
           po.po_number.toLowerCase().includes(query.toLowerCase())) ||
+        // Match by reference number
         (po.reference_no &&
           po.reference_no.toLowerCase().includes(query.toLowerCase())) ||
+        // Match by supplier name (from supplier_id object)
+        (po.supplier_id?.supplier_name &&
+          po.supplier_id.supplier_name
+            .toLowerCase()
+            .includes(query.toLowerCase())) ||
+        (po.supplier_id?.name &&
+          po.supplier_id.name.toLowerCase().includes(query.toLowerCase())) ||
+        // Also check if supplier is a direct object (backward compatibility)
         (po.supplier?.name &&
           po.supplier.name.toLowerCase().includes(query.toLowerCase())) ||
         (po.supplier?.supplier_name &&
-          po.supplier.supplier_name.toLowerCase().includes(query.toLowerCase()))
+          po.supplier.supplier_name
+            .toLowerCase()
+            .includes(query.toLowerCase())),
     );
 
-    // Only show approved or draft POs
-    const filteredResults = results.filter(
-      (po) => po.status === "approved" || po.status === "draft"
-    );
-
-    setPoSearchResults(filteredResults);
+    setPoSearchResults(results);
     setShowPoSearchResults(true);
   };
 
   // Handle purchase order selection
   const handlePOSelect = (po) => {
+    console.log("=== EDIT: PO Selected ===", po);
+    console.log("Raw supplier_id:", po.supplier_id);
+    console.log("Raw branch:", po.branch);
+    
     setSelectedPO(po);
 
-    // Extract supplier and branch from PO response
-    const supplierId = po.supplier?._id || "";
-    const supplierName = po.supplier?.name || po.supplier?.supplier_name || "";
-    const branchId = po.branch?._id || "";
-    const branchName = po.branch?.name || "";
+    // Extract supplier and branch from PO response - handle both possible data structures
+    // Handle supplier_id object (from API)
+    const supplierId = 
+      po.supplier_id?._id ||     // API: supplier_id._id
+      po.supplier_id?.id ||      // Alternative with id
+      po.supplier?._id ||         // Alternative: supplier._id
+      po.supplier_id ||
+      "";
+    const supplierName =
+      po.supplier_id?.supplier_name ||  // API: supplier_id.supplier_name
+      po.supplier_id?.name ||           // API: supplier_id.name
+      po.supplier?.name ||              // Alternative: supplier.name
+      po.supplier?.supplier_name ||     // Alternative: supplier.supplier_name
+      "";
+    
+    // Handle branch object (from API)
+    const branchId = 
+      po.branch?._id ||           // API: branch._id
+      po.branch_id?._id ||        // Alternative: branch_id._id
+      po.branch_id ||
+      "";
+    const branchName =
+      po.branch?.branch_name ||     // API: branch.branch_name
+      po.branch?.name ||            // API: branch.name
+      po.branch_id?.branch_name ||  // Alternative: branch_id.branch_name
+      po.branch_id?.name ||         // Alternative: branch_id.name
+      "";
+
+    console.log("✓ Extracted supplierId:", supplierId, "supplierName:", supplierName);
+    console.log("✓ Extracted branchId:", branchId, "branchName:", branchName);
 
     setFormData((prev) => ({
       ...prev,
@@ -164,26 +204,28 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
     // Auto-populate items from PO
     const poItems =
       po.items?.map((item) => {
-        const inventoryItem = item.inventory_item;
-        const unit = item.unit;
+        const inventoryItem = item.inventory_item_id || item.inventory_item || {};
+        const unit = item.unit_id || item.unit || {};
+
+        // Determine if quantity or weight based
+        const quantity = item.quantity || item.qty || 0;
+        const weight = item.weight || 0;
 
         return {
           po_item_id: item._id,
-          inventory_item_id: inventoryItem?._id || "",
-          inventory_item_name: inventoryItem?.name || "Unknown Item",
-          sku_code: inventoryItem?.item_code || "N/A",
-          ordered_quantity: item.quantity || 0,
-          ordered_weight: item.weight || 0,
-          unit_id: unit?._id || "",
-          unit_name: unit?.name || "pcs",
-          unit_code: unit?.code || "",
-          rate: item.rate || 0,
-          total: item.total || 0,
-
-          // Only received fields (removed quantity and weight)
-          received_quantity: "",
-          received_weight: "",
-          cost: item.rate || 0,
+          inventory_item_id: typeof inventoryItem === 'object' ? inventoryItem._id : inventoryItem,
+          inventory_item_name: typeof inventoryItem === 'object' ? inventoryItem.name : "Unknown Item",
+          sku_code: typeof inventoryItem === 'object' ? inventoryItem.item_code : "N/A",
+          ordered_quantity: quantity || 0,
+          ordered_weight: weight || 0,
+          unit_id: typeof unit === 'object' ? unit._id : unit,
+          unit_name: typeof unit === 'object' ? unit.name : "pcs",
+          unit_code: typeof unit === 'object' ? unit.code : "",
+          rate: item.rate || item.cost || 0,
+          total: item.total || item.total_cost || 0,
+          received_quantity: item.received_quantity || "",
+          received_weight: item.received_weight || "",
+          cost: item.rate || item.cost || 0,
         };
       }) || [];
 
@@ -639,8 +681,13 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
                             </div>
                             <div className="small text-muted">
                               Supplier:{" "}
-                              {po.supplier?.name || po.supplier?.supplier_name}{" "}
-                              | Reference: {po.reference_no || "N/A"} | Total: ₹
+                              {po.supplier_id?.supplier_name ||
+                                po.supplier_id?.name ||
+                                po.supplier?.name ||
+                                po.supplier?.supplier_name ||
+                                "N/A"}{" "}
+                              | Reference: {po.reference_no || "N/A"} | Items:{" "}
+                              {po.items?.length || 0} | Total: ₹
                               {(
                                 po.grand_total ||
                                 po.total_amount ||

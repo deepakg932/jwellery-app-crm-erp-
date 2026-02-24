@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiUpload } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
+import { toast } from "react-toastify";
 
 const AddCustomerForm = ({
   onClose,
@@ -108,6 +109,13 @@ const AddCustomerForm = ({
     } else if (!/^\d{10}$/.test(formData.phone.trim())) {
       newErrors.phone = "Phone number must be 10 digits";
     }
+    
+  if (!formData.aadhar_number.trim()) {
+      newErrors.aadhar_number = "aadhar number is required";
+    } else if (!/^\d{12}$/.test(formData.aadhar_number.trim())) {
+      newErrors.aadhar_number = "aadhar number must be 12 digits";
+    }
+
 
     if (
       formData.email.trim() &&
@@ -146,61 +154,122 @@ const AddCustomerForm = ({
     }
 
     setErrors(newErrors);
+
+    // Show only the first error as a toast (optional)
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors)[0]);
+    }
+
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Get country and state names from their codes
-    const selectedCountry = countries.find((c) => c.value === formData.country);
-    const selectedState = states.find((s) => s.value === formData.state);
-    const selectedGroup = customerGroups.find(
-      (g) => g._id === formData.customer_group_id,
-    );
+    const toastId = toast.loading("");
 
-    const payload = {
-      customer_name: formData.customer_name.trim(),
-      customer_group_id: formData.customer_group_id,
-      phone: formData.phone.trim(),
-      email: formData.email.trim(),
-      whatsapp_number: formData.whatsapp_number.trim(),
-      tax_number: formData.tax_number.trim(),
-      aadhar_number: formData.aadhar_number.trim(),
-      address: formData.address.trim(),
-      country: selectedCountry ? selectedCountry.label : formData.country,
-      country_code: formData.country,
-      state: selectedState ? selectedState.label : formData.state,
-      state_code: formData.state,
-      city: formData.city.trim(),
-      pincode: formData.pincode.trim(),
-      status: formData.status,
-    };
+    try {
+      const selectedCountry = countries.find(
+        (c) => c.value === formData.country,
+      );
+      const selectedState = states.find((s) => s.value === formData.state);
+      const selectedGroup = customerGroups.find(
+        (g) => g._id === formData.customer_group_id,
+      );
 
-    console.log("Submitting customer data:", payload);
-    onSave(payload);
+      const payload = {
+        customer_name: formData.customer_name.trim(),
+        customer_group_id: formData.customer_group_id,
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
+        whatsapp_number: formData.whatsapp_number.trim(),
+        tax_number: formData.tax_number.trim(),
+        aadhar_number: formData.aadhar_number.trim(),
+        address: formData.address.trim(),
+        country: selectedCountry ? selectedCountry.label : formData.country,
+        country_code: formData.country,
+        state: selectedState ? selectedState.label : formData.state,
+        state_code: formData.state,
+        city: formData.city.trim(),
+        pincode: formData.pincode.trim(),
+        status: formData.status,
+      };
 
-    // Reset form
-    const resetCountry = countries.find((c) => c.value === "IN")?.value || "";
-    const resetGroup = customerGroups.length > 0 ? customerGroups[0]._id : "";
+      console.log("Submitting customer data:", payload);
 
-    setFormData({
-      customer_name: "",
-      customer_group_id: resetGroup,
-      phone: "",
-      email: "",
-      whatsapp_number: "",
-      tax_number: "",
-      aadhar_number: "",
-      address: "",
-      country: resetCountry,
-      state: "",
-      city: "",
-      pincode: "",
-      status: true,
-    });
-    setErrors({});
+      await onSave(payload);
+
+      // Success case - update toast and close modal
+      toast.update(toastId, {
+        render: 'Customer saved successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      // Reset form
+      const resetCountry = countries.find((c) => c.value === "IN")?.value || "";
+      const resetGroup = customerGroups.length > 0 ? customerGroups[0]._id : "";
+
+      setFormData({
+        customer_name: "",
+        customer_group_id: resetGroup,
+        phone: "",
+        email: "",
+        whatsapp_number: "",
+        tax_number: "",
+        aadhar_number: "",
+        address: "",
+        country: resetCountry,
+        state: "",
+        city: "",
+        pincode: "",
+        status: true,
+      });
+      setErrors({});
+
+      // Close modal after successful save ONLY
+      // setTimeout(() => {
+      onClose();
+      // }, 1500);
+    } catch (error) {
+      console.error("Error saving customer:", error);
+
+      // Error case - DO NOT close the modal
+      // Handle the specific error message
+      if (
+        error.response?.data?.message ===
+        "Customer with this phone already exists"
+      ) {
+        toast.update(toastId, {
+          render:
+            "This phone number is already registered. Please use a different phone number.",
+          type: "error",
+          isLoading: false,
+          autoClose: 5000,
+        });
+
+        // Highlight the phone field
+        setErrors((prev) => ({
+          ...prev,
+          phone: "This phone number is already registered",
+        }));
+      } else {
+        // Handle other errors
+        const errorMessage =
+          error.response?.data?.message ||
+          "Failed to save customer. Please try again.";
+        toast.update(toastId, {
+          render: errorMessage,
+          type: "error",
+          isLoading: false,
+          autoClose: 4000,
+        });
+      }
+
+      // IMPORTANT: No onClose() here - modal stays open
+    }
   };
 
   const handleChange = (e) => {
@@ -404,18 +473,26 @@ const AddCustomerForm = ({
                   <input
                     type="tel"
                     name="aadhar_number"
-                    className="form-control form-control-lg"
+                    className={`form-control form-control-lg
+                     ${
+                      errors.aadhar_number ? "is-invalid" : ""
+                    }`}
                     placeholder="e.g., 456335223985"
                     value={formData.aadhar_number}
                     onChange={handleChange}
                     disabled={loading}
                   />
                   <div className="form-text">12-digit adhar (Optional)</div>
+                    {errors.aadhar_number && (
+                    <div className="invalid-feedback">
+                      {errors.aadhar_number}
+                    </div>
+                  )}
                 </div>
                 {/* Tax Number */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
-                    Tax Number (PAN)
+                    Tax Number 
                   </label>
                   <input
                     type="text"

@@ -373,98 +373,98 @@ export default function usePurchaseOrders() {
   };
 
   // Update payment status of a purchase order
-  const updatePurchaseOrderPayment = async (id, paymentData) => {
-    try {
-      setLoading(true);
-      setError("");
+ const updatePurchaseOrderPayment = async (id, paymentData) => {
+  try {
+    setLoading(true);
+    setError("");
 
-      console.log(
-        "Updating payment for purchase order ID:",
-        id,
-        "Payment Data:",
-        paymentData,
+    console.log(
+      "Updating payment for purchase order ID:",
+      id,
+      "Payment Data:",
+      paymentData,
+    );
+
+    // Use the updatePurchaseOrder endpoint
+    const url = API_ENDPOINTS.updatePurchaseOrder(id);
+
+    // Find the purchase order and get its grand_total instead of total_amount
+    const purchaseOrder = purchaseOrders.find((po) => po._id === id);
+    const grandTotal = purchaseOrder?.grand_total || 0; // Changed from total_amount to grand_total
+    const paidAmount = parseFloat(paymentData.paid_amount) || 0;
+    const balanceAmount = grandTotal - paidAmount; // Changed from totalAmount to grandTotal
+
+    const updatePayload = {
+      ...paymentData,
+      payment_status: paymentData.payment_status,
+      paid_amount: paidAmount,
+      balance_amount: balanceAmount,
+      payment_date:
+        paymentData.payment_date || new Date().toISOString().split("T")[0],
+      grand_total: grandTotal, // Changed from total_amount to grand_total
+    };
+
+    console.log("Sending payment update to:", url, "Payload:", updatePayload);
+
+    const res = await axios.put(url, updatePayload);
+    console.log("Update payment response:", res.data);
+
+    if (res.data?.success || res.data?.status === "success") {
+      const responseData = res.data.data || res.data;
+
+      // Update the purchase order in local state immediately for better UX
+      setPurchaseOrders((prev) =>
+        prev.map((po) => {
+          if (po._id === id) {
+            const updatedPO = {
+              ...po,
+              payment_status: paymentData.payment_status,
+              paid_amount: paidAmount,
+              balance_amount: balanceAmount,
+              payment_date: paymentData.payment_date,
+              payment_method: paymentData.payment_method,
+              payment_notes: paymentData.payment_notes,
+              updated_at: new Date().toISOString(),
+            };
+
+            return updatedPO;
+          }
+          return po;
+        }),
       );
 
-      // Use the updatePurchaseOrder endpoint
-      const url = API_ENDPOINTS.updatePurchaseOrder(id);
+      // Refresh data to ensure consistency with backend
+      setTimeout(() => {
+        fetchPurchaseOrders();
+      }, 500);
 
-      // Prepare the payment update payload according to your API structure
-      const totalAmount =
-        purchaseOrders.find((po) => po._id === id)?.total_amount || 0;
-      const paidAmount = parseFloat(paymentData.paid_amount) || 0;
-      const balanceAmount = totalAmount - paidAmount;
-
-      const updatePayload = {
-        ...paymentData,
-        payment_status: paymentData.payment_status,
-        paid_amount: paidAmount,
-        balance_amount: balanceAmount,
-        payment_date:
-          paymentData.payment_date || new Date().toISOString().split("T")[0],
-        total_amount: totalAmount, // Include total amount if needed
-      };
-
-      console.log("Sending payment update to:", url, "Payload:", updatePayload);
-
-      const res = await axios.put(url, updatePayload);
-      console.log("Update payment response:", res.data);
-
-      if (res.data?.success || res.data?.status === "success") {
-        const responseData = res.data.data || res.data;
-
-        // Update the purchase order in local state immediately for better UX
-        setPurchaseOrders((prev) =>
-          prev.map((po) => {
-            if (po._id === id) {
-              const updatedPO = {
-                ...po,
-                payment_status: paymentData.payment_status,
-                paid_amount: paidAmount,
-                balance_amount: balanceAmount,
-                payment_date: paymentData.payment_date,
-                payment_method: paymentData.payment_method,
-                payment_notes: paymentData.payment_notes,
-                updated_at: new Date().toISOString(),
-              };
-
-              return updatedPO;
-            }
-            return po;
-          }),
-        );
-
-        // Refresh data to ensure consistency with backend
-        setTimeout(() => {
-          fetchPurchaseOrders();
-        }, 500);
-
-        return responseData;
-      } else {
-        throw new Error(res.data?.message || "Failed to update payment status");
-      }
-    } catch (err) {
-      console.error("Update payment error:", err);
-
-      let errorMessage = "Failed to update payment status";
-
-      if (err.response) {
-        errorMessage =
-          err.response.data?.message ||
-          err.response.data?.error ||
-          `Server error: ${err.response.status}`;
-
-        // Log detailed error for debugging
-        console.error("Error details:", err.response.data);
-      } else if (err.request) {
-        errorMessage = "Network error. Please check your connection.";
-      }
-
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
+      return responseData;
+    } else {
+      throw new Error(res.data?.message || "Failed to update payment status");
     }
-  };
+  } catch (err) {
+    console.error("Update payment error:", err);
+
+    let errorMessage = "Failed to update payment status";
+
+    if (err.response) {
+      errorMessage =
+        err.response.data?.message ||
+        err.response.data?.error ||
+        `Server error: ${err.response.status}`;
+
+      // Log detailed error for debugging
+      console.error("Error details:", err.response.data);
+    } else if (err.request) {
+      errorMessage = "Network error. Please check your connection.";
+    }
+
+    setError(errorMessage);
+    throw new Error(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // In usePurchaseOrders hook - update deletePurchaseOrder function:
   const deletePurchaseOrder = async (id) => {

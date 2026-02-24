@@ -96,8 +96,8 @@ const EditPurchaseReturnForm = ({ onClose, onSave, returnItem, loading = false }
             unit_code: item.unit_code || item.unit_id?.code || "",
             cost: parseFloat(item.cost) || 0,
             total: parseFloat(item.total_cost) || 0,
-            return_quantity: parseFloat(item.return_quantity) || "",
-            return_weight: parseFloat(item.return_weight) || "",
+            return_quantity: item.return_quantity === "" || item.return_quantity === undefined || item.return_quantity === null ? "" : parseFloat(item.return_quantity),
+            return_weight: item.return_weight === "" || item.return_weight === undefined || item.return_weight === null ? "" : parseFloat(item.return_weight),
             reason: item.reason || "",
             status: item.status || "pending",
           };
@@ -211,8 +211,8 @@ const EditPurchaseReturnForm = ({ onClose, onSave, returnItem, loading = false }
           cost: parseFloat(item.cost) || parseFloat(item.rate) || 0,
           total: existingItem?.total || 0,
           // Return fields - preserve existing values or initialize
-          return_quantity: existingItem?.return_quantity || "",
-          return_weight: existingItem?.return_weight || "",
+          return_quantity: existingItem?.return_quantity === "" || existingItem?.return_quantity === undefined || existingItem?.return_quantity === null ? "" : existingItem?.return_quantity,
+          return_weight: existingItem?.return_weight === "" || existingItem?.return_weight === undefined || existingItem?.return_weight === null ? "" : existingItem?.return_weight,
           reason: existingItem?.reason || "",
           status: existingItem?.status || "pending",
         };
@@ -858,9 +858,13 @@ const EditPurchaseReturnForm = ({ onClose, onSave, returnItem, loading = false }
                           const receivedWeight =
                             parseFloat(item.received_weight) || 0;
                           const returnQty =
-                            parseFloat(item.return_quantity) || 0;
+                            item.return_quantity === "" || item.return_quantity === undefined || item.return_quantity === null
+                              ? ""
+                              : parseFloat(item.return_quantity);
                           const returnWeight =
-                            parseFloat(item.return_weight) || 0;
+                            item.return_weight === "" || item.return_weight === undefined || item.return_weight === null
+                              ? ""
+                              : parseFloat(item.return_weight);
 
                           return (
                             <tr key={originalIndex}>
@@ -918,7 +922,11 @@ const EditPurchaseReturnForm = ({ onClose, onSave, returnItem, loading = false }
                                       : "Enter Return Weight"
                                   }
                                   value={
-                                    returnQty > 0 ? returnQty : returnWeight
+                                    returnQty !== ""
+                                      ? returnQty
+                                      : returnWeight !== ""
+                                      ? returnWeight
+                                      : ""
                                   }
                                   onChange={(e) =>
                                     handleReturnQtyWeightChange(

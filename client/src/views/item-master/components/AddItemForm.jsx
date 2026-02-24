@@ -32,6 +32,8 @@ const AddItemModal = ({
     materialTypes = [],
   } = formData || {};
 
+  console.log(priceMakings)
+
   // Helper to get ID
   const getId = (item) => item?.id || item?._id || "";
 
@@ -736,7 +738,7 @@ const AddItemModal = ({
         <div className="modal-content rounded-3">
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
-            <h5 className="modal-title fw-bold fs-5">Add New Inventory Item</h5>
+            <h5 className="modal-title fw-bold fs-5">Add New Product</h5>
             <button
               type="button"
               className="btn-close"
@@ -781,6 +783,7 @@ const AddItemModal = ({
                       className={`form-control ${
                         errors.product_name ? "is-invalid" : ""
                       }`}
+                      placeholder="enter product name"
                       value={formState.product_name}
                       onChange={(e) =>
                         handleInputChange("product_name", e.target.value)
@@ -822,6 +825,7 @@ const AddItemModal = ({
                     <Select
                       isMulti
                       options={priceMakings.map((pm) => ({
+                        
                         value: getId(pm),
                         label: pm.cost_type,
                         originalData: pm,
@@ -1279,14 +1283,18 @@ const AddItemModal = ({
                                     )
                                   )}
                                 </select>
-                                {metal.hallmark && (
-                                  <small className="text-muted d-block mt-1">
-                                    Selected:{" "}
-                                    {(hallmarksByMetal[metal.id] || []).find(
-                                      (h) => h._id === metal.hallmark
-                                    )?.name || "Unknown"}
-                                  </small>
-                                )}
+                                {/* {metal.hallmark
+                                
+                                // && (
+                                //   <small className="text-muted d-block mt-1">
+                                //     Selected:{" "}
+                                //     {(hallmarksByMetal[metal.id] || []).find(
+                                //       (h) => h._id === metal.hallmark
+                                //     )?.name || "Unknown"}
+                                //   </small>
+                                // )
+                                
+                                } */}
                               </td>
                               <td>
                                 <input
@@ -1495,11 +1503,14 @@ const AddItemModal = ({
                                     </option>
                                   ))}
                                 </select>
-                                {stone.stone_purity && !dropdownLoading && (
-                                  <small className="text-muted d-block mt-1">
-                                    Selected ID: {stone.stone_purity}
-                                  </small>
-                                )}
+                                {stone.stone_purity && !dropdownLoading
+                                
+                                // && (
+                                //   <small className="text-muted d-block mt-1">
+                                //     Selected ID: {stone.stone_purity}
+                                //   </small>
+                                // )
+                                }
                               </td>
                               <td>
                                 <input
@@ -1914,7 +1925,32 @@ const AddItemModal = ({
                                 ₹{grandTotal.toFixed(2)}
                               </td>
                             </tr>
+ <tr>
+                              <td colSpan="2" className="pt-3">
+                                <div className="mb-3">
+                                  <label className="form-label">
+                                    Markup Percentage (%)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    className="form-control"
+                                    value={formState.markup_percentage}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        "markup_percentage",
+                                        e.target.value
+                                      )
+                                    }
+                                    disabled={loading}
+                                  />
+                                </div>
+                              </td>
+                            </tr>
+
                             <tr>
+                              
+                              
                               <td className="fw-bold">
                                 Markup ({formState.markup_percentage || 0}%):
                               </td>
@@ -2001,8 +2037,7 @@ const AddItemModal = ({
                                 ₹{sellingPriceWithGST.toFixed(2)}
                               </td>
                             </tr>
-
-                            <tr>
+                            {/* <tr>
                               <td colSpan="2" className="pt-3">
                                 <div className="mb-3">
                                   <label className="form-label">
@@ -2023,7 +2058,7 @@ const AddItemModal = ({
                                   />
                                 </div>
                               </td>
-                            </tr>
+                            </tr> */}
                           </tbody>
                         </table>
                       </div>

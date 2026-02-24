@@ -361,11 +361,13 @@ console.log(quotations)
                         <span className="fw-medium ms-2">{selectedItem.customer_mobile}</span>
                       </div>
                     </div>
-                    <div className="col-md-6">
-                      <div className="mb-2">
+                        <div className="col-md-6">
+                      {/* <div className="mb-2">
                         <span className="text-muted">Code:</span>
-                        <span className="fw-medium ms-2">{selectedItem.customer_code || "N/A"}</span>
-                      </div>
+                        <span className="fw-medium ms-2">
+                          {selectedItem.customer_code || selectedItem.customer_id?._id || selectedItem.customer_id?.customer_code || "N/A"}
+                        </span>
+                      </div> */}
                     </div>
                   </div>
                 </div>
@@ -391,7 +393,9 @@ console.log(quotations)
                             <td>
                               <div>
                                 <div className="fw-medium">{item.product_name}</div>
-                                <div className="small text-muted">{item.product_code}</div>
+                                <div className="small text-muted">
+                                  {item.product_code || item.product?.product_code || item.product_id?.product_code || item.product_id?.code || "N/A"}
+                                </div>
                               </div>
                             </td>
                             <td className="text-end">{item.quantity}</td>

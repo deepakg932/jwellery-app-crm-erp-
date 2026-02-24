@@ -97,9 +97,9 @@ const EditJobCardForm = ({
   const statusOptions = [
     { value: "pending", label: "Pending", color: "warning" },
     { value: "approved", label: "Approved", color: "success" },
-    { value: "in_progress", label: "In Progress", color: "info" },
-    { value: "completed", label: "Completed", color: "success" },
-    { value: "delivered", label: "Delivered", color: "primary" },
+    // { value: "in_progress", label: "In Progress", color: "info" },
+    // { value: "completed", label: "Completed", color: "success" },
+    // { value: "delivered", label: "Delivered", color: "primary" },
     { value: "cancelled", label: "Cancelled", color: "danger" },
   ];
 
@@ -653,47 +653,127 @@ const EditJobCardForm = ({
   };
 
   // Remove item row
-  const removeItem = (index) => {
-    if (formData.items.length > 1) {
-      const updatedItems = formData.items.filter((_, i) => i !== index);
-      setFormData((prev) => ({
-        ...prev,
-        items: updatedItems,
-      }));
+  // const removeItem = (index) => {
+  //   if (formData.items.length > 1) {
+  //     const updatedItems = formData.items.filter((_, i) => i !== index);
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       items: updatedItems,
+  //     }));
 
-      setTimeout(calculateTotals, 0);
+  //     setTimeout(calculateTotals, 0);
 
-      if (updatedItems.filter((item) => item.product_id).length === 0) {
-        setItemSource("none");
-      }
-    } else {
-      clearItem(index);
-    }
-  };
+  //     if (updatedItems.filter((item) => item.product_id).length === 0) {
+  //       setItemSource("none");
+  //     }
+  //   } else {
+  //     clearItem(index);
+  //   }
+  // };
+
+  // Remove item row
+// Remove item row
+const removeItem = (filteredIndex) => {
+  console.log("removeItem called with filteredIndex:", filteredIndex);
+  
+  // Get all items that have product_id
+  const itemsWithProduct = formData.items.filter((item) => item.product_id);
+  
+  // Check if the filteredIndex is valid
+  if (filteredIndex < 0 || filteredIndex >= itemsWithProduct.length) {
+    console.error("Invalid filtered index:", filteredIndex);
+    return;
+  }
+  
+  // Get the item to remove using the filtered index
+  const itemToRemove = itemsWithProduct[filteredIndex];
+  
+  if (!itemToRemove) {
+    console.error("No item found at filtered index:", filteredIndex);
+    return;
+  }
+
+  // Find the actual index in the original array
+  const actualIndex = formData.items.findIndex(
+    item => item.product_id === itemToRemove.product_id
+  );
+
+  if (actualIndex === -1) {
+    console.error("Could not find item in original array");
+    return;
+  }
+
+  console.log("Removing item at actual index:", actualIndex);
+  
+  // Create new array without the item
+  const updatedItems = formData.items.filter((_, i) => i !== actualIndex);
+  
+  // Update state
+  setFormData((prev) => ({
+    ...prev,
+    items: updatedItems,
+  }));
+
+  // Recalculate totals
+  setTimeout(() => {
+    calculateTotals();
+  }, 100);
+
+  // Check if no items left
+  if (updatedItems.filter((item) => item.product_id).length === 0) {
+    setItemSource("none");
+  }
+};
 
   // Clear item data
-  const clearItem = (index) => {
-    const updatedItems = [...formData.items];
-    updatedItems[index] = {
-      product_id: "",
-      article_no: "",
-      product_name: "",
-      quantity: "1",
-      unit_price: 0,
-      total_amount: 0,
-    };
+  // const clearItem = (index) => {
+  //   const updatedItems = [...formData.items];
+  //   updatedItems[index] = {
+  //     product_id: "",
+  //     article_no: "",
+  //     product_name: "",
+  //     quantity: "1",
+  //     unit_price: 0,
+  //     total_amount: 0,
+  //   };
 
-    setFormData((prev) => ({
-      ...prev,
-      items: updatedItems,
-    }));
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     items: updatedItems,
+  //   }));
 
-    if (updatedItems.filter((item) => item.product_id).length === 0) {
-      setItemSource("none");
-    }
+  //   if (updatedItems.filter((item) => item.product_id).length === 0) {
+  //     setItemSource("none");
+  //   }
 
-    setTimeout(calculateTotals, 0);
+  //   setTimeout(calculateTotals, 0);
+  // };
+
+
+  // Clear item data
+const clearItem = (index) => {
+  const updatedItems = [...formData.items];
+  updatedItems[index] = {
+    product_id: "",
+    article_no: "",
+    product_name: "",
+    quantity: "1",
+    unit_price: 0,
+    total_amount: 0,
+    price_info: {},
   };
+
+  setFormData((prev) => ({
+    ...prev,
+    items: updatedItems,
+  }));
+
+  if (updatedItems.filter((item) => item.product_id).length === 0) {
+    setItemSource("none");
+  }
+
+  setTimeout(calculateTotals, 0);
+};
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -942,7 +1022,7 @@ const EditJobCardForm = ({
                         {isSourceSelectionDisabled &&
                           itemSource !== "products" && (
                             <span className="ms-1 text-warning">
-                              (Disabled - Items already added)
+                              {/* (Disabled - Items already added) */}
                             </span>
                           )}
                       </button>
@@ -965,7 +1045,7 @@ const EditJobCardForm = ({
                         {isSourceSelectionDisabled &&
                           itemSource !== "quotation" && (
                             <span className="ms-1 text-warning">
-                              (Disabled - Items already added)
+                              {/* (Disabled - Items already added) */}
                             </span>
                           )}
                       </button>
@@ -981,7 +1061,7 @@ const EditJobCardForm = ({
                           Search Quotation
                           {itemSource === "products" && (
                             <span className="text-danger ms-2">
-                              (Disabled - Items already added from Products)
+                              {/* (Disabled - Items already added from Products) */}
                             </span>
                           )}
                         </label>
@@ -1199,7 +1279,7 @@ const EditJobCardForm = ({
                           Search Products
                           {itemSource === "quotation" && (
                             <span className="text-danger ms-2">
-                              (Disabled - Items already added from Quotation)
+                              {/* (Disabled - Items already added from Quotation) */}
                             </span>
                           )}
                         </label>
@@ -1482,7 +1562,7 @@ const EditJobCardForm = ({
                   )}
                 </div>
 
-                <div className="col-md-3 mb-3">
+                {/* <div className="col-md-3 mb-3">
                   <label className="form-label fw-medium">
                     Actual Delivery
                   </label>
@@ -1500,7 +1580,7 @@ const EditJobCardForm = ({
                       min={formData.job_card_date}
                     />
                   </div>
-                </div>
+                </div> */}
 
                 {/* Customer section - Only show when NOT adding products or when quotation is selected */}
                 {itemSource !== "products" && (
@@ -1839,138 +1919,105 @@ const EditJobCardForm = ({
                       <tr>
                         <th style={{ width: "25%" }}>Product</th>
                         <th style={{ width: "10%" }}>Quantity</th>
-                        <th style={{ width: "15%" }}>Unit Price</th>
-                        <th style={{ width: "15%" }}>Total</th>
+                        {/* <th style={{ width: "15%" }}>Unit Price</th>
+                        <th style={{ width: "15%" }}>Total</th> */}
                         <th style={{ width: "5%" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {formData.items
-                        .filter((item) => item.product_id)
-                        .map((item, index) => (
-                          <tr key={index}>
-                            <td>
-                              <div className="d-flex align-items-center">
-                                <div className="flex-grow-1">
-                                  <div className="fw-medium">
-                                    {item.product_name || "Unknown Product"}
-                                  </div>
-                                  <div className="small text-muted">
-                                    Code: {item.article_no}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-secondary ms-2 flex-shrink-0"
-                                  onClick={() => clearItem(index)}
-                                  disabled={isDisabled}
-                                  title="Clear item"
-                                >
-                                  <FiX size={14} />
-                                </button>
-                              </div>
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  handleItemChange(
-                                    index,
-                                    "quantity",
-                                    e.target.value
-                                  )
-                                }
-                                disabled={isDisabled}
-                                min="1"
-                                step="1"
-                              />
-                            </td>
-                            <td>
-                              <div className="input-group">
-                                <span className="input-group-text">₹</span>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  value={item.unit_price}
-                                  onChange={(e) =>
-                                    handleItemChange(
-                                      index,
-                                      "unit_price",
-                                      e.target.value
-                                    )
-                                  }
-                                  disabled={isDisabled}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </div>
-                              {item.price_info && (
-                                <div className="small text-muted mt-1">
-                                  <div>
-                                    Base: ₹
-                                    {item.price_info.base_price?.toLocaleString(
-                                      "en-IN"
-                                    ) || 0}
-                                  </div>
-                                  <div>
-                                    GST: ₹
-                                    {item.price_info.gst_amount?.toLocaleString(
-                                      "en-IN"
-                                    ) || 0}
-                                  </div>
-                                </div>
-                              )}
-                            </td>
-                            <td>
-                              <div className="input-group">
-                                <span className="input-group-text">₹</span>
-                                <input
-                                  type="text"
-                                  className="form-control bg-light fw-medium"
-                                  value={formatCurrency(item.total_amount || 0)}
-                                  readOnly
-                                />
-                              </div>
-                            </td>
-                            <td className="text-center">
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() => removeItem(index)}
-                                disabled={
-                                  isDisabled ||
-                                  formData.items.filter((i) => i.product_id)
-                                    .length === 1
-                                }
-                                title="Remove item"
-                              >
-                                <FiTrash2 size={14} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                   {formData.items
+  .filter((item) => item.product_id)
+  .map((item, filteredIndex) => {
+    // Find the actual index in the original array
+    const actualIndex = formData.items.findIndex(
+      i => i.product_id === item.product_id
+    );
+    
+    return (
+      <tr key={`${item.product_id}-${actualIndex}`}>
+        <td>
+          <div className="d-flex align-items-center">
+            <div className="flex-grow-1">
+              <div className="fw-medium">
+                {item.product_name || "Unknown Product"}
+              </div>
+              <div className="small text-muted">
+                Code: {item.article_no}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary ms-2 flex-shrink-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                clearItem(actualIndex);
+              }}
+              disabled={isDisabled}
+              title="Clear item"
+            >
+              <FiX size={14} />
+            </button>
+          </div>
+        </td>
+        <td>
+          <input
+            type="number"
+            className="form-control"
+            value={item.quantity}
+            onChange={(e) =>
+              handleItemChange(
+                actualIndex,
+                "quantity",
+                e.target.value
+              )
+            }
+            disabled={isDisabled}
+            min="1"
+            step="1"
+          />
+        </td>
+        <td className="text-center">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log("Delete clicked for item:", item);
+              console.log("Filtered index:", filteredIndex);
+              console.log("Actual index:", actualIndex);
+              removeItem(filteredIndex);
+            }}
+            disabled={isDisabled}
+            title="Remove item"
+            style={{ cursor: 'pointer' }}
+          >
+            <FiTrash2 size={14} />
+          </button>
+        </td>
+      </tr>
+    );
+  })}
 
                       {/* Empty state */}
-                      {formData.items.filter((item) => item.product_id)
-                        .length === 0 && (
-                        <tr>
-                          <td
-                            colSpan="5"
-                            className="text-center py-5 text-muted"
-                          >
-                            <div className="d-flex flex-column align-items-center">
-                              <FiAlertCircle className="mb-2" size={32} />
-                              <span className="fs-6">
-                                {selectedQuotation
-                                  ? "No items found in quotation"
-                                  : "No items added to job card"}
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
+                      {formData.items.filter((item) => item.product_id).length === 0 && (
+  <tr>
+    <td
+      colSpan="3" // Changed from "5" to "3"
+      className="text-center py-5 text-muted"
+    >
+      <div className="d-flex flex-column align-items-center">
+        <FiAlertCircle className="mb-2" size={32} />
+        <span className="fs-6">
+          {selectedQuotation
+            ? "No items found in quotation"
+            : "No items added to job card"}
+        </span>
+      </div>
+    </td>
+  </tr>
+)}
                     </tbody>
                   </table>
                 </div>
@@ -2085,12 +2132,12 @@ const EditJobCardForm = ({
                       </div>
 
                       <div className="mb-3">
-                        <div className="d-flex justify-content-between mb-2">
+                        {/* <div className="d-flex justify-content-between mb-2">
                           <span className="text-muted">Total Amount:</span>
                           <span className="fw-medium">
                             {formatCurrency(formData.total_amount || 0)}
                           </span>
-                        </div>
+                        </div> */}
                         <hr />
                         <div className="small text-muted mt-2">
                           Expected Delivery: {formData.expected_delivery_date}

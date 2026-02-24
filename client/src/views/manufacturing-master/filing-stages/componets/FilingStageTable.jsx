@@ -1386,6 +1386,25 @@ const FilingStageTable = () => {
       {/* VIEW MODAL */}
       {showViewModal && selectedStage && <ViewStageModal />}
 
+      {/* DEBUG: laborCosts quick inspector */}
+      <div className="px-3 mb-2">
+        <small className="text-muted">Debug: laborCosts loaded:</small>
+        <span className="badge bg-primary ms-2">{laborCosts?.length ?? 0}</span>
+        <button
+          className="btn btn-sm btn-outline-secondary ms-2"
+          onClick={() => {
+            console.log("DEBUG laborCosts:", laborCosts);
+            try {
+              alert(JSON.stringify(laborCosts?.slice(0, 20) || [], null, 2));
+            } catch (e) {
+              console.log("Could not stringify laborCosts", e);
+            }
+          }}
+        >
+          Show laborCosts
+        </button>
+      </div>
+
       {/* UPDATE MODAL */}
       {showUpdateModal && selectedStage && (
         <UpdateFilingStage

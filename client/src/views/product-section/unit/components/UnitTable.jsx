@@ -519,10 +519,6 @@ export default function UnitsPage() {
               Are you sure you want to delete{" "}
               <strong>{selectedItem?.name}</strong>?
             </p>
-            <p className="text-muted small">
-              Code: <strong>{selectedItem?.code}</strong>
-            </p>
-            <p className="text-muted small">This action cannot be undone.</p>
           </div>
 
           <div className="modal-footer border-top pt-3">

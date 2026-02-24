@@ -70,7 +70,7 @@ const UpdateSettingStage = ({
   const [selectedLaborCosts, setSelectedLaborCosts] = useState([]); // Add selected labor costs
   const [laborBreakdown, setLaborBreakdown] = useState([]); // Add labor breakdown
 
-  console.log("Selected stage:", selectedStage);
+  console.log("Selected stage:", selectedStone);
   console.log("Labor costs received:", laborCosts);
 
   const [formData, setFormData] = useState({
@@ -83,6 +83,7 @@ const UpdateSettingStage = ({
     stone_name: "",
     stone_item_code: "",
     stone_quantity: "",
+    stone_weight: "",
     stone_cost: "",
     stone_breakage: 0,
     stone_breakage_reason: "",
@@ -133,64 +134,69 @@ const UpdateSettingStage = ({
   });
 
   const statusOptions = [
-    {
-      value: "not_started",
-      label: "Not Started",
-      color: "secondary",
-      icon: "⏳",
-    },
+    // {
+    //   value: "not_started",
+    //   label: "Not Started",
+    //   color: "secondary",
+    //   icon: "⏳",
+    // },
     {
       value: "stone_selection",
       label: "Stone Selection",
       color: "info",
       icon: "💎",
     },
-    {
-      value: "seat_preparation",
-      label: "Seat Preparation",
-      color: "info",
-      icon: "⚒️",
-    },
-    {
-      value: "stone_setting",
-      label: "Stone Setting",
-      color: "warning",
-      icon: "🔧",
-    },
-    {
-      value: "prong_shaping",
-      label: "Prong Shaping",
-      color: "warning",
-      icon: "✂️",
-    },
-    {
-      value: "bezel_setting",
-      label: "Bezel Setting",
-      color: "warning",
-      icon: "🔲",
-    },
-    {
-      value: "pave_setting",
-      label: "Pave Setting",
-      color: "warning",
-      icon: "✨",
-    },
-    {
-      value: "channel_setting",
-      label: "Channel Setting",
-      color: "warning",
-      icon: "🛤️",
-    },
-    { value: "polishing", label: "Polishing", color: "info", icon: "🔆" },
-    {
-      value: "quality_check",
-      label: "Quality Check",
-      color: "warning",
-      icon: "🔍",
-    },
-    { value: "completed", label: "Completed", color: "success", icon: "✅" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
-    { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
+    // {
+    //   value: "seat_preparation",
+    //   label: "Seat Preparation",
+    //   color: "info",
+    //   icon: "⚒️",
+    // },
+    // {
+    //   value: "stone_setting",
+    //   label: "Stone Setting",
+    //   color: "warning",
+    //   icon: "🔧",
+    // },
+    // {
+    //   value: "prong_shaping",
+    //   label: "Prong Shaping",
+    //   color: "warning",
+    //   icon: "✂️",
+    // },
+    // {
+    //   value: "bezel_setting",
+    //   label: "Bezel Setting",
+    //   color: "warning",
+    //   icon: "🔲",
+    // },
+    // {
+    //   value: "pave_setting",
+    //   label: "Pave Setting",
+    //   color: "warning",
+    //   icon: "✨",
+    // },
+    // {
+    //   value: "channel_setting",
+    //   label: "Channel Setting",
+    //   color: "warning",
+    //   icon: "🛤️",
+    // },
+    // { value: "polishing", label: "Polishing", color: "info", icon: "🔆" },
+    // {
+    //   value: "quality_check",
+    //   label: "Quality Check",
+    //   color: "warning",
+    //   icon: "🔍",
+    // },
+    // { value: "completed", label: "Completed", color: "success", icon: "✅" },
+    // { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
+    // { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
+
+    { value: "draft", label: "Draft", color: "secondary", icon: "✏️" },
+    { value: "cancelled", label: "Cancelled", color: "danger", icon: "❌" },
+
+    { value: "approved", label: "Approved", color: "success", icon: "✅" },
   ];
 
   const settingTypeOptions = [
@@ -334,32 +340,46 @@ const UpdateSettingStage = ({
   const getLaborCostOptions = () => {
     if (!laborCosts || laborCosts.length === 0) return [];
 
-    // Filter for setting-related labor costs
-    const filteredCosts = laborCosts.filter((cost) => {
-      const costName = (cost.cost_name || "").toLowerCase();
-      const stageName = (cost.stage_name || "").toLowerCase();
-      const subStageName = (cost.sub_stage_name || "").toLowerCase();
-      
-      // Include labor and setter costs relevant to setting
-      return (
-        costName.includes("labor") ||
-        costName.includes("setter") ||
-        costName.includes("karigar") ||
-        costName.includes("craftsman") ||
-        costName.includes("worker") ||
-        costName.includes("setting") ||
-        stageName.includes("setting") ||
-        subStageName.includes("setting") ||
-        stageName.includes("stone") ||
-        subStageName.includes("stone") ||
-        costName.includes("सेटर") ||
-        costName.includes("कारीगर")
-      );
+    // Broaden detection: check cost_type, nested names, stage names and explicit flags
+    const potential = laborCosts.filter((cost) => {
+      const candidates = [
+        cost.cost_name,
+        cost.cost_type,
+        cost.cost_type_id?.cost_type,
+        cost.cost_type_id?.cost_name_id?.cost_name,
+        cost.stage_name,
+        cost.making_stage_id?.stage_name,
+        cost.sub_stage_name,
+        cost.making_sub_stage_id?.sub_stage_name,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      const looksLikeLabor =
+        candidates.includes("labor") ||
+        candidates.includes("labour") ||
+        candidates.includes("setter") ||
+        candidates.includes("karigar") ||
+        candidates.includes("craftsman") ||
+        candidates.includes("worker") ||
+        candidates.includes("setting") ||
+        candidates.includes("सेटर") ||
+        candidates.includes("कारीगर");
+
+      const explicitFlag =
+        cost.is_labor === true ||
+        cost.isLabor === true ||
+        cost.cost_category === "labor";
+
+      return looksLikeLabor || explicitFlag;
     });
+
+    const filteredCosts = potential.length > 0 ? potential : laborCosts;
 
     return filteredCosts.map((cost) => ({
       value: cost._id,
-      label: `${cost.cost_name || "Labor"} (${cost.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || "unit"}`,
+      label: `${cost.cost_name || cost.cost_type_id?.cost_name_id?.cost_name || cost.cost_type || "Labor"} (${cost.cost_type || cost.cost_type_id?.cost_type || "Direct Cost"}) - ₹${cost.cost_amount || 0}/${cost.unit || cost.unit_id?.name || "unit"}`,
       originalData: cost,
     }));
   };
@@ -389,13 +409,17 @@ const UpdateSettingStage = ({
 
       return {
         id: cost._id,
+        product_code: cost.item_code || cost.product_code || "-",
         name: cost.cost_name || cost.cost_name_id?.cost_name || "Labor",
-        type: cost.cost_type || "Direct Cost",
+        type: cost.cost_type || cost.cost_type_id?.cost_type || "Direct Cost",
         cost_amount: costAmount,
-        unit: cost.unit || "unit",
+        unit: cost.unit || cost.unit_id?.name || "unit",
         total_cost: costAmount.toFixed(2),
-        stage: cost.stage_name || "General",
-        sub_stage: cost.sub_stage_name || "General",
+        stage: cost.stage_name || cost.making_stage_id?.stage_name || "-",
+        sub_stage:
+          cost.sub_stage_name ||
+          cost.making_sub_stage_id?.sub_stage_name ||
+          "-",
       };
     });
 
@@ -404,7 +428,7 @@ const UpdateSettingStage = ({
     // Calculate total labor cost
     const totalLaborCost = breakdown.reduce(
       (sum, item) => sum + parseFloat(item.total_cost),
-      0
+      0,
     );
 
     // Update form data with calculated labor cost
@@ -447,14 +471,14 @@ const UpdateSettingStage = ({
       if (selectedStage.selected_labor_costs) {
         if (Array.isArray(selectedStage.selected_labor_costs)) {
           // Map the IDs to actual labor cost objects
-          parsedSelectedLaborCosts = laborCosts.filter(cost => 
-            selectedStage.selected_labor_costs.includes(cost._id)
+          parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+            selectedStage.selected_labor_costs.includes(cost._id),
           );
         } else if (typeof selectedStage.selected_labor_costs === "string") {
           try {
             const ids = JSON.parse(selectedStage.selected_labor_costs);
-            parsedSelectedLaborCosts = laborCosts.filter(cost => 
-              ids.includes(cost._id)
+            parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+              ids.includes(cost._id),
             );
           } catch {
             parsedSelectedLaborCosts = [];
@@ -469,7 +493,9 @@ const UpdateSettingStage = ({
           parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
         } else if (typeof selectedStage.labor_cost_breakdown === "string") {
           try {
-            parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
+            parsedLaborBreakdown = JSON.parse(
+              selectedStage.labor_cost_breakdown,
+            );
           } catch {
             parsedLaborBreakdown = [];
           }
@@ -490,6 +516,7 @@ const UpdateSettingStage = ({
         stone_name: selectedStage.stone_name || selectedStage.stone_type || "",
         stone_item_code: selectedStage.stone_item_code || "",
         stone_quantity: selectedStage.stone_quantity || "",
+        stone_weight: selectedStage.stone_weight || "",
         stone_cost: selectedStage.stone_cost || "",
         stone_breakage: selectedStage.stone_breakage || 0,
         stone_breakage_reason: selectedStage.stone_breakage_reason || "",
@@ -581,10 +608,7 @@ const UpdateSettingStage = ({
   // Auto-recalculate total time when time fields change
   useEffect(() => {
     calculateTotalTime();
-  }, [
-    formData.setting_time,
-    formData.quality_check_time,
-  ]);
+  }, [formData.setting_time, formData.quality_check_time]);
 
   // Auto-recalculate total cost when individual costs change
   useEffect(() => {
@@ -603,62 +627,53 @@ const UpdateSettingStage = ({
     calculateLaborCostFromSelection(selectedLaborCosts);
   }, [selectedLaborCosts]);
 
-  const handleStoneChange = (stoneId) => {
-    const stone = availableStones.find((s) => s._id === stoneId);
-    if (stone) {
-      setSelectedStone(stone);
-      console.log("Stone selected:", stone);
+const handleStoneChange = (stoneId) => {
+  const stone = availableStones.find((s) => s._id === stoneId);
+  if (stone) {
+    setSelectedStone(stone);
+    console.log("Stone selected:", stone);
 
-      // Determine stone type based on name
-      let stoneType = "gemstone";
-      const stoneName = stone.name.toLowerCase();
-      if (stoneName.includes("diamond")) stoneType = "diamond";
-      else if (stoneName.includes("ruby")) stoneType = "ruby";
-      else if (stoneName.includes("sapphire")) stoneType = "sapphire";
-      else if (stoneName.includes("emerald")) stoneType = "emerald";
-      else if (stoneName.includes("pearl")) stoneType = "pearl";
-      else if (stoneName.includes("moissanite")) stoneType = "moissanite";
-      else if (stoneName.includes("zirconia")) stoneType = "cubic_zirconia";
+    // Determine stone type based on name
+    let stoneType = "gemstone";
+    const stoneName = stone.name?.toLowerCase() || "";
+    if (stoneName.includes("diamond")) stoneType = "diamond";
+    else if (stoneName.includes("ruby")) stoneType = "ruby";
+    else if (stoneName.includes("sapphire")) stoneType = "sapphire";
+    else if (stoneName.includes("emerald")) stoneType = "emerald";
+    else if (stoneName.includes("pearl")) stoneType = "pearl";
+    else if (stoneName.includes("moissanite")) stoneType = "moissanite";
+    else if (stoneName.includes("zirconia")) stoneType = "cubic_zirconia";
 
-      setFormData((prev) => {
-        const updatedData = {
-          ...prev,
-          stone_id: stone._id,
-          stone_type: stoneType,
-          stone_name: stone.name,
-          stone_item_code: stone.item_code || "",
-          stone_cost: stone.cost ? stone.cost.toString() : "0",
-        };
+    // Determine if this is a weight-based stone
+    const unit = stone.unit_name || stone.unit || "";
+    const isWeight = unit.toLowerCase().includes("kg") || 
+                     unit.toLowerCase().includes("gram") || 
+                     unit.toLowerCase().includes("carat");
 
-        // Recalculate stone cost when stone changes
-        const stoneUnitCost = Number(stone.cost) || 0;
-        const stoneQuantity = Number(updatedData.stone_quantity) || 0;
-        const stoneCost = stoneUnitCost * stoneQuantity;
+    setFormData((prev) => {
+      const updatedData = {
+        ...prev,
+        stone_id: stone._id,
+        stone_type: stoneType,
+        stone_name: stone.name,
+        stone_item_code: stone.item_code || "",
+        stone_cost: stone.cost ? stone.cost.toString() : "0",
+        // Clear both fields when changing stone
+        stone_quantity: "",
+        stone_weight: "",
+      };
 
-        const material = Number(updatedData.material_cost) || 0;
-        const labour = Number(updatedData.labour_cost) || 0;
-        const tool = Number(updatedData.tool_cost) || 0;
-        const other = Number(updatedData.other_costs) || 0;
-        const markup = Number(updatedData.markup_percentage) || 25;
-
-        const total = stoneCost + material + labour + tool + other;
-        const markupAmount = (total * markup) / 100;
-        const finalPrice = total + markupAmount;
-
-        updatedData.total_cost = total.toFixed(2);
-        updatedData.final_price = finalPrice.toFixed(2);
-        updatedData.stone_cost_total = stoneCost.toFixed(2);
-
-        return updatedData;
-      });
-    }
-  };
+      return updatedData;
+    });
+  }
+};
 
   // Calculate total cost
   const calculateTotalCost = () => {
     // Calculate stone cost: stone_cost × quantity
     const stoneUnitCost = Number(formData.stone_cost) || 0;
-    const stoneQuantity = Number(formData.stone_quantity) || 0;
+    const stoneQuantity =
+      Number(formData.stone_quantity) || Number(formData.stone_weight) || 0;
     const stoneCost = stoneUnitCost * stoneQuantity;
 
     const material = Number(formData.material_cost) || 0;
@@ -718,6 +733,7 @@ const UpdateSettingStage = ({
       } else if (
         name.includes("_time") ||
         name === "stone_quantity" ||
+        name === "stone_weight" ||
         name === "stone_breakage" ||
         name === "labour_hours" ||
         name === "actual_hours" ||
@@ -725,6 +741,14 @@ const UpdateSettingStage = ({
         name === "bezel_thickness"
       ) {
         updatedData[name] = value === "" ? "" : value;
+
+        // If stone_quantity is being updated, clear stone_weight and vice versa
+        // This ensures only one field has a value
+        if (name === "stone_quantity") {
+          updatedData.stone_weight = "";
+        } else if (name === "stone_weight") {
+          updatedData.stone_quantity = "";
+        }
       } else {
         updatedData[name] = val;
       }
@@ -734,11 +758,14 @@ const UpdateSettingStage = ({
         name.includes("_cost") ||
         name === "markup_percentage" ||
         name === "stone_quantity" ||
+        name === "stone_weight" ||
         name === "stone_cost"
       ) {
-        // Calculate stone cost: stone_cost × quantity
+        // Calculate stone cost based on whichever field has value
         const stoneUnitCost = Number(updatedData.stone_cost) || 0;
-        const stoneQuantity = Number(updatedData.stone_quantity) || 0;
+        const stoneQty = Number(updatedData.stone_quantity) || 0;
+        const stoneWt = Number(updatedData.stone_weight) || 0;
+        const stoneQuantity = stoneQty || stoneWt; // Use whichever has value
         const stoneCost = stoneUnitCost * stoneQuantity;
 
         const material = Number(updatedData.material_cost) || 0;
@@ -746,15 +773,6 @@ const UpdateSettingStage = ({
         const tool = Number(updatedData.tool_cost) || 0;
         const other = Number(updatedData.other_costs) || 0;
         const markup = Number(updatedData.markup_percentage) || 25;
-
-        console.log("SETTING COST CALCULATION IN HANDLE CHANGE:", {
-          stoneCost,
-          material,
-          labour,
-          tool,
-          other,
-          markup,
-        });
 
         const total = stoneCost + material + labour + tool + other;
         const markupAmount = (total * markup) / 100;
@@ -824,31 +842,40 @@ const UpdateSettingStage = ({
       errors.stone_id = "Stone is required";
     }
 
-    if (!formData.stone_quantity || Number(formData.stone_quantity) <= 0) {
-      errors.stone_quantity = "Stone quantity is required";
+    // Check if stone quantity/weight has a value
+    const stoneValue =
+      parseFloat(formData.stone_quantity) ||
+      parseFloat(formData.stone_weight) ||
+      0;
+
+    if (stoneValue <= 0) {
+      errors.stone_quantity =
+        "Stone quantity or weight is required and must be greater than 0";
     }
 
+    // Labor costs validation
     if (selectedLaborCosts.length === 0) {
       errors.labor_costs = "At least one labor cost type must be selected";
     }
 
-    if (selectedStone) {
-      const availableQty = Number(selectedStone.available_quantity) || 0;
-      const requiredQty = Number(formData.stone_quantity) || 0;
+    // Stock validation
+    if (selectedStone && stoneValue > 0) {
+      const stock = getAvailableStock();
+      const requiredValue = stoneValue;
+      const availableValue = stock.available;
 
-      if (requiredQty > availableQty) {
-        errors.stone_quantity = `Required quantity (${requiredQty}) exceeds available stock (${availableQty})`;
+      if (requiredValue > availableValue) {
+        errors.stone_quantity = `Required ${stock.isWeight ? "weight" : "quantity"} (${requiredValue} ${stock.unit}) exceeds available stock (${availableValue} ${stock.unit})`;
       }
     }
 
     // Validate stone breakage doesn't exceed quantity
-    const stoneQty = Number(formData.stone_quantity) || 0;
     const breakage = Number(formData.stone_breakage) || 0;
-    
-    if (breakage > stoneQty) {
-      errors.stone_breakage = "Stone breakage cannot exceed stone quantity";
+    if (breakage > stoneValue) {
+      errors.stone_breakage = `Stone breakage (${breakage}) cannot exceed stone quantity (${stoneValue})`;
     }
 
+    // Date validation
     if (
       formData.end_date &&
       formData.start_date &&
@@ -857,6 +884,7 @@ const UpdateSettingStage = ({
       errors.end_date = "End date cannot be before start date";
     }
 
+    console.log("Validation errors:", errors);
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -1066,12 +1094,23 @@ const UpdateSettingStage = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    console.log("Form submission started");
+    console.log("Current formData:", formData);
+    console.log("Selected labor costs:", selectedLaborCosts);
+
+    if (!validateForm()) {
+      console.log("Form validation failed");
+      return;
+    }
 
     try {
       const filesToUpload = settingFiles
         .filter((file) => !file.isExisting && file.file)
         .map((file) => file.file);
+
+      // Determine which value to use for stone quantity/weight
+      const stoneQty = parseFloat(formData.stone_quantity) || 0;
+      const stoneWt = parseFloat(formData.stone_weight) || 0;
 
       const updateData = {
         assigned_to: formData.assigned_to,
@@ -1087,7 +1126,9 @@ const UpdateSettingStage = ({
         stone_type: formData.stone_type,
         stone_name: formData.stone_name,
         stone_item_code: formData.stone_item_code,
-        stone_quantity: formData.stone_quantity || "1",
+        // Only send the one that has value
+        stone_quantity: stoneQty > 0 ? stoneQty.toString() : "0",
+        stone_weight: stoneWt > 0 ? stoneWt.toString() : "0",
         stone_cost: formData.stone_cost || "0",
         stone_breakage: formData.stone_breakage || "0",
         stone_breakage_reason: formData.stone_breakage_reason || "",
@@ -1095,7 +1136,8 @@ const UpdateSettingStage = ({
         setting_method: formData.setting_method || "manual",
         tool_used: formData.tool_used || "",
         precision_level: formData.precision_level || "high",
-        stone_secure: formData.stone_secure || true,
+        stone_secure:
+          formData.stone_secure !== undefined ? formData.stone_secure : true,
         prong_count: formData.prong_count || "4",
         bezel_thickness: formData.bezel_thickness || "",
         material_cost: formData.material_cost || "0",
@@ -1117,9 +1159,11 @@ const UpdateSettingStage = ({
         file_status: formData.file_status || "draft",
         backup_location: formData.backup_location || "",
         files: settingFiles,
-        
-        // Labor cost tracking
-        selected_labor_costs: selectedLaborCosts,
+
+        // Labor cost tracking - ensure these are proper objects/arrays
+        selected_labor_costs: selectedLaborCosts.map(
+          (cost) => cost._id || cost,
+        ),
         labor_cost_breakdown: laborBreakdown,
       };
 
@@ -1127,7 +1171,6 @@ const UpdateSettingStage = ({
         settingStageId: selectedStage._id,
         data: updateData,
         selectedLaborCostsCount: selectedLaborCosts.length,
-        laborBreakdownCount: laborBreakdown.length,
       });
 
       if (onUpdate) {
@@ -1145,13 +1188,17 @@ const UpdateSettingStage = ({
         } else {
           console.log("❌ Update failed, not closing");
           const errorMsg =
-            result?.error || result?.message || "Failed to update Setting stage";
+            result?.error ||
+            result?.message ||
+            (typeof result === "string"
+              ? result
+              : "Failed to update Setting stage");
           setUploadError(errorMsg);
         }
       }
     } catch (error) {
-      console.error("Error:", error);
-      setUploadError("Failed to update.");
+      console.error("Error in handleSubmit:", error);
+      setUploadError(error.message || "Failed to update.");
     }
   };
 
@@ -1180,29 +1227,52 @@ const UpdateSettingStage = ({
   const isDisabled = loading || uploading;
 
   // Update the stone breakage calculation
-  const stoneBreakagePercent = formData.stone_quantity
-    ? (
-        (Number(formData.stone_breakage || 0) /
-          Number(formData.stone_quantity || 1)) *
-        100
-      ).toFixed(1)
-    : "0";
+  const stoneBreakagePercent =
+    formData.stone_quantity || formData.stone_weight
+      ? (
+          (Number(formData.stone_breakage || 0) /
+            (Number(formData.stone_quantity || 0) +
+              Number(formData.stone_weight || 0) || 1)) *
+          100
+        ).toFixed(1)
+      : "0";
 
   const stoneUsagePercent = selectedStone
     ? (
-        (parseFloat(formData.stone_quantity) /
-          parseFloat(selectedStone.available_quantity || 1)) *
+        (parseFloat(formData.stone_quantity || formData.stone_weight || 0) /
+          parseFloat(
+            selectedStone.available_quantity ||
+              selectedStone.available_weight ||
+              1,
+          )) *
         100
       ).toFixed(1)
     : "0";
 
   const getAvailableStock = () => {
-    if (!selectedStone) return { quantity: 0, carat: 0, unit: "" };
+    if (!selectedStone) return { quantity: 0, weight: 0, unit: "pcs" };
+
+    // Check both quantity and weight fields
+    const availableQty = parseFloat(selectedStone.available_quantity) || 0;
+    const availableWeight =
+      parseFloat(selectedStone.available_weight) ||
+      parseFloat(selectedStone.weight) ||
+      parseFloat(selectedStone.stock) ||
+      0;
+
+    // Determine unit type
+    const unit = selectedStone.unit_name || selectedStone.unit || "pcs";
+    const isWeightUnit =
+      unit.toLowerCase().includes("kg") ||
+      unit.toLowerCase().includes("gram") ||
+      unit.toLowerCase().includes("carat");
 
     return {
-      quantity: selectedStone.available_quantity || 0,
-      carat: selectedStone.carat || selectedStone.available_weight || 0,
-      unit: selectedStone.unit_name || "pcs",
+      quantity: availableQty,
+      weight: availableWeight,
+      unit: unit,
+      isWeight: isWeightUnit,
+      available: isWeightUnit ? availableWeight : availableQty,
     };
   };
 
@@ -1237,7 +1307,7 @@ const UpdateSettingStage = ({
   // Calculate total labor from breakdown
   const totalCalculatedLabor = laborBreakdown.reduce(
     (sum, item) => sum + parseFloat(item.total_cost || 0),
-    0
+    0,
   );
 
   return (
@@ -1346,8 +1416,14 @@ const UpdateSettingStage = ({
                         <FiAperture className="text-primary" size={24} />
                       </div>
                       <div className="small text-muted mt-1">
-                        Used: {formData.stone_quantity || "0"} of{" "}
-                        {selectedStone?.available_quantity || "0"}
+                        Used:{" "}
+                        {formData.stone_quantity ||
+                          formData.stone_weight ||
+                          "0"}{" "}
+                        of{" "}
+                        {selectedStone?.available_quantity ||
+                          selectedStone?.available_weight ||
+                          "0"}
                       </div>
                     </div>
                   </div>
@@ -1630,8 +1706,9 @@ const UpdateSettingStage = ({
                           {availableStones.map((stone) => (
                             <option key={stone._id} value={stone._id}>
                               {stone.name} ({stone.item_code}) -{" "}
-                              {stone.available_quantity} {stone.unit_name}{" "}
-                              available
+                              {stone.available_quantity ||
+                                stone.available_weight}{" "}
+                              {stone.unit_name} available
                               {stone.cost ? ` - ₹${stone.cost}/unit` : ""}
                             </option>
                           ))}
@@ -1673,7 +1750,7 @@ const UpdateSettingStage = ({
                     {/* Stone Information Card */}
                     {selectedStone && (
                       <div className="card border-info mb-4">
-                        <div className="card-header bg-info text-white">
+                        <div className="card-header bg-info text-white py-2">
                           <h6 className="mb-0">Stone Information</h6>
                         </div>
                         <div className="card-body">
@@ -1682,7 +1759,7 @@ const UpdateSettingStage = ({
                               <div className="mb-2">
                                 <small className="text-muted">Item Code</small>
                                 <div className="fw-medium">
-                                  {selectedStone.item_code}
+                                  {selectedStone.item_code || "N/A"}
                                 </div>
                               </div>
                             </div>
@@ -1692,8 +1769,8 @@ const UpdateSettingStage = ({
                                   Available Stock
                                 </small>
                                 <div className="fw-medium">
-                                  {selectedStone.available_quantity || 0}{" "}
-                                  {selectedStone.unit_name}
+                                  {getAvailableStock().available}{" "}
+                                  {getAvailableStock().unit}
                                 </div>
                               </div>
                             </div>
@@ -1711,7 +1788,11 @@ const UpdateSettingStage = ({
                               <div className="mb-2">
                                 <small className="text-muted">Unit Cost</small>
                                 <div className="fw-medium">
-                                  ₹{selectedStone.cost || "0.00"}
+                                  ₹
+                                  {parseFloat(selectedStone.cost || 0).toFixed(
+                                    2,
+                                  )}{" "}
+                                  / {getAvailableStock().unit}
                                 </div>
                               </div>
                             </div>
@@ -1720,7 +1801,7 @@ const UpdateSettingStage = ({
                                 <div className="mb-2">
                                   <small className="text-muted">Purity</small>
                                   <div className="fw-medium">
-                                    {selectedStone.purity || "N/A"}
+                                    {selectedStone.purity}
                                   </div>
                                 </div>
                               </div>
@@ -1733,7 +1814,8 @@ const UpdateSettingStage = ({
                     <div className="row g-2">
                       <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
-                          Stone Quantity <span className="text-danger">*</span>
+                          Stone Quantity/Weight{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <div className="input-group input-group-sm">
                           <input
@@ -1742,24 +1824,33 @@ const UpdateSettingStage = ({
                             className={`form-control ${
                               formErrors.stone_quantity ? "is-invalid" : ""
                             }`}
-                            value={formData.stone_quantity}
+                            value={
+                              formData.stone_quantity ||
+                              formData.stone_weight ||
+                              ""
+                            }
                             onChange={handleInputChange}
                             min="0"
-                            step="1"
-                            placeholder="e.g., 1"
+                            step="0.01"
+                            placeholder={
+                              getAvailableStock().isWeight
+                                ? "e.g., 10.5"
+                                : "e.g., 5"
+                            }
                             disabled={isDisabled}
                           />
                           <span className="input-group-text">
-                            {selectedStone?.unit_name || "pcs"}
+                            {getAvailableStock().unit}
                           </span>
                         </div>
                         {formErrors.stone_quantity && (
                           <div className="invalid-feedback d-block">
+                            <FiAlertCircle size={12} className="me-1" />
                             {formErrors.stone_quantity}
                           </div>
                         )}
                         <div className="form-text x-small">
-                          Available: {getAvailableStock().quantity}{" "}
+                          Available: {getAvailableStock().available}{" "}
                           {getAvailableStock().unit}
                         </div>
                       </div>
@@ -1842,8 +1933,11 @@ const UpdateSettingStage = ({
                           <div className="d-flex justify-content-between mb-2 small">
                             <span>Quantity Required:</span>
                             <span className="fw-bold">
-                              {formData.stone_quantity || "0"}{" "}
-                              {selectedStone?.unit_name || "pcs"}
+                              {formData.stone_quantity ||
+                                formData.stone_weight ||
+                                "0"}{" "}
+                              {selectedStone?.unit_name ||
+                                (formData.stone_weight ? "carats" : "pcs")}
                             </span>
                           </div>
                           <div className="d-flex justify-content-between mb-2 small">
@@ -2083,12 +2177,12 @@ const UpdateSettingStage = ({
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
-                  selectedLaborCosts.length
+                  selectedLaborCosts.length,
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
                     <div className="row mb-3">
-                      <div className="col-md-12">
+                      {/* <div className="col-md-12">
                         <label className="form-label fw-medium">
                           Cost Status
                         </label>
@@ -2105,7 +2199,7 @@ const UpdateSettingStage = ({
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div> */}
                     </div>
 
                     {/* Labor Cost Selection */}
@@ -2120,8 +2214,8 @@ const UpdateSettingStage = ({
                           options={getLaborCostOptions()}
                           value={getLaborCostOptions().filter((option) =>
                             selectedLaborCosts.some(
-                              (cost) => cost._id === option.value
-                            )
+                              (cost) => cost._id === option.value,
+                            ),
                           )}
                           onChange={handleLaborCostsChange}
                           placeholder={
@@ -2178,7 +2272,7 @@ const UpdateSettingStage = ({
                     </div>
 
                     <div className="row g-2">
-                      <div className="col-md-4 mb-2">
+                      {/* <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
                           Material Cost
                         </label>
@@ -2199,7 +2293,7 @@ const UpdateSettingStage = ({
                         <div className="form-text x-small">
                           Metal/other materials
                         </div>
-                      </div>
+                      </div> */}
 
                       <div className="col-md-4 mb-2">
                         <label className="form-label fw-medium small">
@@ -2300,7 +2394,9 @@ const UpdateSettingStage = ({
                             type="button"
                             className="btn btn-outline-secondary"
                             onClick={() =>
-                              calculateLaborCostFromSelection(selectedLaborCosts)
+                              calculateLaborCostFromSelection(
+                                selectedLaborCosts,
+                              )
                             }
                             disabled={isDisabled}
                             title="Recalculate labor cost"
@@ -2333,8 +2429,11 @@ const UpdateSettingStage = ({
                                 <table className="table table-sm mb-0">
                                   <thead>
                                     <tr>
+                                      {/* <th className="small">Product Code</th> */}
                                       <th className="small">Type</th>
                                       <th className="small">Cost Type</th>
+                                      <th className="small">Stage</th>
+                                      <th className="small">Sub Stage</th>
                                       <th className="small">Amount</th>
                                       <th className="small">Unit</th>
                                       <th className="small text-end">Total</th>
@@ -2343,6 +2442,9 @@ const UpdateSettingStage = ({
                                   <tbody>
                                     {laborBreakdown.map((item) => (
                                       <tr key={item.id}>
+                                        {/* <td className="small">
+                                          <strong>{item.product_code}</strong>
+                                        </td> */}
                                         <td className="small">
                                           <strong>{item.name}</strong>
                                         </td>
@@ -2352,10 +2454,20 @@ const UpdateSettingStage = ({
                                           </span>
                                         </td>
                                         <td className="small">
+                                          <span className="badge bg-info">
+                                            {item.stage}
+                                          </span>
+                                        </td>
+                                        <td className="small">
+                                          <span className="badge bg-warning">
+                                            {item.sub_stage}
+                                          </span>
+                                        </td>
+                                        <td className="small">
                                           ₹{item.cost_amount}
                                         </td>
                                         <td className="small">
-                                          <span className="badge bg-info">
+                                          <span className="badge bg-success">
                                             {item.unit}
                                           </span>
                                         </td>
@@ -2367,10 +2479,10 @@ const UpdateSettingStage = ({
                                   </tbody>
                                   <tfoot>
                                     <tr className="table-active">
-                                      <td colSpan="4" className="small fw-bold">
+                                      <td colSpan="7" className="small fw-bold">
                                         Total Labor Cost
                                       </td>
-                                      <td className="small text-end fw-bold fs-6">
+                                      <td className="small fw-bold fs-6">
                                         ₹ {totalCalculatedLabor.toFixed(2)}
                                       </td>
                                     </tr>
@@ -2394,12 +2506,12 @@ const UpdateSettingStage = ({
                               ₹ {formData.stone_cost_total || "0.00"}
                             </span>
                           </div>
-                          <div className="d-flex justify-content-between mb-2 small">
+                          {/* <div className="d-flex justify-content-between mb-2 small">
                             <span>Material Cost:</span>
                             <span className="fw-bold">
                               ₹ {formData.material_cost || "0.00"}
                             </span>
-                          </div>
+                          </div> */}
                           <div className="d-flex justify-content-between mb-2 small">
                             <span>Labor Cost:</span>
                             <span className="fw-bold">

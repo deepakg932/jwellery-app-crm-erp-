@@ -147,29 +147,9 @@ const UpdatePackagingStage = ({
   });
 
   const statusOptions = [
-    {
-      value: "not_started",
-      label: "Not Started",
-      color: "secondary",
-      icon: "⏳",
-    },
-    { value: "preparation", label: "Preparation", color: "info", icon: "📦" },
-    { value: "packaging", label: "Packaging", color: "warning", icon: "🎁" },
-    { value: "labeling", label: "Labeling", color: "info", icon: "🏷️" },
-    {
-      value: "quality_check",
-      label: "Quality Check",
-      color: "warning",
-      icon: "🔍",
-    },
-    {
-      value: "documentation",
-      label: "Documentation",
-      color: "info",
-      icon: "📄",
-    },
-    { value: "completed", label: "Completed", color: "success", icon: "✅" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
+    { value: "completed", label: "Completed", color: "success", icon: "🏁" },
+    { value: "draft", label: "Draft", color: "pending", icon: "🏁" },
+    { value: "cancelled", label: "Cancelled", color: "reject", icon: "🏁" },
   ];
 
   const packagingTypeOptions = [
@@ -228,24 +208,10 @@ const UpdatePackagingStage = ({
       const costName = (cost.cost_name || "").toLowerCase();
       const stageName = (cost.stage_name || "").toLowerCase();
       const subStageName = (cost.sub_stage_name || "").toLowerCase();
-      
+
       // Include labor and packaging costs relevant to packaging stage
       return (
-        costName.includes("labor") ||
-        costName.includes("packaging") ||
-        costName.includes("packer") ||
-        costName.includes("packing") ||
-        costName.includes("wrapping") ||
-        costName.includes("boxing") ||
-        costName.includes("karigar") ||
-        costName.includes("craftsman") ||
-        costName.includes("worker") ||
-        stageName.includes("packaging") ||
-        subStageName.includes("packaging") ||
-        stageName.includes("packing") ||
-        subStageName.includes("packing") ||
-        costName.includes("पैकेजिंग") ||
-        costName.includes("कारीगर")
+        costName
       );
     });
 
@@ -296,7 +262,7 @@ const UpdatePackagingStage = ({
     // Calculate total labor cost
     const totalLaborCost = breakdown.reduce(
       (sum, item) => sum + parseFloat(item.total_cost),
-      0
+      0,
     );
 
     // Update form data with calculated labor cost
@@ -317,14 +283,14 @@ const UpdatePackagingStage = ({
       if (selectedStage.selected_labor_costs) {
         if (Array.isArray(selectedStage.selected_labor_costs)) {
           // Map the IDs to actual labor cost objects
-          parsedSelectedLaborCosts = laborCosts.filter(cost => 
-            selectedStage.selected_labor_costs.includes(cost._id)
+          parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+            selectedStage.selected_labor_costs.includes(cost._id),
           );
         } else if (typeof selectedStage.selected_labor_costs === "string") {
           try {
             const ids = JSON.parse(selectedStage.selected_labor_costs);
-            parsedSelectedLaborCosts = laborCosts.filter(cost => 
-              ids.includes(cost._id)
+            parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+              ids.includes(cost._id),
             );
           } catch {
             parsedSelectedLaborCosts = [];
@@ -339,81 +305,83 @@ const UpdatePackagingStage = ({
           parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
         } else if (typeof selectedStage.labor_cost_breakdown === "string") {
           try {
-            parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
+            parsedLaborBreakdown = JSON.parse(
+              selectedStage.labor_cost_breakdown,
+            );
           } catch {
             parsedLaborBreakdown = [];
           }
         }
       }
 
-      // const initialData = {
-      //   assigned_to: selectedStage.assigned_to || "",
-      //   status: selectedStage.status || "",
-      //   start_date: selectedStage.start_date
-      //     ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-      //     : "",
-      //   end_date: selectedStage.end_date
-      //     ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-      //     : "",
+      const initialData = {
+        assigned_to: selectedStage.assigned_to || "",
+        status: selectedStage.status || "",
+        start_date: selectedStage.start_date
+          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+          : "",
+        end_date: selectedStage.end_date
+          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+          : "",
 
-      //   // Packaging Materials
-      //   materials_used: selectedStage.materials_used || [],
-      //   box_used: selectedStage.box_used || false,
-      //   box_type: selectedStage.box_type || "standard",
-      //   box_quantity: selectedStage.box_quantity || 1,
-      //   box_cost: selectedStage.box_cost || "",
-      //   certificate_used: selectedStage.certificate_used || false,
-      //   certificate_type: selectedStage.certificate_type || "standard",
-      //   certificate_quantity: selectedStage.certificate_quantity || 1,
-      //   certificate_cost: selectedStage.certificate_cost || "",
-      //   cotton_used: selectedStage.cotton_used || false,
-      //   cotton_quantity: selectedStage.cotton_quantity || "",
-      //   cotton_cost: selectedStage.cotton_cost || "",
+        // Packaging Materials
+        materials_used: selectedStage.materials_used || [],
+        box_used: selectedStage.box_used || false,
+        box_type: selectedStage.box_type || "standard",
+        box_quantity: selectedStage.box_quantity || 1,
+        box_cost: selectedStage.box_cost || "",
+        certificate_used: selectedStage.certificate_used || false,
+        certificate_type: selectedStage.certificate_type || "standard",
+        certificate_quantity: selectedStage.certificate_quantity || 1,
+        certificate_cost: selectedStage.certificate_cost || "",
+        cotton_used: selectedStage.cotton_used || false,
+        cotton_quantity: selectedStage.cotton_quantity || "",
+        cotton_cost: selectedStage.cotton_cost || "",
 
-      //   // Quality Check
-      //   quality_check: selectedStage.quality_check || false,
-      //   quality_score: selectedStage.quality_score || "100",
-      //   quality_remarks: selectedStage.quality_remarks || "",
+        // Quality Check
+        quality_check: selectedStage.quality_check || false,
+        quality_score: selectedStage.quality_score || "100",
+        quality_remarks: selectedStage.quality_remarks || "",
 
-      //   // Cost Tracking
-      //   material_cost: selectedStage.material_cost || "",
-      //   labour_cost: selectedStage.labour_cost || "",
-      //   equipment_cost: selectedStage.equipment_cost || "",
-      //   other_costs: selectedStage.other_costs || "",
-      //   total_cost: selectedStage.total_cost || "",
-      //   cost_currency: selectedStage.cost_currency || "INR",
-      //   cost_status: selectedStage.cost_status || "estimated",
-      //   markup_percentage: selectedStage.markup_percentage || "15",
-      //   final_price: selectedStage.final_price || "",
+        // Cost Tracking
+        material_cost: selectedStage.material_cost || "",
+        labour_cost: selectedStage.labour_cost || "",
+        equipment_cost: selectedStage.equipment_cost || "",
+        other_costs: selectedStage.other_costs || "",
+        total_cost: selectedStage.total_cost || "",
+        cost_currency: selectedStage.cost_currency || "INR",
+        cost_status: selectedStage.cost_status || "estimated",
+        markup_percentage: selectedStage.markup_percentage || "15",
+        final_price: selectedStage.final_price || "",
 
-      //   // Time Tracking
-      //   preparation_time: selectedStage.preparation_time || "",
-      //   packaging_time: selectedStage.packaging_time || "",
-      //   labeling_time: selectedStage.labeling_time || "",
-      //   quality_time: selectedStage.quality_time || "",
-      //   documentation_time: selectedStage.documentation_time || "",
-      //   total_time_spent: selectedStage.total_time_spent || "",
-      //   time_breakdown: selectedStage.time_breakdown || "",
+        // Time Tracking
+        preparation_time: selectedStage.preparation_time || "",
+        packaging_time: selectedStage.packaging_time || "",
+        labeling_time: selectedStage.labeling_time || "",
+        quality_time: selectedStage.quality_time || "",
+        documentation_time: selectedStage.documentation_time || "",
+        total_time_spent: selectedStage.total_time_spent || "",
+        time_breakdown: selectedStage.time_breakdown || "",
 
-      //   // Additional Fields
-      //   packaging_type: selectedStage.packaging_type || "standard",
-      //   sealing_method: selectedStage.sealing_method || "sticker",
-      //   weight_after_packaging: selectedStage.weight_after_packaging || "",
-      //   barcode_generated: selectedStage.barcode_generated || false,
-      //   barcode_number: selectedStage.barcode_number || "",
+        // Additional Fields
+        packaging_type: selectedStage.packaging_type || "standard",
+        sealing_method: selectedStage.sealing_method || "sticker",
+        weight_after_packaging: selectedStage.weight_after_packaging || "",
+        barcode_generated: selectedStage.barcode_generated || false,
+        barcode_number: selectedStage.barcode_number || "",
 
-      //   // File Tracking
-      //   file_version: selectedStage.file_version || "1.0",
-      //   file_revisions: selectedStage.file_revisions || 0,
-      //   file_status: selectedStage.file_status || "draft",
-      //   backup_location: selectedStage.backup_location || "",
+        // File Tracking
+        file_version: selectedStage.file_version || "1.0",
+        file_revisions: selectedStage.file_revisions || 0,
+        file_status: selectedStage.file_status || "draft",
+        backup_location: selectedStage.backup_location || "",
 
-      //   remarks: selectedStage.remarks || "",
-      // };
+        remarks: selectedStage.remarks || "",
+      };
 
-      // console.log("Initializing packaging form data:", initialData);
+      console.log("Initializing packaging form data:", initialData);
 
-      // setFormData(initialData);
+      setFormData(initialData);
       setSelectedLaborCosts(parsedSelectedLaborCosts);
       setLaborBreakdown(parsedLaborBreakdown);
 
@@ -717,8 +685,6 @@ const UpdatePackagingStage = ({
     setTimeout(() => calculateTotalCost(), 100);
   };
 
-
-
   // Handle textarea change
   const handleTextareaChange = (e) => {
     const { name, value } = e.target;
@@ -794,7 +760,14 @@ const UpdatePackagingStage = ({
     ];
 
     const packagingExtensions = [
-      "jpg", "jpeg", "png", "pdf", "doc", "docx", "xls", "xlsx"
+      "jpg",
+      "jpeg",
+      "png",
+      "pdf",
+      "doc",
+      "docx",
+      "xls",
+      "xlsx",
     ];
 
     const invalidFiles = fileList.filter(
@@ -1031,7 +1004,9 @@ const UpdatePackagingStage = ({
         } else {
           console.log("❌ Update failed, not closing");
           const errorMsg =
-            result?.error || result?.message || "Failed to update Packaging stage";
+            result?.error ||
+            result?.message ||
+            "Failed to update Packaging stage";
           setUploadError(errorMsg);
         }
       }
@@ -1088,7 +1063,7 @@ const UpdatePackagingStage = ({
   // Calculate total labor from breakdown
   const totalCalculatedLabor = laborBreakdown.reduce(
     (sum, item) => sum + parseFloat(item.total_cost || 0),
-    0
+    0,
   );
 
   return (
@@ -1917,7 +1892,7 @@ const UpdatePackagingStage = ({
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
-                  selectedLaborCosts.length
+                  selectedLaborCosts.length,
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
@@ -1954,8 +1929,8 @@ const UpdatePackagingStage = ({
                           options={getLaborCostOptions()}
                           value={getLaborCostOptions().filter((option) =>
                             selectedLaborCosts.some(
-                              (cost) => cost._id === option.value
-                            )
+                              (cost) => cost._id === option.value,
+                            ),
                           )}
                           onChange={handleLaborCostsChange}
                           placeholder={
@@ -2004,8 +1979,8 @@ const UpdatePackagingStage = ({
                           </div>
                         )}
                         <div className="form-text">
-                          Select one or more labor cost types (Packaging costs are
-                          included). The total labor cost will be calculated
+                          Select one or more labor cost types (Packaging costs
+                          are included). The total labor cost will be calculated
                           automatically.
                         </div>
                       </div>
@@ -2118,7 +2093,9 @@ const UpdatePackagingStage = ({
                             type="button"
                             className="btn btn-outline-secondary"
                             onClick={() =>
-                              calculateLaborCostFromSelection(selectedLaborCosts)
+                              calculateLaborCostFromSelection(
+                                selectedLaborCosts,
+                              )
                             }
                             disabled={isDisabled}
                             title="Recalculate labor cost"

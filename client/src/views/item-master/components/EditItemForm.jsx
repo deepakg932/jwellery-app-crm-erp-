@@ -10,6 +10,7 @@ const EditItemModal = ({
   loading = false,
   formData,
   getSubcategoriesForCategory,
+  generateProductCode,
   getGSTRateValue,
   dropdownLoading = false,
   fetchHallmarksByMetal,
@@ -19,16 +20,18 @@ const EditItemModal = ({
     categories = [],
     metals = [],
     brands = [],
+    costTypes = [],
     purities = [],
     units = [],
     stoneTypes = [],
     stonePurities = [],
+    makingCharges = [],
     gstRates = [],
     wastageTypes = [],
-    materialTypes = [],
     hallmarks = [],
-    priceMakings = [],
     subcategories = {},
+    priceMakings = [],
+    materialTypes = [],
   } = formData || {};
 
   console.log("📦 EditItemModal received props:", {
@@ -39,53 +42,6 @@ const EditItemModal = ({
     hallmarksCount: hallmarks?.length || 0,
     priceMakingsCount: priceMakings?.length || 0,
   });
-
-  // Metals Table State
-  const [metalsData, setMetalsData] = useState([]);
-
-  // Stones Table State
-  const [stones, setStones] = useState([]);
-
-  // Materials Table State
-  const [materialsData, setMaterialsData] = useState([]);
-
-  // Price Makings State (price_making_costs)
-  const [priceMakingCosts, setPriceMakingCosts] = useState([]);
-
-  // Form State
-  const [formState, setFormState] = useState({
-    product_name: "",
-    article_no: "", // Fixed: Use article_no instead of product_code
-    product_brand: "",
-    product_category: "",
-    product_subcategory: "",
-    markup_percentage: 15,
-    gst_rate: "0%",
-    cgst_rate: "0%",
-    sgst_rate: "0%",
-    igst_rate: "0%",
-    utgst_rate: "0%",
-  });
-
-  const [existingImages, setExistingImages] = useState([]);
-  const [newImageFiles, setNewImageFiles] = useState([]);
-  const [newImagePreviews, setNewImagePreviews] = useState([]);
-  const [imagesToDelete, setImagesToDelete] = useState([]);
-  const [errors, setErrors] = useState({});
-  const [currentSubcategories, setCurrentSubcategories] = useState([]);
-  const fileInputRef = useRef(null);
-  const [dragActive, setDragActive] = useState(false);
-
-  // Hallmark states
-  const [hallmarksByMetal, setHallmarksByMetal] = useState({});
-  const [loadingHallmarks, setLoadingHallmarks] = useState({});
-
-  // Helper function to get wastage type display value
-  const getWastageTypeDisplay = (type) => {
-    if (!type) return "";
-    if (typeof type === "string") return type;
-    return type.wastage_type || type.name || "Unknown";
-  };
 
   // Helper to get ID
   const getId = (item) => item?.id || item?._id || "";
@@ -111,223 +67,215 @@ const EditItemModal = ({
     );
   };
 
+  // Helper function to get wastage type display value
+  const getWastageTypeDisplay = (type) => {
+    if (!type) return "";
+    if (typeof type === "string") return type;
+    return type.wastage_type || type.name || "Unknown";
+  };
+
+  // Helper to get stone purity display name
+  const getStonePurityDisplay = (stonePurityId) => {
+    if (!stonePurityId) return "";
+
+    // Try to find by ID first
+    let stonePurity = stonePurities.find(
+      (sp) => sp.id === stonePurityId || sp._id === stonePurityId,
+    );
+
+    // If not found by ID, try by name
+    if (!stonePurity) {
+      stonePurity = stonePurities.find(
+        (sp) => sp.stone_purity === stonePurityId || sp.name === stonePurityId,
+      );
+    }
+
+    return stonePurity
+      ? stonePurity.stone_purity || stonePurity.name
+      : stonePurityId;
+  };
+
+  // Helper to get display name by ID
+  const getDisplayName = (id, array) => {
+    if (!id) return "";
+    const item = array.find((item) => getId(item) === id);
+    return getName(item) || id;
+  };
+
+  // Metals Table State
+  const [metalsData, setMetalsData] = useState([]);
+
+  // Stones Table State
+  const [stones, setStones] = useState([]);
+
+  // Materials Table State
+  const [materialsData, setMaterialsData] = useState([]);
+
+  // Form State - matching AddItemModal structure
+  const [formState, setFormState] = useState({
+    product_name: "",
+    article_no: "",
+    product_brand: "",
+    product_category: "",
+    product_subcategory: "",
+    product_subcategory_name: "",
+    selected_price_makings: [],
+    markup_percentage: 15,
+    gst_rate: "",
+    gst_total: 0,
+    cgst_rate: 0,
+    sgst_rate: 0,
+    igst_rate: 0,
+    utgst_rate: 0,
+    gst_rate_numeric: 0,
+  });
+
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImageFiles, setNewImageFiles] = useState([]);
+  const [newImagePreviews, setNewImagePreviews] = useState([]);
+  const [imagesToDelete, setImagesToDelete] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [currentSubcategories, setCurrentSubcategories] = useState([]);
+  const fileInputRef = useRef(null);
+  const [dragActive, setDragActive] = useState(false);
+
+  // Hallmark states
+  const [hallmarksByMetal, setHallmarksByMetal] = useState({});
+  const [loadingHallmarks, setLoadingHallmarks] = useState({});
+
   // ==================== INITIALIZATION ====================
   useEffect(() => {
     if (!item) return;
 
     console.log("Initializing edit form with item:", item);
 
-    // Helper to find ID by name in dropdown data
-    const findIdByName = (name, array) => {
-      if (!name || !array) return "";
-      const found = array.find(
-        (item) =>
-          item.name === name ||
-          item.product_brand === name ||
-          item.metal_type === name ||
-          item.stone_type === name ||
-          item.material_type === name ||
-          item.wastage_type === name,
-      );
-      return found ? getId(found) : name;
+    // Find GST rate ID from gstRates array
+    const findGstRateId = () => {
+      const itemGstRate = item.gst_rate || "";
+      const numericRate = parseFloat(itemGstRate) || 0;
+
+      const matchingGst = gstRates.find((gst) => {
+        const gstTotal = gst.gst_total || gst.value || 0;
+        return gstTotal === numericRate;
+      });
+
+      return matchingGst ? getId(matchingGst) : "";
     };
 
-    // Helper to find ID for purity
-    const findPurityId = (purityName) => {
-      if (!purityName) return "";
-      const found = purities.find(
-        (p) => p.purity_name === purityName || p.name === purityName,
-      );
-      return found ? getId(found) : purityName;
-    };
+    // Find making charges from item's price_making_costs
+    const findSelectedPriceMakings = () => {
+      if (!item.price_making_costs || !priceMakings.length) return [];
 
-    // Helper to find ID for stone purity
-    const findStonePurityId = (purityName) => {
-      if (!purityName) return "";
-      const found = stonePurities.find(
-        (sp) => sp.stone_purity === purityName || sp.name === purityName,
-      );
-      return found ? getId(found) : purityName;
+      return item.price_making_costs
+        .map((cost) => {
+          // The price_making_id in the response contains the full object
+          const priceMakingObj = cost.price_making_id;
+
+          // Find matching price making in dropdown
+          const matchingPm = priceMakings.find(
+            (pm) =>
+              getId(pm) === getId(priceMakingObj) ||
+              pm.cost_type === cost.cost_type,
+          );
+
+          return matchingPm
+            ? {
+                ...matchingPm,
+                cost_amount: cost.cost_amount || 0,
+                // Include these for display if needed
+                stage_name: cost.stage_name,
+                sub_stage_name: cost.sub_stage_name,
+                unit_name: cost.unit_name,
+              }
+            : null;
+        })
+        .filter(Boolean);
     };
 
     // Set form state from item
     setFormState({
       product_name: item.product_name || "",
-      article_no: item.article_no || "", // Fixed: Use article_no
+      article_no: item.article_no || "",
       product_brand: item.product_brand_id?._id || item.product_brand || "",
       product_category:
         item.product_category_id?._id || item.product_category || "",
       product_subcategory:
         item.product_subcategory_id?._id || item.product_subcategory || "",
+      product_subcategory_name: item.product_subcategory || "", // Using product_subcategory as name
+      selected_price_makings: findSelectedPriceMakings(),
       markup_percentage: item.markup_percentage || 15,
-      gst_rate: item.gst_rate || "0%",
-      cgst_rate: item.cgst_rate || "0%",
-      sgst_rate: item.sgst_rate || "0%",
-      igst_rate: item.igst_rate || "0%",
-      utgst_rate: item.utgst_rate || "0%",
+      gst_rate: findGstRateId(),
+      gst_total: parseFloat(item.gst_rate) || 0,
+      cgst_rate: parseFloat(item.cgst_rate) || 0,
+      sgst_rate: parseFloat(item.sgst_rate) || 0,
+      igst_rate: parseFloat(item.igst_rate) || 0,
+      utgst_rate: parseFloat(item.utgst_rate) || 0,
+      gst_rate_numeric: parseFloat(item.gst_rate) || 0,
     });
-
-    // Initialize price making costs from item
-    if (item.price_making_costs) {
-      const formattedPriceMakings = item.price_making_costs.map(
-        (cost, index) => ({
-          id: Date.now() + 3000 + index,
-          price_making_id: cost.price_making_id || getId(cost),
-          stage_name: cost.stage_name || "",
-          sub_stage_name: cost.sub_stage_name || "",
-          cost_type: cost.cost_type || "",
-          unit_name: cost.unit_name || "",
-          cost_amount: cost.cost_amount || 0,
-          is_active: cost.is_active !== undefined ? cost.is_active : true,
-        }),
-      );
-      setPriceMakingCosts(formattedPriceMakings);
-    }
 
     // Initialize metals data
-    const formattedMetals = (item.metals || []).map((metal, index) => {
-      // Try to get metal_type ID from metals dropdown
-      let metalTypeId = "";
-      if (metal.metal_id) {
-        metalTypeId = getId(metal.metal_id);
-      } else if (metal.metal_type) {
-        metalTypeId = findIdByName(metal.metal_type, metals);
-      }
-
-      // Try to get purity ID
-      let purityId = "";
-      if (metal.purity_id) {
-        purityId = getId(metal.purity_id);
-      } else if (metal.purity) {
-        purityId = findPurityId(metal.purity);
-      }
-
-      // Try to get unit ID
-      let unitId = "";
-      if (metal.unit) {
-        const foundUnit = units.find(
-          (u) =>
-            u.name === metal.unit ||
-            u.unit_name === metal.unit ||
-            getId(u) === getId(metal.unit),
-        );
-        unitId = foundUnit ? getId(foundUnit) : metal.unit;
-      }
-
-      // Get hallmark ID if exists
-      let hallmarkId = "";
-      if (metal.hallmark_id) {
-        hallmarkId = getId(metal.hallmark_id);
-      } else if (metal.hallmark) {
-        hallmarkId = getId(metal.hallmark);
-      }
-
-      return {
-        id: Date.now() + index,
-        metal_type: metalTypeId,
-        purity: purityId,
-        hallmark: hallmarkId,
-        weight: metal.weight || 0,
-        unit: unitId,
-        rate_per_gram: metal.rate_per_gram || 0,
-        making_charge_type: metal.making_charge_type || "Fixed",
-      };
-    });
+    const formattedMetals = (item.metals || []).map((metal, index) => ({
+      id: metal.metal_id?._id || `metal-${Date.now()}-${index}`,
+      metal_type: metal.metal_id?._id || metal.metal_type || "", // Store the ID
+      weight: metal.weight || 0,
+      unit: metal.unit || "", // This might be ID or name
+      purity: metal.purity_id?._id || metal.purity || "", // Store the ID
+      hallmark: metal.hallmark_id?._id || metal.hallmark_name || "", // Store the ID
+      rate_per_gram: metal.rate_per_gram || 0,
+      // Store display names for reference
+      metal_type_name: metal.metal_id?.name || metal.metal_type,
+      purity_name: metal.purity_id?.purity_name || metal.purity,
+      hallmark_name: metal.hallmark_id?.name || metal.hallmark_name,
+    }));
     console.log("Formatted metals:", formattedMetals);
     setMetalsData(formattedMetals);
 
     // Initialize stones data
-    const formattedStones = (item.stones || []).map((stone, index) => {
-      // Try to get stone_type ID
-      let stoneTypeId = "";
-      if (stone.stone_id) {
-        stoneTypeId = getId(stone.stone_id);
-      } else if (stone.stone_type) {
-        stoneTypeId = findIdByName(stone.stone_type, stoneTypes);
-      }
-
-      // Try to get stone_purity ID
-      let stonePurityId = "";
-      if (stone.stone_purity_id) {
-        stonePurityId = getId(stone.stone_purity_id);
-      } else if (stone.stone_purity) {
-        stonePurityId = findStonePurityId(stone.stone_purity);
-      }
-
-      return {
-        id: Date.now() + 1000 + index,
-        stone_type: stoneTypeId,
-        stone_purity: stonePurityId,
-        size: stone.size || 0,
-        quantity: stone.quantity || 0,
-        weight: stone.weight || 0,
-        price_per_carat: stone.price_per_carat || 0,
-      };
-    });
+    const formattedStones = (item.stones || []).map((stone, index) => ({
+      id: stone.stone_id?._id || `stone-${Date.now()}-${index}`,
+      stone_type: stone.stone_id?._id || stone.stone_type || "", // Store the ID
+      stone_purity: stone.stone_purity_id?._id || stone.stone_purity || "", // Store the ID
+      stone_purity_display:
+        stone.stone_purity_id?.stone_purity || stone.stone_purity || "",
+      size: stone.size || 0,
+      quantity: stone.quantity || 1,
+      weight: stone.weight || 0,
+      price_per_carat: stone.price_per_carat || 0,
+      // Store display names for reference
+      stone_type_name: stone.stone_id?.stone_type || stone.stone_type,
+    }));
     console.log("Formatted stones:", formattedStones);
     setStones(formattedStones);
 
     // Initialize materials data
-    const formattedMaterials = (item.materials || []).map((material, index) => {
-      // Try to get wastage_type ID
-      let wastageTypeId = "";
-      if (material.wastage_id) {
-        wastageTypeId = getId(material.wastage_id);
-      } else if (material.wastage_type) {
-        wastageTypeId = findIdByName(material.wastage_type, wastageTypes);
-      }
-
-      // Try to get material_type ID
-      let materialTypeId = "";
-      if (material.material_id) {
-        materialTypeId = getId(material.material_id);
-      } else if (material.material_type) {
-        materialTypeId = findIdByName(material.material_type, materialTypes);
-      }
-
-      // Try to get unit
-      let unitId = "";
-      if (material.unit) {
-        const foundUnit = units.find(
-          (u) =>
-            u.name === material.unit ||
-            u.unit_name === material.unit ||
-            getId(u) === getId(material.unit),
-        );
-        unitId = foundUnit ? getId(foundUnit) : material.unit;
-      }
-
-      return {
-        id: Date.now() + 2000 + index,
-        wastage_type: wastageTypeId,
-        material_type: materialTypeId,
+    const formattedMaterials = (item.materials || []).map(
+      (material, index) => ({
+        id: material.material_id?._id || `material-${Date.now()}-${index}`,
+        wastage_type: material.wastage_id?.wastage_type || material.wastage_type || "", // Store the ID
+        material_type:
+          material.material_id?._id || material.material_type || "", // Store the ID
         weight: material.weight || 0,
-        unit: unitId,
+        unit: material.unit || "", // This might be ID or name
         rate_per_unit: material.rate_per_unit || 0,
-      };
-    });
+        // Store display names for reference
+        wastage_type_id:
+          material.wastage_id?._id || material.wastage_type,
+        material_type_name:
+          material.material_id?.material_type || material.material_type,
+      }),
+    );
     console.log("Formatted materials:", formattedMaterials);
     setMaterialsData(formattedMaterials);
 
-    // Handle images - FIXED: Use images array from response
-    const itemImages = item.images || item.fullImageUrls || [];
+    // Handle images - using fullImageUrls from response
+    const itemImages = item.fullImageUrls || item.image || [];
     console.log("Item images:", itemImages);
     setExistingImages(itemImages);
     setNewImageFiles([]);
     setNewImagePreviews([]);
     setImagesToDelete([]);
     setErrors({});
-  }, [
-    item,
-    metals,
-    purities,
-    units,
-    stoneTypes,
-    stonePurities,
-    wastageTypes,
-    materialTypes,
-    priceMakings,
-  ]);
+  }, [item, gstRates, priceMakings, stonePurities]);
 
   // Fetch hallmarks for each metal when metals data is initialized
   useEffect(() => {
@@ -381,8 +329,6 @@ const EditItemModal = ({
 
   // ==================== GST HANDLERS ====================
   const handleGSTRateChange = (selectedGstId) => {
-    console.log("Selected GST ID:", selectedGstId);
-
     const selectedGST = gstRates.find((gst) => getId(gst) === selectedGstId);
 
     if (selectedGST) {
@@ -394,45 +340,50 @@ const EditItemModal = ({
 
       setFormState((prev) => ({
         ...prev,
-        gst_rate: `${gstTotal}%`,
-        cgst_rate: `${cgstPercentage}%`,
-        sgst_rate: `${sgstPercentage}%`,
-        igst_rate: `${igstPercentage}%`,
-        utgst_rate: `${utgstPercentage}%`,
+        gst_rate: selectedGstId,
+        gst_rate_numeric: gstTotal,
+        gst_total: gstTotal,
+        cgst_rate: cgstPercentage,
+        sgst_rate: sgstPercentage,
+        igst_rate: igstPercentage,
+        utgst_rate: utgstPercentage,
       }));
     }
   };
 
-  // ==================== PRICE MAKING COSTS FUNCTIONS ====================
-  const addPriceMakingRow = () => {
-    const newId = Date.now() + 3000 + priceMakingCosts.length;
+  // Get selected GST display value
+  const getSelectedGSTDisplay = () => {
+    if (!formState.gst_rate) return "Select GST Rate";
 
-    setPriceMakingCosts([
-      ...priceMakingCosts,
-      {
-        id: newId,
-        price_making_id: priceMakings.length > 0 ? getId(priceMakings[0]) : "",
-        stage_name: "",
-        sub_stage_name: "",
-        cost_type: "",
-        unit_name: "",
-        cost_amount: 0,
-        is_active: true,
-      },
-    ]);
+    const selected = gstRates.find((gst) => getId(gst) === formState.gst_rate);
+
+    if (!selected) return "Invalid GST Rate";
+
+    const gstTotal = selected.gst_total || selected.value || 0;
+    const cgst = selected.cgst_percentage || 0;
+    const sgst = selected.sgst_percentage || 0;
+    const igst = selected.igst_percentage || 0;
+    const utgst = selected.utgst_percentage || 0;
+
+    if (igst > 0) {
+      return `IGST ${igst}%`;
+    } else {
+      let display = `GST ${gstTotal}%`;
+      let details = [];
+      if (cgst > 0) details.push(`CGST ${cgst}%`);
+      if (sgst > 0) details.push(`SGST ${sgst}%`);
+      if (utgst > 0) details.push(`UTGST ${utgst}%`);
+      if (details.length > 0) {
+        display += ` (${details.join(", ")})`;
+      }
+      return display;
+    }
   };
 
-  const removePriceMaking = (id) => {
-    setPriceMakingCosts(priceMakingCosts.filter((cost) => cost.id !== id));
-  };
-
-  const updatePriceMaking = (id, field, value) => {
-    setPriceMakingCosts(
-      priceMakingCosts.map((cost) => {
-        if (cost.id !== id) return cost;
-        return { ...cost, [field]: value };
-      }),
-    );
+  // Get selected GST object
+  const getSelectedGSTObject = () => {
+    if (!formState.gst_rate) return null;
+    return gstRates.find((gst) => getId(gst) === formState.gst_rate);
   };
 
   // ==================== TABLE FUNCTIONS ====================
@@ -443,13 +394,12 @@ const EditItemModal = ({
       ...metalsData,
       {
         id: newId,
-        metal_type: metals.length > 0 ? getId(metals[0]) : "",
-        purity: purities.length > 0 ? getId(purities[0]) : "",
-        hallmark: "",
+        metal_type: "",
         weight: 0,
-        unit: units.length > 0 ? getId(units[0]) : "",
+        unit: "",
+        purity: "",
+        hallmark: "",
         rate_per_gram: 0,
-        making_charge_type: "Fixed",
       },
     ]);
   };
@@ -471,10 +421,11 @@ const EditItemModal = ({
       ...stones,
       {
         id: newId,
-        stone_type: stoneTypes.length > 0 ? getId(stoneTypes[0]) : "",
-        stone_purity: stonePurities.length > 0 ? getId(stonePurities[0]) : "",
+        stone_type: "",
+        stone_purity: "",
+        stone_purity_display: "",
         size: 0,
-        quantity: 0,
+        quantity: 1,
         weight: 0,
         price_per_carat: 0,
       },
@@ -492,10 +443,10 @@ const EditItemModal = ({
       ...materialsData,
       {
         id: newId,
-        wastage_type: wastageTypes.length > 0 ? getId(wastageTypes[0]) : "",
-        material_type: materialTypes.length > 0 ? getId(materialTypes[0]) : "",
+        wastage_type: "",
+        material_type: "",
         weight: 0,
-        unit: units.length > 0 ? getId(units[0]) : "",
+        unit: "",
         rate_per_unit: 0,
       },
     ]);
@@ -549,6 +500,23 @@ const EditItemModal = ({
     setStones(
       stones.map((stone) => {
         if (stone.id !== id) return stone;
+
+        // Special handling for stone_purity selection
+        if (field === "stone_purity_display") {
+          // Find the stone purity object by display name
+          const stonePurityObj = stonePurities.find(
+            (sp) => sp.stone_purity === value || sp.name === value,
+          );
+
+          return {
+            ...stone,
+            stone_purity: stonePurityObj
+              ? stonePurityObj.id || stonePurityObj._id
+              : "",
+            stone_purity_display: value,
+          };
+        }
+
         return { ...stone, [field]: value };
       }),
     );
@@ -591,7 +559,6 @@ const EditItemModal = ({
     }
   };
 
-  // FIXED: Proper image upload handling
   const handleNewImageUpload = (files) => {
     const availableSlots =
       3 -
@@ -603,7 +570,6 @@ const EditItemModal = ({
 
     newFiles.forEach((file) => {
       if (!file.type.startsWith("image/")) {
-        alert("Please upload only image files");
         return;
       }
 
@@ -617,7 +583,6 @@ const EditItemModal = ({
       const reader = new FileReader();
       reader.onload = (e) => {
         validPreviews.push(e.target.result);
-        // Update state only when all previews are ready
         if (validPreviews.length === validFiles.length) {
           setNewImagePreviews((prev) => [...prev, ...validPreviews]);
         }
@@ -630,7 +595,6 @@ const EditItemModal = ({
     }
   };
 
-  // FIXED: Image removal functions
   const removeExistingImage = (index) => {
     const imageToDelete = existingImages[index];
     setImagesToDelete((prev) => [...prev, imageToDelete]);
@@ -648,6 +612,22 @@ const EditItemModal = ({
   };
 
   // ==================== CALCULATIONS ====================
+  const getMakingChargeAmount = () => {
+    if (
+      !formState.selected_price_makings ||
+      formState.selected_price_makings.length === 0
+    ) {
+      return 0;
+    }
+
+    const totalAmount = formState.selected_price_makings.reduce((sum, pm) => {
+      const costAmount = parseFloat(pm.cost_amount) || 0;
+      return sum + costAmount;
+    }, 0);
+
+    return totalAmount;
+  };
+
   const calculateMetalSubtotal = (metal) => {
     const weight = parseFloat(metal.weight) || 0;
     const rate = parseFloat(metal.rate_per_gram) || 0;
@@ -667,7 +647,47 @@ const EditItemModal = ({
     return weight * rate;
   };
 
-  // Totals
+  const calculateGST = (amount, percentage) => {
+    const rateValue = parseFloat(percentage) || 0;
+    return (amount * rateValue) / 100;
+  };
+
+  const calculateGSTBreakdown = (amount) => {
+    const selectedGST = getSelectedGSTObject();
+
+    if (!selectedGST) {
+      return {
+        gstAmount: 0,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        igstAmount: 0,
+        utgstAmount: 0,
+        totalGST: 0,
+      };
+    }
+
+    const gstTotal = selectedGST.gst_total || selectedGST.value || 0;
+    const cgstPercentage = selectedGST.cgst_percentage || 0;
+    const sgstPercentage = selectedGST.sgst_percentage || 0;
+    const igstPercentage = selectedGST.igst_percentage || 0;
+    const utgstPercentage = selectedGST.utgst_percentage || 0;
+
+    const gstAmount = calculateGST(amount, gstTotal);
+    const cgstAmount = calculateGST(amount, cgstPercentage);
+    const sgstAmount = calculateGST(amount, sgstPercentage);
+    const igstAmount = calculateGST(amount, igstPercentage);
+    const utgstAmount = calculateGST(amount, utgstPercentage);
+
+    return {
+      gstAmount,
+      cgstAmount,
+      sgstAmount,
+      igstAmount,
+      utgstAmount,
+      totalGST: gstAmount,
+    };
+  };
+
   const totalMetalsCost = metalsData.reduce(
     (sum, metal) => sum + calculateMetalSubtotal(metal),
     0,
@@ -680,31 +700,16 @@ const EditItemModal = ({
     (sum, mat) => sum + calculateMaterialCost(mat),
     0,
   );
-  const totalPriceMakingCosts = priceMakingCosts.reduce(
-    (sum, cost) => sum + (parseFloat(cost.cost_amount) || 0),
-    0,
-  );
 
-  const baseTotal = totalMetalsCost + totalStonesCost + totalMaterialsCost;
-  const grandTotal = baseTotal + totalPriceMakingCosts;
+  const makingChargeAmount = getMakingChargeAmount();
+
+  const grandTotal =
+    totalMetalsCost + totalStonesCost + totalMaterialsCost + makingChargeAmount;
 
   const sellingPriceBeforeTax =
     grandTotal * (1 + (parseFloat(formState.markup_percentage) || 0) / 100);
-
-  // Calculate GST amounts based on rates
-  const gstTotal = parseFloat(formState.gst_rate?.replace("%", "")) || 0;
-  const cgstRate = parseFloat(formState.cgst_rate?.replace("%", "")) || 0;
-  const sgstRate = parseFloat(formState.sgst_rate?.replace("%", "")) || 0;
-  const igstRate = parseFloat(formState.igst_rate?.replace("%", "")) || 0;
-  const utgstRate = parseFloat(formState.utgst_rate?.replace("%", "")) || 0;
-
-  const gstAmount = (sellingPriceBeforeTax * gstTotal) / 100;
-  const cgstAmount = (sellingPriceBeforeTax * cgstRate) / 100;
-  const sgstAmount = (sellingPriceBeforeTax * sgstRate) / 100;
-  const igstAmount = (sellingPriceBeforeTax * igstRate) / 100;
-  const utgstAmount = (sellingPriceBeforeTax * utgstRate) / 100;
-
-  const sellingPriceWithGST = sellingPriceBeforeTax + gstAmount;
+  const gstBreakdown = calculateGSTBreakdown(sellingPriceBeforeTax);
+  const sellingPriceWithGST = sellingPriceBeforeTax + gstBreakdown.totalGST;
 
   // ==================== FORM VALIDATION ====================
   const validateForm = () => {
@@ -715,6 +720,7 @@ const EditItemModal = ({
       newErrors.article_no = "Article number is required";
     if (!formState.product_category)
       newErrors.product_category = "Category is required";
+    if (!formState.gst_rate) newErrors.gst_rate = "GST rate is required";
 
     return newErrors;
   };
@@ -722,104 +728,106 @@ const EditItemModal = ({
   // ==================== FORM SUBMISSION ====================
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const formErrors = validateForm();
+
+    if (formState.selected_price_makings.length === 0) {
+      formErrors.making_charge = "At least one making charge type is required";
+    }
+
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
       return;
     }
 
-    try {
-      // Prepare data in the format expected by updateItem function
-      const submitData = {
-        // Basic information
-        product_name: formState.product_name,
-        article_no: formState.article_no,
+    const selectedGST = getSelectedGSTObject();
 
-        // IDs
-        product_brand: formState.product_brand,
-        product_category: formState.product_category,
-        product_subcategory: formState.product_subcategory,
+    const finalData = {
+      // Basic info
+      product_name: formState.product_name,
+      article_no: formState.article_no,
 
-        // Markup
-        markup_percentage: parseFloat(formState.markup_percentage) || 15,
+      // IDs
+      product_brand: formState.product_brand || "",
+      product_category: formState.product_category || "",
+      product_subcategory: formState.product_subcategory || "",
+      product_subcategory_name: formState.product_subcategory_name || "",
 
-        // GST rates
-        gst_rate: formState.gst_rate || "0%",
-        cgst_rate: formState.cgst_rate || "0%",
-        sgst_rate: formState.sgst_rate || "0%",
-        igst_rate: formState.igst_rate || "0%",
-        utgst_rate: formState.utgst_rate || "0%",
+      // Multiple making charges
+      making_charges: formState.selected_price_makings.map((pm) => ({
+        price_making_id: getId(pm),
+        cost_type: pm.cost_type || "",
+        stage_name: pm.stage_name || "",
+        sub_stage_name: pm.sub_stage_name || "",
+        cost_amount: parseFloat(pm.cost_amount) || 0,
+        unit_name: pm.unit_name || "",
+      })),
 
-        // Metals data
-        metals: metalsData.map((metal) => ({
-          metal_type: metal.metal_type,
-          purity: metal.purity,
-          hallmark: metal.hallmark || "", // Send hallmark ID
-          weight: parseFloat(metal.weight) || 0,
-          unit: metal.unit,
-          rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
-          making_charge_type: metal.making_charge_type || "Fixed",
-        })),
+      total_making_charge_amount: makingChargeAmount,
 
-        // Stones data
-        stones: stones.map((stone) => ({
-          stone_type: stone.stone_type,
-          stone_purity: stone.stone_purity,
-          size: parseFloat(stone.size) || 0,
-          quantity: parseInt(stone.quantity) || 0,
-          weight: parseFloat(stone.weight) || 0,
-          price_per_carat: parseFloat(stone.price_per_carat) || 0,
-        })),
+      // Markup
+      markup_percentage: parseFloat(formState.markup_percentage) || 15,
 
-        // Materials data
-        materials: materialsData.map((material) => ({
-          wastage_type: material.wastage_type,
-          material_type: material.material_type,
-          weight: parseFloat(material.weight) || 0,
-          unit: material.unit,
-          rate_per_unit: parseFloat(material.rate_per_unit) || 0,
-        })),
+      // GST rates
+      gst_rate: selectedGST ? `${selectedGST.gst_total || 0}%` : "0%",
+      cgst_rate: selectedGST ? `${selectedGST.cgst_percentage || 0}%` : "0%",
+      sgst_rate: selectedGST ? `${selectedGST.sgst_percentage || 0}%` : "0%",
+      igst_rate: selectedGST ? `${selectedGST.igst_percentage || 0}%` : "0%",
+      utgst_rate: selectedGST ? `${selectedGST.utgst_percentage || 0}%` : "0%",
 
-        // Price making costs
-        price_making_costs: priceMakingCosts.map((cost) => ({
-          price_making_id: cost.price_making_id,
-          stage_name: cost.stage_name,
-          sub_stage_name: cost.sub_stage_name,
-          cost_type: cost.cost_type,
-          unit_name: cost.unit_name,
-          cost_amount: parseFloat(cost.cost_amount) || 0,
-          is_active: cost.is_active !== undefined ? cost.is_active : true,
-        })),
+      // Metals
+      metals: metalsData.map((metal) => ({
+        metal_type: metal.metal_type,
+        purity: metal.purity,
+        weight: parseFloat(metal.weight) || 0,
+        unit: metal.unit || "g",
+        rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
+        hallmark: metal.hallmark || "",
+      })),
 
-        // Images - FIXED: Send new image files
-        image: newImageFiles, // This should be an array of File objects
+      // Stones
+      stones: stones.map((stone) => ({
+        stone_type: stone.stone_type,
+        stone_purity: stone.stone_purity,
+        size: parseFloat(stone.size) || 0,
+        quantity: parseInt(stone.quantity) || 1,
+        weight: parseFloat(stone.weight) || 0,
+        price_per_carat: parseFloat(stone.price_per_carat) || 0,
+      })),
 
-        // Images to delete
-        imagesToDelete: imagesToDelete, // This should be an array of image URLs
-      };
+      // Materials
+      materials: materialsData.map((material) => ({
+        wastage_type: material.wastage_type,
+        material_type: material.material_type,
+        weight: parseFloat(material.weight) || 0,
+        unit: material.unit || "g",
+        rate_per_unit: parseFloat(material.rate_per_unit) || 0,
+      })),
 
-      console.log("Submitting edit data:", {
-        basicInfo: {
-          name: submitData.product_name,
-          article_no: submitData.article_no,
-          brandId: submitData.product_brand,
-          categoryId: submitData.product_category,
-          subcategoryId: submitData.product_subcategory,
-        },
-        metalsCount: submitData.metals.length,
-        stonesCount: submitData.stones.length,
-        materialsCount: submitData.materials.length,
-        priceMakingsCount: submitData.price_making_costs.length,
-        newImagesCount: submitData.image?.length || 0,
-        imagesToDeleteCount: submitData.imagesToDelete?.length || 0,
-      });
+      // Images
+      image: newImageFiles,
+      imagesToDelete: imagesToDelete,
+    };
 
-      if (onSubmit) {
-        await onSubmit(submitData);
-      }
-    } catch (error) {
-      console.error("Error preparing form data:", error);
-      setErrors({ submit: "Failed to prepare form data" });
+    console.log("Submitting edit data:", {
+      basicInfo: {
+        name: finalData.product_name,
+        code: finalData.article_no,
+        brandId: finalData.product_brand,
+        categoryId: finalData.product_category,
+        subcategoryId: finalData.product_subcategory,
+        subcategoryName: finalData.product_subcategory_name,
+      },
+      metalsCount: finalData.metals.length,
+      metalsWithHallmark: finalData.metals.filter((m) => m.hallmark).length,
+      stonesCount: finalData.stones.length,
+      materialsCount: finalData.materials.length,
+      newImagesCount: finalData.image?.length || 0,
+      imagesToDeleteCount: finalData.imagesToDelete?.length || 0,
+    });
+
+    if (onSubmit) {
+      await onSubmit(finalData);
     }
   };
 
@@ -848,6 +856,7 @@ const EditItemModal = ({
     >
       <div className="modal-dialog modal-dialog-centered modal-xl">
         <div className="modal-content rounded-3">
+          {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">
               Edit Item: {item?.product_name}
@@ -860,11 +869,27 @@ const EditItemModal = ({
             ></button>
           </div>
 
+          {/* Form */}
           <form onSubmit={handleSubmit}>
             <div
               className="modal-body"
               style={{ maxHeight: "70vh", overflowY: "auto" }}
             >
+              {/* Show loading if dropdowns are loading */}
+              {dropdownLoading && (
+                <div className="alert alert-info mb-4">
+                  <div className="d-flex align-items-center">
+                    <div
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                    >
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                    Loading dropdown data...
+                  </div>
+                </div>
+              )}
+
               {/* Basic Information */}
               <div className="row mb-4">
                 <div className="col-md-6">
@@ -880,11 +905,12 @@ const EditItemModal = ({
                       className={`form-control ${
                         errors.product_name ? "is-invalid" : ""
                       }`}
+                      placeholder="enter product name"
                       value={formState.product_name}
                       onChange={(e) =>
                         handleInputChange("product_name", e.target.value)
                       }
-                      disabled={loading}
+                      disabled={loading || dropdownLoading}
                     />
                     {errors.product_name && (
                       <div className="invalid-feedback">
@@ -894,7 +920,7 @@ const EditItemModal = ({
                   </div>
                   <div className="mb-3">
                     <label className="form-label">
-                      Article No <span className="text-danger">*</span>
+                      Product Code <span className="text-danger">*</span>
                     </label>
                     <input
                       type="text"
@@ -905,7 +931,7 @@ const EditItemModal = ({
                       onChange={(e) =>
                         handleInputChange("article_no", e.target.value)
                       }
-                      disabled={loading}
+                      disabled={loading || dropdownLoading}
                     />
                     {errors.article_no && (
                       <div className="invalid-feedback">
@@ -913,9 +939,126 @@ const EditItemModal = ({
                       </div>
                     )}
                   </div>
+
+                  {/* MAKING CHARGE TYPE */}
+                  <div className="mb-3">
+                    <label className="form-label">Making Charge</label>
+
+                    <Select
+                      isMulti
+                      options={priceMakings.map((pm) => ({
+                        value: getId(pm),
+                        label: pm.cost_type,
+                        originalData: pm,
+                      }))}
+                      value={formState.selected_price_makings.map((pm) => ({
+                        value: getId(pm),
+                        label: pm.cost_type,
+                        originalData: pm,
+                      }))}
+                      onChange={(selectedOptions) => {
+                        const selectedPriceMakings = selectedOptions.map(
+                          (option) => ({
+                            ...option.originalData,
+                            cost_amount:
+                              option.originalData.cost_amount ||
+                              formState.selected_price_makings.find(
+                                (existing) => getId(existing) === option.value,
+                              )?.cost_amount ||
+                              0,
+                          }),
+                        );
+                        handleInputChange(
+                          "selected_price_makings",
+                          selectedPriceMakings,
+                        );
+                      }}
+                      placeholder={
+                        dropdownLoading || priceMakings.length === 0
+                          ? "Loading making charge types..."
+                          : "Select Making Charge Types"
+                      }
+                      isDisabled={
+                        loading || dropdownLoading || priceMakings.length === 0
+                      }
+                      className={`react-select-container ${
+                        dropdownLoading ? "opacity-50" : ""
+                      }`}
+                      classNamePrefix="react-select"
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          borderColor: errors.making_charge
+                            ? "#dc3545"
+                            : "#dee2e6",
+                          "&:hover": {
+                            borderColor: errors.making_charge
+                              ? "#dc3545"
+                              : "#ced4da",
+                          },
+                          backgroundColor: state.isDisabled
+                            ? "#e9ecef"
+                            : "white",
+                        }),
+                        menu: (base) => ({
+                          ...base,
+                          zIndex: 9999,
+                        }),
+                      }}
+                    />
+
+                    {errors.making_charge && (
+                      <div className="invalid-feedback d-block">
+                        {errors.making_charge}
+                      </div>
+                    )}
+
+                    <div className="form-text">
+                      You can select multiple making charge
+                    </div>
+
+                    {/* Show cost inputs for selected making charges */}
+                    {formState.selected_price_makings.length > 0 && (
+                      <div className="mt-3">
+                        <label className="form-label fw-bold">
+                          Making Charge Costs
+                        </label>
+                        {formState.selected_price_makings.map((pm) => (
+                          <div key={getId(pm)} className="mb-2">
+                            <label className="form-label">
+                              {pm.cost_type} Amount
+                            </label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              value={pm.cost_amount || 0}
+                              onChange={(e) => {
+                                const updatedPriceMakings = [
+                                  ...formState.selected_price_makings,
+                                ];
+                                updatedPriceMakings[index] = {
+                                  ...pm,
+                                  cost_amount: parseFloat(e.target.value) || 0,
+                                };
+                                handleInputChange(
+                                  "selected_price_makings",
+                                  updatedPriceMakings,
+                                );
+                              }}
+                              disabled={loading}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+
                 </div>
 
                 <div className="col-md-6">
+                  {/* CATEGORY */}
                   <div className="mb-3">
                     <label className="form-label">
                       Category <span className="text-danger">*</span>
@@ -923,16 +1066,26 @@ const EditItemModal = ({
                     <select
                       className={`form-select ${
                         errors.product_category ? "is-invalid" : ""
-                      }`}
+                      } ${dropdownLoading ? "opacity-50" : ""}`}
                       value={formState.product_category}
                       onChange={(e) => {
+                        const selectedCategory = categories.find(
+                          (cat) => getId(cat) === e.target.value,
+                        );
                         handleInputChange("product_category", e.target.value);
+                        handleInputChange(
+                          "product_category_name",
+                          getName(selectedCategory) || "",
+                        );
                         handleInputChange("product_subcategory", "");
+                        handleInputChange("product_subcategory_name", "");
                       }}
-                      disabled={loading || categories.length === 0}
+                      disabled={
+                        loading || dropdownLoading || categories.length === 0
+                      }
                     >
                       <option value="">
-                        {categories.length === 0
+                        {dropdownLoading || categories.length === 0
                           ? "Loading categories..."
                           : "Select Category"}
                       </option>
@@ -949,19 +1102,27 @@ const EditItemModal = ({
                     )}
                   </div>
 
-                  {formState.product_category && (
+                  {/* SUBCATEGORY SECTION */}
+                  {formState.product_category && !dropdownLoading && (
                     <div className="mb-3">
                       <label className="form-label">Subcategory</label>
                       {currentSubcategories.length > 0 ? (
                         <select
                           className="form-select"
-                          value={formState.product_subcategory}
-                          onChange={(e) =>
+                          value={formState.product_subcategory || ""}
+                          onChange={(e) => {
+                            const selectedSub = currentSubcategories.find(
+                              (sub) => getId(sub) === e.target.value,
+                            );
                             handleInputChange(
                               "product_subcategory",
                               e.target.value,
-                            )
-                          }
+                            );
+                            handleInputChange(
+                              "product_subcategory_name",
+                              getName(selectedSub) || "",
+                            );
+                          }}
                           disabled={loading}
                         >
                           <option value="">Select Subcategory</option>
@@ -981,18 +1142,30 @@ const EditItemModal = ({
                     </div>
                   )}
 
+                  {/* BRAND */}
                   <div className="mb-3">
                     <label className="form-label">Brand</label>
                     <select
-                      className="form-select"
+                      className={`form-select ${
+                        dropdownLoading ? "opacity-50" : ""
+                      }`}
                       value={formState.product_brand}
-                      onChange={(e) =>
-                        handleInputChange("product_brand", e.target.value)
+                      onChange={(e) => {
+                        const selectedBrand = brands.find(
+                          (brand) => getId(brand) === e.target.value,
+                        );
+                        handleInputChange("product_brand", e.target.value);
+                        handleInputChange(
+                          "product_brand_name",
+                          getName(selectedBrand) || "",
+                        );
+                      }}
+                      disabled={
+                        loading || dropdownLoading || brands.length === 0
                       }
-                      disabled={loading || brands.length === 0}
                     >
                       <option value="">
-                        {brands.length === 0
+                        {dropdownLoading || brands.length === 0
                           ? "Loading brands..."
                           : "Select Brand"}
                       </option>
@@ -1013,24 +1186,53 @@ const EditItemModal = ({
                 </div>
                 <div className="card-body">
                   <div className="row">
-                    <div className="col-md-4 mb-3">
-                      <label className="form-label">GST Rate</label>
+                    <div className="col-md-2 mb-3">
+                      <label className="form-label">
+                        GST Rate <span className="text-danger">*</span>
+                      </label>
                       <select
-                        className="form-select"
+                        className={`form-select ${
+                          errors.gst_rate ? "is-invalid" : ""
+                        } ${dropdownLoading ? "opacity-50" : ""}`}
                         value={formState.gst_rate}
                         onChange={(e) => handleGSTRateChange(e.target.value)}
-                        disabled={loading || gstRates.length === 0}
+                        disabled={
+                          loading || dropdownLoading || gstRates.length === 0
+                        }
                       >
-                        <option value="0%">Select GST Rate</option>
+                        <option value="">
+                          {dropdownLoading || gstRates.length === 0
+                            ? "Loading GST rates..."
+                            : "Select GST Rate"}
+                        </option>
                         {gstRates.map((gst) => {
                           const gstTotal = gst.gst_total || gst.value || 0;
+                          let displayLabel = `GST ${gstTotal}%`;
                           return (
-                            <option key={getId(gst)} value={`${gstTotal}%`}>
-                              GST {gstTotal}%
+                            <option key={getId(gst)} value={getId(gst)}>
+                              {displayLabel}
                             </option>
                           );
                         })}
                       </select>
+                      {errors.gst_rate && (
+                        <div className="invalid-feedback">
+                          {errors.gst_rate}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="col-md-2 mb-3">
+                      <label className="form-label">Total GST</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={
+                          formState.gst_total ? `${formState.gst_total}%` : "0%"
+                        }
+                        readOnly
+                        disabled={loading}
+                      />
                     </div>
 
                     <div className="col-md-2 mb-3">
@@ -1038,7 +1240,9 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={formState.cgst_rate || "0%"}
+                        value={
+                          formState.cgst_rate ? `${formState.cgst_rate}%` : "0%"
+                        }
                         readOnly
                         disabled={loading}
                       />
@@ -1049,7 +1253,9 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={formState.sgst_rate || "0%"}
+                        value={
+                          formState.sgst_rate ? `${formState.sgst_rate}%` : "0%"
+                        }
                         readOnly
                         disabled={loading}
                       />
@@ -1060,7 +1266,9 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={formState.igst_rate || "0%"}
+                        value={
+                          formState.igst_rate ? `${formState.igst_rate}%` : "0%"
+                        }
                         readOnly
                         disabled={loading}
                       />
@@ -1071,153 +1279,26 @@ const EditItemModal = ({
                       <input
                         type="text"
                         className="form-control"
-                        value={formState.utgst_rate || "0%"}
+                        value={
+                          formState.utgst_rate
+                            ? `${formState.utgst_rate}%`
+                            : "0%"
+                        }
                         readOnly
                         disabled={loading}
                       />
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Price Making Costs Section */}
-              <div className="card mb-4 border">
-                <div className="card-header bg-light d-flex justify-content-between align-items-center">
-                  <h6 className="mb-0 fw-bold">Price Making Costs</h6>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-primary d-flex align-items-center gap-1"
-                    onClick={addPriceMakingRow}
-                    disabled={loading}
-                  >
-                    <FiPlus /> Add Cost
-                  </button>
-                </div>
-                <div className="card-body p-0">
-                  {priceMakingCosts.length === 0 ? (
-                    <div className="text-center p-4">
-                      <p className="text-muted mb-0">
-                        No price making costs added.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="table-responsive">
-                      <table className="table table-bordered mb-0">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Stage Name</th>
-                            <th>Sub Stage</th>
-                            <th>Cost Type</th>
-                            <th>Unit</th>
-                            <th>Cost Amount</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {priceMakingCosts.map((cost) => (
-                            <tr key={cost.id}>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={cost.stage_name}
-                                  onChange={(e) =>
-                                    updatePriceMaking(
-                                      cost.id,
-                                      "stage_name",
-                                      e.target.value,
-                                    )
-                                  }
-                                  disabled={loading}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={cost.sub_stage_name}
-                                  onChange={(e) =>
-                                    updatePriceMaking(
-                                      cost.id,
-                                      "sub_stage_name",
-                                      e.target.value,
-                                    )
-                                  }
-                                  disabled={loading}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={cost.cost_type}
-                                  onChange={(e) =>
-                                    updatePriceMaking(
-                                      cost.id,
-                                      "cost_type",
-                                      e.target.value,
-                                    )
-                                  }
-                                  disabled={loading}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={cost.unit_name}
-                                  onChange={(e) =>
-                                    updatePriceMaking(
-                                      cost.id,
-                                      "unit_name",
-                                      e.target.value,
-                                    )
-                                  }
-                                  disabled={loading}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  className="form-control form-control-sm"
-                                  value={cost.cost_amount}
-                                  onChange={(e) =>
-                                    updatePriceMaking(
-                                      cost.id,
-                                      "cost_amount",
-                                      e.target.value,
-                                    )
-                                  }
-                                  disabled={loading}
-                                />
-                              </td>
-                              <td>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-danger"
-                                  onClick={() => removePriceMaking(cost.id)}
-                                  disabled={loading}
-                                >
-                                  <FiTrash2 />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {priceMakingCosts.length > 0 && (
-                    <div className="card-footer text-end fw-bold">
-                      Total Price Making Costs: ₹
-                      {totalPriceMakingCosts.toFixed(2)}
+                  {!dropdownLoading && (
+                    <div className="alert alert-info small mb-0 mt-2">
+                      <strong>Selected GST:</strong> {getSelectedGSTDisplay()}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Metals Table - UPDATED WITH HALLMARK */}
+              {/* Metals Table - Updated with Hallmark */}
               <div className="card mb-4 border">
                 <div className="card-header bg-light d-flex justify-content-between align-items-center">
                   <h6 className="mb-0 fw-bold">Metal Details</h6>
@@ -1225,7 +1306,7 @@ const EditItemModal = ({
                     type="button"
                     className="btn btn-sm btn-primary d-flex align-items-center gap-1"
                     onClick={addMetalRow}
-                    disabled={loading}
+                    disabled={loading || dropdownLoading}
                   >
                     <FiPlus /> Add Metal
                   </button>
@@ -1257,7 +1338,9 @@ const EditItemModal = ({
                             <tr key={metal.id}>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading ? "opacity-50" : ""
+                                  }`}
                                   value={metal.metal_type}
                                   onChange={(e) =>
                                     updateMetal(
@@ -1266,10 +1349,14 @@ const EditItemModal = ({
                                       e.target.value,
                                     )
                                   }
-                                  disabled={loading || metals.length === 0}
+                                  disabled={
+                                    loading ||
+                                    dropdownLoading ||
+                                    metals.length === 0
+                                  }
                                 >
                                   <option value="">
-                                    {metals.length === 0
+                                    {dropdownLoading || metals.length === 0
                                       ? "Loading metals..."
                                       : "Select Metal"}
                                   </option>
@@ -1285,7 +1372,9 @@ const EditItemModal = ({
                               </td>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading ? "opacity-50" : ""
+                                  }`}
                                   value={metal.purity}
                                   onChange={(e) =>
                                     updateMetal(
@@ -1294,10 +1383,14 @@ const EditItemModal = ({
                                       e.target.value,
                                     )
                                   }
-                                  disabled={loading || purities.length === 0}
+                                  disabled={
+                                    loading ||
+                                    dropdownLoading ||
+                                    purities.length === 0
+                                  }
                                 >
                                   <option value="">
-                                    {purities.length === 0
+                                    {dropdownLoading || purities.length === 0
                                       ? "Loading purities..."
                                       : "Select Purity"}
                                   </option>
@@ -1314,6 +1407,7 @@ const EditItemModal = ({
                               <td>
                                 <select
                                   className={`form-select form-select-sm ${
+                                    dropdownLoading ||
                                     loadingHallmarks[metal.id]
                                       ? "opacity-50"
                                       : ""
@@ -1328,6 +1422,7 @@ const EditItemModal = ({
                                   }
                                   disabled={
                                     loading ||
+                                    dropdownLoading ||
                                     loadingHallmarks[metal.id] ||
                                     !metal.metal_type ||
                                     (hallmarksByMetal[metal.id] || [])
@@ -1374,7 +1469,9 @@ const EditItemModal = ({
                               </td>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading ? "opacity-50" : ""
+                                  }`}
                                   value={metal.unit}
                                   onChange={(e) =>
                                     updateMetal(
@@ -1383,23 +1480,28 @@ const EditItemModal = ({
                                       e.target.value,
                                     )
                                   }
-                                  disabled={loading || units.length === 0}
+                                  disabled={
+                                    loading ||
+                                    dropdownLoading ||
+                                    units.length === 0
+                                  }
                                 >
                                   <option value="">
-                                    {units.length === 0
+                                    {dropdownLoading || units.length === 0
                                       ? "Loading units..."
                                       : "Select Unit"}
                                   </option>
                                   {units.map((unit) => (
                                     <option
                                       key={getId(unit)}
-                                      value={getId(unit)}
+                                      value={getId(unit) || getName(unit)}
                                     >
                                       {getName(unit)}
                                     </option>
                                   ))}
                                 </select>
                               </td>
+
                               <td>
                                 <input
                                   type="number"
@@ -1451,7 +1553,7 @@ const EditItemModal = ({
                     type="button"
                     className="btn btn-sm btn-primary d-flex align-items-center gap-1"
                     onClick={addStoneRow}
-                    disabled={loading}
+                    disabled={loading || dropdownLoading}
                   >
                     <FiPlus /> Add Stone
                   </button>
@@ -1483,7 +1585,9 @@ const EditItemModal = ({
                             <tr key={stone.id}>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading ? "opacity-50" : ""
+                                  }`}
                                   value={stone.stone_type}
                                   onChange={(e) =>
                                     updateStone(
@@ -1492,10 +1596,14 @@ const EditItemModal = ({
                                       e.target.value,
                                     )
                                   }
-                                  disabled={loading || stoneTypes.length === 0}
+                                  disabled={
+                                    loading ||
+                                    dropdownLoading ||
+                                    stoneTypes.length === 0
+                                  }
                                 >
                                   <option value="">
-                                    {stoneTypes.length === 0
+                                    {dropdownLoading || stoneTypes.length === 0
                                       ? "Loading stones..."
                                       : "Select Stone"}
                                   </option>
@@ -1511,30 +1619,42 @@ const EditItemModal = ({
                               </td>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
-                                  value={stone.stone_purity}
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading ? "opacity-50" : ""
+                                  }`}
+                                  value={stone.stone_purity_display || ""}
                                   onChange={(e) =>
                                     updateStone(
                                       stone.id,
-                                      "stone_purity",
+                                      "stone_purity_display",
                                       e.target.value,
                                     )
                                   }
                                   disabled={
-                                    loading || stonePurities.length === 0
+                                    loading ||
+                                    dropdownLoading ||
+                                    stonePurities.length === 0
                                   }
                                 >
                                   <option value="">
-                                    {stonePurities.length === 0
+                                    {dropdownLoading ||
+                                    stonePurities.length === 0
                                       ? "Loading stone purities..."
                                       : "Select Stone Purity"}
                                   </option>
                                   {stonePurities.map((purityItem) => (
                                     <option
-                                      key={getId(purityItem)}
-                                      value={getId(purityItem)}
+                                      key={
+                                        purityItem.stone_purity_id ||
+                                        getId(purityItem)
+                                      }
+                                      value={
+                                        purityItem.stone_purity ||
+                                        purityItem.name
+                                      }
                                     >
-                                      {getName(purityItem)}
+                                      {purityItem.stone_purity ||
+                                        purityItem.name}
                                     </option>
                                   ))}
                                 </select>
@@ -1637,7 +1757,7 @@ const EditItemModal = ({
                     type="button"
                     className="btn btn-sm btn-primary d-flex align-items-center gap-1"
                     onClick={addMaterialRow}
-                    disabled={loading}
+                    disabled={loading || dropdownLoading}
                   >
                     <FiPlus /> Add Row
                   </button>
@@ -1669,7 +1789,9 @@ const EditItemModal = ({
                             <tr key={material.id}>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading ? "opacity-50" : ""
+                                  }`}
                                   value={material.wastage_type}
                                   onChange={(e) =>
                                     updateMaterial(
@@ -1679,18 +1801,21 @@ const EditItemModal = ({
                                     )
                                   }
                                   disabled={
-                                    loading || wastageTypes.length === 0
+                                    loading ||
+                                    dropdownLoading ||
+                                    wastageTypes.length === 0
                                   }
                                 >
                                   <option value="">Select Wastage Type</option>
-                                  {wastageTypes.map((type) => (
-                                    <option
-                                      key={getId(type)}
-                                      value={getId(type)}
-                                    >
-                                      {getName(type)}
-                                    </option>
-                                  ))}
+                                  {wastageTypes.map((type, index) => {
+                                    const displayText =
+                                      getWastageTypeDisplay(type);
+                                    return (
+                                      <option key={index} value={displayText}>
+                                        {displayText}
+                                      </option>
+                                    );
+                                  })}
                                 </select>
                               </td>
                               <td>
@@ -1705,15 +1830,57 @@ const EditItemModal = ({
                                     )
                                   }
                                   disabled={
-                                    loading || materialTypes.length === 0
+                                    loading ||
+                                    (materialTypes.length === 0 &&
+                                      metals.length === 0 &&
+                                      stoneTypes.length === 0)
                                   }
                                 >
                                   <option value="">Select Material Type</option>
-                                  {materialTypes.map((mt) => (
-                                    <option key={getId(mt)} value={getId(mt)}>
-                                      {getName(mt)}
-                                    </option>
-                                  ))}
+
+                                  {/* Material Types */}
+                                  {materialTypes.length > 0 && (
+                                    <optgroup label="Material Types">
+                                      {materialTypes.map((mt) => (
+                                        <option
+                                          key={`material-${getId(mt)}`}
+                                          value={mt.id || mt._id}
+                                        >
+                                          {mt.material_type || mt.name}
+                                          {mt.metal_name &&
+                                            ` (${mt.metal_name})`}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+
+                                  {/* Metals */}
+                                  {metals.length > 0 && (
+                                    <optgroup label="Metals">
+                                      {metals.map((metal) => (
+                                        <option
+                                          key={`metal-${getId(metal)}`}
+                                          value={metal.id || metal._id}
+                                        >
+                                          {metal.name || metal.metal_name}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  )}
+
+                                  {/* Stone Types */}
+                                  {stoneTypes.length > 0 && (
+                                    <optgroup label="Stone Types">
+                                      {stoneTypes.map((stone) => (
+                                        <option
+                                          key={`stone-${getId(stone)}`}
+                                          value={stone.id || stone._id}
+                                        >
+                                          {stone.name || stone.stone_type}
+                                        </option>
+                                      ))}
+                                    </optgroup>
+                                  )}
                                 </select>
                               </td>
                               <td>
@@ -1734,7 +1901,9 @@ const EditItemModal = ({
                               </td>
                               <td>
                                 <select
-                                  className="form-select form-select-sm"
+                                  className={`form-select form-select-sm ${
+                                    dropdownLoading ? "opacity-50" : ""
+                                  }`}
                                   value={material.unit}
                                   onChange={(e) =>
                                     updateMaterial(
@@ -1743,13 +1912,17 @@ const EditItemModal = ({
                                       e.target.value,
                                     )
                                   }
-                                  disabled={loading || units.length === 0}
+                                  disabled={
+                                    loading ||
+                                    dropdownLoading ||
+                                    units.length === 0
+                                  }
                                 >
                                   <option value="">Select Unit</option>
                                   {units.map((unit) => (
                                     <option
                                       key={getId(unit)}
-                                      value={getId(unit)}
+                                      value={getName(unit)}
                                     >
                                       {getName(unit)}
                                     </option>
@@ -1800,188 +1973,224 @@ const EditItemModal = ({
                 </div>
               </div>
 
-              {/* Price Summary */}
-              <div className="card mb-4 border">
-                <div className="card-header bg-light">
-                  <h6 className="mb-0 fw-bold">Price Summary with GST</h6>
-                </div>
-                <div className="card-body">
-                  <div className="row">
-                    <div className="col-md-6">
-                      <table className="table table-borderless">
-                        <tbody>
-                          {totalMetalsCost > 0 && (
-                            <tr>
-                              <td className="fw-bold">Total Metals Cost:</td>
-                              <td className="text-end">
-                                ₹{totalMetalsCost.toFixed(2)}
+              {/* Price Summary with GST */}
+              {!dropdownLoading && (
+                <div className="card mb-4 border">
+                  <div className="card-header bg-light">
+                    <h6 className="mb-0 fw-bold">Price Summary with GST</h6>
+                  </div>
+                  <div className="card-body">
+                    <div className="row">
+                      <div className="col-md-6">
+                        <table className="table table-borderless">
+                          <tbody>
+                            {metalsData.length > 0 && (
+                              <tr>
+                                <td className="fw-bold">Total Metals Cost:</td>
+                                <td className="text-end">
+                                  ₹{totalMetalsCost.toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+
+                            {/* MAKING CHARGES SECTION IN PRICE SUMMARY */}
+                            {formState.selected_price_makings.length > 0 && (
+                              <>
+                                <tr className="border-top">
+                                  <td colSpan="2" className="fw-bold pt-3">
+                                    Making Charges:
+                                  </td>
+                                </tr>
+
+                                {formState.selected_price_makings.map(
+                                  (pm, index) => (
+                                    <tr key={getId(pm) || index}>
+                                      <td className="ps-3">
+                                        • {pm.cost_type || "Charge"}
+                                      </td>
+                                      <td className="text-end">
+                                        ₹
+                                        {parseFloat(
+                                          pm.cost_amount || 0,
+                                        ).toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  ),
+                                )}
+
+                                <tr className="border-top">
+                                  <td className="fw-bold">
+                                    Total Making Charges:
+                                  </td>
+                                  <td className="text-end fw-bold">
+                                    ₹{makingChargeAmount.toFixed(2)}
+                                  </td>
+                                </tr>
+                              </>
+                            )}
+                            {stones.length > 0 && (
+                              <tr>
+                                <td className="fw-bold">Total Stones Cost:</td>
+                                <td className="text-end">
+                                  ₹{totalStonesCost.toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+                            {materialsData.length > 0 && (
+                              <tr>
+                                <td className="fw-bold">
+                                  Total Materials & Wastage Cost:
+                                </td>
+                                <td className="text-end">
+                                  ₹{totalMaterialsCost.toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+
+                            {/* SUBTOTAL BEFORE MAKING CHARGE */}
+                            {metalsData.length > 0 && (
+                              <tr className="border-top">
+                                <td className="fw-bold">
+                                  Subtotal (Before Making Charge):
+                                </td>
+                                <td className="text-end">
+                                  ₹
+                                  {(
+                                    totalMetalsCost +
+                                    totalStonesCost +
+                                    totalMaterialsCost
+                                  ).toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+
+                            <tr className="border-top">
+                              <td className="fw-bold">
+                                Grand Total (Before Markup):
+                              </td>
+                              <td className="text-end fw-bold">
+                                ₹{grandTotal.toFixed(2)}
                               </td>
                             </tr>
-                          )}
-
-                          {totalStonesCost > 0 && (
                             <tr>
-                              <td className="fw-bold">Total Stones Cost:</td>
-                              <td className="text-end">
-                                ₹{totalStonesCost.toFixed(2)}
+                              <td colSpan="2" className="pt-3">
+                                <div className="mb-3">
+                                  <label className="form-label">
+                                    Markup Percentage (%)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    className="form-control"
+                                    value={formState.markup_percentage}
+                                    onChange={(e) =>
+                                      handleInputChange(
+                                        "markup_percentage",
+                                        e.target.value,
+                                      )
+                                    }
+                                    disabled={loading}
+                                  />
+                                </div>
                               </td>
                             </tr>
-                          )}
 
-                          {totalMaterialsCost > 0 && (
                             <tr>
                               <td className="fw-bold">
-                                Total Materials & Wastage Cost:
+                                Markup ({formState.markup_percentage || 0}%):
                               </td>
                               <td className="text-end">
-                                ₹{totalMaterialsCost.toFixed(2)}
+                                ₹
+                                {(
+                                  (grandTotal *
+                                    (parseFloat(formState.markup_percentage) ||
+                                      0)) /
+                                  100
+                                ).toFixed(2)}
                               </td>
                             </tr>
-                          )}
+                            <tr className="border-top">
+                              <td className="fw-bold fs-5">
+                                Selling Price (Before Tax):
+                              </td>
+                              <td className="text-end fs-5 fw-bold">
+                                ₹{sellingPriceBeforeTax.toFixed(2)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
 
-                          {totalPriceMakingCosts > 0 && (
-                            <tr>
+                      <div className="col-md-6">
+                        <table className="table table-borderless">
+                          <tbody>
+                            {gstBreakdown.cgstAmount > 0 && (
+                              <tr>
+                                <td className="fw-bold">
+                                  CGST ({formState.cgst_rate}%):
+                                </td>
+                                <td className="text-end">
+                                  ₹{gstBreakdown.cgstAmount.toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+                            {gstBreakdown.sgstAmount > 0 && (
+                              <tr>
+                                <td className="fw-bold">
+                                  SGST ({formState.sgst_rate}%):
+                                </td>
+                                <td className="text-end">
+                                  ₹{gstBreakdown.sgstAmount.toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+                            {gstBreakdown.igstAmount > 0 && (
+                              <tr>
+                                <td className="fw-bold">
+                                  IGST ({formState.igst_rate}%):
+                                </td>
+                                <td className="text-end">
+                                  ₹{gstBreakdown.igstAmount.toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+                            {gstBreakdown.utgstAmount > 0 && (
+                              <tr>
+                                <td className="fw-bold">
+                                  UTGST ({formState.utgst_rate}%):
+                                </td>
+                                <td className="text-end">
+                                  ₹{gstBreakdown.utgstAmount.toFixed(2)}
+                                </td>
+                              </tr>
+                            )}
+
+                            <tr className="border-top">
                               <td className="fw-bold">
-                                Total Price Making Costs:
+                                Total GST ({getSelectedGSTDisplay()}):
                               </td>
                               <td className="text-end">
-                                ₹{totalPriceMakingCosts.toFixed(2)}
+                                ₹{gstBreakdown.totalGST.toFixed(2)}
                               </td>
                             </tr>
-                          )}
 
-                          <tr className="border-top">
-                            <td className="fw-bold">
-                              Grand Total (Before Markup):
-                            </td>
-                            <td className="text-end fw-bold">
-                              ₹{grandTotal.toFixed(2)}
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td className="fw-bold">Markup Percentage:</td>
-                            <td className="text-end">
-                              <input
-                                type="number"
-                                step="0.01"
-                                className="form-control form-control-sm"
-                                value={formState.markup_percentage}
-                                onChange={(e) =>
-                                  handleInputChange(
-                                    "markup_percentage",
-                                    e.target.value,
-                                  )
-                                }
-                                disabled={loading}
-                                style={{ width: "100px", display: "inline" }}
-                              />
-                              %
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td className="fw-bold">Markup Amount:</td>
-                            <td className="text-end">
-                              ₹
-                              {(
-                                (grandTotal *
-                                  (parseFloat(formState.markup_percentage) ||
-                                    0)) /
-                                100
-                              ).toFixed(2)}
-                            </td>
-                          </tr>
-
-                          <tr className="border-top">
-                            <td className="fw-bold fs-5">
-                              Selling Price (Before Tax):
-                            </td>
-                            <td className="text-end fs-5 fw-bold">
-                              ₹{sellingPriceBeforeTax.toFixed(2)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div className="col-md-6">
-                      <table className="table table-borderless">
-                        <tbody>
-                          <tr>
-                            <td className="fw-bold">GST Breakdown:</td>
-                            <td></td>
-                          </tr>
-
-                          {cgstAmount > 0 && (
-                            <tr>
-                              <td className="fw-bold">
-                                CGST ({formState.cgst_rate}):
+                            <tr className="border-top">
+                              <td className="fw-bold fs-5 text-success">
+                                Final Selling Price (With GST):
                               </td>
-                              <td className="text-end">
-                                ₹{cgstAmount.toFixed(2)}
+                              <td className="text-end fs-5 fw-bold text-success">
+                                ₹{sellingPriceWithGST.toFixed(2)}
                               </td>
                             </tr>
-                          )}
-
-                          {sgstAmount > 0 && (
-                            <tr>
-                              <td className="fw-bold">
-                                SGST ({formState.sgst_rate}):
-                              </td>
-                              <td className="text-end">
-                                ₹{sgstAmount.toFixed(2)}
-                              </td>
-                            </tr>
-                          )}
-
-                          {igstAmount > 0 && (
-                            <tr>
-                              <td className="fw-bold">
-                                IGST ({formState.igst_rate}):
-                              </td>
-                              <td className="text-end">
-                                ₹{igstAmount.toFixed(2)}
-                              </td>
-                            </tr>
-                          )}
-
-                          {utgstAmount > 0 && (
-                            <tr>
-                              <td className="fw-bold">
-                                UTGST ({formState.utgst_rate}):
-                              </td>
-                              <td className="text-end">
-                                ₹{utgstAmount.toFixed(2)}
-                              </td>
-                            </tr>
-                          )}
-
-                          <tr className="border-top">
-                            <td className="fw-bold">
-                              Total GST ({formState.gst_rate}):
-                            </td>
-                            <td className="text-end">
-                              ₹{gstAmount.toFixed(2)}
-                            </td>
-                          </tr>
-
-                          <tr className="border-top">
-                            <td className="fw-bold fs-5 text-success">
-                              Final Selling Price (With GST):
-                            </td>
-                            <td className="text-end fs-5 fw-bold text-success">
-                              ₹{sellingPriceWithGST.toFixed(2)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Images Section - FIXED */}
+              {/* Images Section */}
               <div className="mb-4">
                 <label className="form-label fw-medium">
                   Product Images ({totalImages}/3)
@@ -2093,6 +2302,7 @@ const EditItemModal = ({
               </div>
             </div>
 
+            {/* Action Buttons */}
             <div className="modal-footer border-top pt-3">
               <button
                 type="button"
@@ -2105,7 +2315,7 @@ const EditItemModal = ({
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={loading}
+                disabled={loading || dropdownLoading}
               >
                 {loading ? (
                   <>

@@ -227,40 +227,76 @@ export default function useFilingStages() {
       console.log("Price making API Response for filing:", response.data);
 
       if (response.data?.success && Array.isArray(response.data.data)) {
-        // Filter for filing-related labor costs including karigar costs
-        const laborCostData = response.data.data.filter((item) => {
-          const costName = item.cost_type_id?.cost_name_id?.cost_name || "";
-          const lowerCaseName = costName.toLowerCase();
-          
-          // Include labor costs for filing stage
-          return (
-            lowerCaseName.includes("labor") ||
-            lowerCaseName.includes("karigar") ||
-            lowerCaseName.includes("craftsman") ||
-            lowerCaseName.includes("worker")
+        const allItems = response.data.data;
+
+        const potentialLaborItems = allItems.filter((item) => {
+          const candidates = [
+            item.cost_name,
+            item.cost_type_id?.cost_name,
+            item.cost_type_id?.cost_name_id?.cost_name,
+            item.cost_type?.cost_name,
+            item.cost_type_id?.cost_type,
+            item.cost_type,
+            item.stage_name,
+            item.making_stage_id?.stage_name,
+          ].filter(Boolean);
+
+          const joined = candidates.join(" ").toLowerCase();
+
+          // Accept both spellings and include karigar for filing
+          const looksLikeLabor = (
+            joined.includes("labor") ||
+            joined.includes("labour") ||
+            joined.includes("karigar") ||
+            joined.includes("craftsman") ||
+            joined.includes("worker") ||
+            joined.includes("कारीगर") ||
+            joined.includes("करिगर")
           );
+
+          const explicitFlag = item.is_labor === true || item.isLabor === true || item.cost_category === "labor";
+
+          return looksLikeLabor || explicitFlag;
         });
 
-        // Process and format labor costs
+        const laborCostData = potentialLaborItems.length > 0 ? potentialLaborItems : allItems.filter(item => {
+          const ct = (item.cost_type || item.cost_name || "").toString().toLowerCase();
+          return ct.includes("labor") || ct.includes("labour") || ct.includes("karigar");
+        });
+
         const processedCosts = laborCostData.map((item) => {
+          const resolvedName = item.cost_name || item.cost_type_id?.cost_name_id?.cost_name || item.cost_type?.cost_name || item.cost_type || "Labor Cost";
           return {
             ...item,
             _id: item._id,
-            cost_name:
-              item.cost_type_id?.cost_name_id?.cost_name || "Labor Cost",
-            cost_type: item.cost_type_id?.cost_type || "Direct Cost",
+            cost_name: resolvedName,
+            cost_type: item.cost_type_id?.cost_type || item.cost_type || "Direct Cost",
             cost_amount: parseFloat(item.cost_amount) || 0,
-            unit: item.unit_id?.name || "unit",
-            stage_name: item.making_stage_id?.stage_name || "General",
-            sub_stage_name:
-              item.making_sub_stage_id?.sub_stage_name || "General",
+            unit: item.unit_id?.name || item.unit || "unit",
+            stage_name: item.making_stage_id?.stage_name || item.stage_name || "General",
+            sub_stage_name: item.making_sub_stage_id?.sub_stage_name || item.sub_stage_name || "General",
             is_active: item.is_active !== false,
           };
         });
+        // If nothing matched, fallback to mapping all returned items so selector isn't empty
+        let finalCosts = processedCosts;
+        if (finalCosts.length === 0 && Array.isArray(allItems) && allItems.length > 0) {
+          finalCosts = allItems.map((item) => ({
+            ...item,
+            _id: item._id,
+            cost_name: item.cost_name || item.cost_type_id?.cost_name_id?.cost_name || item.cost_type || "Cost",
+            cost_type: item.cost_type || item.cost_type_id?.cost_type || "Direct Cost",
+            cost_amount: parseFloat(item.cost_amount) || 0,
+            unit: item.unit_id?.name || item.unit || "unit",
+            stage_name: item.making_stage_id?.stage_name || item.stage_name || "General",
+            sub_stage_name: item.making_sub_stage_id?.sub_stage_name || item.sub_stage_name || "General",
+            is_active: item.is_active !== false,
+          }));
+        }
 
-        console.log("Processed labor costs for filing:", processedCosts);
-        setLaborCosts(processedCosts);
-        return processedCosts;
+        console.log("Processed labor costs for filing (robust):", finalCosts);
+        setLaborCosts(finalCosts);
+        return finalCosts;
       }
 
       setLaborCosts([]);

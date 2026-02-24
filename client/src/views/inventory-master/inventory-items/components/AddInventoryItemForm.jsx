@@ -30,6 +30,12 @@ const AddInventoryItemForm = ({
   const [imagePreviews, setImagePreviews] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [availableSubCategories, setAvailableSubCategories] = useState([]);
+  
+  // Product search states
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [productSearchResults, setProductSearchResults] = useState([]);
+  const [showProductResults, setShowProductResults] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Update available sub-categories when category changes
   useEffect(() => {
@@ -56,10 +62,16 @@ const AddInventoryItemForm = ({
     }
   }, [formData.category, subCategories]);
 
-  // Input sanitization function
+  // Input sanitization function - only removes HTML tags, keeps spaces
   const sanitizeInput = (value) => {
     if (typeof value !== "string") return value;
-    return value.replace(/[<>]/g, "").trim();
+    return value.replace(/[<>]/g, ""); // Only remove HTML tags, don't trim
+  };
+
+  // Input sanitization for form submission - removes HTML tags and trims
+  const sanitizeInputForSubmit = (value) => {
+    if (typeof value !== "string") return value;
+    return value.replace(/[<>]/g, "").trim(); // Remove HTML tags and trim for submit
   };
 
   // Handle change for basic fields with sanitization

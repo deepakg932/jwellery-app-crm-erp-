@@ -348,7 +348,6 @@ const PurchaseOrderTable = () => {
                 Are you sure you want to delete Purchase Order{" "}
                 <strong>{selectedItem?.order_number}</strong>?
               </p>
-              <p className="text-muted small">This action cannot be undone.</p>
             </div>
 
             <div className="modal-footer border-top pt-3">
@@ -516,7 +515,7 @@ const PurchaseOrderTable = () => {
                 </tr>
               ) : (
                 currentPurchaseOrders.map((po, index) => {
-                  const total = po.total_amount;
+                  const total = po.grand_total
                   return (
                     <tr key={po._id || index}>
                       <td>{indexOfFirstItem + index + 1}</td>
@@ -558,7 +557,7 @@ const PurchaseOrderTable = () => {
 
                       <td>
                         <span className="fw-bold">
-                          ₹{total.toLocaleString("en-IN")}
+                          ₹{total}
                         </span>
                       </td>
 
@@ -911,9 +910,7 @@ const PurchaseOrderTable = () => {
                   Are you sure you want to delete Purchase Order{" "}
                   <strong>{selectedItem?.order_number}</strong>?
                 </p>
-                <p className="text-muted small">
-                  This action cannot be undone.
-                </p>
+              
               </div>
 
               <div className="modal-footer border-top pt-3">

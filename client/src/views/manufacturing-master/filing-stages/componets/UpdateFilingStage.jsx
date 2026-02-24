@@ -48,7 +48,7 @@ const UpdateFilingStage = ({
   const [selectedFilingTools, setSelectedFilingTools] = useState([]);
   const [selectedLaborCosts, setSelectedLaborCosts] = useState([]);
   const [laborBreakdown, setLaborBreakdown] = useState([]);
-  
+
   console.log("Selected stage:", selectedStage);
   console.log("Labor costs received:", laborCosts);
 
@@ -246,35 +246,39 @@ const UpdateFilingStage = ({
   });
 
   const statusOptions = [
-    {
-      value: "not_started",
-      label: "Not Started",
-      color: "secondary",
-      icon: "⏳",
-    },
-    { value: "preparation", label: "Preparation", color: "info", icon: "⚙️" },
-    {
-      value: "rough_filing",
-      label: "Rough Filing",
-      color: "warning",
-      icon: "🔨",
-    },
-    {
-      value: "fine_filing",
-      label: "Fine Filing",
-      color: "warning",
-      icon: "✨",
-    },
-    { value: "polishing", label: "Polishing", color: "info", icon: "💎" },
-    {
-      value: "quality_check",
-      label: "Quality Check",
-      color: "warning",
-      icon: "🔍",
-    },
-    { value: "completed", label: "Completed", color: "success", icon: "✅" },
-    { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
-    { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
+    // {
+    //   value: "not_started",
+    //   label: "Not Started",
+    //   color: "secondary",
+    //   icon: "⏳",
+    // },
+    // { value: "preparation", label: "Preparation", color: "info", icon: "⚙️" },
+    // {
+    //   value: "rough_filing",
+    //   label: "Rough Filing",
+    //   color: "warning",
+    //   icon: "🔨",
+    // },
+    // {
+    //   value: "fine_filing",
+    //   label: "Fine Filing",
+    //   color: "warning",
+    //   icon: "✨",
+    // },
+    { value: "draft", label: "Draft", color: "secondary", icon: "✏️" },
+    { value: "cancelled", label: "Cancelled", color: "danger", icon: "❌" },
+
+    { value: "approved", label: "Approved", color: "success", icon: "✅" },
+    // { value: "polishing", label: "Polishing", color: "info", icon: "💎" },
+    // {
+    //   value: "quality_check",
+    //   label: "Quality Check",
+    //   color: "warning",
+    //   icon: "🔍",
+    // },
+    // { value: "completed", label: "Completed", color: "success", icon: "✅" },
+    // { value: "hold", label: "On Hold", color: "danger", icon: "⏸️" },
+    // { value: "rework", label: "Rework", color: "danger", icon: "🔄" },
   ];
 
   const wastageTypeOptions = [
@@ -364,12 +368,20 @@ const UpdateFilingStage = ({
     // Filter for filing-related labor costs
     const filteredCosts = laborCosts.filter((cost) => {
       const costName = (cost.cost_name || "").toLowerCase();
+      const costType = (
+        (cost.cost_type || cost.cost_type_id?.cost_type || "")
+      ).toLowerCase();
       const stageName = (cost.stage_name || "").toLowerCase();
       const subStageName = (cost.sub_stage_name || "").toLowerCase();
-      
+
       // Include labor and karigar costs relevant to filing
       return (
+        // match by explicit cost_type (e.g., "Labour Cost")
+        costType.includes("labor") ||
+        costType.includes("labour") ||
+        // match by cost name or stage/sub-stage keywords
         costName.includes("labor") ||
+        costName.includes("labour") ||
         costName.includes("karigar") ||
         costName.includes("craftsman") ||
         costName.includes("worker") ||
@@ -381,6 +393,8 @@ const UpdateFilingStage = ({
         costName.includes("करिगर")
       );
     });
+
+    console.log("Filtered filing labor costs:", filteredCosts);
 
     return filteredCosts.map((cost) => ({
       value: cost._id,
@@ -429,7 +443,7 @@ const UpdateFilingStage = ({
     // Calculate total labor cost
     const totalLaborCost = breakdown.reduce(
       (sum, item) => sum + parseFloat(item.total_cost),
-      0
+      0,
     );
 
     // Update form data with calculated labor cost
@@ -492,205 +506,205 @@ const UpdateFilingStage = ({
   };
 
   // Initialize form data
-  // useEffect(() => {
-  //   if (selectedStage) {
-  //     // Parse selected labor costs if they exist in the stage data
-  //     let parsedSelectedLaborCosts = [];
-  //     if (selectedStage.selected_labor_costs) {
-  //       if (Array.isArray(selectedStage.selected_labor_costs)) {
-  //         parsedSelectedLaborCosts = selectedStage.selected_labor_costs;
-  //       } else if (typeof selectedStage.selected_labor_costs === "string") {
-  //         try {
-  //           parsedSelectedLaborCosts = JSON.parse(selectedStage.selected_labor_costs);
-  //         } catch {
-  //           parsedSelectedLaborCosts = [];
-  //         }
-  //       }
-  //     }
+  useEffect(() => {
+    if (selectedStage) {
+      // Parse selected labor costs if they exist in the stage data
+      let parsedSelectedLaborCosts = [];
+      if (selectedStage.selected_labor_costs) {
+        if (Array.isArray(selectedStage.selected_labor_costs)) {
+          parsedSelectedLaborCosts = selectedStage.selected_labor_costs;
+        } else if (typeof selectedStage.selected_labor_costs === "string") {
+          try {
+            parsedSelectedLaborCosts = JSON.parse(selectedStage.selected_labor_costs);
+          } catch {
+            parsedSelectedLaborCosts = [];
+          }
+        }
+      }
 
-  //     // Parse labor breakdown if it exists
-  //     let parsedLaborBreakdown = [];
-  //     if (selectedStage.labor_cost_breakdown) {
-  //       if (Array.isArray(selectedStage.labor_cost_breakdown)) {
-  //         parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
-  //       } else if (typeof selectedStage.labor_cost_breakdown === "string") {
-  //         try {
-  //           parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
-  //         } catch {
-  //           parsedLaborBreakdown = [];
-  //         }
-  //       }
-  //     }
+      // Parse labor breakdown if it exists
+      let parsedLaborBreakdown = [];
+      if (selectedStage.labor_cost_breakdown) {
+        if (Array.isArray(selectedStage.labor_cost_breakdown)) {
+          parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
+        } else if (typeof selectedStage.labor_cost_breakdown === "string") {
+          try {
+            parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
+          } catch {
+            parsedLaborBreakdown = [];
+          }
+        }
+      }
 
-  //     const initialData = {
-  //       assigned_to: selectedStage.assigned_to || "",
-  //       status: selectedStage.status || "",
-  //       start_date: selectedStage.start_date
-  //         ? new Date(selectedStage.start_date).toISOString().split("T")[0]
-  //         : "",
-  //       end_date: selectedStage.end_date
-  //         ? new Date(selectedStage.end_date).toISOString().split("T")[0]
-  //         : "",
+      const initialData = {
+        assigned_to: selectedStage.assigned_to || "",
+        status: selectedStage.status || "",
+        start_date: selectedStage.start_date
+          ? new Date(selectedStage.start_date).toISOString().split("T")[0]
+          : "",
+        end_date: selectedStage.end_date
+          ? new Date(selectedStage.end_date).toISOString().split("T")[0]
+          : "",
 
-  //       // Filing tools tracking
-  //       filing_tools_used: selectedStage.filing_tools_used || [],
-  //       tool_wastage: selectedStage.tool_wastage || "0.1",
-  //       tool_wastage_type: selectedStage.tool_wastage_type || "normal",
+        // Filing tools tracking
+        filing_tools_used: selectedStage.filing_tools_used || [],
+        tool_wastage: selectedStage.tool_wastage || "0.1",
+        tool_wastage_type: selectedStage.tool_wastage_type || "normal",
 
-  //       // Filing specific
-  //       filing_type: selectedStage.filing_type || "manual",
-  //       surface_finish: selectedStage.surface_finish || "smooth",
-  //       roughness_level: selectedStage.roughness_level || "fine",
-  //       tolerance_level: selectedStage.tolerance_level || "standard",
-  //       rework_required: selectedStage.rework_required || false,
-  //       defects_removed: selectedStage.defects_removed || "",
+        // Filing specific
+        filing_type: selectedStage.filing_type || "manual",
+        surface_finish: selectedStage.surface_finish || "smooth",
+        roughness_level: selectedStage.roughness_level || "fine",
+        tolerance_level: selectedStage.tolerance_level || "standard",
+        rework_required: selectedStage.rework_required || false,
+        defects_removed: selectedStage.defects_removed || "",
 
-  //       // Time tracking
-  //       labour_hours: selectedStage.labour_hours || "",
-  //       actual_hours: selectedStage.actual_hours || "",
-  //       preparation_time: selectedStage.preparation_time || "",
-  //       rough_filing_time: selectedStage.rough_filing_time || "",
-  //       fine_filing_time: selectedStage.fine_filing_time || "",
-  //       polishing_time: selectedStage.polishing_time || "",
-  //       quality_check_time: selectedStage.quality_check_time || "",
-  //       total_time_spent: selectedStage.total_time_spent || "",
-  //       time_breakdown: selectedStage.time_breakdown || "",
+        // Time tracking
+        labour_hours: selectedStage.labour_hours || "",
+        actual_hours: selectedStage.actual_hours || "",
+        preparation_time: selectedStage.preparation_time || "",
+        rough_filing_time: selectedStage.rough_filing_time || "",
+        fine_filing_time: selectedStage.fine_filing_time || "",
+        polishing_time: selectedStage.polishing_time || "",
+        quality_check_time: selectedStage.quality_check_time || "",
+        total_time_spent: selectedStage.total_time_spent || "",
+        time_breakdown: selectedStage.time_breakdown || "",
 
-  //       // Next stage
-  //       next_stage: selectedStage.next_stage || "",
-  //       stage: selectedStage.next_stage || selectedStage.stage || "",
+        // Next stage
+        next_stage: selectedStage.next_stage || "",
+        stage: selectedStage.next_stage || selectedStage.stage || "",
 
-  //       // Remarks
-  //       remarks: selectedStage.remarks || "",
+        // Remarks
+        remarks: selectedStage.remarks || "",
 
-  //       // Cost tracking
-  //       tool_cost: selectedStage.tool_cost || "",
-  //       labour_cost: selectedStage.labour_cost || "",
-  //       equipment_cost: selectedStage.equipment_cost || "",
-  //       consumables_cost: selectedStage.consumables_cost || "",
-  //       wastage_cost: selectedStage.wastage_cost || "",
-  //       other_costs: selectedStage.other_costs || "",
-  //       total_cost: selectedStage.total_cost || "",
-  //       cost_currency: selectedStage.cost_currency || "INR",
-  //       cost_status: selectedStage.cost_status || "estimated",
-  //       markup_percentage: selectedStage.markup_percentage || "25",
-  //       final_price: selectedStage.final_price || "",
+        // Cost tracking
+        tool_cost: selectedStage.tool_cost || "",
+        labour_cost: selectedStage.labour_cost || "",
+        equipment_cost: selectedStage.equipment_cost || "",
+        consumables_cost: selectedStage.consumables_cost || "",
+        wastage_cost: selectedStage.wastage_cost || "",
+        other_costs: selectedStage.other_costs || "",
+        total_cost: selectedStage.total_cost || "",
+        cost_currency: selectedStage.cost_currency || "INR",
+        cost_status: selectedStage.cost_status || "estimated",
+        markup_percentage: selectedStage.markup_percentage || "25",
+        final_price: selectedStage.final_price || "",
 
-  //       // File tracking
-  //       file_version: selectedStage.file_version || "1.0",
-  //       file_revisions: selectedStage.file_revisions || 0,
-  //       source_files: selectedStage.source_files || [],
-  //       output_files: selectedStage.output_files || [],
-  //       file_status: selectedStage.file_status || "draft",
-  //       backup_location: selectedStage.backup_location || "",
-  //     };
+        // File tracking
+        file_version: selectedStage.file_version || "1.0",
+        file_revisions: selectedStage.file_revisions || 0,
+        source_files: selectedStage.source_files || [],
+        output_files: selectedStage.output_files || [],
+        file_status: selectedStage.file_status || "draft",
+        backup_location: selectedStage.backup_location || "",
+      };
 
-  //     console.log("Initializing form data:", initialData);
+      console.log("Initializing form data:", initialData);
 
-  //     setFormData(initialData);
-  //     setSelectedFilingTools(initialData.filing_tools_used || []);
-  //     setSelectedLaborCosts(parsedSelectedLaborCosts);
-  //     setLaborBreakdown(parsedLaborBreakdown);
+      setFormData(initialData);
+      setSelectedFilingTools(initialData.filing_tools_used || []);
+      setSelectedLaborCosts(parsedSelectedLaborCosts);
+      setLaborBreakdown(parsedLaborBreakdown);
 
-  //     if (selectedStage.files && Array.isArray(selectedStage.files)) {
-  //       const existingFiles = selectedStage.files
-  //         .filter((file) => file.isExisting)
-  //         .map((file) => ({
-  //           ...file,
-  //           id: file.id || file._id || Math.random().toString(36).substr(2, 9),
-  //           isExisting: true,
-  //           file: null,
-  //           category: file.category || "output",
-  //           version: file.version || "1.0",
-  //         }));
-  //       setFilingFiles(existingFiles);
-  //     } else {
-  //       setFilingFiles([]);
-  //     }
+      if (selectedStage.files && Array.isArray(selectedStage.files)) {
+        const existingFiles = selectedStage.files
+          .filter((file) => file.isExisting)
+          .map((file) => ({
+            ...file,
+            id: file.id || file._id || Math.random().toString(36).substr(2, 9),
+            isExisting: true,
+            file: null,
+            category: file.category || "output",
+            version: file.version || "1.0",
+          }));
+        setFilingFiles(existingFiles);
+      } else {
+        setFilingFiles([]);
+      }
 
-  //     setFormErrors({});
-  //     calculateTotalCost();
-  //     calculateTotalTime();
-  //   }
-  // }, [selectedStage]);
+      setFormErrors({});
+      calculateTotalCost();
+      calculateTotalTime();
+    }
+  }, [selectedStage]);
 
   // Initialize form data
-useEffect(() => {
-  if (selectedStage && laborCosts.length > 0) {
-    // Parse selected labor costs if they exist in the stage data
-    let parsedSelectedLaborCosts = [];
-    if (selectedStage.selected_labor_costs) {
-      if (Array.isArray(selectedStage.selected_labor_costs)) {
-        // Map the IDs to actual labor cost objects
-        parsedSelectedLaborCosts = laborCosts.filter(cost => 
-          selectedStage.selected_labor_costs.includes(cost._id)
-        );
-      } else if (typeof selectedStage.selected_labor_costs === "string") {
-        try {
-          const ids = JSON.parse(selectedStage.selected_labor_costs);
-          parsedSelectedLaborCosts = laborCosts.filter(cost => 
-            ids.includes(cost._id)
+  useEffect(() => {
+    if (selectedStage && laborCosts.length > 0) {
+      // Parse selected labor costs if they exist in the stage data
+      let parsedSelectedLaborCosts = [];
+      if (selectedStage.selected_labor_costs) {
+        if (Array.isArray(selectedStage.selected_labor_costs)) {
+          // Map the IDs to actual labor cost objects
+          parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+            selectedStage.selected_labor_costs.includes(cost._id),
           );
-        } catch {
-          parsedSelectedLaborCosts = [];
+        } else if (typeof selectedStage.selected_labor_costs === "string") {
+          try {
+            const ids = JSON.parse(selectedStage.selected_labor_costs);
+            parsedSelectedLaborCosts = laborCosts.filter((cost) =>
+              ids.includes(cost._id),
+            );
+          } catch {
+            parsedSelectedLaborCosts = [];
+          }
         }
       }
-    }
 
-    // Parse labor breakdown if it exists
-    let parsedLaborBreakdown = [];
-    if (selectedStage.labor_cost_breakdown) {
-      if (Array.isArray(selectedStage.labor_cost_breakdown)) {
-        parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
-      } else if (typeof selectedStage.labor_cost_breakdown === "string") {
-        try {
-          parsedLaborBreakdown = JSON.parse(selectedStage.labor_cost_breakdown);
-        } catch {
-          parsedLaborBreakdown = [];
+      // Parse labor breakdown if it exists
+      let parsedLaborBreakdown = [];
+      if (selectedStage.labor_cost_breakdown) {
+        if (Array.isArray(selectedStage.labor_cost_breakdown)) {
+          parsedLaborBreakdown = selectedStage.labor_cost_breakdown;
+        } else if (typeof selectedStage.labor_cost_breakdown === "string") {
+          try {
+            parsedLaborBreakdown = JSON.parse(
+              selectedStage.labor_cost_breakdown,
+            );
+          } catch {
+            parsedLaborBreakdown = [];
+          }
         }
       }
-    }
 
-    
-    setSelectedLaborCosts(parsedSelectedLaborCosts);
-    setLaborBreakdown(parsedLaborBreakdown);
-    
-    // Calculate labor cost from selected items
-    if (parsedSelectedLaborCosts.length > 0) {
-      calculateLaborCostFromSelection(parsedSelectedLaborCosts);
-    }
+      setSelectedLaborCosts(parsedSelectedLaborCosts);
+      setLaborBreakdown(parsedLaborBreakdown);
 
-  }
-}, [selectedStage, laborCosts]); // Add laborCosts as dependency
+      // Calculate labor cost from selected items
+      if (parsedSelectedLaborCosts.length > 0) {
+        calculateLaborCostFromSelection(parsedSelectedLaborCosts);
+      }
+    }
+  }, [selectedStage, laborCosts]); // Add laborCosts as dependency
 
   // Auto-recalculate total time when time fields change
-useEffect(() => {
-  calculateTotalTime();
-}, [
-  formData.preparation_time,
-  formData.rough_filing_time,
-  formData.fine_filing_time,
-  formData.polishing_time,
-  formData.quality_check_time,
-]);
+  useEffect(() => {
+    calculateTotalTime();
+  }, [
+    formData.preparation_time,
+    formData.rough_filing_time,
+    formData.fine_filing_time,
+    formData.polishing_time,
+    formData.quality_check_time,
+  ]);
 
-// Auto-recalculate total cost when individual costs change
-useEffect(() => {
-  calculateTotalCost();
-}, [
-  formData.tool_cost,
-  formData.labour_cost,
-  formData.equipment_cost,
-  formData.consumables_cost,
-  formData.wastage_cost,
-  formData.other_costs,
-  formData.markup_percentage,
-]);
+  // Auto-recalculate total cost when individual costs change
+  useEffect(() => {
+    calculateTotalCost();
+  }, [
+    formData.tool_cost,
+    formData.labour_cost,
+    formData.equipment_cost,
+    formData.consumables_cost,
+    formData.wastage_cost,
+    formData.other_costs,
+    formData.markup_percentage,
+  ]);
 
-// Auto-calculate labor cost whenever selected labor costs change
-useEffect(() => {
-  calculateLaborCostFromSelection(selectedLaborCosts);
-}, [selectedLaborCosts]);
+  // Auto-calculate labor cost whenever selected labor costs change
+  useEffect(() => {
+    calculateLaborCostFromSelection(selectedLaborCosts);
+  }, [selectedLaborCosts]);
 
   // Handle tool selection
   const handleToolToggle = (toolId) => {
@@ -863,7 +877,7 @@ useEffect(() => {
       setUploadError(
         `Some files exceed 100MB limit: ${oversizedFiles
           .map((f) => f.name)
-          .join(", ")}`
+          .join(", ")}`,
       );
       return [];
     }
@@ -886,12 +900,12 @@ useEffect(() => {
     ];
 
     const invalidFiles = fileList.filter(
-      (file) => !allowedTypes.includes(file.type)
+      (file) => !allowedTypes.includes(file.type),
     );
 
     if (invalidFiles.length > 0) {
       setUploadError(
-        `Invalid file types: ${invalidFiles.map((f) => f.name).join(", ")}`
+        `Invalid file types: ${invalidFiles.map((f) => f.name).join(", ")}`,
       );
       return [];
     }
@@ -1108,7 +1122,7 @@ useEffect(() => {
         const result = await onUpdate(
           selectedStage._id,
           updateData,
-          filesToUpload
+          filesToUpload,
         );
 
         console.log("Modal received result:", result);
@@ -1152,10 +1166,10 @@ useEffect(() => {
   // Filter employees for filing karigar
   const filteredEmployees = employees.filter((emp) => {
     if (!emp.role_id) return false;
-    
+
     const roleName = emp.role_id.role_name?.toLowerCase() || "";
     const department = emp.department?.toLowerCase() || "";
-    
+
     return (
       roleName.includes("filing") ||
       roleName.includes("karigar") ||
@@ -1186,7 +1200,7 @@ useEffect(() => {
   // Calculate total labor from breakdown
   const totalCalculatedLabor = laborBreakdown.reduce(
     (sum, item) => sum + parseFloat(item.total_cost || 0),
-    0
+    0,
   );
 
   return (
@@ -1341,7 +1355,7 @@ useEffect(() => {
                 {renderSectionHeader(
                   "👤 Basic Information",
                   "basic",
-                  <FiUser />
+                  <FiUser />,
                 )}
                 {expandedSections.basic && (
                   <div className="card-body">
@@ -1351,7 +1365,7 @@ useEffect(() => {
                           <FiUser className="me-1" /> Assigned Karigar{" "}
                           <span className="text-danger">*</span>
                         </label>
-                        
+
                         <select
                           name="assigned_to"
                           className={`form-select ${
@@ -1362,7 +1376,7 @@ useEffect(() => {
                           disabled={isDisabled}
                         >
                           <option value="">Select Filing Karigar</option>
-                          
+
                           {filteredEmployees.length === 0 ? (
                             <option value="" disabled>
                               No filing karigars available
@@ -1370,24 +1384,27 @@ useEffect(() => {
                           ) : (
                             filteredEmployees.map((emp) => (
                               <option key={emp._id} value={emp._id}>
-                                {emp.name} - {emp.role_id?.role_name || "No Role"} 
+                                {emp.name} -{" "}
+                                {emp.role_id?.role_name || "No Role"}
                                 {emp.department ? ` (${emp.department})` : ""}
                               </option>
                             ))
                           )}
-                          
-                          {filteredEmployees.length === 0 && employees.length > 0 && (
-                            <>
-                              <option disabled>--- All Employees ---</option>
-                              {employees.map((emp) => (
-                                <option key={emp._id} value={emp._id}>
-                                  {emp.name} - {emp.role_id?.role_name || "No Role"}
-                                </option>
-                              ))}
-                            </>
-                          )}
+
+                          {filteredEmployees.length === 0 &&
+                            employees.length > 0 && (
+                              <>
+                                <option disabled>--- All Employees ---</option>
+                                {employees.map((emp) => (
+                                  <option key={emp._id} value={emp._id}>
+                                    {emp.name} -{" "}
+                                    {emp.role_id?.role_name || "No Role"}
+                                  </option>
+                                ))}
+                              </>
+                            )}
                         </select>
-                        
+
                         {formErrors.assigned_to && (
                           <div className="invalid-feedback d-flex align-items-center">
                             <FiAlertCircle className="me-1" />{" "}
@@ -1581,7 +1598,7 @@ useEffect(() => {
                                   type="checkbox"
                                   id={`tool-${tool._id}`}
                                   checked={selectedFilingTools.includes(
-                                    tool._id
+                                    tool._id,
                                   )}
                                   onChange={() => handleToolToggle(tool._id)}
                                   disabled={isDisabled}
@@ -1654,7 +1671,7 @@ useEffect(() => {
                         <div className="form-text x-small">
                           {
                             wastageTypeOptions.find(
-                              (w) => w.value === formData.tool_wastage_type
+                              (w) => w.value === formData.tool_wastage_type,
                             )?.description
                           }
                         </div>
@@ -1720,12 +1737,12 @@ useEffect(() => {
                   "💰 Cost Tracking",
                   "cost",
                   <FiDollarSign />,
-                  selectedLaborCosts.length
+                  selectedLaborCosts.length,
                 )}
                 {expandedSections.cost && (
                   <div className="card-body">
                     <div className="row mb-3">
-                      <div className="col-md-12">
+                      {/* <div className="col-md-12">
                         <label className="form-label fw-medium">
                           Cost Status
                         </label>
@@ -1742,7 +1759,7 @@ useEffect(() => {
                             </option>
                           ))}
                         </select>
-                      </div>
+                      </div> */}
                     </div>
 
                     <div className="row g-2">
@@ -1776,8 +1793,8 @@ useEffect(() => {
                           options={getLaborCostOptions()}
                           value={getLaborCostOptions().filter((option) =>
                             selectedLaborCosts.some(
-                              (cost) => cost._id === option.value
-                            )
+                              (cost) => cost._id === option.value,
+                            ),
                           )}
                           onChange={handleLaborCostsChange}
                           placeholder={
@@ -1963,7 +1980,9 @@ useEffect(() => {
                             type="button"
                             className="btn btn-outline-secondary"
                             onClick={() =>
-                              calculateLaborCostFromSelection(selectedLaborCosts)
+                              calculateLaborCostFromSelection(
+                                selectedLaborCosts,
+                              )
                             }
                             disabled={isDisabled}
                             title="Recalculate labor cost"
@@ -2382,7 +2401,7 @@ useEffect(() => {
                                 width: `${
                                   (parseFloat(formData.preparation_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1
+                                      formData.total_time_spent || 1,
                                     )) *
                                   100
                                 }%`,
@@ -2397,7 +2416,7 @@ useEffect(() => {
                                 width: `${
                                   (parseFloat(formData.rough_filing_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1
+                                      formData.total_time_spent || 1,
                                     )) *
                                   100
                                 }%`,
@@ -2412,7 +2431,7 @@ useEffect(() => {
                                 width: `${
                                   (parseFloat(formData.fine_filing_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1
+                                      formData.total_time_spent || 1,
                                     )) *
                                   100
                                 }%`,
@@ -2427,7 +2446,7 @@ useEffect(() => {
                                 width: `${
                                   (parseFloat(formData.polishing_time || 0) /
                                     parseFloat(
-                                      formData.total_time_spent || 1
+                                      formData.total_time_spent || 1,
                                     )) *
                                   100
                                 }%`,
@@ -2441,10 +2460,10 @@ useEffect(() => {
                               style={{
                                 width: `${
                                   (parseFloat(
-                                    formData.quality_check_time || 0
+                                    formData.quality_check_time || 0,
                                   ) /
                                     parseFloat(
-                                      formData.total_time_spent || 1
+                                      formData.total_time_spent || 1,
                                     )) *
                                   100
                                 }%`,
@@ -2475,7 +2494,7 @@ useEffect(() => {
                   "📎 File Tracking",
                   "files",
                   <FiFile />,
-                  filingFiles.length
+                  filingFiles.length,
                 )}
                 {expandedSections.files && (
                   <div className="card-body">
@@ -2616,7 +2635,7 @@ useEffect(() => {
                                                   onClick={() =>
                                                     window.open(
                                                       file.url,
-                                                      "_blank"
+                                                      "_blank",
                                                     )
                                                   }
                                                   title="Open"
@@ -2637,7 +2656,7 @@ useEffect(() => {
                                               </div>
                                             </td>
                                           </tr>
-                                        )
+                                        ),
                                       )}
                                     </tbody>
                                   </table>
@@ -2737,7 +2756,7 @@ useEffect(() => {
                                                   onClick={() =>
                                                     window.open(
                                                       file.url,
-                                                      "_blank"
+                                                      "_blank",
                                                     )
                                                   }
                                                   title="Open"
@@ -2758,7 +2777,7 @@ useEffect(() => {
                                               </div>
                                             </td>
                                           </tr>
-                                        )
+                                        ),
                                       )}
                                     </tbody>
                                   </table>

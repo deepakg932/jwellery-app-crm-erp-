@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FiUpload, FiUser, FiCamera } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
+import { toast } from "react-toastify";
 
 const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
   const [formData, setFormData] = useState({
@@ -29,19 +30,19 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
   // Initialize countries on component mount
   useEffect(() => {
     const allCountries = Country.getAllCountries();
-    const formattedCountries = allCountries.map(country => ({
+    const formattedCountries = allCountries.map((country) => ({
       value: country.name,
       label: country.name,
-      phoneCode: country.phonecode
+      phoneCode: country.phonecode,
     }));
-    
+
     setCountries(formattedCountries);
-    
+
     // Set default role if available
     if (roles.length > 0) {
-      setFormData(prev => ({ 
-        ...prev, 
-        role_id: roles[0]._id 
+      setFormData((prev) => ({
+        ...prev,
+        role_id: roles[0]._id,
       }));
     }
   }, [roles]);
@@ -49,16 +50,18 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
   // Update states when country changes
   useEffect(() => {
     if (formData.country) {
-      const countryObj = Country.getAllCountries().find(c => c.name === formData.country);
+      const countryObj = Country.getAllCountries().find(
+        (c) => c.name === formData.country,
+      );
       if (countryObj) {
         const countryStates = State.getStatesOfCountry(countryObj.isoCode);
-        const formattedStates = countryStates.map(state => ({
+        const formattedStates = countryStates.map((state) => ({
           value: state.name,
-          label: state.name
+          label: state.name,
         }));
-        
+
         setStates(formattedStates);
-        setFormData(prev => ({ ...prev, state: "", city: "" }));
+        setFormData((prev) => ({ ...prev, state: "", city: "" }));
         setCities([]);
       }
     }
@@ -67,18 +70,25 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
   // Update cities when state changes
   useEffect(() => {
     if (formData.country && formData.state) {
-      const countryObj = Country.getAllCountries().find(c => c.name === formData.country);
-      const stateObj = State.getStatesOfCountry(countryObj?.isoCode).find(s => s.name === formData.state);
-      
+      const countryObj = Country.getAllCountries().find(
+        (c) => c.name === formData.country,
+      );
+      const stateObj = State.getStatesOfCountry(countryObj?.isoCode).find(
+        (s) => s.name === formData.state,
+      );
+
       if (countryObj && stateObj) {
-        const stateCities = City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode);
-        const formattedCities = stateCities.map(city => ({
+        const stateCities = City.getCitiesOfState(
+          countryObj.isoCode,
+          stateObj.isoCode,
+        );
+        const formattedCities = stateCities.map((city) => ({
           value: city.name,
-          label: city.name
+          label: city.name,
         }));
-        
+
         setCities(formattedCities);
-        setFormData(prev => ({ ...prev, city: "" }));
+        setFormData((prev) => ({ ...prev, city: "" }));
       }
     }
   }, [formData.country, formData.state]);
@@ -103,12 +113,19 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
     }
 
     // PAN number validation (10 characters, format: ABCDE1234F)
-    if (formData.pan_number.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_number.trim())) {
-      newErrors.pan_number = "PAN number must be 10 characters (e.g., ABCDE1234F)";
+    if (
+      formData.pan_number.trim() &&
+      !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_number.trim())
+    ) {
+      newErrors.pan_number =
+        "PAN number must be 10 characters (e.g., ABCDE1234F)";
     }
 
     // Aadhar number validation (12 digits)
-    if (formData.aadhaar_number.trim() && !/^\d{12}$/.test(formData.aadhaar_number.trim())) {
+    if (
+      formData.aadhaar_number.trim() &&
+      !/^\d{12}$/.test(formData.aadhaar_number.trim())
+    ) {
       newErrors.aadhaar_number = "Aadhar number must be 12 digits";
     }
 
@@ -141,78 +158,121 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
     } else if (!/^\d{6}$/.test(formData.pincode.trim())) {
       newErrors.pincode = "Pincode must be 6 digits";
     }
-
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors)[0]);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setErrors(prev => ({ ...prev, image: "Image size should be less than 5MB" }));
-        return;
-      }
-      
-      if (!file.type.startsWith('image/')) {
-        setErrors(prev => ({ ...prev, image: "Please upload an image file" }));
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        setErrors((prev) => ({
+          ...prev,
+          image: "Image size should be less than 5MB",
+        }));
         return;
       }
 
-      setFormData(prev => ({ ...prev, image: file }));
+      if (!file.type.startsWith("image/")) {
+        setErrors((prev) => ({
+          ...prev,
+          image: "Please upload an image file",
+        }));
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, image: file }));
       setImagePreview(URL.createObjectURL(file));
-      
+
       if (errors.image) {
-        setErrors(prev => ({ ...prev, image: "" }));
+        setErrors((prev) => ({ ...prev, image: "" }));
       }
     }
   };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const payload = {
-      name: formData.name.trim(),
-      email: formData.email.trim(),
-      phone: formData.phone.trim(),
-      pan_number: formData.pan_number.trim().toUpperCase(),
-      aadhaar_number: formData.aadhaar_number.trim(),
-      address: formData.address.trim(),
-      city: formData.city.trim(),
-      state: formData.state.trim(),
-      country: formData.country.trim(),
-      pincode: formData.pincode.trim(),
-      role_id: formData.role_id,
-      basic_salary: parseFloat(formData.basic_salary),
-      image: formData.image,
-      status: formData.status ? "active" : "inactive",
-    };
+    const toastId = toast.loading("");
 
-    console.log("Submitting employee data:", payload);
-    onSave(payload);
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        pan_number: formData.pan_number.trim().toUpperCase(),
+        aadhaar_number: formData.aadhaar_number.trim(),
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        country: formData.country.trim(),
+        pincode: formData.pincode.trim(),
+        role_id: formData.role_id,
+        basic_salary: parseFloat(formData.basic_salary),
+        image: formData.image,
+        status: formData.status ? "active" : "inactive",
+      };
 
-    // Reset form
-    const resetRole = roles.length > 0 ? roles[0]._id : "";
-    
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      pan_number: "",
-      aadhaar_number: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "India",
-      pincode: "",
-      role_id: resetRole,
-      basic_salary: "",
-      image: null,
-      status: true,
-    });
-    setImagePreview(null);
-    setErrors({});
+      console.log("Submitting employee data:", payload);
+
+      // Wait for the save operation to complete
+      await onSave(payload);
+
+      // Success - update toast and reset form
+      toast.update(toastId, {
+        render: "Employee saved successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      // Reset form
+      const resetRole = roles.length > 0 ? roles[0]._id : "";
+
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        pan_number: "",
+        aadhaar_number: "",
+        address: "",
+        city: "",
+        state: "",
+        country: "India",
+        pincode: "",
+        role_id: resetRole,
+        basic_salary: "",
+        image: null,
+        status: true,
+      });
+      setImagePreview(null);
+      setErrors({});
+    } catch (error) {
+      console.error("Error saving employee:", error);
+
+      // Error - update toast with error message
+      toast.update(toastId, {
+        render:
+          error.response?.data?.message ||
+          "Failed to save employee. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
+      // DO NOT reset form or close modal - keep data for user to correct
+      // Highlight phone field if duplicate error
+      if (error.response?.data?.message?.includes("phone already exists")) {
+        setErrors((prev) => ({
+          ...prev,
+          phone: "This phone number is already registered",
+        }));
+      }
+    }
   };
 
   const handleChange = (e) => {
@@ -220,8 +280,12 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : 
-              name === 'pan_number' ? value.toUpperCase() : value,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : name === "pan_number"
+            ? value.toUpperCase()
+            : value,
     }));
 
     if (errors[name]) {
@@ -231,7 +295,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
 
   const handleClose = () => {
     const resetRole = roles.length > 0 ? roles[0]._id : "";
-    
+
     setFormData({
       name: "",
       email: "",
@@ -255,7 +319,9 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
 
   // Get country phone code
   const getPhoneCode = () => {
-    const countryObj = Country.getAllCountries().find(c => c.name === formData.country);
+    const countryObj = Country.getAllCountries().find(
+      (c) => c.name === formData.country,
+    );
     return countryObj ? `+${countryObj.phonecode}` : "+91";
   };
 
@@ -285,7 +351,10 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                 <div className="col-12 mb-4">
                   <div className="d-flex flex-column align-items-center">
                     <div className="position-relative mb-3">
-                      <div className="rounded-circle border border-3 border-primary p-1" style={{ width: "120px", height: "120px" }}>
+                      <div
+                        className="rounded-circle border border-3 border-primary p-1"
+                        style={{ width: "120px", height: "120px" }}
+                      >
                         {imagePreview ? (
                           <img
                             src={imagePreview}
@@ -318,7 +387,9 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                       Upload employee photo (Max 5MB)
                     </p>
                     {errors.image && (
-                      <div className="text-danger small mt-1">{errors.image}</div>
+                      <div className="text-danger small mt-1">
+                        {errors.image}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -340,9 +411,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     disabled={loading}
                   />
                   {errors.name && (
-                    <div className="invalid-feedback">
-                      {errors.name}
-                    </div>
+                    <div className="invalid-feedback">{errors.name}</div>
                   )}
                 </div>
 
@@ -373,9 +442,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     Phone Number <span className="text-danger">*</span>
                   </label>
                   <div className="input-group">
-                    <span className="input-group-text">
-                      {getPhoneCode()}
-                    </span>
+                    <span className="input-group-text">{getPhoneCode()}</span>
                     <input
                       type="tel"
                       name="phone"
@@ -389,15 +456,15 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     />
                   </div>
                   {errors.phone && (
-                    <div className="invalid-feedback d-block">{errors.phone}</div>
+                    <div className="invalid-feedback d-block">
+                      {errors.phone}
+                    </div>
                   )}
                 </div>
 
                 {/* PAN Number */}
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    PAN Number
-                  </label>
+                  <label className="form-label fw-medium">PAN Number</label>
                   <input
                     type="text"
                     name="pan_number"
@@ -414,16 +481,12 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                   {errors.pan_number && (
                     <div className="invalid-feedback">{errors.pan_number}</div>
                   )}
-                  <div className="form-text">
-                    10-character PAN (Optional)
-                  </div>
+                  <div className="form-text">10-character PAN (Optional)</div>
                 </div>
 
                 {/* Aadhar Number */}
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    Aadhar Number
-                  </label>
+                  <label className="form-label fw-medium">Aadhar Number</label>
                   <input
                     type="text"
                     name="aadhaar_number"
@@ -437,11 +500,11 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     maxLength="12"
                   />
                   {errors.aadhaar_number && (
-                    <div className="invalid-feedback">{errors.aadhaar_number}</div>
+                    <div className="invalid-feedback">
+                      {errors.aadhaar_number}
+                    </div>
                   )}
-                  <div className="form-text">
-                    12-digit Aadhar (Optional)
-                  </div>
+                  <div className="form-text">12-digit Aadhar (Optional)</div>
                 </div>
 
                 {/* Role */}
@@ -497,7 +560,9 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     />
                   </div>
                   {errors.basic_salary && (
-                    <div className="invalid-feedback">{errors.basic_salary}</div>
+                    <div className="invalid-feedback">
+                      {errors.basic_salary}
+                    </div>
                   )}
                 </div>
 

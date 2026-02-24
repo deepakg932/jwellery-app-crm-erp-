@@ -276,7 +276,7 @@ const EditBranchForm = ({
   const [formData, setFormData] = useState({
     branch_name: "",
     branch_type: "",
-    contact_person: "",
+    contact_person  : "",
     address: "",
     phone: "",
     is_warehouse: false,
@@ -290,7 +290,7 @@ const EditBranchForm = ({
       setFormData({
         branch_name: branch.branch_name || branch.name || "",
         branch_type: branch.branch_type_id || branch.branch_type?._id || "",
-        contact_person: branch.contact_person || "",
+        contact_person : branch.contact_person || "",
         address: branch.address || "",
         phone: branch.phone || "",
         is_warehouse: branch.is_warehouse || false,

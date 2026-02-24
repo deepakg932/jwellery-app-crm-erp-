@@ -8,6 +8,7 @@ import PurityPage from "../views/product-section/purity/components/PurityTable";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AddItemModal from "../views/item-master/components/AddItemForm";
 import QuotationsHistory from "../views/manufacturing/quotations/components/QuotationsHistory";
+import path from "path";
 
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
@@ -116,6 +117,7 @@ const Proposals = lazy(() => import("@/views/apps/crm/proposals"));
 const Profile = lazy(() => import("@/views/apps/users/profile"));
 const CustomerGroupPage = lazy(() => import("@/views/user/customer-group"));
 const Customer = lazy(() => import("@/views/user/customer"));
+const LoyaltyPointPaymentHistory = lazy(() => import("@/views/user/customer/components/LoyaltyPointPaymentHistory"));
 const RolePage = lazy(() => import("@/views/user/role"));
 const EmployeesPage = lazy(() => import("@/views/user/employee"));
 
@@ -619,11 +621,11 @@ const inventoryRoutes = [
     element: <InventoryItemsPage />,
   },
   {
-    path: "/inventory/branch-type",
+    path: "/branch-management/branch-type",
     element: <BranchTypePage />,
   },
   {
-    path: "/inventory/branch",
+    path: "/branch-management/branch",
     element: <BranchPage />,
   },
   {
@@ -631,16 +633,16 @@ const inventoryRoutes = [
     element: <SuppliersPage />,
   },
   {
-    path: "/inventory/purchase-orders",
+    path: "/purchase-orders",
     element: <PurchaseOrdersPage />,
   },
   {
-    path: "/inventory/purchase-return",
+    path: "/purchase-return",
     element: <PurchaseReturnPage />,
   },
 
   {
-    path: "/inventory/purchase-received",
+    path: "/purchase-received",
     element: <InventoryMovementsPage />,
   },
 ];
@@ -683,6 +685,11 @@ const saleRoutes = [
     path: "/sale-return",
     element: <SaleReturnPage />,
   },
+{
+  path:"/customer/:customerId",
+  element: <LoyaltyPointPaymentHistory />,
+}
+
 ];
 const customRepairRoutes = [
   {

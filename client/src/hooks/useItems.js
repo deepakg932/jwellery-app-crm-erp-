@@ -188,13 +188,15 @@ const useItems = () => {
             _id: pm._id || pm.id,
             id: pm._id || pm.id,
             name: pm.cost_type || pm.stage_name || pm.name || "",
-            cost_type: pm.cost_type || "",
-            stage_name: pm.stage_name || "",
-            sub_stage_name: pm.sub_stage_name || "",
+            cost_type: pm.cost_type_id.cost_type || "",
+            stage_name: pm.making_stage_id.stage_name || "",
+            sub_stage_name: pm.making_sub_stage_id.sub_stage_name || "",
             cost_amount: pm.cost_amount || 0,
-            unit_name: pm.unit_name || "",
+            unit_name: pm.unit_id?.name || "",
           }))
         : [];
+
+      console.log(priceMakingsRaw);
 
       // Stone Types
       const stoneTypes = getData(stoneTypesRes, "Stone Types");
@@ -365,37 +367,33 @@ const useItems = () => {
           return [];
         }
 
-        console.log(`Fetching hallmarks for metal: ${metalId}`);
-
-        const response = await axios.get(
-          API_ENDPOINTS.getHallmarksByMetal(metalId),
+        console.log(
+          `Filtering hallmarks for metal: ${metalId} from existing data`,
         );
 
-        if (response.data && response.data.success) {
-          const hallmarks = response.data.hallmarks || response.data.data || [];
-          console.log(
-            `Found ${hallmarks.length} hallmarks for metal ${metalId}`,
-            hallmarks,
-          );
-          return hallmarks;
-        }
+        // Filter from existing hallmarks in dropdownData
+        const filtered = dropdownData.hallmarks.filter((hallmark) => {
+          // Check various possible field names for metal_type
+          const hallmarkMetalId =
+            hallmark.metal_type?._id ||
+            hallmark.metal_type?.id ||
+            hallmark.metal_type ||
+            hallmark.metal_id;
 
-        console.log("No hallmarks found or invalid response");
-        return [];
-      } catch (err) {
-        console.error("Error fetching hallmarks by metal:", err);
-        // Fallback: filter from existing hallmarks
-        const filtered = dropdownData.hallmarks.filter(
-          (hallmark) =>
-            String(hallmark.metal_type) === String(metalId) ||
-            String(hallmark.metal_type?._id) === String(metalId) ||
-            String(hallmark.metal_type?.id) === String(metalId),
+          return String(hallmarkMetalId) === String(metalId);
+        });
+
+        console.log(
+          `Found ${filtered.length} hallmarks for metal ${metalId}`,
+          filtered,
         );
-        console.log(`Fallback found ${filtered.length} hallmarks`);
         return filtered;
+      } catch (err) {
+        console.error("Error filtering hallmarks by metal:", err);
+        return [];
       }
     },
-    [dropdownData.hallmarks],
+    [dropdownData.hallmarks], // Dependency on hallmarks data
   );
 
   // Create new item - UPDATED WITH HALLMARK
@@ -541,7 +539,7 @@ const useItems = () => {
     }
   };
 
-  // Update item - UPDATED WITH HALLMARK
+// Update item - UPDATED WITH HALLMARK
 const updateItem = async (id, itemData) => {
   try {
     setLoading((prev) => ({ ...prev, items: true }));
@@ -629,8 +627,9 @@ const updateItem = async (id, itemData) => {
     });
     formData.append("materials", JSON.stringify(materialsPayload));
 
-    // Price making costs
-    const priceMakingCostsPayload = (itemData.price_making_costs || []).map(
+    // FIX: Use making_charges from itemData instead of price_making_costs
+    // The modal submits "making_charges" not "price_making_costs"
+    const priceMakingCostsPayload = (itemData.making_charges || []).map(
       (cost) => {
         return {
           price_making_id: cost.price_making_id || cost.id,
@@ -643,9 +642,11 @@ const updateItem = async (id, itemData) => {
         };
       },
     );
+    
+    // Use the correct field name expected by your API
     formData.append(
-      "price_making_costs",
-      JSON.stringify(priceMakingCostsPayload),
+      "price_making_costs", 
+      JSON.stringify(priceMakingCostsPayload)
     );
 
     // Status if updating
@@ -653,7 +654,7 @@ const updateItem = async (id, itemData) => {
       formData.append("status", itemData.status);
     }
 
-    // FIXED: Handle images correctly
+    // Handle images correctly
     // 1. Append new images
     if (itemData.image && Array.isArray(itemData.image)) {
       itemData.image.forEach((file, index) => {
@@ -670,7 +671,10 @@ const updateItem = async (id, itemData) => {
 
     // 2. Append images to delete
     if (itemData.imagesToDelete && Array.isArray(itemData.imagesToDelete)) {
-      formData.append("images_to_delete", JSON.stringify(itemData.imagesToDelete));
+      formData.append(
+        "images_to_delete",
+        JSON.stringify(itemData.imagesToDelete),
+      );
       console.log("Images to delete:", itemData.imagesToDelete);
     }
 
@@ -705,6 +709,8 @@ const updateItem = async (id, itemData) => {
     setLoading((prev) => ({ ...prev, items: false }));
   }
 };
+
+
   // Delete item
   const deleteItem = async (id) => {
     try {
@@ -1052,7 +1058,7 @@ const updateItem = async (id, itemData) => {
     initialize();
   }, [fetchDropdownData, fetchItems]);
 
-console.log(items)
+  console.log(items);
 
   return {
     // Items and pagination

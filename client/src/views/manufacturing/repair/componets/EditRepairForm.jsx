@@ -1254,11 +1254,11 @@ const EditRepairForm = ({
                           {errors.customer_id}
                         </div>
                       )}
-                      {formData.customer_id && (
+                      {/* {formData.customer_id && (
                         <div className="form-text">
                           Selected customer ID: {formData.customer_id}
                         </div>
-                      )}
+                      )} */}
                     </div>
 
                     <div className="col-md-6 mb-3">

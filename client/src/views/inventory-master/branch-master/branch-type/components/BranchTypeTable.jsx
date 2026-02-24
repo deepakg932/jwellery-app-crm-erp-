@@ -119,9 +119,6 @@ export default function BranchTypeTable() {
               Are you sure you want to delete{" "}
               <strong>{selectedItem?.branch_type}</strong>?
             </p>
-            <p className="text-muted small">
-              This action cannot be undone.
-            </p>
           </div>
 
           <div className="modal-footer border-top pt-3">

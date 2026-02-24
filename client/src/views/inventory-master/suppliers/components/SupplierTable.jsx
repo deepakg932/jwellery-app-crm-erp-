@@ -588,6 +588,8 @@ const SupplierTable = () => {
     fetchSuppliers,
   } = useSuppliers();
 
+  console.log("Suppliers in table:", suppliers);
+
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -764,11 +766,7 @@ console.log(selectedItem)
               Are you sure you want to delete{" "}
               <strong>{selectedItem?.supplier_name}</strong>?
             </p>
-            <p className="text-muted small">
-              Supplier Code: <strong>{selectedItem?.supplier_code || "N/A"}</strong><br/>
-              Contact Person: <strong>{selectedItem?.contact_person || "N/A"}</strong>
-            </p>
-            <p className="text-muted small">This action cannot be undone.</p>
+           
           </div>
 
           <div className="modal-footer border-top pt-3">
@@ -898,14 +896,14 @@ console.log(selectedItem)
             <thead>
               <tr>
                 <th>#</th>
-                <th>Supplier Name</th>
                 <th>Supplier Code</th>
+                <th>Supplier Name</th>
+                <th>Company Name</th>
                 <th>Contact Person</th>
                 <th>Phone</th>
                 <th>Email</th>
                 <th>Payment Terms</th>
                 <th>Status</th>
-                <th>Created Date</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
@@ -936,12 +934,14 @@ console.log(selectedItem)
                 currentSuppliers.map((supplier, index) => (
                   <tr key={supplier._id || index}>
                     <td>{indexOfFirstItem + index + 1}</td>
-                    <td className="fw-semibold">{supplier.supplier_name}</td>
                     <td>
                       <span className="badge bg-secondary fw-semibold">
                         {supplier.supplier_code || "N/A"}
                       </span>
                     </td>
+                    <td className="fw-semibold">{supplier.supplier_name}</td>
+                      <td className="fw-semibold">{supplier.company_name }</td>
+                    
                     <td>{supplier.contact_person || "N/A"}</td>
                     <td>
                       <span className="badge bg-light text-dark fw-semibold">
@@ -963,11 +963,7 @@ console.log(selectedItem)
                         {supplier.status ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td>
-                      <span className="text-muted small">
-                        {formatDate(supplier.createdAt)}
-                      </span>
-                    </td>
+                   
 
                     {/* ACTION BUTTONS */}
                     <td>

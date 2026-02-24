@@ -20,6 +20,7 @@ import CreateSaleReturnModal from "../../sales-return/componets/CreateSaleReturn
 import useSales from "@/hooks/useSales";
 import useSalesReturn from "@/hooks/useSalesReturn";
 import PaymentStatusUpdateModal from "./PaymentStatusUpdateModal";
+import { Link } from "react-router";
 
 const SalesTable = () => {
   const {
@@ -31,6 +32,10 @@ const SalesTable = () => {
     deleteSale,
     fetchSales,
     updateSalePayment,
+    addCustomer, // Add this
+    customers,
+    customerGroups,
+    fetchCustomers,
   } = useSales();
 
   // Add useSalesReturn hook
@@ -43,8 +48,11 @@ const SalesTable = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showPaymentStatusModal, setShowPaymentStatusModal] = useState(false);
+  const [addingCustomer, setAddingCustomer] = useState(false);
+
   const [selectedSaleForReturn, setSelectedSaleForReturn] = useState(null);
-  const [selectedSaleForPaymentUpdate, setSelectedSaleForPaymentUpdate] = useState(null);
+  const [selectedSaleForPaymentUpdate, setSelectedSaleForPaymentUpdate] =
+    useState(null);
   const [selectedItem, setSelectedItem] = useState([]);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
 
@@ -105,8 +113,8 @@ const SalesTable = () => {
       sale.items?.some(
         (item) =>
           item.product_name?.toLowerCase().includes(search.toLowerCase()) ||
-          item.product_code?.toLowerCase().includes(search.toLowerCase())
-      )
+          item.product_code?.toLowerCase().includes(search.toLowerCase()),
+      ),
   );
 
   // Reset to first page when search changes
@@ -123,7 +131,38 @@ const SalesTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentSales = filteredSales.slice(indexOfFirstItem, indexOfLastItem);
 
-  console.log(currentSales)
+  console.log(currentSales);
+
+  const handleAddCustomer = async (customerData) => {
+    try {
+      setAddingCustomer(true);
+
+      // Format customer data for API
+      const apiData = {
+        ...customerData,
+        name: customerData.customer_name?.trim(),
+        mobile: customerData.mobile?.trim() || customerData.phone?.trim() || "",
+        customer_group_id: customerData.customer_group_id,
+        status: customerData.status ? "active" : "inactive",
+      };
+
+      console.log("Adding customer:", apiData);
+
+      // Call addCustomer from your hook
+      const newCustomer = await addCustomer(apiData);
+
+      // IMPORTANT: Refresh customers list to ensure AddSaleForm gets updated data
+      await fetchCustomers(); // Add this line to refresh customers
+
+      // Return the new customer so AddSaleForm can set it
+      return newCustomer;
+    } catch (error) {
+      console.error("Failed to add customer:", error);
+      throw error;
+    } finally {
+      setAddingCustomer(false);
+    }
+  };
 
   // Add new sale
   const handleAddSale = async (saleData) => {
@@ -183,14 +222,14 @@ const SalesTable = () => {
       console.log(
         "Updating payment status for sale:",
         selectedSaleForPaymentUpdate._id,
-        paymentData
+        paymentData,
       );
 
       await updateSalePayment(selectedSaleForPaymentUpdate._id, paymentData);
 
       // Success message
       alert(
-        `Payment status updated to ${paymentData.payment_status.toUpperCase()} successfully!`
+        `Payment status updated to ${paymentData.payment_status.toUpperCase()} successfully!`,
       );
 
       // Close modal and reset
@@ -322,7 +361,7 @@ const SalesTable = () => {
     const itemCount = items.length;
     const quantitySum = items.reduce(
       (sum, item) => sum + (parseFloat(item.quantity) || 0),
-      0
+      0,
     );
 
     let details = `${itemCount} item${itemCount > 1 ? "s" : ""}`;
@@ -591,14 +630,21 @@ const SalesTable = () => {
                           </small>
                         )}
                       </td>
-                      
-                      <td>
-                        <div className="fw-medium">{sale.customer_name || "Unknown Customer"}</div>
-                        <div className="text-muted small">
-                          {sale.customer_mobile && `${sale.customer_mobile}`}
-                          {sale.customer_code && ` (${sale.customer_code})`}
-                        </div>
-                      </td>
+
+                      <Link
+                        to={`/customer/${sale.customer_id._id}`}
+                        className="text-decoration-none d-table-cell text-dark"
+                      >
+                        <td>
+                          <div className="fw-medium">
+                            {sale.customer_name || "Unknown Customer"}
+                          </div>
+                          <div className="text-muted small">
+                            {sale.customer_mobile && `${sale.customer_mobile}`}
+                            {sale.customer_code && ` (${sale.customer_code})`}
+                          </div>
+                        </td>
+                      </Link>
 
                       <td>
                         <div className="d-flex align-items-center">
@@ -610,9 +656,13 @@ const SalesTable = () => {
                       </td>
 
                       <td>
-                        <div className="fw-medium">{sale.branch_name || "N/A"}</div>
+                        <div className="fw-medium">
+                          {sale.branch_name || "N/A"}
+                        </div>
                         {sale.branch_code && (
-                          <div className="text-muted small">{sale.branch_code}</div>
+                          <div className="text-muted small">
+                            {sale.branch_code}
+                          </div>
                         )}
                       </td>
 
@@ -632,7 +682,8 @@ const SalesTable = () => {
 
                       <td>
                         <div className="fw-bold text-dark">
-                          ₹{totalAmount.toLocaleString("en-IN", {
+                          ₹
+                          {totalAmount.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
@@ -647,7 +698,7 @@ const SalesTable = () => {
                       <td>
                         <span
                           className={`badge fw-semibold ${getStatusBadgeClass(
-                            sale.status
+                            sale.status,
                           )}`}
                         >
                           {sale.status
@@ -656,17 +707,21 @@ const SalesTable = () => {
                             : "Draft"}
                         </span>
                         {sale.sale_note && (
-                          <small className="d-block text-muted mt-1 text-truncate" style={{maxWidth: '150px'}} title={sale.sale_note}>
+                          <small
+                            className="d-block text-muted mt-1 text-truncate"
+                            style={{ maxWidth: "150px" }}
+                            title={sale.sale_note}
+                          >
                             {sale.sale_note}
                           </small>
                         )}
                       </td>
-                      
+
                       <td>
                         <div className="d-flex flex-column gap-1">
                           <span
                             className={`badge fw-semibold ${getPaymentStatusBadgeClass(
-                              sale.payment_status
+                              sale.payment_status,
                             )}`}
                           >
                             {sale.payment_status
@@ -676,7 +731,8 @@ const SalesTable = () => {
                           </span>
                           {paidAmount > 0 && (
                             <small className="text-muted">
-                              Paid: ₹{paidAmount.toLocaleString("en-IN", {
+                              Paid: ₹
+                              {paidAmount.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                               })}
@@ -693,11 +749,12 @@ const SalesTable = () => {
                               balanceAmount === 0
                                 ? "text-success"
                                 : balanceAmount < 0
-                                ? "text-danger"
-                                : "text-warning"
+                                  ? "text-danger"
+                                  : "text-warning"
                             }`}
                           >
-                            ₹{balanceAmount.toLocaleString("en-IN", {
+                            ₹
+                            {balanceAmount.toLocaleString("en-IN", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
@@ -941,6 +998,9 @@ const SalesTable = () => {
           key="add-modal"
           onClose={() => setShowAddModal(false)}
           onSave={handleAddSale}
+          onAddCustomer={handleAddCustomer}
+          customerGroups={customerGroups}
+          customers={customers} // Add this line
           loading={actionLoading.type === "add"}
         />
       )}
@@ -999,6 +1059,9 @@ const SalesTable = () => {
           }}
           onSave={handleEditSale}
           sale={selectedItem}
+          onAddCustomer={handleAddCustomer}
+          customerGroups={customerGroups}
+          customers={customers}
           loading={
             actionLoading.type === "update" &&
             actionLoading.id === selectedItem._id
