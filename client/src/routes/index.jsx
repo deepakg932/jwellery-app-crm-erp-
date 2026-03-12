@@ -2,13 +2,10 @@ import { lazy } from "react";
 import { Navigate } from "react-router";
 import MainLayout from "@/layouts/MainLayout";
 import SocialFeed from "@/views/apps/social-feed";
-import PurityPage from "../views/product-section/purity/components/PurityTable";
 
 // ProtectedRoute
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import AddItemModal from "../views/item-master/components/AddItemForm";
-import QuotationsHistory from "../views/manufacturing/quotations/components/QuotationsHistory";
-import path from "path";
 
 // Dashboards
 // const Dashboard = lazy(() => import('@/views/dashboards/dashboard'));
@@ -31,7 +28,7 @@ const Purity = lazy(() => import("@/views/product-section/purity"));
 const HallmarkPage = lazy(() => import("@/views/product-section/hall-mark"));
 const BrandPage = lazy(() => import("@/views/product-section/brand"));
 const StoneType = lazy(() => import("@/views/product-section/stone"));
-const StonePurity = lazy(() => import("@/views/product-section/stone purity"));
+const StonePurity = lazy(() => import("@/views/product-section/stone-purity"));
 const Stone = lazy(() => import("@/views/product-section/stones"));
 const Unit = lazy(() => import("@/views/product-section/unit"));
 const MakingStagePage = lazy(
@@ -234,12 +231,8 @@ const Error500 = lazy(() => import("@/views/error/500"));
 const Maintenance = lazy(() => import("@/views/other-pages/maintenance"));
 
 // Components
-const Widgets = lazy(() => import("@/views/widgets"));
 
 // charts
-const ApexArea = lazy(() => import("@/views/charts/apex/area"));
-const ApexBar = lazy(() => import("@/views/charts/apex/bar"));
-const ApexBubble = lazy(() => import("@/views/charts/apex/bubble"));
 const ApexCandlestick = lazy(() => import("@/views/charts/apex/candlestick"));
 const ApexColumn = lazy(() => import("@/views/charts/apex/column"));
 const ApexHeatmap = lazy(() => import("@/views/charts/apex/heatmap"));
@@ -262,18 +255,6 @@ const BarChartjsCharts = lazy(() => import("@/views/charts/chartjs/bar"));
 const AreaChartjsCharts = lazy(() => import("@/views/charts/chartjs/area"));
 const OtherChartjsCharts = lazy(() => import("@/views/charts/chartjs/other"));
 const ApexTree = lazy(() => import("@/views/charts/apex-tree"));
-
-// Forms
-const BasicElements = lazy(() => import("@/views/forms/basic"));
-const Pickers = lazy(() => import("@/views/forms/pickers"));
-const Select = lazy(() => import("@/views/forms/select"));
-const Validation = lazy(() => import("@/views/forms/validation"));
-const Wizard = lazy(() => import("@/views/forms/wizard"));
-const FileUploads = lazy(() => import("@/views/forms/file-uploads"));
-const TextEditors = lazy(() => import("@/views/forms/editors"));
-const Slider = lazy(() => import("@/views/forms/slider"));
-const Layouts = lazy(() => import("@/views/forms/layouts"));
-const OtherPlugins = lazy(() => import("@/views/forms/other-plugins"));
 
 // Tables
 const TanstackTables = lazy(() => import("@/views/tables/tanstack"));
