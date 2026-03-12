@@ -1,7 +1,7 @@
-// hooks/useCostType.js
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export const useCostType = () => {
   const [costTypes, setCostTypes] = useState([]);
@@ -22,8 +22,8 @@ export const useCostType = () => {
         const mappedCostNames = response.data.data.map((cost) => ({
           _id: cost._id,
           cost_name: cost.cost_name || "",
-          value: cost._id, // Use ID as value for dropdown
-          label: cost.cost_name || "", // Show name as label
+          value: cost._id, 
+          label: cost.cost_name || "", 
         }));
         setCostNames(mappedCostNames);
         return mappedCostNames;
@@ -31,21 +31,21 @@ export const useCostType = () => {
       return [];
     } catch (err) {
       console.error("Error fetching cost names:", err);
+      toast.error("Failed to load cost names", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
 
   // Fetch all cost types
-
   const fetchCostTypes = async () => {
     try {
       setLoading(true);
       setError("");
 
-      // Fetch cost names
       const costNamesData = await fetchCostNames();
 
-      // Fetch cost types
       const response = await axios.get(API_ENDPOINTS.getCostTypes());
       console.log("Cost Types API Response:", response.data);
 
@@ -66,14 +66,11 @@ export const useCostType = () => {
         );
       }
 
-      // Map cost types with cost name lookup from nested structure
       const mappedCostTypes = costTypesData.map((costType) => {
-        // Extract cost name from nested cost_name_id object
         const costNameIdObj = costType.cost_name_id || {};
         const costNameId = costNameIdObj._id || "";
         const costNameText = costNameIdObj.cost_name || "";
 
-        // Also try to find in costNamesData for backup
         const costNameFromList = costNamesData.find(
           (cost) => cost._id === costNameId,
         );
@@ -81,13 +78,12 @@ export const useCostType = () => {
         return {
           _id: costType._id,
           cost_type: costType.cost_type || "",
-          cost_name_id: costNameId, // Store ID from nested object
-          cost_name: costNameText || costNameFromList?.cost_name || "", // Use text from nested object or find
+          cost_name_id: costNameId, 
+          cost_name: costNameText || costNameFromList?.cost_name || "", 
           is_active:
             costType.is_active !== undefined ? costType.is_active : true,
           createdAt: costType.createdAt,
           updatedAt: costType.updatedAt,
-          // Keep original nested object for reference
           cost_name_obj: costNameIdObj,
         };
       });
@@ -101,16 +97,20 @@ export const useCostType = () => {
         err.message ||
         "Failed to load cost types";
       setError(errorMsg);
+      toast.error(errorMsg, {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Add new cost type
   const addCostType = async (costTypeData) => {
+    const toastId = toast.loading("Adding cost type...");
+
     const data = {
       cost_type: costTypeData.cost_type || "",
-      cost_name_id: costTypeData.cost_name_id || "", // Send ID
+      cost_name_id: costTypeData.cost_name_id || "",
       is_active:
         costTypeData.is_active !== undefined ? costTypeData.is_active : true,
     };
@@ -126,12 +126,12 @@ export const useCostType = () => {
       if (response.data && response.data.success && response.data.data) {
         const responseData = response.data.data;
 
-        // Extract cost name from nested object in response
+        
         const costNameIdObj = responseData.cost_name_id || {};
         const costNameId = costNameIdObj._id || data.cost_name_id;
         const costNameText = costNameIdObj.cost_name || "";
 
-        // Find cost name for display (backup)
+        
         const costNameObj =
           costNames.find((cost) => cost._id === costNameId) || null;
 
@@ -139,7 +139,7 @@ export const useCostType = () => {
           _id: responseData._id,
           cost_type: responseData.cost_type || data.cost_type,
           cost_name_id: costNameId,
-          cost_name: costNameText || costNameObj?.cost_name || "", // For display
+          cost_name: costNameText || costNameObj?.cost_name || "",
           is_active:
             responseData.is_active !== undefined
               ? responseData.is_active
@@ -151,6 +151,15 @@ export const useCostType = () => {
 
         console.log("New cost type:", newCostType);
         setCostTypes((prev) => [...prev, newCostType]);
+
+      
+        toast.update(toastId, {
+          render: "Cost type added successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
         return newCostType;
       } else {
         throw new Error(response.data?.message || "Failed to create cost type");
@@ -160,17 +169,29 @@ export const useCostType = () => {
       const errorMsg =
         err.response?.data?.message || err.message || "Failed to add cost type";
       setError(errorMsg);
+
+      
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Update cost type
+  
   const updateCostType = async (id, costTypeData) => {
+ 
+    const toastId = toast.loading("Updating cost type...");
+
     const requestData = {
       cost_type: costTypeData.cost_type || "",
-      cost_name_id: costTypeData.cost_name_id || "", // Send ID
+      cost_name_id: costTypeData.cost_name_id || "",
       is_active:
         costTypeData.is_active !== undefined ? costTypeData.is_active : true,
     };
@@ -189,12 +210,12 @@ export const useCostType = () => {
       if (response.data && response.data.success && response.data.data) {
         const responseData = response.data.data;
 
-        // Extract cost name from nested object in response
+  
         const costNameIdObj = responseData.cost_name_id || {};
         const costNameId = costNameIdObj._id || requestData.cost_name_id;
         const costNameText = costNameIdObj.cost_name || "";
 
-        // Find cost name for display (backup)
+      
         const costNameObj =
           costNames.find((cost) => cost._id === costNameId) || null;
 
@@ -202,7 +223,7 @@ export const useCostType = () => {
           _id: responseData._id || id,
           cost_type: responseData.cost_type || requestData.cost_type,
           cost_name_id: costNameId,
-          cost_name: costNameText || costNameObj?.cost_name || "", // For display
+          cost_name: costNameText || costNameObj?.cost_name || "", 
           is_active:
             responseData.is_active !== undefined
               ? responseData.is_active
@@ -219,6 +240,14 @@ export const useCostType = () => {
           ),
         );
 
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Cost type updated successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
         return updatedData;
       } else {
         throw new Error(response.data?.message || "Failed to update cost type");
@@ -230,14 +259,26 @@ export const useCostType = () => {
         err.message ||
         "Failed to update cost type";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  // Delete cost type
+
   const deleteCostType = async (id) => {
+    
+    const toastId = toast.loading("Deleting cost type...");
+
     try {
       setLoading(true);
       setError("");
@@ -248,6 +289,13 @@ export const useCostType = () => {
 
       if (response.data && response.data.success) {
         setCostTypes((prev) => prev.filter((costType) => costType._id !== id));
+
+        toast.update(toastId, {
+          render: "Cost type deleted successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
       } else {
         throw new Error(response.data?.message || "Failed to delete cost type");
       }
@@ -258,6 +306,15 @@ export const useCostType = () => {
         err.message ||
         "Failed to delete cost type";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);

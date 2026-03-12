@@ -1,42 +1,43 @@
 import React, { useState, useRef } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
+import { toast } from "react-toastify";
 
-const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stonePurities = [] }) => {
-  // DEBUG: Log what we're receiving
-  console.log("AddStoneForm - stoneTypes:", stoneTypes);
-  console.log("AddStoneForm - stonePurities:", stonePurities);
-  
-  // ONLY 5 FIELDS
+const AddStoneForm = ({
+  onClose,
+  onSave,
+  loading = false,
+  stoneTypes = [],
+  stonePurities = [],
+}) => {
   const [stoneData, setStoneData] = useState({
     stone_name: "",
     stone_type: "",
     stone_purity: "",
     stone_price: "",
   });
-  
+
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate ONLY 5 FIELDS
+
     if (!stoneData.stone_name.trim()) {
-      alert("Please enter stone name");
+      toast.error("Please enter stone name");
       return;
     }
     if (!stoneData.stone_type) {
-      alert("Please select stone type");
+      toast.error("Please select stone type");
       return;
     }
     if (!stoneData.stone_purity) {
-      alert("Please select stone purity");
+      toast.error("Please select stone purity");
       return;
     }
     if (!stoneData.stone_price || parseFloat(stoneData.stone_price) <= 0) {
-      alert("Please enter a valid price");
+      toast.error("Please enter a valid price");
       return;
     }
 
@@ -47,15 +48,32 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
       stone_price: parseFloat(stoneData.stone_price),
     };
 
-    console.log("Submitting stone with 5 fields:", dataToSend);
-    onSave(dataToSend, image);
+    try {
+      await onSave(dataToSend, image);
+
+      // Reset form after successful save
+      setStoneData({
+        stone_name: "",
+        stone_type: "",
+        stone_purity: "",
+        stone_price: "",
+      });
+      setImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (error) {
+      console.error("Save failed:", error);
+      return;
+    }
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setStoneData(prev => ({
+    setStoneData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -63,14 +81,14 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
     if (file) {
       // Validate file
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
+        toast.error("File size should be less than 5MB");
         return;
       }
-      if (!file.type.startsWith('image/')) {
-        alert("Please upload an image file");
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file");
         return;
       }
-      
+
       setImage(file);
       const previewUrl = URL.createObjectURL(file);
       setImagePreview(previewUrl);
@@ -96,7 +114,7 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       handleImageChange(files[0]);
@@ -122,10 +140,13 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
   };
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered modal-lg">
         <div className="modal-content rounded-3">
-          
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Add New Stone</h5>
             <button
@@ -153,7 +174,6 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                       placeholder="e.g., Blue Sapphire, Diamond"
                       value={stoneData.stone_name}
                       onChange={handleInputChange}
-                      required
                       disabled={loading}
                     />
                   </div>
@@ -168,7 +188,6 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                       className="form-select"
                       value={stoneData.stone_type}
                       onChange={handleInputChange}
-                      required
                       disabled={loading}
                     >
                       <option value="">Select Stone Type</option>
@@ -186,7 +205,8 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                     </select>
                     {stoneTypes && stoneTypes.length === 0 && !loading && (
                       <div className="text-danger small mt-1">
-                        No stone types available. Please refresh or add a stone first.
+                        No stone types available. Please refresh or add a stone
+                        first.
                       </div>
                     )}
                   </div>
@@ -201,7 +221,6 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                       className="form-select"
                       value={stoneData.stone_purity}
                       onChange={handleInputChange}
-                      required
                       disabled={loading}
                     >
                       <option value="">Select Stone Purity</option>
@@ -217,11 +236,14 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                         </option>
                       )}
                     </select>
-                    {stonePurities && stonePurities.length === 0 && !loading && (
-                      <div className="text-danger small mt-1">
-                        No stone purities available. Please refresh or add a stone first.
-                      </div>
-                    )}
+                    {stonePurities &&
+                      stonePurities.length === 0 &&
+                      !loading && (
+                        <div className="text-danger small mt-1">
+                          No stone purities available. Please refresh or add a
+                          stone first.
+                        </div>
+                      )}
                   </div>
 
                   {/* Stone Price - Field 4 */}
@@ -238,7 +260,6 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                       onChange={handleInputChange}
                       min="0"
                       step="1"
-                      required
                       disabled={loading}
                     />
                   </div>
@@ -247,10 +268,8 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                 {/* Right Column - Image Upload */}
                 <div className="col-md-6">
                   <div className="mb-3">
-                    <label className="form-label fw-medium">
-                      Stone Image <span className="text-danger">*</span>
-                    </label>
-                    
+                    <label className="form-label fw-medium">Stone Image</label>
+
                     {imagePreview ? (
                       <div className="text-center">
                         <div className="position-relative d-inline-block">
@@ -258,24 +277,32 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                             src={imagePreview}
                             alt="Preview"
                             className="img-thumbnail rounded"
-                            style={{ width: '200px', height: '200px', objectFit: 'cover' }}
+                            style={{
+                              width: "200px",
+                              height: "200px",
+                              objectFit: "cover",
+                            }}
                           />
                           <button
                             type="button"
                             onClick={removeImage}
                             className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                            style={{ transform: 'translate(-50%, -50%)' }}
+                            style={{ transform: "translate(-50%, -50%)" }}
                             disabled={loading}
                           >
                             <FiX size={12} />
                           </button>
                         </div>
-                        <p className="text-muted small mt-2">Click or drag to change image</p>
+                        <p className="text-muted small mt-2">
+                          Click or drag to change image
+                        </p>
                       </div>
                     ) : (
                       <div
                         className={`border-2 border-dashed rounded-3 p-5 text-center cursor-pointer ${
-                          dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                          dragActive
+                            ? "border-primary bg-primary bg-opacity-10"
+                            : "border-secondary-subtle"
                         }`}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
@@ -291,7 +318,7 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
                           className="d-none"
                           disabled={loading}
                         />
-                        
+
                         <FiImage className="text-secondary mb-3" size={48} />
                         <p className="mb-1">
                           Drop stone image here or{" "}
@@ -319,12 +346,15 @@ const AddStoneForm = ({ onClose, onSave, loading = false, stoneTypes = [], stone
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={loading || !stoneData.stone_name.trim() || !stoneData.stone_type || 
-                         !stoneData.stone_purity || !stoneData.stone_price}
+                disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Saving...
                   </>
                 ) : (

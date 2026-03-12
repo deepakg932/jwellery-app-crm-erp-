@@ -1757,7 +1757,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
 
                 {/* Summary Section - Updated with Shipping Cost */}
                 <div className="row mt-4">
-                  <div className="col-md-6">
+                  {/* <div className="col-md-6">
                     <div className="mb-3">
                       <label className="form-label fw-medium">
                         Payment Status
@@ -1774,7 +1774,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                         <option value="partial">Partial</option>
                       </select>
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="col-md-6">
                     <div className="bg-light p-3 rounded-3">

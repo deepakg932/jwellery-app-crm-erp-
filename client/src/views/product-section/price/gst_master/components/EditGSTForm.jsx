@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FiPercent } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
   const [formData, setFormData] = useState({
@@ -29,7 +30,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
     // Validation
     const errors = [];
 
-    // Validate percentages (frontend validation only)
+    // Validate percentages
     const percentageFields = ['sgst_percentage', 'cgst_percentage', 'igst_percentage', 'utgst_percentage'];
     percentageFields.forEach(field => {
       const value = parseFloat(formData[field]);
@@ -38,8 +39,17 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
       }
     });
 
+    // Check if at least one percentage is entered
+    const hasAtLeastOnePercentage = percentageFields.some(field => 
+      formData[field] !== "" && parseFloat(formData[field]) > 0
+    );
+
+    if (!hasAtLeastOnePercentage) {
+      errors.push("Please enter at least one GST percentage");
+    }
+
     if (errors.length > 0) {
-      setError(errors.join(', '));
+      toast.error(errors.join(', '));
       return;
     }
 
@@ -56,7 +66,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
       await onSubmit(updatedData);
     } catch (err) {
       console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
+      toast.error("Failed to update. Please try again.");
     }
   };
 
@@ -96,21 +106,6 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
     onHide();
   };
 
-  // Check if form is valid
-  const isFormValid = () => {
-    const fields = ['sgst_percentage', 'cgst_percentage', 'igst_percentage', 'utgst_percentage'];
-    const hasAtLeastOneValue = fields.some(field => formData[field] !== "");
-    
-    if (!hasAtLeastOneValue) return false;
-    
-    // Check all entered values are valid
-    return fields.every(field => {
-      if (formData[field] === "") return true; // Empty is okay
-      const value = parseFloat(formData[field]);
-      return !isNaN(value) && value >= 0 && value <= 100;
-    });
-  };
-
   // Don't render if not shown
   if (!show) return null;
 
@@ -135,13 +130,6 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -156,6 +144,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     <input
                       type="text"
                       className="form-control form-control-lg"
+                      placeholder="0.00"
                       name="sgst_percentage"
                       value={formData.sgst_percentage}
                       onChange={handlePercentageChange}
@@ -163,6 +152,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     />
                     <span className="input-group-text">%</span>
                   </div>
+                  <div className="form-text">State Goods & Services Tax</div>
                 </div>
 
                 {/* CGST */}
@@ -172,6 +162,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     <input
                       type="text"
                       className="form-control form-control-lg"
+                      placeholder="0.00"
                       name="cgst_percentage"
                       value={formData.cgst_percentage}
                       onChange={handlePercentageChange}
@@ -179,6 +170,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     />
                     <span className="input-group-text">%</span>
                   </div>
+                  <div className="form-text">Central Goods & Services Tax</div>
                 </div>
 
                 {/* IGST */}
@@ -188,6 +180,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     <input
                       type="text"
                       className="form-control form-control-lg"
+                      placeholder="0.00"
                       name="igst_percentage"
                       value={formData.igst_percentage}
                       onChange={handlePercentageChange}
@@ -195,6 +188,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     />
                     <span className="input-group-text">%</span>
                   </div>
+                  <div className="form-text">Integrated Goods & Services Tax</div>
                 </div>
 
                 {/* UTGST */}
@@ -204,6 +198,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     <input
                       type="text"
                       className="form-control form-control-lg"
+                      placeholder="0.00"
                       name="utgst_percentage"
                       value={formData.utgst_percentage}
                       onChange={handlePercentageChange}
@@ -211,6 +206,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
                     />
                     <span className="input-group-text">%</span>
                   </div>
+                  <div className="form-text">Union Territory GST</div>
                 </div>
 
                 {/* Preview Total (Calculated in frontend for display only) */}
@@ -251,7 +247,7 @@ const EditGSTForm = ({ show, onHide, onSubmit, gstData, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!isFormValid() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>

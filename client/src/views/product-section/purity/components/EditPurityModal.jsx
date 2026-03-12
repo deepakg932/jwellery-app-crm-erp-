@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FiUpload, FiImage, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 
-const EditPurityModal = ({ 
-  show, 
-  onHide, 
-  onSubmit, 
-  purity, 
+const EditPurityModal = ({
+  show,
+  onHide,
+  onSubmit,
+  purity,
   loading = false,
-  metalOptions = [] 
+  metalOptions = [],
 }) => {
   const [purity_name, setPurityName] = useState("");
   const [metal_type, setMetalType] = useState("");
@@ -34,89 +35,103 @@ const EditPurityModal = ({
   useEffect(() => {
     return () => {
       // Clean up any blob URLs
-      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+      if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview);
       }
     };
   }, [imageFile, imagePreview]);
 
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    
+  const validateForm = () => {
+    const newErrors = {};
     if (!purity_name.trim()) {
-      setError("Please enter a purity name");
-      return;
+      newErrors.purity_name = "Please enter purity name";
     }
-
     if (!metal_type.trim()) {
-      setError("Please select metal type");
-      return;
+      newErrors.metal_type = "Please select metal type";
     }
-
     if (!percentage.trim()) {
-      setError("Please enter percentage");
-      return;
+      newErrors.percentage = "Please enter percentage";
     }
 
-    const perc = parseFloat(percentage);
-    if (isNaN(perc) || perc < 0 || perc > 100) {
-      setError("Percentage must be between 0 and 100");
-      return;
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors)[0]);
     }
 
-    console.log("Submitting purity update:", {
-      purity_name: purity_name,
-      metal_type: metal_type,
-      percentage: perc,
-      hasImageFile: !!imageFile,
-      purityId: purity?._id,
-    });
+    return Object.keys(newErrors).length === 0;
+  };
 
-    try {
-      await onSubmit({
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+
+      if (!validateForm()) return;
+
+      const perc = parseFloat(percentage);
+      if (isNaN(perc) || perc < 0 || perc > 100) {
+        toast.error("Percentage must be between 0 and 100");
+        return;
+      }
+
+      console.log("Submitting purity update:", {
         purity_name: purity_name,
         metal_type: metal_type,
         percentage: perc,
-        imageFile: imageFile,
+        hasImageFile: !!imageFile,
+        purityId: purity?._id,
       });
-    } catch (err) {
-      console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
-    }
-  }, [purity_name, metal_type, percentage, imageFile, purity, onSubmit]);
 
-  const handleImageChange = useCallback((file) => {
-    if (file) {
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("File size should be less than 5MB");
-        return;
+      try {
+        await onSubmit({
+          purity_name: purity_name,
+          metal_type: metal_type,
+          percentage: perc,
+          imageFile: imageFile,
+        });
+      } catch (err) {
+        console.error("Form submission error:", err);
       }
-      
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError("Please upload an image file");
-        return;
-      }
-      
-      // Clean up previous blob URL if exists
-      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(imagePreview);
-      }
-      
-      setImageFile(file);
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-      setError("");
-    }
-  }, [imageFile, imagePreview]);
+    },
+    [purity_name, metal_type, percentage, imageFile, purity, onSubmit],
+  );
 
-  const handleFileInput = useCallback((e) => {
-    const file = e.target.files[0];
-    if (file) {
-      handleImageChange(file);
-    }
-  }, [handleImageChange]);
+  const handleImageChange = useCallback(
+    (file) => {
+      if (file) {
+        // Validate file size (5MB max)
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("File size should be less than 5MB");
+          return;
+        }
+
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+          toast.error("Please upload an image file");
+          return;
+        }
+
+        // Clean up previous blob URL if exists
+        if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
+          URL.revokeObjectURL(imagePreview);
+        }
+
+        setImageFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        toast.success("Image uploaded successfully");
+      }
+    },
+    [imageFile, imagePreview],
+  );
+
+  const handleFileInput = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        handleImageChange(file);
+      }
+    },
+    [handleImageChange],
+  );
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -128,19 +143,22 @@ const EditPurityModal = ({
     }
   }, []);
 
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    const files = e.dataTransfer.files;
-    if (files && files[0]) {
-      handleImageChange(files[0]);
-    }
-  }, [handleImageChange]);
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+
+      const files = e.dataTransfer.files;
+      if (files && files[0]) {
+        handleImageChange(files[0]);
+      }
+    },
+    [handleImageChange],
+  );
 
   const removeImage = useCallback(() => {
-    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+    if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
@@ -153,7 +171,7 @@ const EditPurityModal = ({
 
   const handleClose = useCallback(() => {
     // Clean up object URL if we created one
-    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+    if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
@@ -171,10 +189,13 @@ const EditPurityModal = ({
   if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Edit Purity</h5>
@@ -187,17 +208,9 @@ const EditPurityModal = ({
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              
               {/* Purity Name */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
@@ -211,7 +224,6 @@ const EditPurityModal = ({
                     setPurityName(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -228,7 +240,6 @@ const EditPurityModal = ({
                     setMetalType(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>
@@ -248,7 +259,9 @@ const EditPurityModal = ({
                 <input
                   type="number"
                   className={`form-control form-control-l ${
-                    percentage && !validatePercentage(percentage) ? 'is-invalid' : ''
+                    percentage && !validatePercentage(percentage)
+                      ? "is-invalid"
+                      : ""
                   }`}
                   value={percentage}
                   onChange={(e) => {
@@ -258,7 +271,6 @@ const EditPurityModal = ({
                   min="0"
                   max="100"
                   step="0.1"
-                  required
                   disabled={loading}
                 />
                 {percentage && !validatePercentage(percentage) && (
@@ -274,7 +286,7 @@ const EditPurityModal = ({
               {/* Image Upload */}
               <div className="mb-2">
                 <label className="form-label fw-medium">Image</label>
-                
+
                 {/* Current Image Preview */}
                 {imagePreview ? (
                   <div className="mb-3 position-relative d-inline-block">
@@ -282,16 +294,22 @@ const EditPurityModal = ({
                       src={imagePreview}
                       alt="Preview"
                       className="img-thumbnail rounded border"
-                      style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                      style={{
+                        width: "120px",
+                        height: "120px",
+                        objectFit: "cover",
+                      }}
                       onError={(e) => {
                         // If image fails to load, show placeholder
-                        e.target.style.display = 'none';
+                        e.target.style.display = "none";
                         const parent = e.target.parentElement;
-                        const placeholder = document.createElement('div');
-                        placeholder.className = 'd-flex align-items-center justify-content-center rounded border';
-                        placeholder.style.width = '120px';
-                        placeholder.style.height = '120px';
-                        placeholder.innerHTML = '<FiImage class="text-muted" size={24} />';
+                        const placeholder = document.createElement("div");
+                        placeholder.className =
+                          "d-flex align-items-center justify-content-center rounded border";
+                        placeholder.style.width = "120px";
+                        placeholder.style.height = "120px";
+                        placeholder.innerHTML =
+                          '<FiImage class="text-muted" size={24} />';
                         parent.appendChild(placeholder);
                       }}
                       key={`preview-${imagePreview}`}
@@ -301,7 +319,7 @@ const EditPurityModal = ({
                         type="button"
                         onClick={removeImage}
                         className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                        style={{ transform: 'translate(-50%, -50%)' }}
+                        style={{ transform: "translate(-50%, -50%)" }}
                         disabled={loading}
                         aria-label="Remove image"
                       >
@@ -316,22 +334,22 @@ const EditPurityModal = ({
                   <div className="mb-3 d-flex align-items-center gap-2">
                     <div
                       className="d-flex align-items-center justify-content-center rounded border"
-                      style={{ width: '80px', height: '80px' }}
+                      style={{ width: "80px", height: "80px" }}
                     >
                       <FiImage className="text-muted" size={24} />
                     </div>
                     <p className="small text-muted mb-0">No image set</p>
                   </div>
                 )}
-                
+
                 {/* Change Image Section */}
                 <label className="form-label fw-medium d-block mb-2">
                   {imagePreview ? "Change Image" : "Upload Image"}
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-3 text-center cursor-pointer ${
-                    dragActive 
-                      ? "border-primary bg-primary bg-opacity-10" 
+                    dragActive
+                      ? "border-primary bg-primary bg-opacity-10"
                       : "border-muted hover:border-primary hover:bg-light"
                   }`}
                   onDragEnter={handleDrag}
@@ -339,7 +357,7 @@ const EditPurityModal = ({
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  style={{ padding: '20px' }}
+                  style={{ padding: "20px" }}
                 >
                   <input
                     type="file"
@@ -349,7 +367,7 @@ const EditPurityModal = ({
                     className="d-none"
                     disabled={loading}
                   />
-                  
+
                   <FiImage className="mb-2 text-muted" size={24} />
                   <p className="text-muted small mb-0">
                     Drop new image here or browse
@@ -378,7 +396,11 @@ const EditPurityModal = ({
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Updating...
                   </>
                 ) : (

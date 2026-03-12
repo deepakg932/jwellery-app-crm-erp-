@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const AddSubCategoryModal = ({
   onClose,
@@ -12,14 +13,18 @@ const AddSubCategoryModal = ({
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim() || !selectedCategory.trim()) return;
-
-    const selectedCat = categories.find((cat) => cat.id === selectedCategory);
+    if (!name.trim() ){
+      toast.error("Sub-category name is required");
+      return;
+    }
+    if (!selectedCategory.trim()) {
+      toast.error("Please select a parent category");
+      return;
+    }
 
     onSave({
       name: name,
@@ -39,13 +44,13 @@ const AddSubCategoryModal = ({
       if (file) {
         // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
-          setError("File size should be less than 5MB");
+          toast.error("File size should be less than 5MB");
           return;
         }
 
         // Validate file type
         if (!file.type.startsWith("image/")) {
-          setError("Please upload an image file");
+          toast.error("Please upload an image file");
           return;
         }
 
@@ -57,7 +62,6 @@ const AddSubCategoryModal = ({
         setImage(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
-        setError("");
       }
     },
     [image, imagePreview]
@@ -143,13 +147,6 @@ const AddSubCategoryModal = ({
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -165,9 +162,7 @@ const AddSubCategoryModal = ({
                   value={name}
                   onChange={(e) => {
                     setname(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -175,19 +170,17 @@ const AddSubCategoryModal = ({
               {/* Parent Category Dropdown */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
-                  Parent Category <span className="text-danger">*</span>
+                  Category <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-l"
                   value={selectedCategory}
                   onChange={(e) => {
                     setSelectedCategory(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 >
-                  <option value="">Select parent category</option>
+                  <option value="">Select category</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
@@ -277,7 +270,7 @@ const AddSubCategoryModal = ({
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!name.trim() || !selectedCategory.trim() || loading}
+                disabled={ loading}
               >
                 {loading ? (
                   <>

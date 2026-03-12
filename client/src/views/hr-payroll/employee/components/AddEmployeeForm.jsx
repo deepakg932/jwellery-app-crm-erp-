@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { FiUpload, FiUser, FiCamera } from "react-icons/fi";
+import { FiUpload, FiUser, FiCamera, FiCalendar } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
 import { toast } from "react-toastify";
 
-const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
+const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [], employees, departments = [], designations = [] }) => {
   const [formData, setFormData] = useState({
+    salutation: "",
     name: "",
     email: "",
-    phone: "",
-    pan_number: "",
-    aadhaar_number: "",
-    address: "",
-    city: "",
-    state: "",
+    profile_picture: null,
+    date_of_birth: "",
+    designation_id: "",
+    department_id: "",
     country: "India",
-    pincode: "",
-    role_id: "",
-    basic_salary: "",
-    image: null,
+    mobile: "",
+    gender: "",
+    joining_date: "",
+    reporting_to: "",
+    language: "English",
+    user_role: "",
+    address: "",
+    about: "",
     status: true,
   });
 
@@ -26,6 +29,10 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
   const [imagePreview, setImagePreview] = useState(null);
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+
+
 
   // Initialize countries on component mount
   useEffect(() => {
@@ -35,23 +42,14 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
       label: country.name,
       phoneCode: country.phonecode,
     }));
-
     setCountries(formattedCountries);
-
-    // Set default role if available
-    if (roles.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        role_id: roles[0]._id,
-      }));
-    }
-  }, [roles]);
+  }, []);
 
   // Update states when country changes
   useEffect(() => {
     if (formData.country) {
       const countryObj = Country.getAllCountries().find(
-        (c) => c.name === formData.country,
+        (c) => c.name === formData.country
       );
       if (countryObj) {
         const countryStates = State.getStatesOfCountry(countryObj.isoCode);
@@ -59,39 +57,38 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
           value: state.name,
           label: state.name,
         }));
-
         setStates(formattedStates);
-        setFormData((prev) => ({ ...prev, state: "", city: "" }));
+        setSelectedState("");
         setCities([]);
+        setSelectedCity("");
       }
     }
   }, [formData.country]);
 
   // Update cities when state changes
   useEffect(() => {
-    if (formData.country && formData.state) {
+    if (formData.country && selectedState) {
       const countryObj = Country.getAllCountries().find(
-        (c) => c.name === formData.country,
+        (c) => c.name === formData.country
       );
       const stateObj = State.getStatesOfCountry(countryObj?.isoCode).find(
-        (s) => s.name === formData.state,
+        (s) => s.name === selectedState
       );
 
       if (countryObj && stateObj) {
         const stateCities = City.getCitiesOfState(
           countryObj.isoCode,
-          stateObj.isoCode,
+          stateObj.isoCode
         );
         const formattedCities = stateCities.map((city) => ({
           value: city.name,
           label: city.name,
         }));
-
         setCities(formattedCities);
-        setFormData((prev) => ({ ...prev, city: "" }));
+        setSelectedCity("");
       }
     }
-  }, [formData.country, formData.state]);
+  }, [formData.country, selectedState]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -106,58 +103,40 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
       newErrors.email = "Please enter a valid email address";
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Phone number is required";
-    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
-      newErrors.phone = "Phone number must be 10 digits";
+    if (!formData.designation_id) {
+      newErrors.designation_id = "Designation is required";
     }
 
-    // PAN number validation (10 characters, format: ABCDE1234F)
-    if (
-      formData.pan_number.trim() &&
-      !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.pan_number.trim())
-    ) {
-      newErrors.pan_number =
-        "PAN number must be 10 characters (e.g., ABCDE1234F)";
+    if (!formData.department_id) {
+      newErrors.department_id = "Department is required";
     }
 
-    // Aadhar number validation (12 digits)
-    if (
-      formData.aadhaar_number.trim() &&
-      !/^\d{12}$/.test(formData.aadhaar_number.trim())
-    ) {
-      newErrors.aadhaar_number = "Aadhar number must be 12 digits";
+    if (!formData.mobile.trim()) {
+      newErrors.mobile = "Mobile number is required";
+    } else if (!/^\d{10}$/.test(formData.mobile.trim())) {
+      newErrors.mobile = "Mobile number must be 10 digits";
     }
 
-    if (!formData.address.trim()) {
-      newErrors.address = "Address is required";
+    if (!formData.gender) {
+      newErrors.gender = "Gender is required";
     }
 
-    if (!formData.role_id.trim()) {
-      newErrors.role_id = "Role is required";
+    if (!formData.joining_date) {
+      newErrors.joining_date = "Joining date is required";
     }
 
-    if (!formData.basic_salary || parseFloat(formData.basic_salary) <= 0) {
-      newErrors.basic_salary = "Valid basic salary is required";
-    }
-
-    if (!formData.country.trim()) {
+    if (!formData.country) {
       newErrors.country = "Country is required";
     }
 
-    if (!formData.state.trim()) {
+    if (!selectedState) {
       newErrors.state = "State is required";
     }
 
-    if (!formData.city.trim()) {
+    if (!selectedCity) {
       newErrors.city = "City is required";
     }
 
-    if (!formData.pincode.trim()) {
-      newErrors.pincode = "Pincode is required";
-    } else if (!/^\d{6}$/.test(formData.pincode.trim())) {
-      newErrors.pincode = "Pincode must be 6 digits";
-    }
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
       toast.error(Object.values(newErrors)[0]);
@@ -169,10 +148,9 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
         setErrors((prev) => ({
           ...prev,
-          image: "Image size should be less than 5MB",
+          profile_picture: "Image size should be less than 5MB",
         }));
         return;
       }
@@ -180,149 +158,139 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
       if (!file.type.startsWith("image/")) {
         setErrors((prev) => ({
           ...prev,
-          image: "Please upload an image file",
+          profile_picture: "Please upload an image file",
         }));
         return;
       }
 
-      setFormData((prev) => ({ ...prev, image: file }));
+      setFormData((prev) => ({ ...prev, profile_picture: file }));
       setImagePreview(URL.createObjectURL(file));
 
-      if (errors.image) {
-        setErrors((prev) => ({ ...prev, image: "" }));
+      if (errors.profile_picture) {
+        setErrors((prev) => ({ ...prev, profile_picture: "" }));
       }
     }
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const toastId = toast.loading("");
+    const toastId = toast.loading("Saving employee...");
 
     try {
+      // Build address components
+      const addressParts = [];
+      if (formData.address) addressParts.push(formData.address);
+      if (selectedCity) addressParts.push(selectedCity);
+      if (selectedState) addressParts.push(selectedState);
+      if (formData.country) addressParts.push(formData.country);
+      
+      const fullAddress = addressParts.join(', ');
+
       const payload = {
+        salutation: formData.salutation,
         name: formData.name.trim(),
         email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        pan_number: formData.pan_number.trim().toUpperCase(),
-        aadhaar_number: formData.aadhaar_number.trim(),
-        address: formData.address.trim(),
-        city: formData.city.trim(),
-        state: formData.state.trim(),
-        country: formData.country.trim(),
-        pincode: formData.pincode.trim(),
-        role_id: formData.role_id,
-        basic_salary: parseFloat(formData.basic_salary),
-        image: formData.image,
+        profile_picture: formData.profile_picture,
+        date_of_birth: formData.date_of_birth,
+        designation_id: formData.designation_id,
+        department_id: formData.department_id,
+        country: formData.country,
+        state: selectedState, // Add state to payload
+        city: selectedCity,   // Add city to payload
+        mobile: formData.mobile.trim(),
+        gender: formData.gender,
+        joining_date: formData.joining_date,
+        reporting_to: formData.reporting_to,
+        language: formData.language,
+        user_role: formData.user_role,
+        address: fullAddress,
+        about: formData.about,
         status: formData.status ? "active" : "inactive",
       };
 
       console.log("Submitting employee data:", payload);
-
-      // Wait for the save operation to complete
       await onSave(payload);
 
-      // Success - update toast and reset form
       toast.update(toastId, {
         render: "Employee saved successfully!",
         type: "success",
         isLoading: false,
         autoClose: 3000,
       });
-
+      
       // Reset form
-      const resetRole = roles.length > 0 ? roles[0]._id : "";
-
+      const prefix = "EMP";
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      
       setFormData({
+        salutation: "",
         name: "",
         email: "",
-        phone: "",
-        pan_number: "",
-        aadhaar_number: "",
-        address: "",
-        city: "",
-        state: "",
+        profile_picture: null,
+        date_of_birth: "",
+        designation_id: "",
+        department_id: "",
         country: "India",
-        pincode: "",
-        role_id: resetRole,
-        basic_salary: "",
-        image: null,
+        mobile: "",
+        gender: "",
+        joining_date: "",
+        reporting_to: "",
+        language: "English",
+        user_role: "",
+        address: "",
+        about: "",
         status: true,
       });
       setImagePreview(null);
+      setSelectedState("");
+      setSelectedCity("");
       setErrors({});
     } catch (error) {
       console.error("Error saving employee:", error);
-
-      // Error - update toast with error message
       toast.update(toastId, {
-        render:
-          error.response?.data?.message ||
-          "Failed to save employee. Please try again.",
+        render: error.response?.data?.message || "Failed to save employee. Please try again.",
         type: "error",
         isLoading: false,
         autoClose: 4000,
       });
-
-      // DO NOT reset form or close modal - keep data for user to correct
-      // Highlight phone field if duplicate error
-      if (error.response?.data?.message?.includes("phone already exists")) {
-        setErrors((prev) => ({
-          ...prev,
-          phone: "This phone number is already registered",
-        }));
-      }
     }
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : name === "pan_number"
-            ? value.toUpperCase()
-            : value,
+      [name]: type === "checkbox" ? checked : value,
     }));
 
+    // Clear error for this field
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
   const handleClose = () => {
-    const resetRole = roles.length > 0 ? roles[0]._id : "";
-
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      pan_number: "",
-      aadhaar_number: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "India",
-      pincode: "",
-      role_id: resetRole,
-      basic_salary: "",
-      image: null,
-      status: true,
-    });
-    setImagePreview(null);
-    setErrors({});
     onClose();
   };
 
   // Get country phone code
   const getPhoneCode = () => {
     const countryObj = Country.getAllCountries().find(
-      (c) => c.name === formData.country,
+      (c) => c.name === formData.country
     );
     return countryObj ? `+${countryObj.phonecode}` : "+91";
+  };
+
+  // Format date for input
+  const formatDateForInput = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   return (
@@ -331,9 +299,9 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
       style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
       tabIndex="-1"
     >
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content rounded-3">
-          <div className="modal-header border-bottom pb-3">
+      <div className="modal-dialog modal-dialog-centered modal-xl">
+        <div className="modal-content rounded-3" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="modal-header border-bottom pb-3 sticky-top bg-white">
             <h5 className="modal-title fw-bold fs-5">Add Employee</h5>
             <button
               type="button"
@@ -370,7 +338,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                       <label
                         htmlFor="imageUpload"
                         className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle p-2 cursor-pointer"
-                        style={{ width: "40px", height: "40px" }}
+                        style={{ width: "40px", height: "40px", cursor: "pointer" }}
                       >
                         <FiCamera size={20} />
                         <input
@@ -383,15 +351,30 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                         />
                       </label>
                     </div>
-                    <p className="text-muted small mb-0">
-                      Upload employee photo (Max 5MB)
-                    </p>
-                    {errors.image && (
-                      <div className="text-danger small mt-1">
-                        {errors.image}
-                      </div>
+                    <p className="text-muted small mb-0">Profile Picture</p>
+                    {errors.profile_picture && (
+                      <div className="text-danger small mt-1">{errors.profile_picture}</div>
                     )}
                   </div>
+                </div>
+
+                {/* Salutation */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">Salutation</label>
+                  <select
+                    name="salutation"
+                    className="form-control form-control-lg"
+                    value={formData.salutation}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select Salutation</option>
+                    <option value="Mr.">Mr.</option>
+                    <option value="Ms.">Ms.</option>
+                    <option value="Mrs.">Mrs.</option>
+                    <option value="Dr.">Dr.</option>
+                    <option value="Prof.">Prof.</option>
+                  </select>
                 </div>
 
                 {/* Employee Name */}
@@ -405,7 +388,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     className={`form-control form-control-lg ${
                       errors.name ? "is-invalid" : ""
                     }`}
-                    placeholder="Enter employee name"
+                    placeholder="e.g. John Doe"
                     value={formData.name}
                     onChange={handleChange}
                     disabled={loading}
@@ -415,10 +398,10 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                   )}
                 </div>
 
-                {/* Email */}
+                {/* Employee Email */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
-                    Email Address <span className="text-danger">*</span>
+                    Employee Email <span className="text-danger">*</span>
                   </label>
                   <input
                     type="email"
@@ -426,7 +409,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     className={`form-control form-control-lg ${
                       errors.email ? "is-invalid" : ""
                     }`}
-                    placeholder="Enter email address"
+                    placeholder="e.g. johndoe@example.com"
                     value={formData.email}
                     onChange={handleChange}
                     disabled={loading}
@@ -436,155 +419,206 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                   )}
                 </div>
 
-                {/* Phone */}
+                {/* Date of Birth */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">Date of Birth</label>
+                  <div className="input-group">
+                    <span className="input-group-text">
+                      <FiCalendar />
+                    </span>
+                    <input
+                      type="date"
+                      name="date_of_birth"
+                      className="form-control form-control-lg"
+                      value={formData.date_of_birth}
+                      onChange={handleChange}
+                      disabled={loading}
+                      max={formatDateForInput(new Date())}
+                    />
+                  </div>
+                </div>
+
+                {/* Designation */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
-                    Phone Number <span className="text-danger">*</span>
+                    Designation <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="designation_id"
+                    className={`form-control form-control-lg ${
+                      errors.designation_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.designation_id}
+                    onChange={handleChange}
+                    disabled={loading || designations.length === 0}
+                  >
+                    <option value="">Select Designation</option>
+                    {designations.map((des) => (
+                      <option key={des._id} value={des._id}>
+                        {des.designation_name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.designation_id && (
+                    <div className="invalid-feedback">{errors.designation_id}</div>
+                  )}
+                </div>
+
+                {/* Department */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">
+                    Department <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="department_id"
+                    className={`form-control form-control-lg ${
+                      errors.department_id ? "is-invalid" : ""
+                    }`}
+                    value={formData.department_id}
+                    onChange={handleChange}
+                    disabled={loading || departments.length === 0}
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map((dept) => (
+                      <option key={dept._id} value={dept._id}>
+                        {dept.department_name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.department_id && (
+                    <div className="invalid-feedback">{errors.department_id}</div>
+                  )}
+                </div>
+
+                {/* Mobile */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">
+                    Mobile <span className="text-danger">*</span>
                   </label>
                   <div className="input-group">
                     <span className="input-group-text">{getPhoneCode()}</span>
                     <input
                       type="tel"
-                      name="phone"
+                      name="mobile"
                       className={`form-control form-control-lg ${
-                        errors.phone ? "is-invalid" : ""
+                        errors.mobile ? "is-invalid" : ""
                       }`}
-                      placeholder="Enter phone number"
-                      value={formData.phone}
+                      placeholder="e.g. 1234567890"
+                      value={formData.mobile}
+                      onChange={handleChange}
+                      disabled={loading}
+                      maxLength="10"
+                    />
+                  </div>
+                  {errors.mobile && (
+                    <div className="invalid-feedback d-block">{errors.mobile}</div>
+                  )}
+                </div>
+
+                {/* Gender */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">
+                    Gender <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    name="gender"
+                    className={`form-control form-control-lg ${
+                      errors.gender ? "is-invalid" : ""
+                    }`}
+                    value={formData.gender}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {errors.gender && (
+                    <div className="invalid-feedback">{errors.gender}</div>
+                  )}
+                </div>
+
+                {/* Joining Date */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">
+                    Joining Date <span className="text-danger">*</span>
+                  </label>
+                  <div className="input-group">
+                    <span className="input-group-text">
+                      <FiCalendar />
+                    </span>
+                    <input
+                      type="date"
+                      name="joining_date"
+                      className={`form-control form-control-lg ${
+                        errors.joining_date ? "is-invalid" : ""
+                      }`}
+                      value={formData.joining_date}
                       onChange={handleChange}
                       disabled={loading}
                     />
                   </div>
-                  {errors.phone && (
-                    <div className="invalid-feedback d-block">
-                      {errors.phone}
-                    </div>
+                  {errors.joining_date && (
+                    <div className="invalid-feedback">{errors.joining_date}</div>
                   )}
                 </div>
 
-                {/* PAN Number */}
+                {/* Reporting To */}
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">PAN Number</label>
-                  <input
-                    type="text"
-                    name="pan_number"
-                    className={`form-control form-control-lg ${
-                      errors.pan_number ? "is-invalid" : ""
-                    }`}
-                    placeholder="e.g., ABCDE1234F"
-                    value={formData.pan_number}
-                    onChange={handleChange}
-                    disabled={loading}
-                    maxLength="10"
-                    style={{ textTransform: "uppercase" }}
-                  />
-                  {errors.pan_number && (
-                    <div className="invalid-feedback">{errors.pan_number}</div>
-                  )}
-                  <div className="form-text">10-character PAN (Optional)</div>
-                </div>
-
-                {/* Aadhar Number */}
-                <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">Aadhar Number</label>
-                  <input
-                    type="text"
-                    name="aadhaar_number"
-                    className={`form-control form-control-lg ${
-                      errors.aadhaar_number ? "is-invalid" : ""
-                    }`}
-                    placeholder="e.g., 123456789012"
-                    value={formData.aadhaar_number}
-                    onChange={handleChange}
-                    disabled={loading}
-                    maxLength="12"
-                  />
-                  {errors.aadhaar_number && (
-                    <div className="invalid-feedback">
-                      {errors.aadhaar_number}
-                    </div>
-                  )}
-                  <div className="form-text">12-digit Aadhar (Optional)</div>
-                </div>
-
-                {/* Role */}
-                <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    Role <span className="text-danger">*</span>
-                  </label>
+                  <label className="form-label fw-medium">Reporting To</label>
                   <select
-                    name="role_id"
-                    className={`form-control form-control-lg ${
-                      errors.role_id ? "is-invalid" : ""
-                    }`}
-                    value={formData.role_id}
+                    name="reporting_to"
+                    className="form-control form-control-lg"
+                    value={formData.reporting_to}
                     onChange={handleChange}
-                    disabled={loading || roles.length === 0}
+                    disabled={loading}
+                  >
+                    <option value="">Select Reporting To</option>
+                    {employees.map((emp) => (
+                      <option key={emp._id} value={emp._id}>
+                        {emp.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Language */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">Language</label>
+                  <select
+                    name="language"
+                    className="form-control form-control-lg"
+                    value={formData.language}
+                    onChange={handleChange}
+                    disabled={loading}
+                  >
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* User Role */}
+                <div className="col-md-6 mb-3">
+                  <label className="form-label fw-medium">User Role</label>
+                  <select
+                    name="user_role"
+                    className="form-control form-control-lg"
+                    value={formData.user_role}
+                    onChange={handleChange}
+                    disabled={loading}
                   >
                     <option value="">Select Role</option>
                     {roles.map((role) => (
-                      <option key={role._id} value={role._id}>
+                      <option key={role._id} value={role._id}>  
                         {role.role_name}
                       </option>
                     ))}
                   </select>
-                  {errors.role_id && (
-                    <div className="invalid-feedback">{errors.role_id}</div>
-                  )}
-                  {roles.length === 0 && (
-                    <div className="form-text text-warning">
-                      No roles available. Please create roles first.
-                    </div>
-                  )}
-                </div>
-
-                {/* Basic Salary */}
-                <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    Basic Salary <span className="text-danger">*</span>
-                  </label>
-                  <div className="input-group">
-                    <span className="input-group-text">₹</span>
-                    <input
-                      type="number"
-                      name="basic_salary"
-                      className={`form-control form-control-lg ${
-                        errors.basic_salary ? "is-invalid" : ""
-                      }`}
-                      placeholder="Enter basic salary"
-                      value={formData.basic_salary}
-                      onChange={handleChange}
-                      disabled={loading}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  {errors.basic_salary && (
-                    <div className="invalid-feedback">
-                      {errors.basic_salary}
-                    </div>
-                  )}
-                </div>
-
-                {/* Address */}
-                <div className="col-12 mb-3">
-                  <label className="form-label fw-medium">
-                    Address <span className="text-danger">*</span>
-                  </label>
-                  <textarea
-                    name="address"
-                    className={`form-control form-control-lg ${
-                      errors.address ? "is-invalid" : ""
-                    }`}
-                    placeholder="Enter complete address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    disabled={loading}
-                    rows="2"
-                  />
-                  {errors.address && (
-                    <div className="invalid-feedback">{errors.address}</div>
-                  )}
                 </div>
 
                 {/* Country */}
@@ -619,12 +653,16 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                     State <span className="text-danger">*</span>
                   </label>
                   <select
-                    name="state"
                     className={`form-control form-control-lg ${
                       errors.state ? "is-invalid" : ""
                     }`}
-                    value={formData.state}
-                    onChange={handleChange}
+                    value={selectedState}
+                    onChange={(e) => {
+                      setSelectedState(e.target.value);
+                      if (errors.state) {
+                        setErrors(prev => ({ ...prev, state: "" }));
+                      }
+                    }}
                     disabled={loading || !formData.country}
                   >
                     <option value="">Select State</option>
@@ -646,13 +684,17 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                   </label>
                   {cities.length > 0 ? (
                     <select
-                      name="city"
                       className={`form-control form-control-lg ${
                         errors.city ? "is-invalid" : ""
                       }`}
-                      value={formData.city}
-                      onChange={handleChange}
-                      disabled={loading || !formData.state}
+                      value={selectedCity}
+                      onChange={(e) => {
+                        setSelectedCity(e.target.value);
+                        if (errors.city) {
+                          setErrors(prev => ({ ...prev, city: "" }));
+                        }
+                      }}
+                      disabled={loading || !selectedState}
                     >
                       <option value="">Select City</option>
                       {cities.map((city) => (
@@ -664,13 +706,17 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                   ) : (
                     <input
                       type="text"
-                      name="city"
                       className={`form-control form-control-lg ${
                         errors.city ? "is-invalid" : ""
                       }`}
-                      placeholder="Enter city name"
-                      value={formData.city}
-                      onChange={handleChange}
+                      placeholder="Enter city"
+                      value={selectedCity}
+                      onChange={(e) => {
+                        setSelectedCity(e.target.value);
+                        if (errors.city) {
+                          setErrors(prev => ({ ...prev, city: "" }));
+                        }
+                      }}
                       disabled={loading}
                     />
                   )}
@@ -679,26 +725,32 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
                   )}
                 </div>
 
-                {/* Pincode */}
-                <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    Pincode <span className="text-danger">*</span>
-                  </label>
+                {/* Address */}
+                <div className="col-12 mb-3">
+                  <label className="form-label fw-medium">Address</label>
                   <input
                     type="text"
-                    name="pincode"
-                    className={`form-control form-control-lg ${
-                      errors.pincode ? "is-invalid" : ""
-                    }`}
-                    placeholder="Enter pincode"
-                    value={formData.pincode}
+                    name="address"
+                    className="form-control form-control-lg"
+                    placeholder="e.g. 132, My Street"
+                    value={formData.address}
                     onChange={handleChange}
                     disabled={loading}
-                    maxLength="6"
                   />
-                  {errors.pincode && (
-                    <div className="invalid-feedback">{errors.pincode}</div>
-                  )}
+                </div>
+
+                {/* About */}
+                <div className="col-12 mb-3">
+                  <label className="form-label fw-medium">About</label>
+                  <textarea
+                    name="about"
+                    className="form-control form-control-lg"
+                    rows="3"
+                    placeholder="Enter additional information about the employee..."
+                    value={formData.about}
+                    onChange={handleChange}
+                    disabled={loading}
+                  ></textarea>
                 </div>
               </div>
 
@@ -725,7 +777,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
               </div>
             </div>
 
-            <div className="modal-footer border-top pt-3">
+            <div className="modal-footer border-top pt-3 sticky-bottom bg-white">
               <button
                 type="button"
                 className="btn btn-outline-secondary"
@@ -737,7 +789,7 @@ const AddEmployeeForm = ({ onClose, onSave, loading = false, roles = [] }) => {
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={loading || roles.length === 0}
+                disabled={loading}
               >
                 {loading ? (
                   <>

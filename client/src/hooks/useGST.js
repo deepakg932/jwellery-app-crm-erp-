@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export default function useGST() {
   const [gstList, setGstList] = useState([]);
@@ -46,6 +47,9 @@ export default function useGST() {
     } catch (err) {
       console.error("Fetch GST error:", err);
       setError("Failed to load GST list");
+      toast.error("Failed to load GST list. Please try again.", {
+        autoClose: 4000,
+      });
       throw err;
     } finally {
       setLoading(false);
@@ -54,6 +58,9 @@ export default function useGST() {
 
   // Add a new GST record
   const addGST = async (gstData) => {
+    // Show loading toast
+    const toastId = toast.loading("Adding GST...");
+
     try {
       setLoading(true);
       setError("");
@@ -73,11 +80,28 @@ export default function useGST() {
       
       // Refresh the list from API
       await fetchGSTList();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "GST added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return res.data;
     } catch (err) {
       console.error("Add GST error:", err);
       setError("Failed to add GST");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to add GST. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
@@ -86,6 +110,9 @@ export default function useGST() {
 
   // Update an existing GST record
   const updateGST = async (id, gstData) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating GST...");
+
     try {
       setLoading(true);
       setError("");
@@ -105,11 +132,28 @@ export default function useGST() {
       
       // Refresh the list from API
       await fetchGSTList();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "GST updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return res.data;
     } catch (err) {
       console.error("Update GST error:", err);
       setError("Failed to update GST");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to update GST. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
@@ -118,6 +162,9 @@ export default function useGST() {
 
   // Delete a GST record
   const deleteGST = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting GST...");
+
     try {
       setLoading(true);
       setError("");
@@ -130,29 +177,33 @@ export default function useGST() {
       
       // Refresh the list from API
       await fetchGSTList();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "GST deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return res.data;
     } catch (err) {
       console.error("Delete GST error:", err);
       setError("Failed to delete GST");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to delete GST. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
     }
   };
-
-  // Get GST by ID
-  const getGSTById = useCallback((id) => {
-    return gstList.find(item => item._id === id);
-  }, [gstList]);
-
-  // Calculate total percentage client-side
-  const calculateTotalPercentage = useCallback((gstData) => {
-    return (gstData.sgst_percentage || 0) + 
-           (gstData.cgst_percentage || 0) + 
-           (gstData.igst_percentage || 0) + 
-           (gstData.utgst_percentage || 0);
-  }, []);
 
   // Initialize with data
   useEffect(() => {
@@ -167,7 +218,5 @@ export default function useGST() {
     updateGST,
     deleteGST,
     fetchGSTList,
-    getGSTById,
-    calculateTotalPercentage,
   };
 }

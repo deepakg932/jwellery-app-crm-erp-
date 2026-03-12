@@ -1,46 +1,52 @@
 import React, { useState } from "react";
 import { FiUpload } from "react-icons/fi";
+import { toast } from "react-toastify";
 
-const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [] }) => {
+const AddStonePurityForm = ({
+  onClose,
+  onSave,
+  loading = false,
+  stoneOptions = [],
+}) => {
   const [stone_purity, setStonePurity] = useState("");
   const [stone_type, setStoneType] = useState("");
   const [percentage, setPercentage] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!stone_purity.trim()) {
-      setError("Please enter purity name");
+      toast.error("Please enter purity name");
       return;
     }
     if (!stone_type.trim()) {
-      setError("Please select stone type");
+      toast.error("Please select stone type");
       return;
     }
     if (!percentage.trim()) {
-      setError("Please enter percentage");
+      toast.error("Please enter percentage");
       return;
     }
 
     const perc = parseFloat(percentage);
     if (isNaN(perc) || perc < 0 || perc > 100) {
-      setError("Percentage must be between 0 and 100");
+      toast.error("Percentage must be between 0 and 100");
       return;
     }
-    
-    // Send only the 3 required fields
+
     const dataToSend = {
       stone_purity: stone_purity.trim(),
       stone_type: stone_type,
       percentage: perc,
     };
-    
-    console.log("Submitting data:", dataToSend);
-    onSave(dataToSend);
-    
-    // Reset form on success (handled by parent)
+
+    try {
+      await onSave(dataToSend);
+    } catch (error) {
+      console.error("Save failed:", error);
+    }
   };
 
   const validatePercentage = (value) => {
@@ -50,10 +56,13 @@ const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [
   };
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Add Stone Purity</h5>
             <button
@@ -63,12 +72,6 @@ const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [
               disabled={loading}
             ></button>
           </div>
-
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -86,7 +89,6 @@ const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [
                     setStonePurity(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -103,7 +105,6 @@ const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [
                     setStoneType(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select stone type</option>
@@ -122,7 +123,7 @@ const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [
                 </label>
                 <input
                   type="number"
-                  className={`form-control ${percentage && !validatePercentage(percentage) ? 'is-invalid' : ''}`}
+                  className={`form-control ${percentage && !validatePercentage(percentage) ? "is-invalid" : ""}`}
                   placeholder="e.g., 99.9"
                   value={percentage}
                   onChange={(e) => {
@@ -132,7 +133,6 @@ const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [
                   min="0"
                   max="100"
                   step="0.1"
-                  required
                   disabled={loading}
                 />
                 {percentage && !validatePercentage(percentage) && (
@@ -155,11 +155,15 @@ const AddStonePurityForm = ({ onClose, onSave, loading = false, stoneOptions = [
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={loading || !stone_purity.trim() || !stone_type || !percentage.trim()}
+                disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Saving...
                   </>
                 ) : (

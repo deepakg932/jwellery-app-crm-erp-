@@ -124,6 +124,19 @@ export const PATHS = {
 
   // CAD_STAGES
   CAD_STAGES: "",
+
+  // HR Payroll paths
+  DEPARTMENTS: "/api/department",
+
+  DESIGNATIONS: "/api/designation",
+
+  LEAVE_TYPES: "/api/hr/leave-type",
+
+  LEAVES: "/api/hr/leaves",
+
+  HOLIDAYS: "/api/hr/holiday",
+
+  ATTENDANCE: "/api/hr/attendance",
 };
 
 // Route names for all your endpoints
@@ -314,6 +327,7 @@ export const ROUTES = {
   CREATE_CUSTOMER: "create-customer",
   UPDATE_CUSTOMER: "update-customer",
   DELETE_CUSTOMER: "delete-customer",
+  GET_CUSTOMER_BY_ID: "get-customer",
 
   // Role routes
   GET_ROLES: "get-roles",
@@ -416,6 +430,36 @@ export const ROUTES = {
 
   GET_PACKAGING_STAGES: "packages-stage-jobs",
   UPDATE_PACKAGING_STAGES: "packaging-stage-update",
+
+  // Department routes
+  GET_DEPARTMENTS: "get-departments",
+  CREATE_DEPARTMENT: "create-department",
+  UPDATE_DEPARTMENT: "update-department",
+  DELETE_DEPARTMENT: "delete-department",
+
+  // Designation routes
+  GET_DESIGNATIONS: "get-designations",
+  CREATE_DESIGNATION: "create-designation",
+  UPDATE_DESIGNATION: "update-designation",
+  DELETE_DESIGNATION: "delete-designation",
+
+  // Leave Type routes
+  GET_LEAVE_TYPES: "get-leave-types",
+  CREATE_LEAVE_TYPE: "create-leave-type",
+  UPDATE_LEAVE_TYPE: "update-leave-type",
+  DELETE_LEAVE_TYPE: "delete-leave-type",
+
+  // Leave routes
+  GET_LEAVES: "get-leaves",
+  CREATE_LEAVE: "create-leave",
+  UPDATE_LEAVE: "update-leave",
+  DELETE_LEAVE: "delete-leave",
+
+  // Holiday routes
+  GET_HOLIDAYS: "get-holidays",
+  CREATE_HOLIDAY: "add-holiday",
+  UPDATE_HOLIDAY: "update-holiday",
+  DELETE_HOLIDAY: "delete-holiday",
 };
 
 // Dynamic endpoint generator
@@ -731,6 +775,8 @@ export const API_ENDPOINTS = {
 
   // ========== CUSTOMER OPERATIONS ==========
   getCustomers: () => endpoint(PATHS.CUSTOMERS, ROUTES.GET_CUSTOMERS),
+  getCustomerById: (id) =>
+    endpoint(PATHS.CUSTOMERS, ROUTES.GET_CUSTOMER_BY_ID, id),
   createCustomer: () => endpoint(PATHS.CUSTOMERS, ROUTES.CREATE_CUSTOMER),
   updateCustomer: (id) => endpoint(PATHS.CUSTOMERS, ROUTES.UPDATE_CUSTOMER, id),
   deleteCustomer: (id) => endpoint(PATHS.CUSTOMERS, ROUTES.DELETE_CUSTOMER, id),
@@ -788,7 +834,8 @@ export const API_ENDPOINTS = {
     endpoint(PATHS.QUOTATION, ROUTES.DELETE_QUOTATION, id),
 
   //Quotation history
-  getQuotationsHistory:()=>endpoint(PATHS.QUOTATION,ROUTES.GET_QUOTATION_HISTORY),
+  getQuotationsHistory: () =>
+    endpoint(PATHS.QUOTATION, ROUTES.GET_QUOTATION_HISTORY),
 
   // ========== REPAIR OPERATIONS ==========
   getRepairs: () => endpoint(PATHS.REPAIRS, ROUTES.GET_REPAIRS),
@@ -867,6 +914,43 @@ export const API_ENDPOINTS = {
     endpoint(PATHS.JOB_CARDS, ROUTES.GET_PACKAGING_STAGES),
   updatePackagingStage: (id) =>
     endpoint(PATHS.DESIGN_STAGES, ROUTES.UPDATE_PACKAGING_STAGES, id),
+
+  // ========== HR PAYROLL - DEPARTMENT OPERATIONS ==========
+  getDepartments: () => endpoint(PATHS.DEPARTMENTS, ROUTES.GET_DEPARTMENTS),
+  createDepartment: () => endpoint(PATHS.DEPARTMENTS, ROUTES.CREATE_DEPARTMENT),
+  updateDepartment: (id) =>
+    endpoint(PATHS.DEPARTMENTS, ROUTES.UPDATE_DEPARTMENT, id),
+  deleteDepartment: (id) =>
+    endpoint(PATHS.DEPARTMENTS, ROUTES.DELETE_DEPARTMENT, id),
+
+  // ========== HR PAYROLL - DESIGNATION OPERATIONS ==========
+  getDesignations: () => endpoint(PATHS.DESIGNATIONS, ROUTES.GET_DESIGNATIONS),
+  createDesignation: () =>
+    endpoint(PATHS.DESIGNATIONS, ROUTES.CREATE_DESIGNATION),
+  updateDesignation: (id) =>
+    endpoint(PATHS.DESIGNATIONS, ROUTES.UPDATE_DESIGNATION, id),
+  deleteDesignation: (id) =>
+    endpoint(PATHS.DESIGNATIONS, ROUTES.DELETE_DESIGNATION, id),
+
+  // ========== HR PAYROLL - LEAVE TYPE OPERATIONS ==========
+  getLeaveTypes: () => endpoint(PATHS.LEAVE_TYPES, ROUTES.GET_LEAVE_TYPES),
+  createLeaveType: () => endpoint(PATHS.LEAVE_TYPES, ROUTES.CREATE_LEAVE_TYPE),
+  updateLeaveType: (id) =>
+    endpoint(PATHS.LEAVE_TYPES, ROUTES.UPDATE_LEAVE_TYPE, id),
+  deleteLeaveType: (id) =>
+    endpoint(PATHS.LEAVE_TYPES, ROUTES.DELETE_LEAVE_TYPE, id),
+
+  // ========== HR PAYROLL - LEAVE OPERATIONS ==========
+  getLeaves: () => endpoint(PATHS.LEAVES, ROUTES.GET_LEAVES),
+  createLeave: () => endpoint(PATHS.LEAVES, ROUTES.CREATE_LEAVE),
+  updateLeave: (id) => endpoint(PATHS.LEAVES, ROUTES.UPDATE_LEAVE, id),
+  deleteLeave: (id) => endpoint(PATHS.LEAVES, ROUTES.DELETE_LEAVE, id),
+
+  // ========== HR PAYROLL - HOLIDAY OPERATIONS ==========
+  getHolidays: () => endpoint(PATHS.HOLIDAYS, ROUTES.GET_HOLIDAYS),
+  createHoliday: () => endpoint(PATHS.HOLIDAYS, ROUTES.CREATE_HOLIDAY),
+  updateHoliday: (id) => endpoint(PATHS.HOLIDAYS, ROUTES.UPDATE_HOLIDAY, id),
+  deleteHoliday: (id) => endpoint(PATHS.HOLIDAYS, ROUTES.DELETE_HOLIDAY, id),
 
   // ========== PRODUCT OPERATIONS ==========
   // Get all products

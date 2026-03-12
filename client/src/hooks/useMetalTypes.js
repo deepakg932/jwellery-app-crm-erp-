@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export default function useMetalTypes() {
   const [metalTypes, setMetalTypes] = useState([]);
@@ -10,160 +11,208 @@ export default function useMetalTypes() {
   const fetchMetalTypes = async () => {
     try {
       setLoading(true);
-      
-      // Using API_ENDPOINTS instead of hardcoded URL
+
       const res = await axios.get(API_ENDPOINTS.getMetals());
       console.log("API Response:", res.data);
-      
+
       let metals = [];
-      
-      // Handle different response structures
+
       if (Array.isArray(res.data)) {
-        // Response is directly an array
         metals = res.data;
       } else if (res.data && Array.isArray(res.data.metals)) {
-        // Response structure: {metals: [...]}
         metals = res.data.metals;
       } else if (res.data && Array.isArray(res.data.data)) {
-        // Response structure: {data: [...]}
         metals = res.data.data;
-      } else if (res.data && res.data.success && Array.isArray(res.data.metals)) {
-        // Response structure: {success: true, metals: [...]}
+      } else if (
+        res.data &&
+        res.data.success &&
+        Array.isArray(res.data.metals)
+      ) {
         metals = res.data.metals;
       }
-      
-      // Map to ensure consistent structure
+
       const mappedMetals = metals.map((m) => ({
         _id: m._id || m.id,
         name: m.name || "",
-        image: m.fullImageUrl || m.fullImageUrl || "",   // ensure `image` exists
+        image: m.fullImageUrl || m.image || "",
       }));
-      
+
       console.log("Fetched metals:", mappedMetals);
       setMetalTypes(mappedMetals);
+
     } catch (err) {
       console.error("Fetch error:", err);
       setError("Failed to load metal types");
+      toast.error("Failed to load metal types. Please try again.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-const addMetalType = async (name, imageFile) => {
-  const formData = new FormData();
-  formData.append("name", name);
-  if (imageFile) formData.append("image", imageFile);
+  const addMetalType = async (name, imageFile) => {
+    const formData = new FormData();
+    formData.append("name", name);
+    if (imageFile) formData.append("image", imageFile);
 
-  try {
-    setLoading(true);
-    
-    // Using API_ENDPOINTS instead of hardcoded URL
-    const res = await axios.post(API_ENDPOINTS.createMetal(), formData);
-    console.log("Add response:", res.data);
-    
-    let newMetal = {};
-    
-    // Check for different response structures
-    if (res.data && res.data.success && res.data.metal) {
-      // Response structure: {success: true, message: '...', metal: {...}}
-      newMetal = {
-        _id: res.data.metal._id || res.data.metal.id,
-        name: res.data.metal.name,
-        // IMPORTANT: Use the same property name as in fetchMetalTypes
-        image: res.data.metal.fullImageUrl || res.data.metal.image || "",
-      };
-    } else if (res.data) {
-      // Response structure: {_id: ..., name: ..., imageUrl: ...}
-      newMetal = {
-        _id: res.data._id || res.data.id,
-        name: res.data.name,
-        // IMPORTANT: Use the same property name as in fetchMetalTypes
-        image: res.data.fullImageUrl || res.data.image || "",
-      };
-    } else {
-      // Fallback - create a temporary object
-      newMetal = {
-        _id: `temp-${Date.now()}`,
-        name: name,
-        image: "",
-      };
-    }
-    
-    console.log("New metal to add:", newMetal);
-    // Update state with new metal using the correct property names
-    setMetalTypes(prev => [...prev, newMetal]);
-    return newMetal;
-  } catch (err) {
-    console.error("Add error:", err);
-    setError("Failed to add metal type");
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
+    // Show loading toast
+    const toastId = toast.loading("Adding metal type...");
 
-const updateMetalType = async (id, data) => {
-  const formData = new FormData();
-  formData.append("name", data.name);
-  if (data.imageFile) formData.append("image", data.imageFile);
-
-  try {
-    setLoading(true);
-    console.log("Updating metal with ID:", id, "Data:", data);
-    
-    // Using API_ENDPOINTS instead of hardcoded URL
-    const res = await axios.put(API_ENDPOINTS.updateMetal(id), formData);
-    console.log("Update response:", res.data);
-    
-    // Based on your log: {success: true, message: 'Metal updated successfully', metal: {...}}
-    let updatedData = {};
-    if (res.data && res.data.success && res.data.metal) {
-      // Response has the metal object
-      updatedData = {
-        _id: res.data.metal._id || res.data.metal.id || id,
-        name: res.data.metal.name || data.name,
-        // IMPORTANT: Use 'image' property to match what the table expects
-        image: res.data.metal.fullImageUrl || res.data.metal.fullImageUrl || "",
-      };
-    } else if (res.data) {
-      // Response might have data directly
-      updatedData = {
-        _id: res.data._id || res.data.id || id,
-        name: res.data.name || data.name,
-        // IMPORTANT: Use 'image' property
-        image: res.data.fullImageUrl || res.data.image || "",
-      };
-    } else {
-      // Fallback
-      updatedData = {
-        _id: id,
-        name: data.name,
-        image: "", // This should come from the server
-      };
-    }
-    
-    setMetalTypes(prev => prev.map(m => (m._id === id ? updatedData : m)));
-    
-    console.log("Updated metal data:", updatedData);
-    return updatedData;
-  } catch (err) {
-    console.error("Update error:", err);
-    setError("Failed to update metal type");
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
-  const deleteMetalType = async (id) => {
     try {
       setLoading(true);
-      
-      // Using API_ENDPOINTS instead of hardcoded URL
+
+      const res = await axios.post(API_ENDPOINTS.createMetal(), formData);
+      console.log("Add response:", res.data);
+
+      let newMetal = {};
+
+      if (res.data && res.data.success && res.data.metal) {
+        newMetal = {
+          _id: res.data.metal._id || res.data.metal.id,
+          name: res.data.metal.name,
+          image: res.data.metal.fullImageUrl || res.data.metal.image || "",
+        };
+      } else if (res.data) {
+        newMetal = {
+          _id: res.data._id || res.data.id,
+          name: res.data.name,
+          image: res.data.fullImageUrl || res.data.image || "",
+        };
+      }
+
+      setMetalTypes((prev) => [...prev, newMetal]);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Metal type added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      return newMetal;
+    } catch (err) {
+      console.error("Add error:", err);
+      setError("Failed to add metal type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render:
+          err.response?.data?.message ||
+          "Failed to add metal type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateMetalType = async (id, data) => {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    if (data.imageFile) formData.append("image", data.imageFile);
+
+    // Show loading toast
+    const toastId = toast.loading("Updating metal type...");
+
+    try {
+      setLoading(true);
+      console.log("Updating metal with ID:", id, "Data:", data);
+
+      const res = await axios.put(API_ENDPOINTS.updateMetal(id), formData);
+      console.log("Update response:", res.data);
+
+      let updatedData = {};
+      if (res.data && res.data.success && res.data.metal) {
+        updatedData = {
+          _id: res.data.metal._id || res.data.metal.id || id,
+          name: res.data.metal.name || data.name,
+          image: res.data.metal.fullImageUrl || res.data.metal.image || "",
+        };
+      } else if (res.data) {
+        updatedData = {
+          _id: res.data._id || res.data.id || id,
+          name: res.data.name || data.name,
+          image: res.data.fullImageUrl || res.data.image || "",
+        };
+      } else {
+        updatedData = {
+          _id: id,
+          name: data.name,
+          image: "",
+        };
+      }
+
+      setMetalTypes((prev) =>
+        prev.map((m) => (m._id === id ? updatedData : m)),
+      );
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Metal type updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      console.log("Updated metal data:", updatedData);
+      return updatedData;
+    } catch (err) {
+      console.error("Update error:", err);
+      setError("Failed to update metal type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render:
+          err.response?.data?.message ||
+          "Failed to update metal type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteMetalType = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting metal type...");
+
+    try {
+      setLoading(true);
+
       await axios.delete(API_ENDPOINTS.deleteMetal(id));
-      setMetalTypes(prev => prev.filter((m) => m._id !== id));
+      setMetalTypes((prev) => prev.filter((m) => m._id !== id));
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Metal type deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
       console.error("Delete error:", err);
       setError("Failed to delete");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render:
+          err.response?.data?.message ||
+          "Failed to delete metal type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -181,6 +230,6 @@ const updateMetalType = async (id, data) => {
     addMetalType,
     updateMetalType,
     deleteMetalType,
-    fetchMetalTypes, // Add this to allow manual refresh
+    fetchMetalTypes,
   };
 }

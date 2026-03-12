@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 
 const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, loading = false }) => {
   const [formData, setFormData] = useState({
@@ -8,7 +9,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
     unit_id: "",
     cost_amount: ""
   });
-  const [error, setError] = useState("");
   const [filteredSubStages, setFilteredSubStages] = useState([]);
 
   // Reset form when priceMaking changes
@@ -21,7 +21,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
         unit_id: priceMaking.unit_id || "",
         cost_amount: priceMaking.cost_amount || ""
       });
-      setError("");
     }
   }, [priceMaking]);
 
@@ -43,22 +42,22 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
     
     // Validation
     if (!formData.making_stage_id) {
-      setError("Please select a making stage");
+      toast.error("Please select a making stage");
       return;
     }
 
     if (!formData.cost_type_id) {
-      setError("Please select a cost type");
+      toast.error("Please select a cost type");
       return;
     }
 
     if (!formData.unit_id) {
-      setError("Please select a unit");
+      toast.error("Please select a unit");
       return;
     }
 
     if (!formData.cost_amount || parseFloat(formData.cost_amount) <= 0) {
-      setError("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
 
@@ -78,7 +77,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
       await onSubmit(priceMakingData);
     } catch (err) {
       console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
     }
   };
 
@@ -88,7 +86,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
       ...prev,
       [name]: value
     }));
-    setError("");
   };
 
   const handleClose = () => {
@@ -99,7 +96,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
       unit_id: "",
       cost_amount: ""
     });
-    setError("");
     onHide();
   };
 
@@ -148,12 +144,7 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
+
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -170,7 +161,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                     name="making_stage_id"
                     value={formData.making_stage_id}
                     onChange={handleChange}
-                    required
                     disabled={loading}
                   >
                     <option value="">Select Making Stage</option>
@@ -180,11 +170,7 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                       </option>
                     ))}
                   </select>
-                  {formData.making_stage_id && (
-                    <div className="form-text">
-                      Selected: {getStageNameById(formData.making_stage_id)}
-                    </div>
-                  )}
+                 
                 </div>
 
                 {/* Sub Making Stage - Using ID */}
@@ -206,11 +192,7 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                       </option>
                     ))}
                   </select>
-                  {formData.making_sub_stage_id && (
-                    <div className="form-text">
-                      Selected: {getSubStageNameById(formData.making_sub_stage_id)}
-                    </div>
-                  )}
+                 
                 </div>
 
                 {/* Cost Type - Using ID */}
@@ -223,7 +205,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                     name="cost_type_id"
                     value={formData.cost_type_id}
                     onChange={handleChange}
-                    required
                     disabled={loading}
                   >
                     <option value="">Select Cost Type</option>
@@ -233,11 +214,7 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                       </option>
                     ))}
                   </select>
-                  {formData.cost_type_id && (
-                    <div className="form-text">
-                      Selected: {getCostTypeById(formData.cost_type_id)}
-                    </div>
-                  )}
+               
                 </div>
 
                 {/* Unit - Using ID */}
@@ -250,7 +227,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                     name="unit_id"
                     value={formData.unit_id}
                     onChange={handleChange}
-                    required
                     disabled={loading}
                   >
                     <option value="">Select Unit</option>
@@ -260,11 +236,7 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                       </option>
                     ))}
                   </select>
-                  {formData.unit_id && (
-                    <div className="form-text">
-                      Selected: {getUnitNameById(formData.unit_id)}
-                    </div>
-                  )}
+                 
                 </div>
 
                 {/* Amount */}
@@ -282,7 +254,6 @@ const EditPriceMaking = ({ show, onHide, onSubmit, priceMaking, dropdownData, lo
                       onChange={handleChange}
                       min="0"
                       step="0.01"
-                      required
                       disabled={loading}
                     />
                     <span className="input-group-text">

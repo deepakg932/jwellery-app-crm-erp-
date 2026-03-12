@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export default function useItemCategories() {
   const [categories, setCategories] = useState([]);
@@ -42,6 +43,9 @@ export default function useItemCategories() {
     } catch (err) {
       console.error("Fetch metal types error:", err);
       setError("Failed to load metal types");
+      toast.error("Failed to load metal types. Please try again.", {
+        autoClose: 4000,
+      });
       return [];
     } finally {
       setLoading(false);
@@ -69,6 +73,7 @@ export default function useItemCategories() {
         categoriesData = res.data.data;
       }
       console.log(categoriesData)
+      
       // Map to ensure consistent structure
       const mappedCategories = categoriesData.map((cat) => ({
         _id: cat._id || cat.id,
@@ -85,6 +90,9 @@ export default function useItemCategories() {
     } catch (err) {
       console.error("Fetch categories error:", err);
       setError("Failed to load categories");
+      toast.error("Failed to load categories. Please try again.", {
+        autoClose: 4000,
+      });
       return [];
     } finally {
       setLoading(false);
@@ -107,6 +115,9 @@ export default function useItemCategories() {
 
   // Add category
   const addCategory = async (categoryData) => {
+    // Show loading toast
+    const toastId = toast.loading("Adding category...");
+
     const formData = new FormData();
     formData.append("name", categoryData.name);
     
@@ -153,11 +164,28 @@ export default function useItemCategories() {
       
       // Immediately refetch to get the complete data from server
       await fetchCategories();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Category added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return newCategory;
     } catch (err) {
       console.error("Add category error:", err);
       setError("Failed to add category");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to add category. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
@@ -166,6 +194,9 @@ export default function useItemCategories() {
 
   // Update category
   const updateCategory = async (id, data) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating category...");
+
     const formData = new FormData();
     formData.append("name", data.name);
     formData.append("metal_type", data.metal_type);
@@ -209,11 +240,28 @@ export default function useItemCategories() {
       
       // Refetch to ensure we have the latest data from server
       await fetchCategories();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Category updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return updatedData;
     } catch (err) {
       console.error("Update category error:", err);
       setError("Failed to update category");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to update category. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
@@ -222,6 +270,9 @@ export default function useItemCategories() {
 
   // Delete category
   const deleteCategory = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting category...");
+
     try {
       setLoading(true);
       
@@ -232,10 +283,27 @@ export default function useItemCategories() {
       
       // Refetch to ensure data consistency
       await fetchCategories();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Category deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
     } catch (err) {
       console.error("Delete category error:", err);
       setError("Failed to delete");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to delete category. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
@@ -249,6 +317,9 @@ export default function useItemCategories() {
       await Promise.all([fetchMetalTypes(), fetchCategories()]);
     } catch (err) {
       console.error("Error fetching data:", err);
+      toast.error("Failed to load data. Please refresh the page.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }

@@ -86,6 +86,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 const useUnits = () => {
   const [units, setUnits] = useState([]);
@@ -111,8 +112,12 @@ const useUnits = () => {
       
       setUnits(unitsData);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to fetch units");
+      const errorMessage = err.response?.data?.message || "Failed to fetch units";
+      setError(errorMessage);
       console.error("Error fetching units:", err);
+      toast.error(errorMessage, {
+        autoClose: 4000,
+      });
       setUnits([]);
     } finally {
       setLoading(false);
@@ -120,6 +125,9 @@ const useUnits = () => {
   }, []);
 
   const addUnit = async (unitData) => {
+    // Show loading toast
+    const toastId = toast.loading("Adding unit...");
+
     try {
       setLoading(true);
       const response = await axios.post(API_ENDPOINTS.createUnit(), unitData);
@@ -136,8 +144,27 @@ const useUnits = () => {
       }
       
       setUnits(prev => [...prev, newUnit]);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Unit added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return newUnit;
     } catch (err) {
+      const errorMessage = err.response?.data?.message || "Failed to add unit";
+      
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMessage,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -145,6 +172,9 @@ const useUnits = () => {
   };
 
   const updateUnit = async (id, data) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating unit...");
+
     try {
       setLoading(true);
       const response = await axios.put(API_ENDPOINTS.updateUnit(id), data);
@@ -159,8 +189,27 @@ const useUnits = () => {
       setUnits(prev =>
         prev.map((unit) => (unit._id === id ? updatedUnit : unit))
       );
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Unit updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return updatedUnit;
     } catch (err) {
+      const errorMessage = err.response?.data?.message || "Failed to update unit";
+      
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMessage,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -168,11 +217,32 @@ const useUnits = () => {
   };
 
   const deleteUnit = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting unit...");
+
     try {
       setLoading(true);
       await axios.delete(API_ENDPOINTS.deleteUnit(id));
       setUnits((prev) => prev.filter((unit) => unit._id !== id));
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Unit deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
+      const errorMessage = err.response?.data?.message || "Failed to delete unit";
+      
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMessage,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);

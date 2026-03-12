@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 const useItems = () => {
   // Main items state
@@ -276,9 +277,17 @@ const useItems = () => {
       });
 
       setDropdownData(newDropdownData);
+      toast.success("Dropdown data loaded successfully!", {
+        autoClose: 3000,
+      });
     } catch (err) {
       console.error("❌ Error in fetchDropdownData:", err);
-      setError(err.response?.data?.message || "Failed to fetch dropdown data");
+      const errorMsg =
+        err.response?.data?.message || "Failed to fetch dropdown data";
+      setError(errorMsg);
+      toast.error(errorMsg, {
+        autoClose: 4000,
+      });
     } finally {
       setLoading((prev) => ({ ...prev, dropdown: false }));
     }
@@ -349,9 +358,12 @@ const useItems = () => {
       }
     } catch (err) {
       console.error("Error fetching items:", err);
-      setError(
-        err.response?.data?.message || err.message || "Failed to fetch items",
-      );
+      const errorMsg =
+        err.response?.data?.message || err.message || "Failed to fetch items";
+      setError(errorMsg);
+      toast.error(errorMsg, {
+        autoClose: 4000,
+      });
       setItems([]);
     } finally {
       setLoading((prev) => ({ ...prev, items: false }));
@@ -398,6 +410,9 @@ const useItems = () => {
 
   // Create new item - UPDATED WITH HALLMARK
   const createItem = async (itemData) => {
+    // Show loading toast
+    const toastId = toast.loading("Creating item...");
+
     try {
       setLoading((prev) => ({ ...prev, items: true }));
 
@@ -524,6 +539,15 @@ const useItems = () => {
 
       if (response.data && response.data.success) {
         await fetchItems(pagination.currentPage, pagination.limit);
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Item created successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
         return response.data.product || response.data.data;
       } else {
         throw new Error(response.data?.message || "Failed to create item");
@@ -533,186 +557,218 @@ const useItems = () => {
       const errorMsg =
         err.response?.data?.message || err.message || "Failed to create item";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading((prev) => ({ ...prev, items: false }));
     }
   };
 
-// Update item - UPDATED WITH HALLMARK
-const updateItem = async (id, itemData) => {
-  try {
-    setLoading((prev) => ({ ...prev, items: true }));
+  // Update item - UPDATED WITH HALLMARK
+  const updateItem = async (id, itemData) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating item...");
 
-    const formData = new FormData();
+    try {
+      setLoading((prev) => ({ ...prev, items: true }));
 
-    // Basic information
-    formData.append("product_name", itemData.product_name || "");
-    formData.append("article_no", itemData.article_no || "");
+      const formData = new FormData();
 
-    // Send IDs
-    if (itemData.product_brand) {
-      formData.append("product_brand", itemData.product_brand);
-    }
+      // Basic information
+      formData.append("product_name", itemData.product_name || "");
+      formData.append("article_no", itemData.article_no || "");
 
-    if (itemData.product_category) {
-      formData.append("product_category", itemData.product_category);
-    }
-
-    if (itemData.product_subcategory) {
-      formData.append("product_subcategory", itemData.product_subcategory);
-    }
-
-    formData.append(
-      "markup_percentage",
-      parseFloat(itemData.markup_percentage) || 15,
-    );
-
-    // GST information
-    const formatGSTValue = (value) => {
-      if (!value) return "0%";
-      if (typeof value === "string" && value.includes("%")) return value;
-      return `${parseFloat(value) || 0}%`;
-    };
-
-    formData.append("gst_rate", formatGSTValue(itemData.gst_rate));
-    formData.append("cgst_rate", formatGSTValue(itemData.cgst_rate));
-    formData.append("sgst_rate", formatGSTValue(itemData.sgst_rate));
-    formData.append("igst_rate", formatGSTValue(itemData.igst_rate));
-    formData.append("utgst_rate", formatGSTValue(itemData.utgst_rate));
-
-    // Metals data - INCLUDING HALLMARK
-    const metalsPayload = (itemData.metals || []).map((metal) => {
-      const metalObj = {
-        metal_type: metal.metal_type,
-        purity: metal.purity,
-        weight: parseFloat(metal.weight) || 0,
-        unit: metal.unit || "g",
-        making_charge_type: metal.making_charge_type || "Fixed",
-        making_charge_value: parseFloat(metal.making_charge_value) || 0,
-        rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
-      };
-
-      // Add hallmark if selected
-      if (metal.hallmark) {
-        metalObj.hallmark_id = metal.hallmark;
+      // Send IDs
+      if (itemData.product_brand) {
+        formData.append("product_brand", itemData.product_brand);
       }
 
-      return metalObj;
-    });
-    formData.append("metals", JSON.stringify(metalsPayload));
+      if (itemData.product_category) {
+        formData.append("product_category", itemData.product_category);
+      }
 
-    // Stones data
-    const stonesPayload = (itemData.stones || []).map((stone) => {
-      return {
-        stone_type: stone.stone_type,
-        stone_purity: stone.stone_purity,
-        size: parseFloat(stone.size) || 0,
-        quantity: parseInt(stone.quantity) || 0,
-        weight: parseFloat(stone.weight) || 0,
-        price_per_carat: parseFloat(stone.price_per_carat) || 0,
-      };
-    });
-    formData.append("stones", JSON.stringify(stonesPayload));
+      if (itemData.product_subcategory) {
+        formData.append("product_subcategory", itemData.product_subcategory);
+      }
 
-    // Materials data
-    const materialsPayload = (itemData.materials || []).map((material) => {
-      return {
-        wastage_type: material.wastage_type,
-        material_type: material.material_type,
-        weight: parseFloat(material.weight) || 0,
-        unit: material.unit || "g",
-        rate_per_unit: parseFloat(material.rate_per_unit) || 0,
-      };
-    });
-    formData.append("materials", JSON.stringify(materialsPayload));
-
-    // FIX: Use making_charges from itemData instead of price_making_costs
-    // The modal submits "making_charges" not "price_making_costs"
-    const priceMakingCostsPayload = (itemData.making_charges || []).map(
-      (cost) => {
-        return {
-          price_making_id: cost.price_making_id || cost.id,
-          cost_type: cost.cost_type || "",
-          stage_name: cost.stage_name || "",
-          sub_stage_name: cost.sub_stage_name || "",
-          cost_amount: parseFloat(cost.cost_amount) || 0,
-          unit_name: cost.unit_name || "",
-          is_active: cost.is_active !== undefined ? cost.is_active : true,
-        };
-      },
-    );
-    
-    // Use the correct field name expected by your API
-    formData.append(
-      "price_making_costs", 
-      JSON.stringify(priceMakingCostsPayload)
-    );
-
-    // Status if updating
-    if (itemData.status) {
-      formData.append("status", itemData.status);
-    }
-
-    // Handle images correctly
-    // 1. Append new images
-    if (itemData.image && Array.isArray(itemData.image)) {
-      itemData.image.forEach((file, index) => {
-        if (file instanceof File) {
-          formData.append("image", file);
-          console.log(`Appending image ${index + 1}:`, file.name);
-        } else {
-          console.warn(`Item ${index} is not a File object:`, file);
-        }
-      });
-    } else {
-      console.log("No new images to append");
-    }
-
-    // 2. Append images to delete
-    if (itemData.imagesToDelete && Array.isArray(itemData.imagesToDelete)) {
       formData.append(
-        "images_to_delete",
-        JSON.stringify(itemData.imagesToDelete),
+        "markup_percentage",
+        parseFloat(itemData.markup_percentage) || 15,
       );
-      console.log("Images to delete:", itemData.imagesToDelete);
-    }
 
-    console.log("FormData entries for update:");
-    for (let pair of formData.entries()) {
-      if (pair[0] === "image") {
-        console.log(`${pair[0]}: [File - ${pair[1].name}]`);
-      } else {
-        console.log(`${pair[0]}:`, pair[1]);
+      // GST information
+      const formatGSTValue = (value) => {
+        if (!value) return "0%";
+        if (typeof value === "string" && value.includes("%")) return value;
+        return `${parseFloat(value) || 0}%`;
+      };
+
+      formData.append("gst_rate", formatGSTValue(itemData.gst_rate));
+      formData.append("cgst_rate", formatGSTValue(itemData.cgst_rate));
+      formData.append("sgst_rate", formatGSTValue(itemData.sgst_rate));
+      formData.append("igst_rate", formatGSTValue(itemData.igst_rate));
+      formData.append("utgst_rate", formatGSTValue(itemData.utgst_rate));
+
+      // Metals data - INCLUDING HALLMARK
+      const metalsPayload = (itemData.metals || []).map((metal) => {
+        const metalObj = {
+          metal_type: metal.metal_type,
+          purity: metal.purity,
+          weight: parseFloat(metal.weight) || 0,
+          unit: metal.unit || "g",
+          making_charge_type: metal.making_charge_type || "Fixed",
+          making_charge_value: parseFloat(metal.making_charge_value) || 0,
+          rate_per_gram: parseFloat(metal.rate_per_gram) || 0,
+        };
+
+        // Add hallmark if selected
+        if (metal.hallmark) {
+          metalObj.hallmark_id = metal.hallmark;
+        }
+
+        return metalObj;
+      });
+      formData.append("metals", JSON.stringify(metalsPayload));
+
+      // Stones data
+      const stonesPayload = (itemData.stones || []).map((stone) => {
+        return {
+          stone_type: stone.stone_type,
+          stone_purity: stone.stone_purity,
+          size: parseFloat(stone.size) || 0,
+          quantity: parseInt(stone.quantity) || 0,
+          weight: parseFloat(stone.weight) || 0,
+          price_per_carat: parseFloat(stone.price_per_carat) || 0,
+        };
+      });
+      formData.append("stones", JSON.stringify(stonesPayload));
+
+      // Materials data
+      const materialsPayload = (itemData.materials || []).map((material) => {
+        return {
+          wastage_type: material.wastage_type,
+          material_type: material.material_type,
+          weight: parseFloat(material.weight) || 0,
+          unit: material.unit || "g",
+          rate_per_unit: parseFloat(material.rate_per_unit) || 0,
+        };
+      });
+      formData.append("materials", JSON.stringify(materialsPayload));
+
+      // FIX: Use making_charges from itemData instead of price_making_costs
+      // The modal submits "making_charges" not "price_making_costs"
+      const priceMakingCostsPayload = (itemData.making_charges || []).map(
+        (cost) => {
+          return {
+            price_making_id: cost.price_making_id || cost.id,
+            cost_type: cost.cost_type || "",
+            stage_name: cost.stage_name || "",
+            sub_stage_name: cost.sub_stage_name || "",
+            cost_amount: parseFloat(cost.cost_amount) || 0,
+            unit_name: cost.unit_name || "",
+            is_active: cost.is_active !== undefined ? cost.is_active : true,
+          };
+        },
+      );
+
+      // Use the correct field name expected by your API
+      formData.append(
+        "price_making_costs",
+        JSON.stringify(priceMakingCostsPayload),
+      );
+
+      // Status if updating
+      if (itemData.status) {
+        formData.append("status", itemData.status);
       }
+
+      // Handle images correctly
+      // 1. Append new images
+      if (itemData.image && Array.isArray(itemData.image)) {
+        itemData.image.forEach((file, index) => {
+          if (file instanceof File) {
+            formData.append("image", file);
+            console.log(`Appending image ${index + 1}:`, file.name);
+          } else {
+            console.warn(`Item ${index} is not a File object:`, file);
+          }
+        });
+      } else {
+        console.log("No new images to append");
+      }
+
+      // 2. Append images to delete
+      if (itemData.imagesToDelete && Array.isArray(itemData.imagesToDelete)) {
+        formData.append(
+          "images_to_delete",
+          JSON.stringify(itemData.imagesToDelete),
+        );
+        console.log("Images to delete:", itemData.imagesToDelete);
+      }
+
+      console.log("FormData entries for update:");
+      for (let pair of formData.entries()) {
+        if (pair[0] === "image") {
+          console.log(`${pair[0]}: [File - ${pair[1].name}]`);
+        } else {
+          console.log(`${pair[0]}:`, pair[1]);
+        }
+      }
+
+      const response = await axios.put(API_ENDPOINTS.updateItem(id), formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data && response.data.success) {
+        await fetchItems(pagination.currentPage, pagination.limit);
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Item updated successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
+        return response.data.product || response.data.data;
+      } else {
+        throw new Error(response.data?.message || "Failed to update item");
+      }
+    } catch (err) {
+      console.error("Error updating item:", err);
+      const errorMsg =
+        err.response?.data?.message || err.message || "Failed to update item";
+      setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
+      throw new Error(errorMsg);
+    } finally {
+      setLoading((prev) => ({ ...prev, items: false }));
     }
-
-    const response = await axios.put(API_ENDPOINTS.updateItem(id), formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-
-    if (response.data && response.data.success) {
-      await fetchItems(pagination.currentPage, pagination.limit);
-      return response.data.product || response.data.data;
-    } else {
-      throw new Error(response.data?.message || "Failed to update item");
-    }
-  } catch (err) {
-    console.error("Error updating item:", err);
-    const errorMsg =
-      err.response?.data?.message || err.message || "Failed to update item";
-    setError(errorMsg);
-    throw new Error(errorMsg);
-  } finally {
-    setLoading((prev) => ({ ...prev, items: false }));
-  }
-};
-
+  };
 
   // Delete item
   const deleteItem = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting item...");
+
     try {
       setLoading((prev) => ({ ...prev, items: true }));
 
@@ -720,6 +776,15 @@ const updateItem = async (id, itemData) => {
 
       if (response.data && response.data.success) {
         await fetchItems(pagination.currentPage, pagination.limit);
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Item deleted successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
         return response.data;
       } else {
         throw new Error(response.data?.message || "Failed to delete item");
@@ -729,6 +794,15 @@ const updateItem = async (id, itemData) => {
       const errorMsg =
         err.response?.data?.message || err.message || "Failed to delete item";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading((prev) => ({ ...prev, items: false }));
@@ -737,6 +811,9 @@ const updateItem = async (id, itemData) => {
 
   // Product status functions
   const toggleProductStatus = async (productId) => {
+    // Show loading toast
+    const toastId = toast.loading("Toggling product status...");
+
     try {
       setLoading((prev) => ({ ...prev, items: true }));
       const response = await axios.put(
@@ -745,6 +822,14 @@ const updateItem = async (id, itemData) => {
 
       if (response.data.success) {
         await fetchItems(pagination.currentPage, pagination.limit);
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Product status toggled successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
       }
 
       return response.data;
@@ -755,6 +840,15 @@ const updateItem = async (id, itemData) => {
         err.message ||
         "Failed to toggle product status";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading((prev) => ({ ...prev, items: false }));
@@ -762,6 +856,9 @@ const updateItem = async (id, itemData) => {
   };
 
   const updateProductStatus = async (productId, status) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating product status...");
+
     try {
       setLoading((prev) => ({ ...prev, items: true }));
       const response = await axios.put(
@@ -771,6 +868,14 @@ const updateItem = async (id, itemData) => {
 
       if (response.data.success) {
         await fetchItems(pagination.currentPage, pagination.limit);
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: `Product status updated to ${status}!`,
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
       }
 
       return response.data;
@@ -781,6 +886,15 @@ const updateItem = async (id, itemData) => {
         err.message ||
         "Failed to update product status";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading((prev) => ({ ...prev, items: false }));
@@ -788,6 +902,9 @@ const updateItem = async (id, itemData) => {
   };
 
   const bulkUpdateProductStatus = async (productIds, status) => {
+    // Show loading toast
+    const toastId = toast.loading(`Updating ${productIds.length} products...`);
+
     try {
       setLoading((prev) => ({ ...prev, items: true }));
       const response = await axios.put(
@@ -797,6 +914,14 @@ const updateItem = async (id, itemData) => {
 
       if (response.data.success) {
         await fetchItems(pagination.currentPage, pagination.limit);
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: `${productIds.length} products updated to ${status}!`,
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
       }
 
       return response.data;
@@ -807,6 +932,15 @@ const updateItem = async (id, itemData) => {
         err.message ||
         "Failed to bulk update status";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading((prev) => ({ ...prev, items: false }));
@@ -1052,6 +1186,9 @@ const updateItem = async (id, itemData) => {
         await fetchItems();
       } catch (err) {
         console.error("Error initializing:", err);
+        toast.error("Failed to initialize. Please refresh the page.", {
+          autoClose: 4000,
+        });
       }
     };
 

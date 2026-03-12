@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_ENDPOINTS } from '@/api/api';
+import { toast } from 'react-toastify';
 
 export const useMaterial = () => {
   const [materials, setMaterials] = useState([]);
@@ -41,6 +42,9 @@ export const useMaterial = () => {
     } catch (err) {
       console.error("Fetch material types error:", err);
       setError("Failed to load material types");
+      toast.error("Failed to load material types. Please try again.", {
+        autoClose: 4000,
+      });
       throw err;
     } finally {
       setLoading(false);
@@ -74,12 +78,18 @@ export const useMaterial = () => {
     } catch (err) {
       console.error("Fetch metals error:", err);
       setError("Failed to load metals");
+      toast.error("Failed to load metals. Please try again.", {
+        autoClose: 4000,
+      });
       throw err;
     }
   }, []);
 
   // Add a new material type to API
   const addMaterial = async (materialData) => {
+    // Show loading toast
+    const toastId = toast.loading("Adding material type...");
+
     try {
       setLoading(true);
       setError('');
@@ -97,11 +107,28 @@ export const useMaterial = () => {
       
       // Refresh the list from API
       await fetchMaterials();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Material type added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return res.data;
     } catch (err) {
       console.error("Add material type error:", err);
       setError("Failed to add material type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to add material type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
@@ -110,6 +137,9 @@ export const useMaterial = () => {
 
   // Update an existing material type in API
   const updateMaterial = async (id, materialData) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating material type...");
+
     try {
       setLoading(true);
       setError('');
@@ -127,11 +157,28 @@ export const useMaterial = () => {
       
       // Refresh the list from API
       await fetchMaterials();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Material type updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return res.data;
     } catch (err) {
       console.error("Update material type error:", err);
       setError("Failed to update material type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to update material type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);
@@ -140,6 +187,9 @@ export const useMaterial = () => {
 
   // Delete a material type from API
   const deleteMaterial = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting material type...");
+
     try {
       setLoading(true);
       setError('');
@@ -152,11 +202,28 @@ export const useMaterial = () => {
       
       // Refresh the list from API
       await fetchMaterials();
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Material type deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
       
       return res.data;
     } catch (err) {
       console.error("Delete material type error:", err);
       setError("Failed to delete material type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to delete material type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+      
       throw err;
     } finally {
       setLoading(false);

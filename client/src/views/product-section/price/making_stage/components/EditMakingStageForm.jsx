@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "react-toastify";
 
 const EditMakingStageForm = ({ show, onHide, onSubmit, stage_name, loading = false }) => {
   const [makingStage, setMakingStage] = useState("");
-  const [error, setError] = useState("");
-  const modalRef = useRef(null);
 
   // Reset form when making_stage changes
   useEffect(() => {
     if (stage_name) {
       setMakingStage(stage_name.stage_name || "");
-      setError("");
     }
   }, [stage_name]);
 
@@ -17,7 +15,7 @@ const EditMakingStageForm = ({ show, onHide, onSubmit, stage_name, loading = fal
     e.preventDefault();
     
     if (!makingStage.trim()) {
-      setError("Please enter a making stage");
+      toast.error("Please enter a making stage");
       return;
     }
 
@@ -26,13 +24,11 @@ const EditMakingStageForm = ({ show, onHide, onSubmit, stage_name, loading = fal
       // Parent handles closing
     } catch (err) {
       console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
     }
   };
 
   const handleClose = () => {
     setMakingStage("");
-    setError("");
     onHide();
   };
 
@@ -44,13 +40,7 @@ const EditMakingStageForm = ({ show, onHide, onSubmit, stage_name, loading = fal
       className="modal fade show d-block" 
       style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} 
       tabIndex="-1"
-      ref={modalRef}
-      onClick={(e) => {
-        // Close modal when clicking outside
-        if (modalRef.current === e.target) {
-          handleClose();
-        }
-      }}
+     
     >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
@@ -63,16 +53,9 @@ const EditMakingStageForm = ({ show, onHide, onSubmit, stage_name, loading = fal
               className="btn-close"
               onClick={handleClose}
               disabled={loading}
-              aria-label="Close"
+              // aria-label="Close"
             />
           </div>
-
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -88,9 +71,7 @@ const EditMakingStageForm = ({ show, onHide, onSubmit, stage_name, loading = fal
                   value={makingStage}
                   onChange={(e) => {
                     setMakingStage(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>

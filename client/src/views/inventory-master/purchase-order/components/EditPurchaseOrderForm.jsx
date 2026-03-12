@@ -1363,7 +1363,7 @@ const EditPurchaseOrderForm = ({
 
                 {/* Summary Section */}
                 <div className="row mt-4">
-                  <div className="col-md-6">
+                  {/* <div className="col-md-6">
                     <div className="mb-3">
                       <label className="form-label fw-medium">
                         Payment Status
@@ -1380,7 +1380,7 @@ const EditPurchaseOrderForm = ({
                         <option value="partial">Partial</option>
                       </select>
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="col-md-6">
                     <div className="bg-light p-3 rounded-3">

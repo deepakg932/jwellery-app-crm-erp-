@@ -8,16 +8,21 @@ import {
   FiChevronsLeft,
   FiChevronsRight,
   FiUser,
+  FiEye,
+  FiRefreshCw,
 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import AddEmployeeForm from "./AddEmployeeForm";
 import EditEmployeeForm from "./EditEmployeeForm";
+import ViewEmployeeModal from "./ViewEmployeeModal";
 import useEmployees from "@/hooks/useEmployees";
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
 
 const EmployeeTable = () => {
   const {
     employees,
+    departments,
+    designations,
     roles,
     loading,
     error,
@@ -30,6 +35,7 @@ const EmployeeTable = () => {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [actionLoading, setActionLoading] = useState({ type: null, id: null });
@@ -43,9 +49,12 @@ const EmployeeTable = () => {
     (employee) =>
       employee.name?.toLowerCase().includes(search.toLowerCase()) ||
       employee.email?.toLowerCase().includes(search.toLowerCase()) ||
+      employee.mobile?.includes(search) ||
       employee.phone?.includes(search) ||
       employee.role_name?.toLowerCase().includes(search.toLowerCase()) ||
-      employee.address?.toLowerCase().includes(search.toLowerCase())
+      employee.designation_name?.toLowerCase().includes(search.toLowerCase()) ||
+      employee.department_name?.toLowerCase().includes(search.toLowerCase()) ||
+      employee.employee_id?.toLowerCase().includes(search.toLowerCase()),
   );
 
   // Reset to first page when search changes
@@ -62,11 +71,10 @@ const EmployeeTable = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentEmployees = filteredEmployees.slice(
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   );
 
-
-  console.log(currentEmployees)
+  console.log(currentEmployees);
 
   // Format date
   const formatDate = (dateString) => {
@@ -91,75 +99,67 @@ const EmployeeTable = () => {
 
   // Add new employee
   const handleAddEmployee = async (employeeData) => {
-  setActionLoading({ type: "add", id: null });
-  try {
-    await addEmployee(employeeData);
-    setShowAddModal(false);
-  } catch (error) {
-    console.error("Add failed:", error);
-    throw error; // <-- re-throw so form can show error toast
-  } finally {
-    setActionLoading({ type: null, id: null });
-  }
-};
+    setActionLoading({ type: "add", id: null });
+    try {
+      await addEmployee(employeeData);
+      setShowAddModal(false);
+    } catch (error) {
+      console.error("Add failed:", error);
+      throw error;
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
+  };
 
   // Edit employee
-const handleEditEmployee = async (updatedEmployee) => {
-  if (!selectedItem) return;
-  setActionLoading({ type: "update", id: selectedItem._id });
-  try {
-    await updateEmployee(selectedItem._id, updatedEmployee);
-    setShowEditModal(false);
-    setSelectedItem(null);
-  } catch (error) {
-    console.error("Update failed:", error);
-    throw error; // <-- re-throw
-  } finally {
-    setActionLoading({ type: null, id: null });
-  }
-};
-
-  const handleCloseEdit = () => {
-    console.log("handleCloseEdit called");
-
-    // Only allow closing if not currently loading
-    if (!actionLoading.type || actionLoading.type !== "update") {
-      console.log("Closing edit modal");
+  const handleEditEmployee = async (updatedEmployee) => {
+    if (!selectedItem) return;
+    setActionLoading({ type: "update", id: selectedItem._id });
+    try {
+      await updateEmployee(selectedItem._id, updatedEmployee);
       setShowEditModal(false);
       setSelectedItem(null);
-    } else {
-      console.log("Cannot close - update in progress");
+    } catch (error) {
+      console.error("Update failed:", error);
+      throw error;
+    } finally {
+      setActionLoading({ type: null, id: null });
     }
   };
 
   // Delete employee
-const handleDeleteEmployee = async () => {
-  if (!selectedItem) return;
-  setActionLoading({ type: "delete", id: selectedItem._id });
-  const toastId = toast.loading("Deleting employee...");
-  try {
-    const result = await deleteEmployee(selectedItem._id);
-    toast.update(toastId, {
-      render: "Employee deleted successfully!",
-      type: "success",
-      isLoading: false,
-      autoClose: 3000,
-    });
-    setShowDeleteModal(false);
-    setSelectedItem(null);
-  } catch (error) {
-    console.error("Delete failed:", error);
-    toast.update(toastId, {
-      render: error.response?.data?.message || "Failed to delete employee",
-      type: "error",
-      isLoading: false,
-      autoClose: 4000,
-    });
-    // Modal stays open
-  } finally {
-    setActionLoading({ type: null, id: null });
-  }
-};
+  const handleDeleteEmployee = async () => {
+    if (!selectedItem) return;
+    setActionLoading({ type: "delete", id: selectedItem._id });
+    const toastId = toast.loading("Deleting employee...");
+    try {
+      const result = await deleteEmployee(selectedItem._id);
+      toast.update(toastId, {
+        render: "Employee deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast.update(toastId, {
+        render: error.response?.data?.message || "Failed to delete employee",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+    } finally {
+      setActionLoading({ type: null, id: null });
+    }
+  };
+
+  // Open view modal
+  const handleOpenView = (employee) => {
+    setSelectedItem(employee);
+    setShowViewModal(true);
+  };
 
   // Open edit modal
   const handleOpenEdit = (employee) => {
@@ -176,6 +176,7 @@ const handleDeleteEmployee = async () => {
   // Handle refresh
   const handleRefresh = () => {
     fetchEmployees();
+    toast.success("Employee list refreshed!");
   };
 
   // Pagination handlers
@@ -251,12 +252,6 @@ const handleDeleteEmployee = async () => {
                 Are you sure you want to delete{" "}
                 <strong>{selectedItem?.name}</strong>?
               </p>
-              <p className="text-muted small">
-                Role: <strong>{selectedItem?.role_name || "N/A"}</strong>
-                <br />
-                Email: <strong>{selectedItem?.email || "N/A"}</strong>
-              </p>
-              <p className="text-muted small">This action cannot be undone.</p>
             </div>
 
             <div className="modal-footer border-top pt-3">
@@ -338,6 +333,7 @@ const handleDeleteEmployee = async () => {
                 onClick={handleRefresh}
                 disabled={loading}
               >
+                <FiRefreshCw size={18} className={loading ? "spin" : ""} />
                 Refresh
               </button>
               <button
@@ -363,7 +359,7 @@ const handleDeleteEmployee = async () => {
                 <input
                   type="text"
                   className="form-control border-start-0"
-                  placeholder="Search employees by name, email, phone, role..."
+                  placeholder="Search by ID, name, email, phone, role, designation..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   disabled={loading}
@@ -404,16 +400,14 @@ const handleDeleteEmployee = async () => {
               <tr>
                 <th>#</th>
                 <th>Image</th>
-                <th>Employee Name</th>
+                <th>Name</th>
                 <th>Email</th>
-                <th>Phone</th>
-                <th>PAN</th>
-                <th>Aadhar</th>
+                <th>Mobile</th>
                 <th>Role</th>
-                <th>Basic Salary</th>
+                <th>Designation</th>
+                <th>Department</th>
                 <th>Address</th>
                 <th>Status</th>
-                <th>Created Date</th>
                 <th className="text-end">Actions</th>
               </tr>
             </thead>
@@ -421,7 +415,7 @@ const handleDeleteEmployee = async () => {
             <tbody>
               {loading && employees.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="text-center py-4">
+                  <td colSpan="27" className="text-center py-4">
                     <div className="d-flex justify-content-center">
                       <div
                         className="spinner-border text-primary"
@@ -434,7 +428,7 @@ const handleDeleteEmployee = async () => {
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="text-center py-4 text-muted">
+                  <td colSpan="27" className="text-center py-4 text-muted">
                     {search
                       ? "No employees found for your search"
                       : "No employees available"}
@@ -450,9 +444,9 @@ const handleDeleteEmployee = async () => {
                         className="rounded-circle border"
                         style={{ width: "40px", height: "40px" }}
                       >
-                        {employee.image ? (
+                        {employee.fullImageUrl || employee.image ? (
                           <img
-                            src={employee.image}
+                            src={employee.fullImageUrl || employee.image}
                             alt={employee.name}
                             className="rounded-circle w-100 h-100 object-fit-cover"
                           />
@@ -464,7 +458,17 @@ const handleDeleteEmployee = async () => {
                       </div>
                     </td>
 
-                    <td className="fw-semibold">{employee.name}</td>
+                    <td className="fw-semibold">
+                      <div
+                        className="d-flex align-items-center gap-1"
+                        style={{ lineHeight: 1 }}
+                      >
+                        <span className="text-muted small">
+                          {employee.salutation || "N/A"}
+                        </span>
+                        {employee.name}
+                      </div>
+                    </td>
 
                     <td>
                       <span className="text-muted small">
@@ -474,37 +478,37 @@ const handleDeleteEmployee = async () => {
 
                     <td>
                       <span className="badge bg-light text-dark fw-semibold">
-                        {employee.phone || "N/A"}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge bg-light text-dark fw-semibold">
-                        {employee.pan_number || "N/A"}
+                        {employee.mobile || employee.phone || "N/A"}
                       </span>
                     </td>
 
+
                     <td>
-                      <span className="badge bg-light text-dark fw-semibold">
-                        {employee.aadhaar_number || "N/A"}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge bg-info text-dark fw-semibold">
+                      <span className="badge bg-secondary text-white">
                         {employee.role_name || "N/A"}
                       </span>
                     </td>
-
+                    
                     <td>
-                      <span className="badge bg-success text-white fw-semibold">
-                        {formatCurrency(employee.basic_salary || 0)}
+                      <span className="badge bg-light text-dark">
+                        {employee.designation_name || "N/A"}
+                      </span>
+                    </td>
+
+                    <td className="text-center">
+                      <span className="badge bg-light text-dark">
+                        {employee.department_name || "N/A"}
                       </span>
                     </td>
 
                     <td>
-                      <span className="text-muted small">
+                      <span
+                        className="text-muted small"
+                        title={employee.address}
+                      >
                         {employee.address
-                          ? `${employee.address.substring(0, 30)}${
-                              employee.address.length > 30 ? "..." : ""
+                          ? `${employee.address.substring(0, 20)}${
+                              employee.address.length > 20 ? "..." : ""
                             }`
                           : "N/A"}
                       </span>
@@ -520,15 +524,23 @@ const handleDeleteEmployee = async () => {
                       </span>
                     </td>
 
-                    <td>
-                      <span className="text-muted small">
-                        {formatDate(employee.createdAt)}
-                      </span>
-                    </td>
-
                     {/* ACTION BUTTONS */}
                     <td>
                       <div className="d-flex justify-content-end gap-2">
+                        {/* View Button */}
+                        <button
+                          className="btn btn-sm btn-outline-info d-flex align-items-center gap-1"
+                          onClick={() => handleOpenView(employee)}
+                          disabled={
+                            actionLoading.type &&
+                            actionLoading.id === employee._id
+                          }
+                          title="View Details"
+                        >
+                          <FiEye size={16} />
+                        </button>
+
+                        {/* Edit Button */}
                         <button
                           className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
                           onClick={() => handleOpenEdit(employee)}
@@ -536,25 +548,21 @@ const handleDeleteEmployee = async () => {
                             actionLoading.type &&
                             actionLoading.id === employee._id
                           }
+                          title="Edit Employee"
                         >
                           {actionLoading.type === "update" &&
                           actionLoading.id === employee._id ? (
-                            <>
-                              <span
-                                className="spinner-border spinner-border-sm me-1"
-                                role="status"
-                                aria-hidden="true"
-                              ></span>
-                              Editing...
-                            </>
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
                           ) : (
-                            <>
-                              <FiEdit2 size={16} />
-                              Edit
-                            </>
+                            <FiEdit2 size={16} />
                           )}
                         </button>
 
+                        {/* Delete Button */}
                         <button
                           className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
                           onClick={() => handleOpenDelete(employee)}
@@ -562,22 +570,17 @@ const handleDeleteEmployee = async () => {
                             actionLoading.type &&
                             actionLoading.id === employee._id
                           }
+                          title="Delete Employee"
                         >
                           {actionLoading.type === "delete" &&
                           actionLoading.id === employee._id ? (
-                            <>
-                              <span
-                                className="spinner-border spinner-border-sm me-1"
-                                role="status"
-                                aria-hidden="true"
-                              ></span>
-                              Deleting...
-                            </>
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
                           ) : (
-                            <>
-                              <RiDeleteBin6Line size={16} />
-                              Delete
-                            </>
+                            <RiDeleteBin6Line size={16} />
                           )}
                         </button>
                       </div>
@@ -679,6 +682,9 @@ const handleDeleteEmployee = async () => {
           onSave={handleAddEmployee}
           loading={actionLoading.type === "add"}
           roles={roles}
+          employees={employees}
+          departments={departments}
+          designations={designations}
         />
       )}
 
@@ -695,6 +701,19 @@ const handleDeleteEmployee = async () => {
             actionLoading.id === selectedItem._id
           }
           roles={roles}
+          employees={employees}
+          departments={departments}
+          designations={designations}
+        />
+      )}
+
+      {showViewModal && selectedItem && (
+        <ViewEmployeeModal
+          employee={selectedItem}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedItem(null);
+          }}
         />
       )}
 

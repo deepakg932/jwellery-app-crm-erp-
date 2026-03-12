@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { FiUpload, FiX, FiImage, FiPlus, FiTrash2 } from "react-icons/fi";
 import Select from "react-select";
+import { toast } from "react-toastify";
 
 const AddItemModal = ({
   onClose,
@@ -32,7 +33,7 @@ const AddItemModal = ({
     materialTypes = [],
   } = formData || {};
 
-  console.log(priceMakings)
+  console.log(priceMakings);
 
   // Helper to get ID
   const getId = (item) => item?.id || item?._id || "";
@@ -174,7 +175,7 @@ const AddItemModal = ({
 
       setCurrentSubcategories(subcats);
 
-      if (formState.product_subcategory) {
+      if (formState.product_subcategory_name) {
         setFormState((prev) => ({
           ...prev,
           product_subcategory: "",
@@ -183,7 +184,7 @@ const AddItemModal = ({
       }
     } else {
       setCurrentSubcategories([]);
-      if (formState.product_subcategory) {
+      if (formState.product_subcategory_name) {
         setFormState((prev) => ({
           ...prev,
           product_subcategory: "",
@@ -367,7 +368,7 @@ const AddItemModal = ({
         }
 
         return updatedMetal;
-      })
+      }),
     );
   };
 
@@ -381,7 +382,7 @@ const AddItemModal = ({
         if (field === "stone_purity_display") {
           // Find the stone purity object by display name
           const stonePurityObj = stonePurities.find(
-            (sp) => sp.stone_purity === value || sp.name === value
+            (sp) => sp.stone_purity === value || sp.name === value,
           );
 
           return {
@@ -394,7 +395,7 @@ const AddItemModal = ({
         }
 
         return { ...stone, [field]: value };
-      })
+      }),
     );
   };
 
@@ -404,7 +405,7 @@ const AddItemModal = ({
         if (mat.id !== id) return mat;
 
         return { ...mat, [field]: value };
-      })
+      }),
     );
   };
 
@@ -421,11 +422,11 @@ const AddItemModal = ({
     const newFiles = Array.from(files).slice(0, 3 - imageFiles.length);
     newFiles.forEach((file) => {
       if (!file.type.startsWith("image/")) {
-        alert("Please upload only image files");
+        toast.error("Please upload only image files");
         return;
       }
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
+        toast.error("File size should be less than 5MB");
         return;
       }
       const reader = new FileReader();
@@ -472,8 +473,17 @@ const AddItemModal = ({
     if (!formState.product_category)
       newErrors.product_category = "Category is required";
     if (!formState.gst_rate) newErrors.gst_rate = "GST rate is required";
+    if (formState.selected_price_makings.length === 0) {
+      newErrors.making_charge = "At least one making charge type is required";
+    }
 
-    return newErrors;
+    if (Object.keys(newErrors).length > 0) {
+      Object.values(newErrors).forEach((error) => {
+        toast.error(error);
+      });
+    }
+
+    return Object.keys(newErrors).length === 0;
   };
 
   // ==================== CALCULATIONS ====================
@@ -564,11 +574,11 @@ const AddItemModal = ({
   }, 0);
   const totalStonesCost = stones.reduce(
     (sum, stone) => sum + calculateStoneSubtotal(stone),
-    0
+    0,
   );
   const totalMaterialsCost = materialsData.reduce(
     (sum, mat) => sum + calculateMaterialCost(mat),
-    0
+    0,
   );
 
   // Making charge from selected price making
@@ -586,18 +596,7 @@ const AddItemModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate form
-    const formErrors = validateForm();
-
-    // Add validation for making charges if needed
-    if (formState.selected_price_makings.length === 0) {
-      formErrors.making_charge = "At least one making charge type is required";
-    }
-
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
-      return;
-    }
+    if (!validateForm()) return;
 
     // Get selected GST object
     const selectedGST = getSelectedGSTObject();
@@ -713,13 +712,13 @@ const AddItemModal = ({
 
     // Try to find by ID first
     let stonePurity = stonePurities.find(
-      (sp) => sp.id === stonePurityId || sp._id === stonePurityId
+      (sp) => sp.id === stonePurityId || sp._id === stonePurityId,
     );
 
     // If not found by ID, try by name
     if (!stonePurity) {
       stonePurity = stonePurities.find(
-        (sp) => sp.stone_purity === stonePurityId || sp.name === stonePurityId
+        (sp) => sp.stone_purity === stonePurityId || sp.name === stonePurityId,
       );
     }
 
@@ -790,11 +789,7 @@ const AddItemModal = ({
                       }
                       disabled={loading || dropdownLoading}
                     />
-                    {errors.product_name && (
-                      <div className="invalid-feedback">
-                        {errors.product_name}
-                      </div>
-                    )}
+                    
                   </div>
                   <div className="mb-3">
                     <label className="form-label">
@@ -811,11 +806,7 @@ const AddItemModal = ({
                       }
                       disabled={loading || dropdownLoading}
                     />
-                    {errors.article_no && (
-                      <div className="invalid-feedback">
-                        {errors.article_no}
-                      </div>
-                    )}
+                   
                   </div>
 
                   {/* MAKING CHARGE TYPE */}
@@ -825,7 +816,6 @@ const AddItemModal = ({
                     <Select
                       isMulti
                       options={priceMakings.map((pm) => ({
-                        
                         value: getId(pm),
                         label: pm.cost_type,
                         originalData: pm,
@@ -837,11 +827,11 @@ const AddItemModal = ({
                       }))}
                       onChange={(selectedOptions) => {
                         const selectedPriceMakings = selectedOptions.map(
-                          (option) => option.originalData
+                          (option) => option.originalData,
                         );
                         handleInputChange(
                           "selected_price_makings",
-                          selectedPriceMakings
+                          selectedPriceMakings,
                         );
                       }}
                       placeholder={
@@ -878,12 +868,6 @@ const AddItemModal = ({
                       }}
                     />
 
-                    {errors.making_charge && (
-                      <div className="invalid-feedback d-block">
-                        {errors.making_charge}
-                      </div>
-                    )}
-
                     <div className="form-text">
                       You can select multiple making charge
                     </div>
@@ -903,12 +887,12 @@ const AddItemModal = ({
                       value={formState.product_category}
                       onChange={(e) => {
                         const selectedCategory = categories.find(
-                          (cat) => getId(cat) === e.target.value
+                          (cat) => getId(cat) === e.target.value,
                         );
                         handleInputChange("product_category", e.target.value);
                         handleInputChange(
                           "product_category_name",
-                          getName(selectedCategory) || ""
+                          getName(selectedCategory) || "",
                         );
                         handleInputChange("product_subcategory", "");
                         handleInputChange("product_subcategory_name", "");
@@ -928,11 +912,7 @@ const AddItemModal = ({
                         </option>
                       ))}
                     </select>
-                    {errors.product_category && (
-                      <div className="invalid-feedback">
-                        {errors.product_category}
-                      </div>
-                    )}
+                    
                   </div>
 
                   {/* SUBCATEGORY SECTION */}
@@ -945,15 +925,15 @@ const AddItemModal = ({
                           value={formState.product_subcategory || ""}
                           onChange={(e) => {
                             const selectedSub = currentSubcategories.find(
-                              (sub) => getId(sub) === e.target.value
+                              (sub) => getId(sub) === e.target.value,
                             );
                             handleInputChange(
                               "product_subcategory",
-                              e.target.value
+                              e.target.value,
                             );
                             handleInputChange(
                               "product_subcategory_name",
-                              getName(selectedSub) || ""
+                              getName(selectedSub) || "",
                             );
                           }}
                           disabled={loading}
@@ -985,12 +965,12 @@ const AddItemModal = ({
                       value={formState.product_brand}
                       onChange={(e) => {
                         const selectedBrand = brands.find(
-                          (brand) => getId(brand) === e.target.value
+                          (brand) => getId(brand) === e.target.value,
                         );
                         handleInputChange("product_brand", e.target.value);
                         handleInputChange(
                           "product_brand_name",
-                          getName(selectedBrand) || ""
+                          getName(selectedBrand) || "",
                         );
                       }}
                       disabled={
@@ -1048,11 +1028,7 @@ const AddItemModal = ({
                           );
                         })}
                       </select>
-                      {errors.gst_rate && (
-                        <div className="invalid-feedback">
-                          {errors.gst_rate}
-                        </div>
-                      )}
+                     
                     </div>
 
                     <div className="col-md-2 mb-3">
@@ -1179,7 +1155,7 @@ const AddItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "metal_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1213,7 +1189,7 @@ const AddItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "purity",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1250,7 +1226,7 @@ const AddItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "hallmark",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1266,11 +1242,11 @@ const AddItemModal = ({
                                     {loadingHallmarks[metal.id]
                                       ? "Loading hallmarks..."
                                       : !metal.metal_type
-                                      ? "Select metal first"
-                                      : (hallmarksByMetal[metal.id] || [])
-                                          .length === 0
-                                      ? "No hallmarks available"
-                                      : "Select Hallmark"}
+                                        ? "Select metal first"
+                                        : (hallmarksByMetal[metal.id] || [])
+                                              .length === 0
+                                          ? "No hallmarks available"
+                                          : "Select Hallmark"}
                                   </option>
                                   {(hallmarksByMetal[metal.id] || []).map(
                                     (hallmark) => (
@@ -1280,7 +1256,7 @@ const AddItemModal = ({
                                       >
                                         {hallmark.name}
                                       </option>
-                                    )
+                                    ),
                                   )}
                                 </select>
                                 {/* {metal.hallmark
@@ -1306,7 +1282,7 @@ const AddItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "weight",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1322,7 +1298,7 @@ const AddItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "unit",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1357,7 +1333,7 @@ const AddItemModal = ({
                                     updateMetal(
                                       metal.id,
                                       "rate_per_gram",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1438,7 +1414,7 @@ const AddItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "stone_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1472,7 +1448,7 @@ const AddItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "stone_purity_display",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1503,13 +1479,14 @@ const AddItemModal = ({
                                     </option>
                                   ))}
                                 </select>
-                                {stone.stone_purity && !dropdownLoading
-                                
-                                // && (
-                                //   <small className="text-muted d-block mt-1">
-                                //     Selected ID: {stone.stone_purity}
-                                //   </small>
-                                // )
+                                {
+                                  stone.stone_purity && !dropdownLoading
+
+                                  // && (
+                                  //   <small className="text-muted d-block mt-1">
+                                  //     Selected ID: {stone.stone_purity}
+                                  //   </small>
+                                  // )
                                 }
                               </td>
                               <td>
@@ -1522,7 +1499,7 @@ const AddItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "size",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1537,7 +1514,7 @@ const AddItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "quantity",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1553,7 +1530,7 @@ const AddItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "weight",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1569,7 +1546,7 @@ const AddItemModal = ({
                                     updateStone(
                                       stone.id,
                                       "price_per_carat",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1650,7 +1627,7 @@ const AddItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "wastage_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1679,7 +1656,7 @@ const AddItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "material_type",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1746,7 +1723,7 @@ const AddItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "weight",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1762,7 +1739,7 @@ const AddItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "unit",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={
@@ -1792,7 +1769,7 @@ const AddItemModal = ({
                                     updateMaterial(
                                       material.id,
                                       "rate_per_unit",
-                                      e.target.value
+                                      e.target.value,
                                     )
                                   }
                                   disabled={loading}
@@ -1864,11 +1841,11 @@ const AddItemModal = ({
                                       <td className="text-end">
                                         ₹
                                         {parseFloat(
-                                          pm.cost_amount || 0
+                                          pm.cost_amount || 0,
                                         ).toFixed(2)}
                                       </td>
                                     </tr>
-                                  )
+                                  ),
                                 )}
 
                                 <tr className="border-top">
@@ -1925,7 +1902,7 @@ const AddItemModal = ({
                                 ₹{grandTotal.toFixed(2)}
                               </td>
                             </tr>
- <tr>
+                            <tr>
                               <td colSpan="2" className="pt-3">
                                 <div className="mb-3">
                                   <label className="form-label">
@@ -1939,7 +1916,7 @@ const AddItemModal = ({
                                     onChange={(e) =>
                                       handleInputChange(
                                         "markup_percentage",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                     disabled={loading}
@@ -1949,8 +1926,6 @@ const AddItemModal = ({
                             </tr>
 
                             <tr>
-                              
-                              
                               <td className="fw-bold">
                                 Markup ({formState.markup_percentage || 0}%):
                               </td>

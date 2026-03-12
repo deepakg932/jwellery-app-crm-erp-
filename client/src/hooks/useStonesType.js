@@ -1,178 +1,194 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export default function useStonesType() {
   const [stones, setStones] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Helper function to normalize API response data
-  const normalizeResponseData = (data, fieldName) => {
-    if (!data) return [];
-    
-    if (Array.isArray(data)) {
-      return data;
-    } else if (Array.isArray(data?.[fieldName])) {
-      return data[fieldName];
-    } else if (data?.success && Array.isArray(data[fieldName])) {
-      return data[fieldName];
-    } else if (Array.isArray(data?.data)) {
-      return data.data;
-    }
-    return [];
-  };
-
+  // ✅ Fetch Stones
   const fetchStones = async () => {
     try {
       setLoading(true);
-      
-      const url = API_ENDPOINTS.getAllStoneTypes();
-      console.log("Fetching stone types from:", url);
-      
-      const res = await axios.get(url);
+      setError("");
+
+      const res = await axios.get(API_ENDPOINTS.getAllStoneTypes());
       console.log("API Response:", res.data);
-      
-      const stonesData = normalizeResponseData(res.data, 'stones');
-      
+
+      let stonesData = [];
+
+      if (Array.isArray(res.data)) {
+        stonesData = res.data;
+      } else if (res.data?.stones) {
+        stonesData = res.data.stones;
+      }
+
       const mappedStones = stonesData.map((s) => ({
         _id: s._id || s.id,
         stone_type: s.stone_type || s.name || "",
-        // IMPORTANT: Use consistent property name - either fullImageUrl or stone_image
         stone_image: s.fullImageUrl || s.stone_image || "",
       }));
-      
-      console.log("Fetched stone types:", mappedStones);
+
       setStones(mappedStones);
     } catch (err) {
       console.error("Fetch error:", err);
       setError("Failed to load stone types");
+      toast.error("Failed to load stone types. Please try again.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Add Stone
   const addStone = async (stoneData, imageFile) => {
     const formData = new FormData();
     formData.append("stone_type", stoneData.stone_type);
     if (imageFile) formData.append("stone_image", imageFile);
 
+    // Show loading toast
+    const toastId = toast.loading("Adding stone type...");
+
     try {
       setLoading(true);
-      
-      const url = API_ENDPOINTS.createStoneType();
-      console.log("Creating stone type at:", url);
-      
-      const res = await axios.post(url, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      setError("");
+
+      const res = await axios.post(
+        API_ENDPOINTS.createStoneType(),
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      const stone = res.data.stone || res.data;
+
+      const newStone = {
+        _id: stone._id,
+        stone_type: stone.stone_type,
+        stone_image: stone.fullImageUrl || stone.stone_image || "",
+      };
+
+      setStones((prev) => [...prev, newStone]);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Stone type added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
       });
-      
-      console.log("Add response:", res.data);
-      
-      let newStone = {};
-      
-      // Based on your response structure: {success: true, stone: {...}}
-      if (res.data?.success && res.data.stone) {
-        newStone = {
-          _id: res.data.stone._id,
-          stone_type: res.data.stone.stone_type || stoneData.stone_type,
-          // IMPORTANT: Use fullImageUrl from response and map to stone_image property
-          stone_image: res.data.stone.fullImageUrl || res.data.stone.stone_image || "",
-        };
-      } else if (res.data?._id) {
-        // If response is the stone object directly
-        newStone = {
-          _id: res.data._id,
-          stone_type: res.data.stone_type || stoneData.stone_type,
-          stone_image: res.data.fullImageUrl || res.data.stone_image || "",
-        };
-      } else {
-        // Fallback
-        newStone = {
-          _id: `temp-${Date.now()}`,
-          stone_type: stoneData.stone_type,
-          stone_image: "",
-        };
-      }
-      
-      console.log("New stone type added:", newStone);
-      setStones(prev => [...prev, newStone]);
+
       return newStone;
     } catch (err) {
       console.error("Add error:", err);
       setError("Failed to add stone type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to add stone type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Update Stone
   const updateStone = async (id, data) => {
     const formData = new FormData();
     formData.append("stone_type", data.stone_type);
     if (data.imageFile) formData.append("stone_image", data.imageFile);
 
+    // Show loading toast
+    const toastId = toast.loading("Updating stone type...");
+
     try {
       setLoading(true);
-      
-      const url = API_ENDPOINTS.updateStoneType(id);
-      console.log("Updating stone type at:", url);
-      
-      const res = await axios.put(url, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      setError("");
+
+      const res = await axios.put(
+        API_ENDPOINTS.updateStoneType(id),
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      const stone = res.data.stone || res.data;
+
+      const updatedStone = {
+        _id: stone._id,
+        stone_type: stone.stone_type,
+        stone_image: stone.fullImageUrl || stone.stone_image || "",
+      };
+
+      setStones((prev) =>
+        prev.map((s) => (s._id === id ? updatedStone : s))
+      );
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Stone type updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
       });
-      
-      console.log("Update response:", res.data);
-      
-      let updatedData = {};
-      
-      // Based on your response structure
-      if (res.data?.success && res.data.stone) {
-        updatedData = {
-          _id: res.data.stone._id || id,
-          stone_type: res.data.stone.stone_type || data.stone_type,
-          // IMPORTANT: Use stone_image property consistently
-          stone_image: res.data.stone.fullImageUrl || res.data.stone.stone_image || "",
-        };
-      } else if (res.data?._id) {
-        updatedData = {
-          _id: res.data._id || id,
-          stone_type: res.data.stone_type || data.stone_type,
-          stone_image: res.data.fullImageUrl || res.data.stone_image || "",
-        };
-      } else {
-        // Fallback
-        updatedData = {
-          _id: id,
-          stone_type: data.stone_type,
-          stone_image: "",
-        };
-      }
-      
-      setStones(prev => prev.map(s => (s._id === id ? updatedData : s)));
-      console.log("Updated stone type:", updatedData);
-      return updatedData;
+
+      return updatedStone;
     } catch (err) {
       console.error("Update error:", err);
       setError("Failed to update stone type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to update stone type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Delete Stone
   const deleteStone = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting stone type...");
+
     try {
       setLoading(true);
-      
-      const url = API_ENDPOINTS.deleteStoneType(id);
-      console.log("Deleting stone type at:", url);
-      
-      await axios.delete(url);
-      setStones(prev => prev.filter((s) => s._id !== id));
+      setError("");
+
+      await axios.delete(API_ENDPOINTS.deleteStoneType(id));
+
+      setStones((prev) => prev.filter((s) => s._id !== id));
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Stone type deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
       console.error("Delete error:", err);
       setError("Failed to delete stone type");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to delete stone type. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);

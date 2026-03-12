@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FiUpload, FiImage, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const EditSubCategoryModal = ({
   show,
@@ -14,7 +15,6 @@ const EditSubCategoryModal = ({
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -24,7 +24,6 @@ const EditSubCategoryModal = ({
       const imageUrl = subCategory.imageUrl || "";
       setImagePreview(imageUrl ? imageUrl : null);
       setImageFile(null);
-      setError("");
     }
   }, [subCategory]);
 
@@ -43,12 +42,12 @@ const EditSubCategoryModal = ({
       e.preventDefault();
 
       if (!name.trim()) {
-        setError("Please enter a sub-category name");
+        toast.error("Please enter a sub-category name");
         return;
       }
 
       if (!selectedCategory.trim()) {
-        setError("Please select a parent category");
+        toast.error("Please select a parent category");
         return;
       }
 
@@ -68,7 +67,6 @@ const EditSubCategoryModal = ({
         // Parent handles closing
       } catch (err) {
         console.error("Form submission error:", err);
-        setError("Failed to update. Please try again.");
       }
     },
     [name, selectedCategory, imageFile, subCategory, onSubmit]
@@ -79,13 +77,13 @@ const EditSubCategoryModal = ({
       if (file) {
         // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
-          setError("File size should be less than 5MB");
+          toast.error("File size should be less than 5MB");
           return;
         }
 
         // Validate file type
         if (!file.type.startsWith("image/")) {
-          setError("Please upload an image file");
+          toast.error("Please upload an image file");
           return;
         }
 
@@ -97,7 +95,6 @@ const EditSubCategoryModal = ({
         setImageFile(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
-        setError("");
       }
     },
     [imageFile, imagePreview]
@@ -155,7 +152,6 @@ const EditSubCategoryModal = ({
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
-    setError("");
     onHide();
   }, [imageFile, imagePreview, onHide]);
 
@@ -182,13 +178,6 @@ const EditSubCategoryModal = ({
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -203,9 +192,7 @@ const EditSubCategoryModal = ({
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -213,19 +200,17 @@ const EditSubCategoryModal = ({
               {/* Parent Category Dropdown */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
-                  Parent Category <span className="text-danger">*</span>
+                  Category <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-l"
                   value={selectedCategory}
                   onChange={(e) => {
                     setSelectedCategory(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 >
-                  <option value="">Select parent category</option>
+                  <option value="">Select category</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}

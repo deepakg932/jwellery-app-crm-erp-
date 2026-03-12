@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useMaterial } from "@/hooks/useMaterial";
+import { toast } from "react-toastify";
 
-const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false }) => {
+const EditMaterialForm = ({
+  show,
+  onHide,
+  onSubmit,
+  material,
+  loading = false,
+}) => {
   const { metals, fetchMetals } = useMaterial();
   const [formData, setFormData] = useState({
     material_type: "",
     metal_type: "",
   });
-  const [error, setError] = useState("");
 
   // Fetch metals on component mount
   useEffect(() => {
@@ -21,13 +27,12 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
         material_type: material.material_type || "",
         metal_type: material.metal_id || "",
       });
-      setError("");
     }
   }, [material]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     const errors = [];
 
@@ -39,7 +44,7 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
     }
 
     if (errors.length > 0) {
-      setError(errors.join(', '));
+      toast.error(errors.join(", "));
       return;
     }
 
@@ -52,17 +57,15 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
       await onSubmit(materialData);
     } catch (err) {
       console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    setError("");
   };
 
   const handleClose = () => {
@@ -70,29 +73,20 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
       material_type: "",
       metal_type: "",
     });
-    setError("");
     onHide();
-  };
-
-  const isFormValid = () => {
-    return (
-      formData.material_type.trim() &&
-      formData.metal_type
-    );
   };
 
   // Don't render if not shown
   if (!show) return null;
 
   return (
-    <div 
-      className="modal fade show d-block" 
-      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} 
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
       tabIndex="-1"
     >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Edit Material Type</h5>
@@ -104,13 +98,6 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
               aria-label="Close"
             />
           </div>
-
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -127,7 +114,6 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
                   placeholder="Enter material type"
                   value={formData.material_type}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -142,7 +128,6 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
                   className="form-select"
                   value={formData.metal_type}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select Metal Type</option>
@@ -168,11 +153,15 @@ const EditMaterialForm = ({ show, onHide, onSubmit, material, loading = false })
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!isFormValid() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Updating...
                   </>
                 ) : (

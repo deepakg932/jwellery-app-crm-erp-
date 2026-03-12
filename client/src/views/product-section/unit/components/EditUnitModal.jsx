@@ -15,7 +15,7 @@
 
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
-    
+
 //     if (!unitName.trim()) {
 //       setError("Please enter a unit name");
 //       return;
@@ -40,9 +40,9 @@
 //   if (!show) return null;
 
 //   return (
-//     <div 
-//       className="modal fade show d-block" 
-//       style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} 
+//     <div
+//       className="modal fade show d-block"
+//       style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
 //       tabIndex="-1"
 //       ref={modalRef}
 //       onClick={(e) => {
@@ -54,7 +54,7 @@
 //     >
 //       <div className="modal-dialog modal-dialog-centered">
 //         <div className="modal-content rounded-3">
-          
+
 //           {/* Header */}
 //           <div className="modal-header border-bottom pb-3">
 //             <h5 className="modal-title fw-bold fs-5">Edit Unit</h5>
@@ -131,19 +131,14 @@
 // export default EditUnitModal;
 
 import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 
-const EditUnitModal = ({ 
-  show, 
-  onHide, 
-  onSubmit, 
-  unit, 
-  loading = false 
-}) => {
+const EditUnitModal = ({ show, onHide, onSubmit, unit, loading = false }) => {
   const [formData, setFormData] = useState({
     name: "",
     code: "",
     conversion_factor: 1,
-    is_active: true
+    is_active: true,
   });
   const [error, setError] = useState("");
 
@@ -153,30 +148,30 @@ const EditUnitModal = ({
         name: unit.name || "",
         code: unit.code || "",
         conversion_factor: unit.conversion_factor || 1,
-        is_active: unit.is_active !== undefined ? unit.is_active : true
+        is_active: unit.is_active !== undefined ? unit.is_active : true,
       });
     }
   }, [unit]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
     setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
-      setError("Please enter a unit name");
+      toast.error("Please enter a unit name");
       return;
     }
-    
+
     if (!formData.code.trim()) {
-      setError("Please enter a unit code");
+      toast.error("Please enter a unit code");
       return;
     }
 
@@ -185,21 +180,23 @@ const EditUnitModal = ({
         name: formData.name.trim(),
         code: formData.code.trim().toUpperCase(),
         conversion_factor: parseFloat(formData.conversion_factor) || 1,
-        is_active: formData.is_active
+        is_active: formData.is_active,
       });
     } catch (error) {
       console.error("Update failed:", error);
-      setError(error.response?.data?.message || "Failed to update. Please try again.");
     }
   };
 
   if (!show || !unit) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Edit Unit</h5>
@@ -210,13 +207,6 @@ const EditUnitModal = ({
               disabled={loading}
             ></button>
           </div>
-
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -233,7 +223,6 @@ const EditUnitModal = ({
                   placeholder="e.g., Kilogram, Gram, Carat"
                   value={formData.name}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -250,7 +239,6 @@ const EditUnitModal = ({
                   placeholder="e.g., KG, G, CT"
                   value={formData.code}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                   maxLength={10}
                 />
@@ -259,7 +247,7 @@ const EditUnitModal = ({
               {/* Conversion Factor */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
-                  Conversion Factor <span className="text-danger">*</span>
+                  Conversion Factor
                 </label>
                 <input
                   type="number"
@@ -268,7 +256,6 @@ const EditUnitModal = ({
                   placeholder="1"
                   value={formData.conversion_factor}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                   min="0.0001"
                   step="0.0001"
@@ -290,7 +277,10 @@ const EditUnitModal = ({
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  <label className="form-check-label fw-medium" htmlFor="is_active_edit">
+                  <label
+                    className="form-check-label fw-medium"
+                    htmlFor="is_active_edit"
+                  >
                     Active
                   </label>
                 </div>
@@ -310,11 +300,15 @@ const EditUnitModal = ({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!formData.name.trim() || !formData.code.trim() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Updating...
                   </>
                 ) : (

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FiUpload, FiImage, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const EditMetalTypeModal = ({ show, onHide, onSubmit, metalType, loading = false }) => {
   const [metalTypeName, setMetalTypeName] = useState("");
@@ -32,26 +33,31 @@ console.log(metalType)
     };
   }, [imageFile, imagePreview]);
 
+    const validateForm = () => {
+      const newErrors = {};
+  
+      if (!metalTypeName.trim()) {
+        newErrors.metalTypeName = "Metal type name is required";
+      }
+      if (Object.keys(newErrors).length > 0) {
+        toast.error(Object.values(newErrors)[0]);
+      }
+  
+      return Object.keys(newErrors).length === 0;
+    };
+
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
-    if (!metalTypeName.trim()) {
-      setError("Please enter a metal type name");
+    if (!validateForm()) {
       return;
     }
-
-    console.log("Submitting update:", {
-      name: metalTypeName,
-      hasImageFile: !!imageFile,
-      metalTypeId: metalType?._id
-    });
 
     try {
       await onSubmit(metalTypeName, imageFile);
       // Parent handles closing
     } catch (err) {
       console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
     }
   }, [metalTypeName, imageFile, metalType, onSubmit]);
 
@@ -59,13 +65,13 @@ console.log(metalType)
     if (file) {
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
-        setError("File size should be less than 5MB");
+        toast.error("File size should be less than 5MB");
         return;
       }
       
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        setError("Please upload an image file");
+        toast.error("Please upload an image file");
         return;
       }
       
@@ -162,13 +168,6 @@ console.log(metalType)
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -186,7 +185,6 @@ console.log(metalType)
                     setMetalTypeName(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>

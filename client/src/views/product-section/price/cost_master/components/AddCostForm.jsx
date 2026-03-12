@@ -1,17 +1,16 @@
 import React, { useState, useRef } from "react";
+import { toast } from "react-toastify";
 
 const AddCostForm = ({ onClose, onSave, loading = false }) => {
   const [formData, setFormData] = useState({
     cost_name: "",
   });
-  const [error, setError] = useState("");
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.cost_name.trim()) {
-      setError("Please enter a cost name");
+      toast.error("Please enter a cost name");
       return;
     }
 
@@ -25,10 +24,8 @@ const AddCostForm = ({ onClose, onSave, loading = false }) => {
       setFormData({
         cost_name: "",
       });
-      setError("");
     } catch (error) {
       console.error("Save failed:", error);
-      setError("Failed to save. Please try again.");
     }
   };
 
@@ -38,14 +35,12 @@ const AddCostForm = ({ onClose, onSave, loading = false }) => {
       ...prev,
       [name]: value
     }));
-    setError("");
   };
 
   const handleClose = () => {
     setFormData({
       cost_name: "",
     });
-    setError("");
     onClose();
   };
 
@@ -65,12 +60,7 @@ const AddCostForm = ({ onClose, onSave, loading = false }) => {
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
+
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -88,7 +78,6 @@ const AddCostForm = ({ onClose, onSave, loading = false }) => {
                   name="cost_name"
                   value={formData.cost_name}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -108,7 +97,7 @@ const AddCostForm = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!formData.cost_name.trim() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>

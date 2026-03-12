@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useMaterial } from "@/hooks/useMaterial";
+import { toast } from "react-toastify";
 
 const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
   const { metals, fetchMetals } = useMaterial();
@@ -7,7 +8,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
     material_type: "",
     metal_type: "",
   });
-  const [error, setError] = useState("");
 
   // Fetch metals on component mount
   useEffect(() => {
@@ -27,7 +27,7 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
     }
 
     if (errors.length > 0) {
-      setError(errors.join(', '));
+      toast.error(errors.join(', '));
       return;
     }
 
@@ -41,7 +41,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
       resetForm();
     } catch (error) {
       console.error("Save failed:", error);
-      setError("Failed to save. Please try again.");
     }
   };
 
@@ -51,7 +50,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
       ...prev,
       [name]: value
     }));
-    setError("");
   };
 
   const resetForm = () => {
@@ -59,7 +57,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
       material_type: "",
       metal_type: "",
     });
-    setError("");
   };
 
   const handleClose = () => {
@@ -67,12 +64,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
     onClose();
   };
 
-  const isFormValid = () => {
-    return (
-      formData.material_type.trim() &&
-      formData.metal_type
-    );
-  };
 
   return (
     <div
@@ -93,13 +84,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -115,7 +99,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
                   placeholder="Enter material type (e.g., Production Type, Raw Material)"
                   value={formData.material_type}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                 />
                 <div className="form-text">
@@ -133,7 +116,6 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
                   className="form-select"
                   value={formData.metal_type}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select Metal Type</option>
@@ -159,7 +141,7 @@ const AddMaterialForm = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!isFormValid() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>

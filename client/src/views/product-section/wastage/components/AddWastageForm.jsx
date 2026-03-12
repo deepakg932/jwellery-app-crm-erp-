@@ -1,10 +1,10 @@
 import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 const AddWastageForm = ({ onClose, onSave, loading = false }) => {
   const [formData, setFormData] = useState({
     wastage_type: "",
   });
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,7 +17,7 @@ const AddWastageForm = ({ onClose, onSave, loading = false }) => {
     }
 
     if (errors.length > 0) {
-      setError(errors.join(', '));
+      toast.error(errors.join(', '));
       return;
     }
 
@@ -30,7 +30,6 @@ const AddWastageForm = ({ onClose, onSave, loading = false }) => {
       resetForm();
     } catch (error) {
       console.error("Save failed:", error);
-      setError("Failed to save. Please try again.");
     }
   };
 
@@ -40,14 +39,12 @@ const AddWastageForm = ({ onClose, onSave, loading = false }) => {
       ...prev,
       [name]: value
     }));
-    setError("");
   };
 
   const resetForm = () => {
     setFormData({
       wastage_type: "",
     });
-    setError("");
   };
 
   const handleClose = () => {
@@ -55,9 +52,6 @@ const AddWastageForm = ({ onClose, onSave, loading = false }) => {
     onClose();
   };
 
-  const isFormValid = () => {
-    return formData.wastage_type.trim();
-  };
 
   return (
     <div
@@ -78,13 +72,6 @@ const AddWastageForm = ({ onClose, onSave, loading = false }) => {
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -101,7 +88,6 @@ const AddWastageForm = ({ onClose, onSave, loading = false }) => {
                     placeholder="Enter wastage type"
                     value={formData.wastage_type}
                     onChange={handleChange}
-                    required
                     disabled={loading}
                   />
                   <div className="form-text">
@@ -124,7 +110,7 @@ const AddWastageForm = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!isFormValid() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>

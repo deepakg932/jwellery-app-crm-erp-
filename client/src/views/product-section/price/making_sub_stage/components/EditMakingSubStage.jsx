@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
 
 const EditMakingSubStage = ({
   show,
@@ -10,13 +11,11 @@ const EditMakingSubStage = ({
 }) => {
   const [name, setName] = useState("");
   const [selectedStage, setSelectedStage] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (makingSubStage) {
       setName(makingSubStage.sub_stage_name || makingSubStage.name || "");
       setSelectedStage(makingSubStage.making_stage_id || "");
-      setError("");
     }
   }, [makingSubStage]);
 
@@ -25,12 +24,12 @@ const EditMakingSubStage = ({
       e.preventDefault();
 
       if (!name.trim()) {
-        setError("Please enter a making sub-stage name");
+        toast.error("Please enter a making sub-stage name");
         return;
       }
 
       if (!selectedStage.trim()) {
-        setError("Please select a parent making stage");
+        toast.error("Please select a parent making stage");
         return;
       }
 
@@ -46,14 +45,12 @@ const EditMakingSubStage = ({
         });
       } catch (err) {
         console.error("Form submission error:", err);
-        setError("Failed to update. Please try again.");
       }
     },
-    [name, selectedStage, onSubmit]
+    [name, selectedStage, onSubmit],
   );
 
   const handleClose = useCallback(() => {
-    setError("");
     onHide();
   }, [onHide]);
 
@@ -79,13 +76,6 @@ const EditMakingSubStage = ({
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -100,30 +90,26 @@ const EditMakingSubStage = ({
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                   placeholder="e.g., Metal Casting, Stone Setting, Polishing"
                 />
               </div>
 
-              {/* Parent Making Stage Dropdown */}
+              {/* Making Stage Dropdown */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
-                  Parent Making Stage <span className="text-danger">*</span>
+                  Making Stage <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-lg"
                   value={selectedStage}
                   onChange={(e) => {
                     setSelectedStage(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 >
-                  <option value="">Select parent making stage</option>
+                  <option value="">Select making stage</option>
                   {makingStages.map((stage) => (
                     <option key={stage._id} value={stage._id}>
                       {stage.stage_name}

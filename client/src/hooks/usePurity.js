@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export default function usePurity() {
   const [purities, setPurities] = useState([]);
@@ -11,13 +12,11 @@ export default function usePurity() {
   // Fetch metal types for dropdown from API
   const fetchMetalTypes = async () => {
     try {
-      // Using API_ENDPOINTS instead of hardcoded URL
       const res = await axios.get(API_ENDPOINTS.getMetals());
       console.log("Metal Types API Response:", res.data);
       
       let metalsData = [];
       
-      // Handle different response structures
       if (Array.isArray(res.data)) {
         metalsData = res.data;
       } else if (Array.isArray(res.data.metals)) {
@@ -28,7 +27,6 @@ export default function usePurity() {
         metalsData = res.data.data;
       }
       
-      // Map to ensure consistent structure
       const mappedMetals = metalsData.map((metal) => ({
         id: metal._id || metal.id,
         name: metal.name || "",
@@ -40,6 +38,9 @@ export default function usePurity() {
       return mappedMetals;
     } catch (err) {
       console.error("Fetch metal types error:", err);
+      toast.error("Failed to load metal types", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
@@ -49,13 +50,11 @@ export default function usePurity() {
     try {
       setLoading(true);
       
-      // Using API_ENDPOINTS instead of hardcoded URL
       const res = await axios.get(API_ENDPOINTS.getPurities());
       console.log("Purities API Response:", res.data);
       
       let purityData = [];
       
-      // Handle different response structures
       if (Array.isArray(res.data)) {
         purityData = res.data;
       } else if (Array.isArray(res.data.purity)) {
@@ -66,7 +65,6 @@ export default function usePurity() {
         purityData = res.data.data;
       }
       
-      // Map to ensure consistent structure
       const mappedPurities = purityData.map((purity) => ({
         _id: purity._id || purity.id,
         purity_name: purity.purity_name || "",
@@ -80,6 +78,9 @@ export default function usePurity() {
     } catch (err) {
       console.error("Fetch purities error:", err);
       setError("Failed to load purities");
+      toast.error("Failed to load purities. Please try again.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
@@ -93,10 +94,12 @@ export default function usePurity() {
     formData.append("percentage", purityData.percentage);
     if (purityData.imageFile) formData.append("image", purityData.imageFile);
 
+    // Show loading toast
+    const toastId = toast.loading("Adding purity...");
+
     try {
       setLoading(true);
       
-      // Using API_ENDPOINTS instead of hardcoded URL
       const res = await axios.post(API_ENDPOINTS.createPurity(), formData);
       console.log("Add purity response:", res.data);
       
@@ -129,10 +132,28 @@ export default function usePurity() {
       }
       
       setPurities(prev => [...prev, newPurity]);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Purity added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return newPurity;
     } catch (err) {
       console.error("Add purity error:", err);
       setError("Failed to add purity");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to add purity. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -147,11 +168,13 @@ export default function usePurity() {
     formData.append("percentage", data.percentage);
     if (data.imageFile) formData.append("image", data.imageFile);
 
+    // Show loading toast
+    const toastId = toast.loading("Updating purity...");
+
     try {
       setLoading(true);
       console.log("Updating purity with ID:", id, "Data:", data);
       
-      // Using API_ENDPOINTS instead of hardcoded URL
       const res = await axios.put(API_ENDPOINTS.updatePurity(id), formData);
       console.log("Update purity response:", res.data);
       
@@ -185,11 +208,28 @@ export default function usePurity() {
       setPurities(prev => 
         prev.map((purity) => (purity._id === id ? updatedData : purity))
       );
-      
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Purity updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return updatedData;
     } catch (err) {
       console.error("Update purity error:", err);
       setError("Failed to update purity");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to update purity. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -198,15 +238,34 @@ export default function usePurity() {
 
   // Delete purity
   const deletePurity = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting purity...");
+
     try {
       setLoading(true);
       
-      // Using API_ENDPOINTS instead of hardcoded URL
       await axios.delete(API_ENDPOINTS.deletePurity(id));
       setPurities(prev => prev.filter((purity) => purity._id !== id));
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Purity deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
       console.error("Delete purity error:", err);
       setError("Failed to delete");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to delete purity. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -230,6 +289,9 @@ export default function usePurity() {
       await Promise.all([fetchMetalTypes(), fetchPurities()]);
     } catch (err) {
       console.error("Error fetching data:", err);
+      toast.error("Failed to load data. Please refresh the page.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }

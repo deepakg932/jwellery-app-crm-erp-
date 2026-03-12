@@ -1,28 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FiUpload, FiImage, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 
-const EditStoneForm = ({ 
-  show, 
-  onHide, 
-  onSubmit, 
-  stone, 
+const EditStoneForm = ({
+  show,
+  onHide,
+  onSubmit,
+  stone,
   loading = false,
-  stoneTypes = [], 
-  stonePurities = [] 
+  stoneTypes = [],
+  stonePurities = [],
 }) => {
-  // DEBUG
-  console.log("EditStoneForm - stoneTypes:", stoneTypes);
-  console.log("EditStoneForm - stonePurities:", stonePurities);
-  console.log("EditStoneForm - stone:", stone);
-  
-  // ONLY 5 FIELDS
   const [stoneData, setStoneData] = useState({
     stone_name: "",
     stone_type: "",
     stone_purity: "",
     stone_price: "",
   });
-  
+
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
@@ -37,7 +32,7 @@ const EditStoneForm = ({
         stone_purity: stone.stone_purity || "",
         stone_price: stone.stone_price || "",
       });
-      
+
       // Set image preview if exists
       if (stone.stone_image) {
         setImagePreview(stone.stone_image);
@@ -51,82 +46,89 @@ const EditStoneForm = ({
   // Cleanup
   useEffect(() => {
     return () => {
-      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+      if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview);
       }
     };
   }, [imageFile, imagePreview]);
 
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    
-    // Validate ONLY 5 FIELDS
-    if (!stoneData.stone_name.trim()) {
-      alert("Please enter stone name");
-      return;
-    }
-    if (!stoneData.stone_type) {
-      alert("Please select stone type");
-      return;
-    }
-    if (!stoneData.stone_purity) {
-      alert("Please select stone purity");
-      return;
-    }
-    if (!stoneData.stone_price || parseFloat(stoneData.stone_price) <= 0) {
-      alert("Please enter a valid price");
-      return;
-    }
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
 
-    const dataToSend = {
-      stone_name: stoneData.stone_name.trim(),
-      stone_type: stoneData.stone_type,
-      stone_purity: stoneData.stone_purity,
-      stone_price: parseFloat(stoneData.stone_price),
-    };
+      if (!stoneData.stone_name.trim()) {
+        toast.error("Please enter stone name");
+        return;
+      }
+      if (!stoneData.stone_type) {
+        toast.error("Please select stone type");
+        return;
+      }
+      if (!stoneData.stone_purity) {
+        toast.error("Please select stone purity");
+        return;
+      }
+      if (!stoneData.stone_price || parseFloat(stoneData.stone_price) <= 0) {
+        toast.error("Please enter a valid price");
+        return;
+      }
 
-    console.log("Updating stone with 5 fields:", dataToSend);
-    await onSubmit(dataToSend, imageFile);
-  }, [stoneData, imageFile, onSubmit]);
+      const dataToSend = {
+        stone_name: stoneData.stone_name.trim(),
+        stone_type: stoneData.stone_type,
+        stone_purity: stoneData.stone_purity,
+        stone_price: parseFloat(stoneData.stone_price),
+      };
+
+      await onSubmit(dataToSend, imageFile);
+    },
+    [stoneData, imageFile, onSubmit],
+  );
 
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
-    setStoneData(prev => ({
+    setStoneData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   }, []);
 
-  const handleImageChange = useCallback((file) => {
-    if (file) {
-      // Validate file
-      if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        alert("Please upload an image file");
-        return;
-      }
-      
-      // Clean up previous blob URL
-      if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(imagePreview);
-      }
-      
-      setImageFile(file);
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-    }
-  }, [imageFile, imagePreview]);
+  const handleImageChange = useCallback(
+    (file) => {
+      if (file) {
+        // Validate file
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("File size should be less than 5MB");
+          return;
+        }
+        if (!file.type.startsWith("image/")) {
+          toast.error("Please upload an image file");
+          return;
+        }
 
-  const handleFileInput = useCallback((e) => {
-    const file = e.target.files[0];
-    if (file) handleImageChange(file);
-  }, [handleImageChange]);
+        // Clean up previous blob URL
+        if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
+          URL.revokeObjectURL(imagePreview);
+        }
+
+        setImageFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+      }
+    },
+    [imageFile, imagePreview],
+  );
+
+  const handleFileInput = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (file) handleImageChange(file);
+    },
+    [handleImageChange],
+  );
 
   const removeImage = useCallback(() => {
-    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+    if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
@@ -137,7 +139,7 @@ const EditStoneForm = ({
   }, [imageFile, imagePreview, stone]);
 
   const handleClose = useCallback(() => {
-    if (imageFile && imagePreview && imagePreview.startsWith('blob:')) {
+    if (imageFile && imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
@@ -147,10 +149,13 @@ const EditStoneForm = ({
   if (!show) return null;
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered modal-lg">
         <div className="modal-content rounded-3">
-          
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Edit Stone</h5>
             <button
@@ -177,7 +182,6 @@ const EditStoneForm = ({
                       className="form-control"
                       value={stoneData.stone_name}
                       onChange={handleInputChange}
-                      required
                       disabled={loading}
                     />
                   </div>
@@ -192,7 +196,6 @@ const EditStoneForm = ({
                       className="form-select"
                       value={stoneData.stone_type}
                       onChange={handleInputChange}
-                      required
                       disabled={loading}
                     >
                       <option value="">Select Stone Type</option>
@@ -220,7 +223,6 @@ const EditStoneForm = ({
                       className="form-select"
                       value={stoneData.stone_purity}
                       onChange={handleInputChange}
-                      required
                       disabled={loading}
                     >
                       <option value="">Select Stone Purity</option>
@@ -251,7 +253,6 @@ const EditStoneForm = ({
                       onChange={handleInputChange}
                       min="0"
                       step="1"
-                      required
                       disabled={loading}
                     />
                   </div>
@@ -261,23 +262,33 @@ const EditStoneForm = ({
                 <div className="col-md-6">
                   <div className="mb-3">
                     <label className="form-label fw-medium">Stone Image</label>
-                    
+
                     {imagePreview ? (
                       <div className="text-center">
                         <div className="position-relative d-inline-block">
                           <img
-                            src={imagePreview.startsWith('blob:') ? imagePreview : imagePreview}
+                            src={
+                              imagePreview.startsWith("blob:")
+                                ? imagePreview
+                                : imagePreview
+                            }
                             alt="Preview"
                             className="img-thumbnail rounded border"
-                            style={{ width: '200px', height: '200px', objectFit: 'cover' }}
+                            style={{
+                              width: "200px",
+                              height: "200px",
+                              objectFit: "cover",
+                            }}
                             onError={(e) => {
-                              e.target.style.display = 'none';
+                              e.target.style.display = "none";
                               const parent = e.target.parentElement;
-                              const placeholder = document.createElement('div');
-                              placeholder.className = 'd-flex align-items-center justify-content-center rounded border mx-auto';
-                              placeholder.style.width = '200px';
-                              placeholder.style.height = '200px';
-                              placeholder.innerHTML = '<FiImage class="text-muted" size={40} />';
+                              const placeholder = document.createElement("div");
+                              placeholder.className =
+                                "d-flex align-items-center justify-content-center rounded border mx-auto";
+                              placeholder.style.width = "200px";
+                              placeholder.style.height = "200px";
+                              placeholder.innerHTML =
+                                '<FiImage class="text-muted" size={40} />';
                               parent.appendChild(placeholder);
                             }}
                           />
@@ -286,7 +297,7 @@ const EditStoneForm = ({
                               type="button"
                               onClick={removeImage}
                               className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                              style={{ transform: 'translate(-50%, -50%)' }}
+                              style={{ transform: "translate(-50%, -50%)" }}
                               disabled={loading}
                             >
                               <FiX size={12} />
@@ -299,14 +310,18 @@ const EditStoneForm = ({
                       </div>
                     ) : (
                       <div className="text-center">
-                        <div className="d-flex align-items-center justify-content-center rounded border mx-auto"
-                          style={{ width: '200px', height: '200px' }}>
+                        <div
+                          className="d-flex align-items-center justify-content-center rounded border mx-auto"
+                          style={{ width: "200px", height: "200px" }}
+                        >
                           <FiImage className="text-muted" size={40} />
                         </div>
-                        <p className="small text-muted mt-2 mb-0">No image set</p>
+                        <p className="small text-muted mt-2 mb-0">
+                          No image set
+                        </p>
                       </div>
                     )}
-                    
+
                     {/* Change Image Section */}
                     <label className="form-label fw-medium d-block mb-2 mt-3">
                       {imagePreview ? "Change Image" : "Upload Image"}
@@ -314,7 +329,7 @@ const EditStoneForm = ({
                     <div
                       className="border-2 border-dashed border-muted rounded-3 text-center cursor-pointer hover:border-primary hover:bg-light"
                       onClick={() => fileInputRef.current?.click()}
-                      style={{ padding: '15px' }}
+                      style={{ padding: "15px" }}
                     >
                       <input
                         type="file"
@@ -324,7 +339,7 @@ const EditStoneForm = ({
                         className="d-none"
                         disabled={loading}
                       />
-                      
+
                       <FiImage className="mb-2 text-muted" size={24} />
                       <p className="text-muted small mb-0">
                         Drop new image here or browse
@@ -354,7 +369,11 @@ const EditStoneForm = ({
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Updating...
                   </>
                 ) : (

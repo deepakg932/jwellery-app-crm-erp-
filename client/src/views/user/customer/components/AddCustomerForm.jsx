@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FiUpload } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
 import { toast } from "react-toastify";
+import { FiUser, FiCamera } from "react-icons/fi";
 
 const AddCustomerForm = ({
   onClose,
@@ -29,6 +30,7 @@ const AddCustomerForm = ({
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Initialize countries on component mount
   useEffect(() => {
@@ -109,13 +111,12 @@ const AddCustomerForm = ({
     } else if (!/^\d{10}$/.test(formData.phone.trim())) {
       newErrors.phone = "Phone number must be 10 digits";
     }
-    
-  if (!formData.aadhar_number.trim()) {
+
+    if (!formData.aadhar_number.trim()) {
       newErrors.aadhar_number = "aadhar number is required";
     } else if (!/^\d{12}$/.test(formData.aadhar_number.trim())) {
       newErrors.aadhar_number = "aadhar number must be 12 digits";
     }
-
 
     if (
       formData.email.trim() &&
@@ -163,6 +164,35 @@ const AddCustomerForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        setErrors((prev) => ({
+          ...prev,
+          image: "Image size should be less than 5MB",
+        }));
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setErrors((prev) => ({
+          ...prev,
+          image: "Please upload an image file",
+        }));
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, image: file }));
+      setImagePreview(URL.createObjectURL(file));
+
+      if (errors.image) {
+        setErrors((prev) => ({ ...prev, image: "" }));
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -170,40 +200,85 @@ const AddCustomerForm = ({
     const toastId = toast.loading("");
 
     try {
+      // Create FormData for image upload - use a different variable name
+      const formDataToSend = new FormData();
+
+      // Append all form fields from the STATE formData (not the FormData object)
+      formDataToSend.append("name", formData.customer_name);
+      formDataToSend.append("customer_group_id", formData.customer_group_id);
+      formDataToSend.append("mobile", formData.phone);
+      formDataToSend.append("email", formData.email);
+      formDataToSend.append("whatsapp_number", formData.whatsapp_number);
+      formDataToSend.append("aadhar_number", formData.aadhar_number);
+      formDataToSend.append("tax_number", formData.tax_number);
+      formDataToSend.append("address", formData.address);
+
+      // Find country and state names for display
       const selectedCountry = countries.find(
         (c) => c.value === formData.country,
       );
       const selectedState = states.find((s) => s.value === formData.state);
-      const selectedGroup = customerGroups.find(
-        (g) => g._id === formData.customer_group_id,
+
+      formDataToSend.append(
+        "country",
+        selectedCountry ? selectedCountry.label : formData.country,
       );
+      formDataToSend.append("country_code", formData.country);
+      formDataToSend.append(
+        "state",
+        selectedState ? selectedState.label : formData.state,
+      );
+      formDataToSend.append("state_code", formData.state);
+      formDataToSend.append("city", formData.city);
+      formDataToSend.append("pincode", formData.pincode);
+      formDataToSend.append("status", formData.status ? "active" : "inactive");
 
-      const payload = {
-        customer_name: formData.customer_name.trim(),
+      // Append image if selected
+      if (formData.image) {
+        formDataToSend.append("image", formData.image);
+      }
+
+      // Debug logs to check the data being sent
+      console.log("Form data from state:", {
+        name: formData.customer_name,
         customer_group_id: formData.customer_group_id,
-        phone: formData.phone.trim(),
-        email: formData.email.trim(),
-        whatsapp_number: formData.whatsapp_number.trim(),
-        tax_number: formData.tax_number.trim(),
-        aadhar_number: formData.aadhar_number.trim(),
-        address: formData.address.trim(),
-        country: selectedCountry ? selectedCountry.label : formData.country,
-        country_code: formData.country,
-        state: selectedState ? selectedState.label : formData.state,
-        state_code: formData.state,
-        city: formData.city.trim(),
-        pincode: formData.pincode.trim(),
-        status: formData.status,
-      };
+        mobile: formData.phone,
+        email: formData.email,
+        whatsapp_number: formData.whatsapp_number,
+        aadhar_number: formData.aadhar_number,
+        tax_number: formData.tax_number,
+        address: formData.address,
+        country: formData.country,
+        state: formData.state,
+        city: formData.city,
+        pincode: formData.pincode,
+        status: formData.status ? "active" : "inactive",
+        hasImage: formData.image ? "Yes" : "No",
+      });
 
-      console.log("Submitting customer data:", payload);
+      // Log FormData entries to verify
+      console.log("FormData entries being sent:");
+      for (let pair of formDataToSend.entries()) {
+        if (pair[0] === "image") {
+          console.log(
+            pair[0] +
+              ": [File: " +
+              pair[1].name +
+              ", size: " +
+              pair[1].size +
+              " bytes]",
+          );
+        } else {
+          console.log(pair[0] + ": " + pair[1]);
+        }
+      }
 
-      await onSave(payload);
+      await onSave(formDataToSend);
 
       // Success case - update toast and close modal
       toast.update(toastId, {
-        render: 'Customer saved successfully!',
-        type: 'success',
+        render: "Customer saved successfully!",
+        type: "success",
         isLoading: false,
         autoClose: 3000,
       });
@@ -225,50 +300,34 @@ const AddCustomerForm = ({
         state: "",
         city: "",
         pincode: "",
+        image: null,
         status: true,
       });
+      setImagePreview(null);
       setErrors({});
 
-      // Close modal after successful save ONLY
-      // setTimeout(() => {
       onClose();
-      // }, 1500);
     } catch (error) {
       console.error("Error saving customer:", error);
 
-      // Error case - DO NOT close the modal
-      // Handle the specific error message
+      toast.update(toastId, {
+        render:
+          error.response?.data?.message ||
+          "Failed to save customer. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       if (
         error.response?.data?.message ===
         "Customer with this phone already exists"
       ) {
-        toast.update(toastId, {
-          render:
-            "This phone number is already registered. Please use a different phone number.",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
-
-        // Highlight the phone field
         setErrors((prev) => ({
           ...prev,
           phone: "This phone number is already registered",
         }));
-      } else {
-        // Handle other errors
-        const errorMessage =
-          error.response?.data?.message ||
-          "Failed to save customer. Please try again.";
-        toast.update(toastId, {
-          render: errorMessage,
-          type: "error",
-          isLoading: false,
-          autoClose: 4000,
-        });
       }
-
-      // IMPORTANT: No onClose() here - modal stays open
     }
   };
 
@@ -302,12 +361,13 @@ const AddCustomerForm = ({
       state: "",
       city: "",
       pincode: "",
+      image: null,
       status: true,
     });
+    setImagePreview(null);
     setErrors({});
     onClose();
   };
-
   return (
     <div
       className="modal fade show d-block"
@@ -330,6 +390,52 @@ const AddCustomerForm = ({
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
               <div className="row">
+                <div className="col-12 mb-4">
+                  <div className="d-flex flex-column align-items-center">
+                    <div className="position-relative mb-3">
+                      <div
+                        className="rounded-circle border border-3 border-primary p-1"
+                        style={{ width: "120px", height: "120px" }}
+                      >
+                        {imagePreview ? (
+                          <img
+                            src={imagePreview}
+                            alt="Customer Preview"
+                            className="rounded-circle w-100 h-100 object-fit-cover"
+                          />
+                        ) : (
+                          <div className="w-100 h-100 rounded-circle bg-light d-flex align-items-center justify-content-center">
+                            <FiUser size={48} className="text-muted" />
+                          </div>
+                        )}
+                      </div>
+                      <label
+                        htmlFor="customerImageUpload"
+                        className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle p-2 cursor-pointer"
+                        style={{ width: "40px", height: "40px" }}
+                      >
+                        <FiCamera size={20} />
+                        <input
+                          type="file"
+                          id="customerImageUpload"
+                          className="d-none"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          disabled={loading}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-muted small mb-0">
+                      Upload customer photo (Max 5MB)
+                    </p>
+                    {errors.image && (
+                      <div className="text-danger small mt-1">
+                        {errors.image}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Customer Name */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">
@@ -474,16 +580,14 @@ const AddCustomerForm = ({
                     type="tel"
                     name="aadhar_number"
                     className={`form-control form-control-lg
-                     ${
-                      errors.aadhar_number ? "is-invalid" : ""
-                    }`}
+                     ${errors.aadhar_number ? "is-invalid" : ""}`}
                     placeholder="e.g., 456335223985"
                     value={formData.aadhar_number}
                     onChange={handleChange}
                     disabled={loading}
                   />
                   <div className="form-text">12-digit adhar (Optional)</div>
-                    {errors.aadhar_number && (
+                  {errors.aadhar_number && (
                     <div className="invalid-feedback">
                       {errors.aadhar_number}
                     </div>
@@ -491,9 +595,7 @@ const AddCustomerForm = ({
                 </div>
                 {/* Tax Number */}
                 <div className="col-md-6 mb-3">
-                  <label className="form-label fw-medium">
-                    Tax Number 
-                  </label>
+                  <label className="form-label fw-medium">Tax Number</label>
                   <input
                     type="text"
                     name="tax_number"

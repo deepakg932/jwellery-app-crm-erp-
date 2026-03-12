@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { FiPercent } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const AddGSTForm = ({ onClose, onSave, loading = false }) => {
   const [formData, setFormData] = useState({
@@ -8,7 +9,6 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
     igst_percentage: "",
     utgst_percentage: "",
   });
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,7 +35,7 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
     }
 
     if (errors.length > 0) {
-      setError(errors.join(', '));
+      toast.error(errors.join(', '));
       return;
     }
 
@@ -51,7 +51,6 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
       resetForm();
     } catch (error) {
       console.error("Save failed:", error);
-      setError("Failed to save. Please try again.");
     }
   };
 
@@ -69,7 +68,6 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
         ...prev,
         [name]: validatedValue
       }));
-      setError("");
     }
   };
 
@@ -87,7 +85,6 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
       igst_percentage: "",
       utgst_percentage: "",
     });
-    setError("");
   };
 
   const handleClose = () => {
@@ -95,10 +92,7 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
     onClose();
   };
 
-  const hasAtLeastOnePercentage = () => {
-    const fields = ['sgst_percentage', 'cgst_percentage', 'igst_percentage', 'utgst_percentage'];
-    return fields.some(field => formData[field] !== "" && parseFloat(formData[field]) > 0);
-  };
+
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
@@ -116,12 +110,7 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
+ 
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -240,7 +229,7 @@ const AddGSTForm = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!hasAtLeastOnePercentage() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>

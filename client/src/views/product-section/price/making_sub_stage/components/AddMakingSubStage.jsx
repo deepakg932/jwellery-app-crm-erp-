@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-
+import { toast } from "react-toastify";
 const AddMakingSubStage = ({
   onClose,
   onSave,
@@ -8,18 +8,17 @@ const AddMakingSubStage = ({
 }) => {
   const [name, setName] = useState("");
   const [selectedStage, setSelectedStage] = useState("");
-  const [error, setError] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
     if (!name.trim()) {
-      setError("Please enter a making sub-stage name");
+      toast.error("Please enter a making sub-stage name");
       return;
     }
 
     if (!selectedStage.trim()) {
-      setError("Please select a parent making stage");
+      toast.error("Please select a making stage");
       return;
     }
 
@@ -34,7 +33,6 @@ const AddMakingSubStage = ({
   };
 
   const handleClose = useCallback(() => {
-    setError("");
     onClose();
   }, [onClose]);
 
@@ -57,13 +55,6 @@ const AddMakingSubStage = ({
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -79,29 +70,25 @@ const AddMakingSubStage = ({
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
 
-              {/* Parent Making Stage Dropdown */}
+              {/* Making Stage Dropdown */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
-                  Parent Making Stage <span className="text-danger">*</span>
+                  Making Stage <span className="text-danger">*</span>
                 </label>
                 <select
                   className="form-select form-select-lg"
                   value={selectedStage}
                   onChange={(e) => {
                     setSelectedStage(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading || makingStages.length === 0}
                 >
-                  <option value="">Select parent making stage</option>
+                  <option value="">Select making stage</option>
                   {makingStages.map((stage) => (
                     <option key={stage._id} value={stage._id}>
                       {stage.stage_name}
@@ -129,12 +116,7 @@ const AddMakingSubStage = ({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={
-                  !name.trim() ||
-                  !selectedStage.trim() ||
-                  loading ||
-                  makingStages.length === 0
-                }
+                disabled={loading}
               >
                 {loading ? (
                   <>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FiUpload, FiImage, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
   const [stoneData, setStoneData] = useState({
@@ -13,7 +14,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
   const fileInputRef = useRef(null);
   const modalRef = useRef(null);
 
-  console.log(stone)
+  console.log(stone);
 
   // Reset form when stone changes
   useEffect(() => {
@@ -43,7 +44,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
 
       // Validation
       if (!stoneData.stone_type.trim()) {
-        setError("Please enter a stone type");
+        toast.error("Please enter a stone type");
         return;
       }
 
@@ -51,22 +52,21 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
         await onSubmit(stoneData, imageFile);
       } catch (err) {
         console.error("Form submission error:", err);
-        setError("Failed to update. Please try again.");
       }
     },
-    [stoneData, imageFile, stone, onSubmit]
+    [stoneData, imageFile, stone, onSubmit],
   );
 
   const handleImageChange = useCallback(
     (file) => {
       if (file) {
         if (file.size > 5 * 1024 * 1024) {
-          setError("File size should be less than 5MB");
+          toast.error("File size should be less than 5MB");
           return;
         }
 
         if (!file.type.startsWith("image/")) {
-          setError("Please upload an image file");
+          toast.error("Please upload an image file");
           return;
         }
 
@@ -80,7 +80,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
         setError("");
       }
     },
-    [imageFile, imagePreview]
+    [imageFile, imagePreview],
   );
 
   const handleFileInput = useCallback(
@@ -90,7 +90,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
         handleImageChange(file);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const handleDrag = useCallback((e) => {
@@ -114,7 +114,7 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
         handleImageChange(files[0]);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const removeImage = useCallback(() => {
@@ -174,13 +174,6 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -198,7 +191,6 @@ const EditStoneForm = ({ show, onHide, onSubmit, stone, loading = false }) => {
                       className="form-control"
                       value={stoneData.stone_type}
                       onChange={handleInputChange}
-                      required
                       disabled={loading}
                     />
                   </div>

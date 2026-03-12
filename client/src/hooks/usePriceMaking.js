@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export const usePriceMaking = () => {
   const [priceMakings, setPriceMakings] = useState([]);
@@ -14,7 +15,7 @@ export const usePriceMaking = () => {
     units: [],
   });
 
-  console.log(dropdownData.costTypes);
+  console.log(dropdownData.makingSubStages, "Making Sub-Stages in state");
 
   // Fetch making stages
   const fetchMakingStages = async () => {
@@ -39,6 +40,9 @@ export const usePriceMaking = () => {
       return [];
     } catch (err) {
       console.error("Error fetching making stages:", err);
+      toast.error("Failed to load making stages", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
@@ -77,6 +81,9 @@ export const usePriceMaking = () => {
       return [];
     } catch (err) {
       console.error("Error fetching making sub-stages:", err);
+      toast.error("Failed to load making sub-stages", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
@@ -103,6 +110,9 @@ export const usePriceMaking = () => {
       return [];
     } catch (err) {
       console.error("Error fetching cost types:", err);
+      toast.error("Failed to load cost types", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
@@ -130,6 +140,9 @@ export const usePriceMaking = () => {
       return [];
     } catch (err) {
       console.error("Error fetching units:", err);
+      toast.error("Failed to load units", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
@@ -165,6 +178,9 @@ export const usePriceMaking = () => {
     } catch (err) {
       console.error("Error fetching dropdown data:", err);
       setError("Failed to load dropdown data");
+      toast.error("Failed to load dropdown data. Please try again.", {
+        autoClose: 4000,
+      });
       return {
         makingStages: [],
         makingSubStages: [],
@@ -298,6 +314,9 @@ export const usePriceMaking = () => {
         err.message ||
         "Failed to load price makings";
       setError(errorMsg);
+      toast.error(errorMsg, {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
@@ -305,6 +324,9 @@ export const usePriceMaking = () => {
 
   // Add new price making - Now using IDs
   const addPriceMaking = async (priceMakingData) => {
+    // Show loading toast
+    const toastId = toast.loading("Adding price making...");
+
     // Now send IDs instead of text
     const data = {
       making_stage_id: priceMakingData.making_stage_id || "", // ID
@@ -371,6 +393,15 @@ export const usePriceMaking = () => {
 
         console.log("New price making (with IDs):", newPriceMaking);
         setPriceMakings((prev) => [...prev, newPriceMaking]);
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Price making added successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
         return newPriceMaking;
       } else {
         throw new Error(
@@ -384,6 +415,15 @@ export const usePriceMaking = () => {
         err.message ||
         "Failed to add price making";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
@@ -392,6 +432,9 @@ export const usePriceMaking = () => {
 
   // Update price making - Now using IDs
   const updatePriceMaking = async (id, priceMakingData) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating price making...");
+
     // Now send IDs instead of text
     const requestData = {
       making_stage_id: priceMakingData.making_stage_id || "", // ID
@@ -464,6 +507,14 @@ export const usePriceMaking = () => {
           prev.map((item) => (item._id === id ? updatedData : item)),
         );
 
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Price making updated successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
+
         return updatedData;
       } else {
         throw new Error(
@@ -477,6 +528,15 @@ export const usePriceMaking = () => {
         err.message ||
         "Failed to update price making";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
@@ -485,6 +545,9 @@ export const usePriceMaking = () => {
 
   // Delete price making
   const deletePriceMaking = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting price making...");
+
     try {
       setLoading(true);
       setError("");
@@ -495,6 +558,14 @@ export const usePriceMaking = () => {
 
       if (response.data && response.data.success) {
         setPriceMakings((prev) => prev.filter((item) => item._id !== id));
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Price making deleted successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
       } else {
         throw new Error(
           response.data?.message || "Failed to delete price making",
@@ -507,6 +578,15 @@ export const usePriceMaking = () => {
         err.message ||
         "Failed to delete price making";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);

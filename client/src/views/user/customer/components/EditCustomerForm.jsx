@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { FiUpload } from "react-icons/fi";
 import { Country, State, City } from "country-state-city";
 import { toast } from "react-toastify";
+import { FiUpload, FiUser, FiCamera } from "react-icons/fi";
 
 const EditCustomerForm = ({
   onClose,
@@ -30,6 +30,7 @@ const EditCustomerForm = ({
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Initialize countries on component mount - use names as values
   useEffect(() => {
@@ -65,27 +66,31 @@ const EditCustomerForm = ({
       const customerPhone = customer.mobile || customer.phone || "";
 
       setFormData({
-        customer_name: customerName,
-        customer_group_id: groupId,
-        phone: customerPhone,
-        email: customer.email || "",
-        whatsapp_number: customer.whatsapp_number || "",
-        tax_number: customer.tax_number || "",
-        aadhar_number: customer.aadhar_number || "",
-        address: customer.address || "",
-        country: customer.country || "India",
-        state: customer.state || "",
-        city: customer.city || "",
-        pincode: customer.pincode || "",
-        status: customer.status === true || customer.status === "active",
-      });
+      customer_name: customerName,
+      customer_group_id: groupId,
+      phone: customerPhone,
+      email: customer.email || "",
+      whatsapp_number: customer.whatsapp_number || "",
+      tax_number: customer.tax_number || "",
+      aadhar_number: customer.aadhar_number || "",
+      address: customer.address || "",
+      country: customer.country || "India",
+      state: customer.state || "",
+      city: customer.city || "",
+      pincode: customer.pincode || "",
+      image: null, // Don't set the file here, just the preview
+      status: customer.status === true || customer.status === "active",
+    });
 
+     if (customer.image_url) {
+      setImagePreview(customer.image_url);
+    }
       // Load states for the customer's country
       if (customer.country) {
         const countryObj = Country.getAllCountries().find(
-          (c) => c.name === customer.country
+          (c) => c.name === customer.country,
         );
-        
+
         if (countryObj) {
           const countryStates = State.getStatesOfCountry(countryObj.isoCode);
           const formattedStates = countryStates.map((state) => ({
@@ -99,18 +104,18 @@ const EditCustomerForm = ({
       // Load cities for the customer's state
       if (customer.country && customer.state) {
         const countryObj = Country.getAllCountries().find(
-          (c) => c.name === customer.country
+          (c) => c.name === customer.country,
         );
-        
+
         if (countryObj) {
           const stateObj = State.getStatesOfCountry(countryObj.isoCode).find(
-            (s) => s.name === customer.state
+            (s) => s.name === customer.state,
           );
 
           if (stateObj) {
             const stateCities = City.getCitiesOfState(
               countryObj.isoCode,
-              stateObj.isoCode
+              stateObj.isoCode,
             );
             const formattedCities = stateCities.map((city) => ({
               value: city.name,
@@ -129,9 +134,9 @@ const EditCustomerForm = ({
   useEffect(() => {
     if (formData.country) {
       const countryObj = Country.getAllCountries().find(
-        (c) => c.name === formData.country
+        (c) => c.name === formData.country,
       );
-      
+
       if (countryObj) {
         const countryStates = State.getStatesOfCountry(countryObj.isoCode);
         const formattedStates = countryStates.map((state) => ({
@@ -156,18 +161,18 @@ const EditCustomerForm = ({
   useEffect(() => {
     if (formData.country && formData.state) {
       const countryObj = Country.getAllCountries().find(
-        (c) => c.name === formData.country
+        (c) => c.name === formData.country,
       );
-      
+
       if (countryObj) {
         const stateObj = State.getStatesOfCountry(countryObj.isoCode).find(
-          (s) => s.name === formData.state
+          (s) => s.name === formData.state,
         );
 
         if (stateObj) {
           const stateCities = City.getCitiesOfState(
             countryObj.isoCode,
-            stateObj.isoCode
+            stateObj.isoCode,
           );
           const formattedCities = stateCities.map((city) => ({
             value: city.name,
@@ -186,6 +191,34 @@ const EditCustomerForm = ({
       }
     }
   }, [formData.country, formData.state]);
+
+  const handleImageChange = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({
+        ...prev,
+        image: "Image size should be less than 5MB",
+      }));
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({
+        ...prev,
+        image: "Please upload an image file",
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, image: file }));
+    setImagePreview(URL.createObjectURL(file));
+
+    if (errors.image) {
+      setErrors((prev) => ({ ...prev, image: "" }));
+    }
+  }
+};
 
   const validateForm = () => {
     const newErrors = {};
@@ -263,85 +296,104 @@ const EditCustomerForm = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!validateForm()) return;
 
-    const toastId = toast.loading("Updating customer...");
+  const toastId = toast.loading("Updating customer...");
 
-    try {
-      const selectedCountry = countries.find((c) => c.value === formData.country);
-      
-      // Find country isoCode for state/city lookup
-      const countryObj = Country.getAllCountries().find(
-        (c) => c.name === formData.country
-      );
-      
-      let stateIsoCode = formData.state;
-      if (countryObj) {
-        const stateObj = State.getStatesOfCountry(countryObj.isoCode).find(
-          (s) => s.name === formData.state
-        );
-        if (stateObj) {
-          stateIsoCode = stateObj.isoCode;
-        }
-      }
+  try {
+    // Create FormData for image upload
+    const formDataToSend = new FormData();
+    
+    // Append all form fields
+    formDataToSend.append('name', formData.customer_name.trim());
+    formDataToSend.append('customer_group_id', formData.customer_group_id);
+    formDataToSend.append('mobile', formData.phone.trim());
+    formDataToSend.append('email', formData.email.trim());
+    formDataToSend.append('whatsapp_number', formData.whatsapp_number.trim());
+    formDataToSend.append('aadhar_number', formData.aadhar_number.trim());
+    formDataToSend.append('tax_number', formData.tax_number.trim());
+    formDataToSend.append('address', formData.address.trim());
+    
+    // Find country and state names for display
+    const selectedCountry = countries.find((c) => c.value === formData.country);
+    const selectedState = states.find((s) => s.value === formData.state);
+    
+    formDataToSend.append('country', selectedCountry ? selectedCountry.label : formData.country);
+    formDataToSend.append('country_code', formData.country);
+    formDataToSend.append('state', selectedState ? selectedState.label : formData.state);
+    formDataToSend.append('state_code', formData.state);
+    formDataToSend.append('city', formData.city.trim());
+    formDataToSend.append('pincode', formData.pincode.trim());
+    formDataToSend.append('status', formData.status ? 'active' : 'inactive');
+    
+    // Append image if selected
+    if (formData.image) {
+      formDataToSend.append('image', formData.image);
+    }
 
-      const payload = {
-        id: customer?._id,
-        name: formData.customer_name.trim(),
-        customer_group_id: formData.customer_group_id,
-        mobile: formData.phone.trim(),
-        email: formData.email.trim(),
-        whatsapp_number: formData.whatsapp_number.trim(),
-        tax_number: formData.tax_number.trim(),
-        aadhar_number: formData.aadhar_number,
-        address: formData.address.trim(),
-        country: selectedCountry ? selectedCountry.label : formData.country,
-        country_code: selectedCountry?.isoCode || "",
-        state: formData.state.trim(),
-        state_code: stateIsoCode,
-        city: formData.city.trim(),
-        pincode: formData.pincode.trim(),
-        status: formData.status ? "active" : "inactive",
-      };
+    // Debug logs to check the data being sent
+    console.log("Form data from state:", {
+      id: customer?._id,
+      name: formData.customer_name,
+      customer_group_id: formData.customer_group_id,
+      mobile: formData.phone,
+      email: formData.email,
+      whatsapp_number: formData.whatsapp_number,
+      aadhar_number: formData.aadhar_number,
+      tax_number: formData.tax_number,
+      address: formData.address,
+      country: formData.country,
+      state: formData.state,
+      city: formData.city,
+      pincode: formData.pincode,
+      status: formData.status ? 'active' : 'inactive',
+      hasImage: formData.image ? 'Yes' : 'No'
+    });
 
-      console.log("Updating customer data:", payload);
-      await onSave(payload);
-
-      toast.update(toastId, {
-        render: "Customer updated successfully!",
-        type: "success",
-        isLoading: false,
-        autoClose: 3000,
-      });
-
-      setErrors({});
-      onClose();
-    } catch (error) {
-      console.error("Error updating customer:", error);
-      toast.dismiss(toastId);
-
-      if (
-        error.response?.data?.message ===
-        "Customer with this phone already exists"
-      ) {
-        toast.error(
-          "This phone number is already registered. Please use a different phone number.",
-          { autoClose: 5000 }
-        );
-        setErrors((prev) => ({
-          ...prev,
-          phone: "This phone number is already registered",
-        }));
+    // Log FormData entries to verify
+    console.log("FormData entries being sent:");
+    for (let pair of formDataToSend.entries()) {
+      if (pair[0] === 'image') {
+        console.log(pair[0] + ': [File: ' + pair[1].name + ', size: ' + pair[1].size + ' bytes]');
       } else {
-        const errorMessage =
-          error.response?.data?.message ||
-          "Failed to update customer. Please try again.";
-        toast.error(errorMessage, { autoClose: 4000 });
+        console.log(pair[0] + ': ' + pair[1]);
       }
     }
-  };
+
+    await onSave(customer?._id, formDataToSend);
+
+    toast.update(toastId, {
+      render: "Customer updated successfully!",
+      type: "success",
+      isLoading: false,
+      autoClose: 3000,
+    });
+
+    setErrors({});
+    onClose();
+  } catch (error) {
+    console.error("Error updating customer:", error);
+    toast.dismiss(toastId);
+
+    if (error.response?.data?.message === "Customer with this phone already exists") {
+      toast.error(
+        "This phone number is already registered. Please use a different phone number.",
+        { autoClose: 5000 }
+      );
+      setErrors((prev) => ({
+        ...prev,
+        phone: "This phone number is already registered",
+      }));
+    } else {
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to update customer. Please try again.";
+      toast.error(errorMessage, { autoClose: 4000 });
+    }
+  }
+};
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -361,7 +413,7 @@ const EditCustomerForm = ({
   // Get country phone code
   const getPhoneCode = () => {
     const countryObj = Country.getAllCountries().find(
-      (c) => c.name === formData.country
+      (c) => c.name === formData.country,
     );
     return countryObj ? `+${countryObj.phonecode}` : "+91";
   };
@@ -388,6 +440,57 @@ const EditCustomerForm = ({
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
               <div className="row">
+                <div className="col-12 mb-4">
+                  <div className="d-flex flex-column align-items-center">
+                    <div className="position-relative mb-3">
+                      <div
+                        className="rounded-circle border border-3 border-primary p-1"
+                        style={{ width: "120px", height: "120px" }}
+                      >
+                        {imagePreview ? (
+                          <img
+                            src={imagePreview}
+                            alt="Customer Preview"
+                            className="rounded-circle w-100 h-100 object-fit-cover"
+                          />
+                        ) : formData.image_url ? (
+                          <img
+                            src={formData.image_url}
+                            alt={formData.customer_name}
+                            className="rounded-circle w-100 h-100 object-fit-cover"
+                          />
+                        ) : (
+                          <div className="w-100 h-100 rounded-circle bg-light d-flex align-items-center justify-content-center">
+                            <FiUser size={48} className="text-muted" />
+                          </div>
+                        )}
+                      </div>
+                      <label
+                        htmlFor="customerImageUpload"
+                        className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle p-2 cursor-pointer"
+                        style={{ width: "40px", height: "40px" }}
+                      >
+                        <FiCamera size={20} />
+                        <input
+                          type="file"
+                          id="customerImageUpload"
+                          className="d-none"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          disabled={loading}
+                        />
+                      </label>
+                    </div>
+                    <p className="text-muted small mb-0">
+                      Upload customer photo (Max 5MB)
+                    </p>
+                    {errors.image && (
+                      <div className="text-danger small mt-1">
+                        {errors.image}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {/* Customer Name */}
                 <div className="col-md-6 mb-3">
                   <label className="form-label fw-medium">

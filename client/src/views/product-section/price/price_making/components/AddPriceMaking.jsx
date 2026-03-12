@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 
 const AddPriceMaking = ({
   onClose,
@@ -14,11 +15,7 @@ const AddPriceMaking = ({
     unit_id: "",
     cost_amount: "",
   });
-  const [error, setError] = useState("");
-  const [duplicateError, setDuplicateError] = useState("");
   const [filteredSubStages, setFilteredSubStages] = useState([]);
-
-  console.log(dropdownData.costTypes);
 
   // Update filtered sub stages when making stage changes
   useEffect(() => {
@@ -48,8 +45,6 @@ const AddPriceMaking = ({
   }, [formData, priceMakings]);
 
   const checkForDuplicates = () => {
-    setDuplicateError("");
-
     if (
       !formData.making_stage_id ||
       !formData.cost_type_id ||
@@ -81,9 +76,7 @@ const AddPriceMaking = ({
     });
 
     if (isDuplicate) {
-      setDuplicateError(
-        "A price making entry with this combination already exists!",
-      );
+      toast.error("A price making entry with this combination already exists!");
     }
   };
 
@@ -92,28 +85,22 @@ const AddPriceMaking = ({
 
     // Validation
     if (!formData.making_stage_id) {
-      setError("Please select a making stage");
+      toast.error("Please select a making stage");
       return;
     }
 
     if (!formData.cost_type_id) {
-      setError("Please select a cost type");
+      toast.error("Please select a cost type");
       return;
     }
 
     if (!formData.unit_id) {
-      setError("Please select a unit");
+      toast.error("Please select a unit");
       return;
     }
 
     if (!formData.cost_amount || parseFloat(formData.cost_amount) <= 0) {
-      setError("Please enter a valid amount");
-      return;
-    }
-
-    // Check for duplicates
-    checkForDuplicates();
-    if (duplicateError) {
+      toast.error("Please enter a valid amount");
       return;
     }
 
@@ -139,9 +126,9 @@ const AddPriceMaking = ({
           error.message.toLowerCase().includes("already exists")) ||
         (error.message && error.message.toLowerCase().includes("duplicate"))
       ) {
-        setDuplicateError(error.message);
+        toast.error(error.message);
       } else {
-        setError("Failed to save. Please try again.");
+        console.log("Unexpected error:", error);
       }
     }
   };
@@ -152,8 +139,6 @@ const AddPriceMaking = ({
       ...prev,
       [name]: value,
     }));
-    setError("");
-    setDuplicateError("");
   };
 
   const resetForm = () => {
@@ -164,8 +149,6 @@ const AddPriceMaking = ({
       unit_id: "",
       cost_amount: "",
     });
-    setError("");
-    setDuplicateError("");
   };
 
   const handleClose = () => {
@@ -215,20 +198,6 @@ const AddPriceMaking = ({
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
-          {/* Duplicate Error Alert */}
-          {duplicateError && (
-            <div className="alert alert-warning m-3 py-2" role="alert">
-              <div className="d-flex align-items-center">{duplicateError}</div>
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -243,7 +212,6 @@ const AddPriceMaking = ({
                     name="making_stage_id"
                     value={formData.making_stage_id}
                     onChange={handleChange}
-                    required
                     disabled={loading}
                   >
                     <option value="">Select Making Stage</option>
@@ -253,11 +221,6 @@ const AddPriceMaking = ({
                       </option>
                     ))}
                   </select>
-                  {formData.making_stage_id && (
-                    <div className="form-text">
-                      Selected: {getStageNameById(formData.making_stage_id)}
-                    </div>
-                  )}
                 </div>
 
                 {/* Sub Making Stage - Using ID */}
@@ -279,12 +242,7 @@ const AddPriceMaking = ({
                       </option>
                     ))}
                   </select>
-                  {formData.making_sub_stage_id && (
-                    <div className="form-text">
-                      Selected:{" "}
-                      {getSubStageNameById(formData.making_sub_stage_id)}
-                    </div>
-                  )}
+
                   {!formData.making_stage_id && (
                     <div className="form-text text-warning">
                       Please select a making stage first
@@ -302,22 +260,15 @@ const AddPriceMaking = ({
                     name="cost_type_id"
                     value={formData.cost_type_id}
                     onChange={handleChange}
-                    required
                     disabled={loading}
                   >
                     <option value="">Select Cost Type</option>
                     {dropdownData.costTypes.map((costType) => (
                       <option key={costType._id} value={costType._id}>
-                        {costType.cost_type } ({costType.cost_name})
-                        
+                        {costType.cost_type} ({costType.cost_name})
                       </option>
                     ))}
                   </select>
-                  {formData.cost_type_id && (
-                    <div className="form-text">
-                      Selected: {getCostTypeById(formData.cost_type_id)}
-                    </div>
-                  )}
                 </div>
 
                 {/* Unit - Using ID */}
@@ -330,7 +281,6 @@ const AddPriceMaking = ({
                     name="unit_id"
                     value={formData.unit_id}
                     onChange={handleChange}
-                    required
                     disabled={loading}
                   >
                     <option value="">Select Unit</option>
@@ -340,11 +290,6 @@ const AddPriceMaking = ({
                       </option>
                     ))}
                   </select>
-                  {formData.unit_id && (
-                    <div className="form-text">
-                      Selected: {getUnitNameById(formData.unit_id)}
-                    </div>
-                  )}
                 </div>
 
                 {/* Amount */}
@@ -363,7 +308,6 @@ const AddPriceMaking = ({
                       onChange={handleChange}
                       min="0"
                       step="0.01"
-                      required
                       disabled={loading}
                     />
                     <span className="input-group-text">
@@ -387,14 +331,7 @@ const AddPriceMaking = ({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={
-                  !formData.making_stage_id ||
-                  !formData.cost_type_id ||
-                  !formData.unit_id ||
-                  !formData.cost_amount ||
-                  loading ||
-                  duplicateError
-                }
+                disabled={loading}
               >
                 {loading ? (
                   <>

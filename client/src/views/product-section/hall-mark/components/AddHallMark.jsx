@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
+import { toast } from "react-toastify";
 
-const AddHallmarkModal = ({ 
-  onClose, 
-  onSave, 
-  loading = false, 
-  metalTypes = [] 
+const AddHallmarkModal = ({
+  onClose,
+  onSave,
+  loading = false,
+  metalTypes = [],
 }) => {
   const [name, setName] = useState("");
   const [metal_type, setMetalType] = useState("");
@@ -16,33 +17,36 @@ const AddHallmarkModal = ({
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
+  const validateForm = () => {
+    const newErrors = {};
     if (!name.trim()) {
-      setError("Please enter hallmark name");
-      return;
+      newErrors.name = "Please enter hallmark name";
+    }
+    if (!metal_type.trim()) {
+      newErrors.metal_type = "Please select metal type";
+    }
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors)[0]);
     }
 
-    if (!metal_type.trim()) {
-      setError("Please select metal type");
-      return;
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    try {
+      await onSave({
+        name: name.trim(),
+        metal_type: metal_type,
+        description: description.trim(),
+        imageFile: image,
+      });
+    } catch (error) {
+      console.error("Save failed:", error);
     }
-    
-    onSave({
-      name: name.trim(),
-      metal_type: metal_type,
-      description: description.trim(),
-      imageFile: image,
-    });
-    
-    // Reset form
-    setName("");
-    setMetalType("");
-    setDescription("");
-    setImage(null);
-    setImagePreview(null);
-    setError("");
   };
 
   const handleImageChange = useCallback(
@@ -50,28 +54,28 @@ const AddHallmarkModal = ({
       if (file) {
         // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
-          setError("File size should be less than 5MB");
+          toast.error("File size should be less than 5MB");
           return;
         }
-        
+
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-          setError("Please upload an image file");
+        if (!file.type.startsWith("image/")) {
+          toast.error("Please upload an image file");
           return;
         }
-        
+
         // Clean up previous blob URL if exists
-        if (image && imagePreview && imagePreview.startsWith('blob:')) {
+        if (image && imagePreview && imagePreview.startsWith("blob:")) {
           URL.revokeObjectURL(imagePreview);
         }
-        
+
         setImage(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
         setError("");
       }
     },
-    [image, imagePreview]
+    [image, imagePreview],
   );
 
   const handleFileInput = useCallback(
@@ -81,7 +85,7 @@ const AddHallmarkModal = ({
         handleImageChange(file);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const handleDrag = useCallback((e) => {
@@ -99,17 +103,17 @@ const AddHallmarkModal = ({
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
-      
+
       const files = e.dataTransfer.files;
       if (files && files[0]) {
         handleImageChange(files[0]);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const removeImage = useCallback(() => {
-    if (imagePreview && imagePreview.startsWith('blob:')) {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImage(null);
@@ -121,7 +125,7 @@ const AddHallmarkModal = ({
   }, [imagePreview]);
 
   const handleClose = useCallback(() => {
-    if (imagePreview && imagePreview.startsWith('blob:')) {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     onClose();
@@ -130,17 +134,20 @@ const AddHallmarkModal = ({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (imagePreview && imagePreview.startsWith('blob:')) {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview);
       }
     };
   }, [imagePreview]);
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Add Hallmark</h5>
@@ -152,17 +159,9 @@ const AddHallmarkModal = ({
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              
               {/* Hallmark Name */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
@@ -177,7 +176,6 @@ const AddHallmarkModal = ({
                     setName(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -194,7 +192,6 @@ const AddHallmarkModal = ({
                     setMetalType(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>
@@ -228,12 +225,16 @@ const AddHallmarkModal = ({
 
               {/* Image Upload */}
               <div className="mb-3">
-                <label className="form-label fw-medium">Hallmark Image (Optional)</label>
-                
+                <label className="form-label fw-medium">
+                  Hallmark Image (Optional)
+                </label>
+
                 {/* Drag & Drop Area */}
                 <div
                   className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
-                    dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                    dragActive
+                      ? "border-primary bg-primary bg-opacity-10"
+                      : "border-secondary-subtle"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -249,14 +250,18 @@ const AddHallmarkModal = ({
                     className="d-none"
                     disabled={loading}
                   />
-                  
+
                   {imagePreview ? (
                     <div className="position-relative d-inline-block">
                       <img
                         src={imagePreview}
                         alt="Preview"
                         className="img-thumbnail rounded"
-                        style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
                         key={imagePreview}
                       />
                       <button
@@ -266,7 +271,7 @@ const AddHallmarkModal = ({
                           removeImage();
                         }}
                         className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                        style={{ transform: 'translate(-50%, -50%)' }}
+                        style={{ transform: "translate(-50%, -50%)" }}
                         disabled={loading}
                       >
                         <FiX size={12} />
@@ -297,30 +302,34 @@ const AddHallmarkModal = ({
                 disabled={loading}
               >
                 Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary d-flex align-items-center gap-2"
-              disabled={!name.trim() || !metal_type.trim() || loading}
-            >
-              {loading ? (
-                <>
-                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <FiUpload size={16} />
-                  Save Hallmark
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary d-flex align-items-center gap-2"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <FiUpload size={16} />
+                    Save Hallmark
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default AddHallmarkModal;

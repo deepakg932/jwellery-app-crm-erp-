@@ -12,7 +12,7 @@ export default function GSTListTable() {
     addGST,
     updateGST,
     deleteGST,
-    fetchGSTList, // Added fetch function for manual refresh
+    fetchGSTList,
   } = useGST();
 
   const [search, setSearch] = useState("");

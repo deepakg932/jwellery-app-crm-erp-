@@ -89,7 +89,9 @@ export default function useCustomers() {
         email: item.email || "",
         tax_number: item.tax_number || "",
         aadhar_number: item.aadhar_number || "",
-
+        // Add image field
+        image: item.image || null,
+        image_url: item.image_url || null,
         address: item.address || "",
         city: item.city || "",
         state: item.state || "",
@@ -114,7 +116,7 @@ export default function useCustomers() {
     }
   };
 
-  // Add a new customer
+  // Add a new customer (with image support)
   const addCustomer = async (customerData) => {
     try {
       setLoading(true);
@@ -123,65 +125,123 @@ export default function useCustomers() {
       const url = API_ENDPOINTS.createCustomer();
       console.log("Adding customer at:", url, "Data:", customerData);
 
-      // Ensure we send data in the format your API expects
-      const apiData = {
-        ...customerData,
-        // Convert status to string format if needed
-        status: customerData.status ? "active" : "inactive",
-        // If your form uses 'name', keep it as is
-        name: customerData.name || customerData.customer_name || "",
-      };
-
-      const res = await axios.post(url, apiData);
-      console.log("Add customer response:", res.data);
-
-      if (res.data?.success && res.data.data) {
-        const responseData = res.data.data;
-
-        // Find the customer group for display purposes
-        const customerGroup = customerGroups.find(
-          (group) => group._id === customerData.customer_group_id,
-        );
-
-        const newCustomer = {
-          _id: responseData._id,
-          name: responseData.name || customerData.name || "",
-          customer_group_id:
-            responseData.customer_group_id || customerData.customer_group_id,
-          customer_group_id_obj: responseData.customer_group_id || {
-            _id: customerData.customer_group_id,
+      // Check if we have FormData (for image upload) or regular object
+      if (customerData instanceof FormData) {
+        // If it's FormData, send it directly
+        const res = await axios.post(url, customerData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
           },
-          customer_group: customerGroup?.customer_group || "",
-          mobile: responseData.mobile || customerData.mobile || "",
-          whatsapp_number:
-            responseData.whatsapp_number || customerData.whatsapp_number || "",
-          email: responseData.email || customerData.email || "",
-          tax_number: responseData.tax_number || customerData.tax_number || "",
-          aadhar_number: responseData.aadhar_number || customerData.aadhar_number || "",
+        });
+        
+        console.log("Add customer response:", res.data);
 
-          address: responseData.address || customerData.address || "",
-          city: responseData.city || customerData.city || "",
-          state: responseData.state || customerData.state || "",
-          country: responseData.country || customerData.country || "",
-          pincode: responseData.pincode || customerData.pincode || "",
-          status: responseData.status === "active",
-          createdAt: responseData.createdAt || new Date().toISOString(),
-          updatedAt: responseData.updatedAt || new Date().toISOString(),
+        if (res.data?.success && res.data.data) {
+          const responseData = res.data.data;
+
+          // Find the customer group for display purposes
+          const customerGroup = customerGroups.find(
+            (group) => group._id === customerData.get('customer_group_id'),
+          );
+
+          const newCustomer = {
+            _id: responseData._id,
+            name: responseData.name || customerData.get('name') || "",
+            customer_group_id:
+              responseData.customer_group_id || customerData.get('customer_group_id'),
+            customer_group_id_obj: responseData.customer_group_id || {
+              _id: customerData.get('customer_group_id'),
+            },
+            customer_group: customerGroup?.customer_group || "",
+            mobile: responseData.mobile || customerData.get('mobile') || "",
+            whatsapp_number:
+              responseData.whatsapp_number || customerData.get('whatsapp_number') || "",
+            email: responseData.email || customerData.get('email') || "",
+            tax_number: responseData.tax_number || customerData.get('tax_number') || "",
+            aadhar_number: responseData.aadhar_number || customerData.get('aadhar_number') || "",
+            image: responseData.image || null,
+            image_url: responseData.image_url || null,
+            address: responseData.address || customerData.get('address') || "",
+            city: responseData.city || customerData.get('city') || "",
+            state: responseData.state || customerData.get('state') || "",
+            country: responseData.country || customerData.get('country') || "",
+            pincode: responseData.pincode || customerData.get('pincode') || "",
+            status: responseData.status === "active",
+            createdAt: responseData.createdAt || new Date().toISOString(),
+            updatedAt: responseData.updatedAt || new Date().toISOString(),
+          };
+
+          console.log("New customer to add:", newCustomer);
+
+          // Update local state
+          setCustomers((prev) => [...prev, newCustomer]);
+
+          // Refetch to ensure we have the complete data
+          setTimeout(() => {
+            fetchCustomers();
+          }, 500);
+
+          return newCustomer;
+        } else {
+          throw new Error(res.data?.message || "Failed to add customer");
+        }
+      } else {
+        // Handle regular JSON data (if not using image upload)
+        const apiData = {
+          ...customerData,
+          status: customerData.status ? "active" : "inactive",
+          name: customerData.name || customerData.customer_name || "",
         };
 
-        console.log("New customer to add:", newCustomer);
+        const res = await axios.post(url, apiData);
+        console.log("Add customer response:", res.data);
 
-        // Update local state
-        setCustomers((prev) => [...prev, newCustomer]);
+        if (res.data?.success && res.data.data) {
+          const responseData = res.data.data;
 
-        // Refetch to ensure we have the complete data
-        setTimeout(() => {
-          fetchCustomers();
-        }, 500);
+          const customerGroup = customerGroups.find(
+            (group) => group._id === customerData.customer_group_id,
+          );
 
-        return newCustomer;
-      } else {
-        throw new Error(res.data?.message || "Failed to add customer");
+          const newCustomer = {
+            _id: responseData._id,
+            name: responseData.name || customerData.name || "",
+            customer_group_id:
+              responseData.customer_group_id || customerData.customer_group_id,
+            customer_group_id_obj: responseData.customer_group_id || {
+              _id: customerData.customer_group_id,
+            },
+            customer_group: customerGroup?.customer_group || "",
+            mobile: responseData.mobile || customerData.mobile || "",
+            whatsapp_number:
+              responseData.whatsapp_number || customerData.whatsapp_number || "",
+            email: responseData.email || customerData.email || "",
+            tax_number: responseData.tax_number || customerData.tax_number || "",
+            aadhar_number: responseData.aadhar_number || customerData.aadhar_number || "",
+            image: responseData.image || null,
+            image_url: responseData.image_url || null,
+            address: responseData.address || customerData.address || "",
+            city: responseData.city || customerData.city || "",
+            state: responseData.state || customerData.state || "",
+            country: responseData.country || customerData.country || "",
+            pincode: responseData.pincode || customerData.pincode || "",
+            status: responseData.status === "active",
+            createdAt: responseData.createdAt || new Date().toISOString(),
+            updatedAt: responseData.updatedAt || new Date().toISOString(),
+          };
+
+          console.log("New customer to add:", newCustomer);
+
+          setCustomers((prev) => [...prev, newCustomer]);
+
+          setTimeout(() => {
+            fetchCustomers();
+          }, 500);
+
+          return newCustomer;
+        } else {
+          throw new Error(res.data?.message || "Failed to add customer");
+        }
       }
     } catch (err) {
       console.error("Add customer error:", err);
@@ -192,7 +252,7 @@ export default function useCustomers() {
     }
   };
 
-  // Update a customer
+  // Update a customer (with image support)
   const updateCustomer = async (id, customerData) => {
     try {
       setLoading(true);
@@ -200,68 +260,132 @@ export default function useCustomers() {
 
       const url = API_ENDPOINTS.updateCustomer(id);
 
-      // Prepare data for API - match your API's expected format
-      const apiData = {
-        ...customerData,
-        status: customerData.status ? "active" : "inactive",
-        name: customerData.name || "",
-      };
-
-      console.log("Updating customer at:", url, "Data:", apiData);
-
-      const res = await axios.put(url, apiData);
-      console.log("Update customer response:", res.data);
-
-      if (res.data?.success && res.data.data) {
-        const responseData = res.data.data;
-
-        // Find the customer group for display
-        const customerGroup = customerGroups.find(
-          (group) => group._id === customerData.customer_group_id,
-        );
-
-        const updatedData = {
-          _id: responseData._id || id,
-          name: responseData.name || customerData.name || "",
-          customer_group_id:
-            responseData.customer_group_id || customerData.customer_group_id,
-          customer_group_id_obj: responseData.customer_group_id || {
-            _id: customerData.customer_group_id,
+      // Check if we have FormData (for image upload) or regular object
+      if (customerData instanceof FormData) {
+        // If it's FormData, send it directly
+        const res = await axios.put(url, customerData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
           },
-          customer_group: customerGroup?.customer_group || "",
-          mobile: responseData.mobile || customerData.mobile || "",
-          whatsapp_number:
-            responseData.whatsapp_number || customerData.whatsapp_number || "",
-          email: responseData.email || customerData.email || "",
-          tax_number: responseData.tax_number || customerData.tax_number || "",
-          aadhar_number:
-            responseData.aadhar_number || customerData.aadhar_number || "",
-          address: responseData.address || customerData.address || "",
-          city: responseData.city || customerData.city || "",
-          state: responseData.state || customerData.state || "",
-          country: responseData.country || customerData.country || "",
-          pincode: responseData.pincode || customerData.pincode || "",
-          status: responseData.status === "active",
-          updatedAt: responseData.updatedAt || new Date().toISOString(),
+        });
+        
+        console.log("Update customer response:", res.data);
+
+        if (res.data?.success && res.data.data) {
+          const responseData = res.data.data;
+
+          // Find the customer group for display
+          const customerGroup = customerGroups.find(
+            (group) => group._id === customerData.get('customer_group_id'),
+          );
+
+          const updatedData = {
+            _id: responseData._id || id,
+            name: responseData.name || customerData.get('name') || "",
+            customer_group_id:
+              responseData.customer_group_id || customerData.get('customer_group_id'),
+            customer_group_id_obj: responseData.customer_group_id || {
+              _id: customerData.get('customer_group_id'),
+            },
+            customer_group: customerGroup?.customer_group || "",
+            mobile: responseData.mobile || customerData.get('mobile') || "",
+            whatsapp_number:
+              responseData.whatsapp_number || customerData.get('whatsapp_number') || "",
+            email: responseData.email || customerData.get('email') || "",
+            tax_number: responseData.tax_number || customerData.get('tax_number') || "",
+            aadhar_number: responseData.aadhar_number || customerData.get('aadhar_number') || "",
+            image: responseData.image || null,
+            image_url: responseData.image_url || null,
+            address: responseData.address || customerData.get('address') || "",
+            city: responseData.city || customerData.get('city') || "",
+            state: responseData.state || customerData.get('state') || "",
+            country: responseData.country || customerData.get('country') || "",
+            pincode: responseData.pincode || customerData.get('pincode') || "",
+            status: responseData.status === "active",
+            updatedAt: responseData.updatedAt || new Date().toISOString(),
+          };
+
+          console.log("Updated customer data:", updatedData);
+
+          // Update local state
+          setCustomers((prev) =>
+            prev.map((item) =>
+              item._id === id ? { ...item, ...updatedData } : item,
+            ),
+          );
+
+          // Refetch to ensure consistency
+          setTimeout(() => {
+            fetchCustomers();
+          }, 500);
+
+          return updatedData;
+        } else {
+          throw new Error(res.data?.message || "Failed to update customer");
+        }
+      } else {
+        // Handle regular JSON data
+        const apiData = {
+          ...customerData,
+          status: customerData.status ? "active" : "inactive",
+          name: customerData.name || "",
         };
 
-        console.log("Updated customer data:", updatedData);
+        console.log("Updating customer at:", url, "Data:", apiData);
 
-        // Update local state
-        setCustomers((prev) =>
-          prev.map((item) =>
-            item._id === id ? { ...item, ...updatedData } : item,
-          ),
-        );
+        const res = await axios.put(url, apiData);
+        console.log("Update customer response:", res.data);
 
-        // Refetch to ensure consistency
-        setTimeout(() => {
-          fetchCustomers();
-        }, 500);
+        if (res.data?.success && res.data.data) {
+          const responseData = res.data.data;
 
-        return updatedData;
-      } else {
-        throw new Error(res.data?.message || "Failed to update customer");
+          const customerGroup = customerGroups.find(
+            (group) => group._id === customerData.customer_group_id,
+          );
+
+          const updatedData = {
+            _id: responseData._id || id,
+            name: responseData.name || customerData.name || "",
+            customer_group_id:
+              responseData.customer_group_id || customerData.customer_group_id,
+            customer_group_id_obj: responseData.customer_group_id || {
+              _id: customerData.customer_group_id,
+            },
+            customer_group: customerGroup?.customer_group || "",
+            mobile: responseData.mobile || customerData.mobile || "",
+            whatsapp_number:
+              responseData.whatsapp_number || customerData.whatsapp_number || "",
+            email: responseData.email || customerData.email || "",
+            tax_number: responseData.tax_number || customerData.tax_number || "",
+            aadhar_number:
+              responseData.aadhar_number || customerData.aadhar_number || "",
+            image: responseData.image || customerData.image || null,
+            image_url: responseData.image_url || customerData.image_url || null,
+            address: responseData.address || customerData.address || "",
+            city: responseData.city || customerData.city || "",
+            state: responseData.state || customerData.state || "",
+            country: responseData.country || customerData.country || "",
+            pincode: responseData.pincode || customerData.pincode || "",
+            status: responseData.status === "active",
+            updatedAt: responseData.updatedAt || new Date().toISOString(),
+          };
+
+          console.log("Updated customer data:", updatedData);
+
+          setCustomers((prev) =>
+            prev.map((item) =>
+              item._id === id ? { ...item, ...updatedData } : item,
+            ),
+          );
+
+          setTimeout(() => {
+            fetchCustomers();
+          }, 500);
+
+          return updatedData;
+        } else {
+          throw new Error(res.data?.message || "Failed to update customer");
+        }
       }
     } catch (err) {
       console.error("Update customer error:", err);

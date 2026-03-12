@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export default function useSubCategories() {
   const [subCategories, setSubCategories] = useState([]);
@@ -39,6 +40,9 @@ export default function useSubCategories() {
       return mappedCategories;
     } catch (err) {
       console.error("Fetch parent categories error:", err);
+      toast.error("Failed to load parent categories", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
@@ -87,6 +91,9 @@ export default function useSubCategories() {
     } catch (err) {
       console.error("Fetch sub-categories error:", err);
       setError("Failed to load sub-categories");
+      toast.error("Failed to load sub-categories. Please try again.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
@@ -94,6 +101,9 @@ export default function useSubCategories() {
 
   // Add sub-category
   const addSubCategory = async (subCategoryData) => {
+    // Show loading toast
+    const toastId = toast.loading("Adding sub-category...");
+
     const formData = new FormData();
     formData.append("name", subCategoryData.name);
     formData.append("category_id", subCategoryData.category_id);
@@ -146,10 +156,28 @@ export default function useSubCategories() {
       
       console.log("New sub-category to add:", newSubCategory);
       setSubCategories(prev => [...prev, newSubCategory]);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Sub-category added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return newSubCategory;
     } catch (err) {
       console.error("Add sub-category error:", err);
       setError("Failed to add sub-category");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to add sub-category. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -158,6 +186,9 @@ export default function useSubCategories() {
 
   // Update sub-category
   const updateSubCategory = async (id, data) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating sub-category...");
+
     const formData = new FormData();
     formData.append("name", data.name);
     formData.append("category_id", data.category_id);
@@ -213,10 +244,28 @@ export default function useSubCategories() {
       );
       
       console.log("Updated sub-category data:", updatedData);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Sub-category updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return updatedData;
     } catch (err) {
       console.error("Update sub-category error:", err);
       setError("Failed to update sub-category");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to update sub-category. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -225,15 +274,35 @@ export default function useSubCategories() {
 
   // Delete sub-category
   const deleteSubCategory = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting sub-category...");
+
     try {
       setLoading(true);
       
       // Using API_ENDPOINTS instead of hardcoded URL
       await axios.delete(API_ENDPOINTS.deleteSubCategory(id));
       setSubCategories(prev => prev.filter((subCat) => subCat._id !== id));
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Sub-category deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
       console.error("Delete sub-category error:", err);
       setError("Failed to delete");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to delete sub-category. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -250,6 +319,9 @@ export default function useSubCategories() {
       await fetchSubCategories(categoriesList);
     } catch (err) {
       console.error("Error fetching data:", err);
+      toast.error("Failed to load data. Please refresh the page.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
@@ -267,7 +339,7 @@ export default function useSubCategories() {
     addSubCategory,
     updateSubCategory,
     deleteSubCategory,
-    fetchSubCategories: () => fetchSubCategories(categories), // Pass current categories
+    fetchSubCategories, // Pass current categories
     fetchCategories,
   };
 }

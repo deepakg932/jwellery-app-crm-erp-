@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
+import { toast } from "react-toastify";
 
-const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] }) => {
+const AddPurityModal = ({
+  onClose,
+  onSave,
+  loading = false,
+  metalOptions = [],
+}) => {
   const [purity_name, setPurityName] = useState("");
   const [metal_type, setMetalType] = useState("");
   const [percentage, setPercentage] = useState("");
@@ -11,37 +17,47 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
+  const validateForm = () => {
+    const newErrors = {};
     if (!purity_name.trim()) {
-      setError("Please enter purity name");
-      return;
+      newErrors.purity_name = "Please enter purity name";
     }
-
     if (!metal_type.trim()) {
-      setError("Please select metal type");
-      return;
+      newErrors.metal_type = "Please select metal type";
+    }
+    if (!percentage.trim()) {
+      newErrors.percentage = "Please enter percentage";
     }
 
-    if (!percentage.trim()) {
-      setError("Please enter percentage");
-      return;
+    if (Object.keys(newErrors).length > 0) {
+      toast.error(Object.values(newErrors)[0]);
     }
+
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
 
     const perc = parseFloat(percentage);
     if (isNaN(perc) || perc < 0 || perc > 100) {
-      setError("Percentage must be between 0 and 100");
+      toast.error("Percentage must be between 0 and 100");
       return;
     }
-    
-    onSave({
-      purity_name: purity_name.trim(),
-      metal_type: metal_type,
-      percentage: perc,
-      imageFile: image,
-    });
-    
+
+    try {
+      await onSave({
+        purity_name: purity_name.trim(),
+        metal_type: metal_type,
+        percentage: perc,
+        imageFile: image,
+      });
+    } catch (error) {
+      console.error("Save failed:", error);
+    }
+
     // Reset form
     setPurityName("");
     setMetalType("");
@@ -56,28 +72,28 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
       if (file) {
         // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
-          setError("File size should be less than 5MB");
+          toast.error("File size should be less than 5MB");
           return;
         }
-        
+
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-          setError("Please upload an image file");
+        if (!file.type.startsWith("image/")) {
+          toast.error("Please upload an image file");
           return;
         }
-        
+
         // Clean up previous blob URL if exists
-        if (image && imagePreview && imagePreview.startsWith('blob:')) {
+        if (image && imagePreview && imagePreview.startsWith("blob:")) {
           URL.revokeObjectURL(imagePreview);
         }
-        
+
         setImage(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
         setError("");
       }
     },
-    [image, imagePreview]
+    [image, imagePreview],
   );
 
   const handleFileInput = useCallback(
@@ -87,7 +103,7 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
         handleImageChange(file);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const handleDrag = useCallback((e) => {
@@ -105,17 +121,17 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
-      
+
       const files = e.dataTransfer.files;
       if (files && files[0]) {
         handleImageChange(files[0]);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const removeImage = useCallback(() => {
-    if (imagePreview && imagePreview.startsWith('blob:')) {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     setImage(null);
@@ -127,7 +143,7 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
   }, [imagePreview]);
 
   const handleClose = useCallback(() => {
-    if (imagePreview && imagePreview.startsWith('blob:')) {
+    if (imagePreview && imagePreview.startsWith("blob:")) {
       URL.revokeObjectURL(imagePreview);
     }
     onClose();
@@ -136,7 +152,7 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (imagePreview && imagePreview.startsWith('blob:')) {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
         URL.revokeObjectURL(imagePreview);
       }
     };
@@ -149,10 +165,13 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
   };
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Add Purity</h5>
@@ -164,17 +183,9 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              
               {/* Purity Name */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
@@ -189,7 +200,6 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
                     setPurityName(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 />
                 <small className="text-muted">
@@ -209,7 +219,6 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
                     setMetalType(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>
@@ -234,7 +243,9 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
                 <input
                   type="number"
                   className={`form-control form-control-lg ${
-                    percentage && !validatePercentage(percentage) ? 'is-invalid' : ''
+                    percentage && !validatePercentage(percentage)
+                      ? "is-invalid"
+                      : ""
                   }`}
                   placeholder="e.g., 99.9, 92.5, 75.0"
                   value={percentage}
@@ -245,7 +256,6 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
                   min="0"
                   max="100"
                   step="0.1"
-                  required
                   disabled={loading}
                 />
                 {percentage && !validatePercentage(percentage) && (
@@ -261,11 +271,13 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
               {/* Image Upload */}
               <div className="mb-3">
                 <label className="form-label fw-medium">Purity Image</label>
-                
+
                 {/* Drag & Drop Area */}
                 <div
                   className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
-                    dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                    dragActive
+                      ? "border-primary bg-primary bg-opacity-10"
+                      : "border-secondary-subtle"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -281,14 +293,18 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
                     className="d-none"
                     disabled={loading}
                   />
-                  
+
                   {imagePreview ? (
                     <div className="position-relative d-inline-block">
                       <img
                         src={imagePreview}
                         alt="Preview"
                         className="img-thumbnail rounded"
-                        style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
                         key={imagePreview}
                       />
                       <button
@@ -298,7 +314,7 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
                           removeImage();
                         }}
                         className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                        style={{ transform: 'translate(-50%, -50%)' }}
+                        style={{ transform: "translate(-50%, -50%)" }}
                         disabled={loading}
                       >
                         <FiX size={12} />
@@ -333,11 +349,15 @@ const AddPurityModal = ({ onClose, onSave, loading = false, metalOptions = [] })
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!purity_name.trim() || !metal_type.trim() || !percentage.trim() || !validatePercentage(percentage) || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Saving...
                   </>
                 ) : (

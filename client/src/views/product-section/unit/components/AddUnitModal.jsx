@@ -6,7 +6,7 @@
 
 //   const handleSubmit = async (e) => {
 //     e.preventDefault();
-    
+
 //     if (!unitName.trim()) {
 //       setError("Please enter a unit name");
 //       return;
@@ -32,7 +32,7 @@
 //     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
 //       <div className="modal-dialog modal-dialog-centered">
 //         <div className="modal-content rounded-3">
-          
+
 //           {/* Header */}
 //           <div className="modal-header border-bottom pb-3">
 //             <h5 className="modal-title fw-bold fs-5">Add Unit</h5>
@@ -111,38 +111,35 @@
 
 // export default AddUnitModal;
 
-
-
 import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 const AddUnitModal = ({ onClose, onSave, loading = false }) => {
   const [formData, setFormData] = useState({
     name: "",
     code: "",
     conversion_factor: 1,
-    is_active: true
+    is_active: true,
   });
-  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === "checkbox" ? checked : value,
     }));
-    setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
-      setError("Please enter a unit name");
+      toast.error("Please enter a unit name");
       return;
     }
-    
+
     if (!formData.code.trim()) {
-      setError("Please enter a unit code");
+      toast.error("Please enter a unit code");
       return;
     }
 
@@ -151,18 +148,16 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
         name: formData.name.trim(),
         code: formData.code.trim().toUpperCase(),
         conversion_factor: parseFloat(formData.conversion_factor) || 1,
-        is_active: formData.is_active
+        is_active: formData.is_active,
       });
       setFormData({
         name: "",
         code: "",
         conversion_factor: 1,
-        is_active: true
+        is_active: true,
       });
-      setError("");
     } catch (error) {
       console.error("Save failed:", error);
-      setError(error.response?.data?.message || "Failed to save. Please try again.");
     }
   };
 
@@ -171,17 +166,19 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
       name: "",
       code: "",
       conversion_factor: 1,
-      is_active: true
+      is_active: true,
     });
-    setError("");
     onClose();
   };
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Add Unit</h5>
@@ -192,13 +189,6 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
               disabled={loading}
             ></button>
           </div>
-
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -215,7 +205,6 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
                   placeholder="e.g., Kilogram, Gram, Carat"
                   value={formData.name}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -232,7 +221,6 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
                   placeholder="e.g., KG, G, CT"
                   value={formData.code}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                   maxLength={10}
                 />
@@ -244,7 +232,7 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
               {/* Conversion Factor */}
               <div className="mb-3">
                 <label className="form-label fw-medium">
-                  Conversion Factor <span className="text-danger">*</span>
+                  Conversion Factor
                 </label>
                 <input
                   type="number"
@@ -253,7 +241,6 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
                   placeholder="1"
                   value={formData.conversion_factor}
                   onChange={handleChange}
-                  required
                   disabled={loading}
                   min="0.0001"
                   step="0.0001"
@@ -275,7 +262,10 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
                     onChange={handleChange}
                     disabled={loading}
                   />
-                  <label className="form-check-label fw-medium" htmlFor="is_active">
+                  <label
+                    className="form-check-label fw-medium"
+                    htmlFor="is_active"
+                  >
                     Active
                   </label>
                   <div className="form-text">
@@ -298,11 +288,15 @@ const AddUnitModal = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!formData.name.trim() || !formData.code.trim() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Saving...
                   </>
                 ) : (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
 
 const EditCostType = ({
   show,
@@ -6,31 +7,29 @@ const EditCostType = ({
   onSubmit,
   costType,
   loading = false,
-  costNames = [], // Array of { _id, cost_name }
+  costNames = [],
 }) => {
   const [formData, setFormData] = useState({
     cost_type: "",
-    cost_name_id: "", // Store ID
-    cost_name: "", // For display
+    cost_name_id: "",
+    cost_name: "",
   });
   const [error, setError] = useState("");
 
-  // Find cost name by ID
   const getCostNameById = (id) => {
-    const cost = costNames.find(cost => cost._id === id);
-    return cost ? cost.cost_name : '';
+    const cost = costNames.find((cost) => cost._id === id);
+    return cost ? cost.cost_name : "";
   };
 
   // Reset form when costType changes
   useEffect(() => {
     if (costType) {
-      // If costType has cost_name_id, use it directly
-      // If not, find the ID from costNames using the cost_name text
-      let costNameId = costType.cost_name_id || '';
-      
+      let costNameId = costType.cost_name_id || "";
+
       if (!costNameId && costType.cost_name) {
-        // Find the ID by matching cost_name text
-        const matchedCost = costNames.find(cost => cost.cost_name === costType.cost_name);
+        const matchedCost = costNames.find(
+          (cost) => cost.cost_name === costType.cost_name,
+        );
         if (matchedCost) {
           costNameId = matchedCost._id;
         }
@@ -49,12 +48,12 @@ const EditCostType = ({
     e.preventDefault();
 
     if (!formData.cost_type.trim()) {
-      setError("Please enter a cost type");
+      toast.error("Please enter a cost type");
       return;
     }
 
     if (!formData.cost_name_id) {
-      setError("Please select a cost name");
+      toast.error("Please select a cost name");
       return;
     }
 
@@ -70,14 +69,13 @@ const EditCostType = ({
       await onSubmit(submitData);
     } catch (err) {
       console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
     }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === 'cost_name_id') {
+    if (name === "cost_name_id") {
       // When cost name ID changes, update display name too
       const selectedCostName = getCostNameById(value);
       setFormData((prev) => ({
@@ -91,8 +89,6 @@ const EditCostType = ({
         [name]: value,
       }));
     }
-    
-    setError("");
   };
 
   const handleCostTypeChange = (e) => {
@@ -101,7 +97,6 @@ const EditCostType = ({
       ...prev,
       cost_type: value,
     }));
-    setError("");
   };
 
   const handleClose = useCallback(() => {
@@ -110,17 +105,9 @@ const EditCostType = ({
       cost_name_id: "",
       cost_name: "",
     });
-    setError("");
     onHide();
   }, [onHide]);
 
-  // Debug info
-  useEffect(() => {
-    console.log("EditCostType formData:", formData);
-    console.log("EditCostType costType prop:", costType);
-  }, [formData, costType]);
-
-  // Don't render if not shown
   if (!show) return null;
 
   return (
@@ -135,9 +122,6 @@ const EditCostType = ({
           <div className="modal-header border-bottom pb-3">
             <div>
               <h5 className="modal-title fw-bold fs-5">Edit Cost Type</h5>
-              {costType && costType._id && (
-                <div className="small text-muted">ID: {costType._id}</div>
-              )}
             </div>
             <button
               type="button"
@@ -147,13 +131,6 @@ const EditCostType = ({
               aria-label="Close"
             />
           </div>
-
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit}>
@@ -170,7 +147,6 @@ const EditCostType = ({
                   name="cost_type"
                   value={formData.cost_type}
                   onChange={handleCostTypeChange}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -185,7 +161,6 @@ const EditCostType = ({
                   name="cost_name_id"
                   value={formData.cost_name_id}
                   onChange={handleChange}
-                  required
                   disabled={loading || costNames.length === 0}
                 >
                   <option value="">Select cost name</option>
@@ -195,17 +170,13 @@ const EditCostType = ({
                     </option>
                   ))}
                 </select>
-                
-              
-                
+
                 {costNames.length === 0 && !loading && (
                   <div className="text-danger small mt-1">
                     No cost names available
                   </div>
                 )}
               </div>
-
-             
             </div>
 
             {/* Action Buttons */}
@@ -221,11 +192,7 @@ const EditCostType = ({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={
-                  !formData.cost_type.trim() ||
-                  !formData.cost_name_id ||
-                  loading
-                }
+                disabled={loading}
               >
                 {loading ? (
                   <>

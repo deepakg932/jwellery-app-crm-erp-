@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { FiUpload } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const EditStonePurityForm = ({ 
   show, 
@@ -12,14 +13,12 @@ const EditStonePurityForm = ({
   const [stone_purity, setStonePurity] = useState("");
   const [stone_type, setStoneType] = useState("");
   const [percentage, setPercentage] = useState("");
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (stonePurity) {
       setStonePurity(stonePurity.stone_purity || "");
       setStoneType(stonePurity.stone_type || "");
       setPercentage(stonePurity.percentage ? stonePurity.percentage.toString() : "");
-      setError("");
     }
   }, [stonePurity]);
 
@@ -27,21 +26,21 @@ const EditStonePurityForm = ({
     e.preventDefault();
     
     if (!stone_purity.trim()) {
-      setError("Please enter a purity name");
+      toast.error("Please enter a purity name");
       return;
     }
     if (!stone_type.trim()) {
-      setError("Please select stone type");
+      toast.error("Please select stone type");
       return;
     }
     if (!percentage.trim()) {
-      setError("Please enter percentage");
+      toast.error("Please enter percentage");
       return;
     }
 
     const perc = parseFloat(percentage);
     if (isNaN(perc) || perc < 0 || perc > 100) {
-      setError("Percentage must be between 0 and 100");
+      toast.error("Percentage must be between 0 and 100");
       return;
     }
 
@@ -53,7 +52,7 @@ const EditStonePurityForm = ({
         percentage: perc,
       });
     } catch (err) {
-      setError("Failed to update. Please try again.");
+      console.error("Form submission error:", err);
     }
   }, [stone_purity, stone_type, percentage, onSubmit]);
 
@@ -81,12 +80,6 @@ const EditStonePurityForm = ({
             />
           </div>
 
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
               {/* Purity Name */}
@@ -100,9 +93,7 @@ const EditStonePurityForm = ({
                   value={stone_purity}
                   onChange={(e) => {
                     setStonePurity(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -117,9 +108,7 @@ const EditStonePurityForm = ({
                   value={stone_type}
                   onChange={(e) => {
                     setStoneType(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select stone type</option>
@@ -142,12 +131,10 @@ const EditStonePurityForm = ({
                   value={percentage}
                   onChange={(e) => {
                     setPercentage(e.target.value);
-                    setError("");
                   }}
                   min="0"
                   max="100"
                   step="0.1"
-                  required
                   disabled={loading}
                 />
                 {percentage && !validatePercentage(percentage) && (

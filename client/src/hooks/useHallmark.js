@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export default function useHallmark() {
   const [hallmarks, setHallmarks] = useState([]);
@@ -36,6 +37,9 @@ export default function useHallmark() {
       return mappedMetals;
     } catch (err) {
       console.error("Fetch metal types error:", err);
+      toast.error("Failed to load metal types", {
+        autoClose: 4000,
+      });
       return [];
     }
   };
@@ -67,6 +71,9 @@ export default function useHallmark() {
     } catch (err) {
       console.error("Fetch hallmarks error:", err);
       setError("Failed to load hallmarks");
+      toast.error("Failed to load hallmarks. Please try again.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
@@ -103,6 +110,9 @@ export default function useHallmark() {
     formData.append("metal_type", hallmarkData.metal_type);
     formData.append("description", hallmarkData.description || "");
     if (hallmarkData.imageFile) formData.append("image", hallmarkData.imageFile);
+
+    // Show loading toast
+    const toastId = toast.loading("Adding hallmark...");
 
     try {
       setLoading(true);
@@ -145,10 +155,28 @@ export default function useHallmark() {
       
       // Update state
       setHallmarks(prev => [...prev, newHallmark]);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Hallmark added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return newHallmark;
     } catch (err) {
       console.error("Add hallmark error:", err);
       setError("Failed to add hallmark");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to add hallmark. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -162,6 +190,9 @@ export default function useHallmark() {
     formData.append("metal_type", data.metal_type);
     formData.append("description", data.description || "");
     if (data.imageFile) formData.append("image", data.imageFile);
+
+    // Show loading toast
+    const toastId = toast.loading("Updating hallmark...");
 
     try {
       setLoading(true);
@@ -206,11 +237,28 @@ export default function useHallmark() {
       setHallmarks(prev => 
         prev.map((hallmark) => (hallmark._id === id ? updatedData : hallmark))
       );
-      
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Hallmark updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return updatedData;
     } catch (err) {
       console.error("Update hallmark error:", err);
       setError("Failed to update hallmark");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to update hallmark. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -219,13 +267,33 @@ export default function useHallmark() {
 
   // Delete hallmark
   const deleteHallmark = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting hallmark...");
+
     try {
       setLoading(true);
       await axios.delete(API_ENDPOINTS.deleteHallmark(id));
       setHallmarks(prev => prev.filter((hallmark) => hallmark._id !== id));
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Hallmark deleted successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
       console.error("Delete hallmark error:", err);
       setError("Failed to delete");
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: err.response?.data?.message || "Failed to delete hallmark. Please try again.",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw err;
     } finally {
       setLoading(false);
@@ -247,6 +315,9 @@ export default function useHallmark() {
       await fetchHallmarks(metals);
     } catch (err) {
       console.error("Error fetching data:", err);
+      toast.error("Failed to load data. Please refresh the page.", {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }

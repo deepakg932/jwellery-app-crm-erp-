@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FiUpload, FiImage, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const EditHallmarkModal = ({ 
   show, 
@@ -40,18 +41,26 @@ const EditHallmarkModal = ({
     };
   }, [imageFile, imagePreview]);
 
+    const validateForm = () => {
+      const newErrors = {};
+      if (!name.trim()) {
+        newErrors.name = "Please enter hallmark name";
+      }
+      if (!metal_type.trim()) {
+        newErrors.metal_type = "Please select metal type";
+      }
+      if (Object.keys(newErrors).length > 0) {
+        toast.error(Object.values(newErrors)[0]);
+      }
+  
+      return Object.keys(newErrors).length === 0;
+    };
+
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
-    if (!name.trim()) {
-      setError("Please enter a hallmark name");
-      return;
-    }
-
-    if (!metal_type.trim()) {
-      setError("Please select metal type");
-      return;
-    }
+    if (!validateForm()) return;
+   
 
     console.log("Submitting hallmark update:", {
       name: name,
@@ -70,7 +79,6 @@ const EditHallmarkModal = ({
       });
     } catch (err) {
       console.error("Form submission error:", err);
-      setError("Failed to update. Please try again.");
     }
   }, [name, metal_type, description, imageFile, hallmark, onSubmit]);
 
@@ -78,13 +86,13 @@ const EditHallmarkModal = ({
     if (file) {
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
-        setError("File size should be less than 5MB");
+        toast.error("File size should be less than 5MB");
         return;
       }
       
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        setError("Please upload an image file");
+        toast.error("Please upload an image file");
         return;
       }
       
@@ -170,13 +178,6 @@ const EditHallmarkModal = ({
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -194,7 +195,6 @@ const EditHallmarkModal = ({
                     setName(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -211,7 +211,6 @@ const EditHallmarkModal = ({
                     setMetalType(e.target.value);
                     setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>

@@ -1,30 +1,16 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { toast } from "react-toastify";
 
-const AddCostType = ({
-  onClose,
-  onSave,
-  loading = false,
-  costNames = [], // This should come from hook's costNames array
-}) => {
+const AddCostType = ({ onClose, onSave, loading = false, costNames = [] }) => {
   const [formData, setFormData] = useState({
     cost_type: "",
-    cost_name_id: "", // Changed to store ID
-    cost_name: "", // For display only
+    cost_name_id: "",
+    cost_name: "",
   });
-  const [error, setError] = useState("");
 
-  // Debug: Log the props to see what data is being passed
-  useEffect(() => {
-    console.log("AddCostType Props:", {
-      costNamesCount: costNames.length,
-      costNames: costNames,
-    });
-  }, [costNames]);
-
-  // Find cost name by ID for display
   const getCostNameById = (id) => {
-    const cost = costNames.find(cost => cost._id === id);
-    return cost ? cost.cost_name : '';
+    const cost = costNames.find((cost) => cost._id === id);
+    return cost ? cost.cost_name : "";
   };
 
   // Handle form submission
@@ -33,12 +19,12 @@ const AddCostType = ({
 
     // Validation
     if (!formData.cost_type.trim()) {
-      setError("Please enter a cost type");
+      toast.error("Please enter a cost type");
       return;
     }
 
     if (!formData.cost_name_id) {
-      setError("Please select a cost name");
+      toast.error("Please select a cost name");
       return;
     }
 
@@ -57,7 +43,7 @@ const AddCostType = ({
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === 'cost_name_id') {
+    if (name === "cost_name_id") {
       // When cost name ID changes, also update the display name
       const selectedCostName = getCostNameById(value);
       setFormData((prev) => ({
@@ -71,8 +57,6 @@ const AddCostType = ({
         [name]: value,
       }));
     }
-
-    setError("");
   };
 
   // Handle manual cost type change
@@ -82,7 +66,6 @@ const AddCostType = ({
       ...prev,
       cost_type: value,
     }));
-    setError("");
   };
 
   const handleClose = useCallback(() => {
@@ -91,7 +74,6 @@ const AddCostType = ({
       cost_name_id: "",
       cost_name: "",
     });
-    setError("");
     onClose();
   }, [onClose]);
 
@@ -114,13 +96,6 @@ const AddCostType = ({
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -136,7 +111,6 @@ const AddCostType = ({
                   name="cost_type"
                   value={formData.cost_type}
                   onChange={handleCostTypeChange}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -151,14 +125,13 @@ const AddCostType = ({
                   name="cost_name_id"
                   value={formData.cost_name_id}
                   onChange={handleChange}
-                  required
                   disabled={loading || costNames.length === 0}
                 >
                   <option value="">Select cost name</option>
                   {costNames.map((cost) => {
                     // Cost name object structure from hook
                     const costId = cost._id;
-                    const costName = cost.cost_name || '';
+                    const costName = cost.cost_name || "";
 
                     return (
                       <option key={costId} value={costId}>
@@ -167,16 +140,13 @@ const AddCostType = ({
                     );
                   })}
                 </select>
-               
-                
+
                 {costNames.length === 0 && !loading && (
                   <div className="text-danger small mt-1">
                     No cost names available. Please add costs first.
                   </div>
                 )}
               </div>
-
-             
             </div>
 
             {/* Action Buttons */}
@@ -192,12 +162,7 @@ const AddCostType = ({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={
-                  !formData.cost_type.trim() ||
-                  !formData.cost_name_id ||
-                  loading ||
-                  costNames.length === 0
-                }
+                disabled={loading}
               >
                 {loading ? (
                   <>

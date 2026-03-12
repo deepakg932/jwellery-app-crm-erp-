@@ -5,6 +5,8 @@ import { API_ENDPOINTS } from "@/api/api";
 export default function useEmployees() {
   const [employees, setEmployees] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,58 +48,136 @@ export default function useEmployees() {
     }
   };
 
-  // Fetch all employees
-  const fetchEmployees = async () => {
+  // Fetch all designations
+  const fetchDesignations = async () => {
     try {
-      setLoading(true);
-      setError("");
-
-      const url = API_ENDPOINTS.getEmployees();
-      console.log("Fetching employees from:", url);
-
+      const url = API_ENDPOINTS.getDesignations();
       const res = await axios.get(url);
-      console.log("Employees API Response:", res.data);
-
-      let employeesData = [];
-
-      // Handle your specific response structure
+      
+      let designationsData = [];
       if (res.data?.data && Array.isArray(res.data.data)) {
-        employeesData = res.data.data;
+        designationsData = res.data.data;
       } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
-        employeesData = res.data.fetched;
+        designationsData = res.data.fetched;
       } else if (Array.isArray(res.data)) {
-        employeesData = res.data;
+        designationsData = res.data;
       }
 
-      const mappedEmployees = employeesData.map((item) => ({
+      const mappedDesignations = designationsData.map((item) => ({
         _id: item._id || item.id,
-        name: item.name || "",
-        email: item.email || "",
-        phone: item.phone || item.mobile || "",
-        pan_number: item.pan_number || "",
-        aadhaar_number: item.aadhaar_number || "",
-        address: item.address || "",
-        city: item.city || "",
-        state: item.state || "",
-        country: item.country || "",
-        pincode: item.pincode || "",
-        role_id: item.role_id?._id || item.role_id || "",
-        role_name: item.role_id?.role_name || item.role_name || "",
-        basic_salary: item.basic_salary || 0,
-        image: item.fullImageUrl ||  "",
-        status: item.status === "active",
-        createdAt: item.createdAt || "",
+        designation_name: item.designation_name || item.name || "",
+        status: item.status || "active",
       }));
 
-      console.log("Fetched employees:", mappedEmployees);
-      setEmployees(mappedEmployees);
+      setDesignations(mappedDesignations);
+      return mappedDesignations;
     } catch (err) {
-      console.error("Fetch employees error:", err);
-      setError(err.response?.data?.message || "Failed to load employees");
-    } finally {
-      setLoading(false);
+      console.error("Fetch designations error:", err);
+      return [];
     }
   };
+
+  // Fetch all departments
+  const fetchDepartments = async () => {
+    try {
+      const url = API_ENDPOINTS.getDepartments();
+      const res = await axios.get(url);
+      
+      let departmentsData = [];
+      if (res.data?.data && Array.isArray(res.data.data)) {
+        departmentsData = res.data.data;
+      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        departmentsData = res.data.fetched;
+      } else if (Array.isArray(res.data)) {
+        departmentsData = res.data;
+      }
+
+      const mappedDepartments = departmentsData.map((item) => ({
+        _id: item._id || item.id,
+        department_name: item.department_name || item.name || "",
+        status: item.status || "active",
+      }));
+
+      setDepartments(mappedDepartments);
+      return mappedDepartments;
+    } catch (err) {
+      console.error("Fetch departments error:", err);
+      return [];
+    }
+  };
+
+  // Fetch all employees
+ const fetchEmployees = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const url = API_ENDPOINTS.getEmployees();
+    const res = await axios.get(url);
+
+    let employeesData = [];
+
+    if (res.data?.data && Array.isArray(res.data.data)) {
+      employeesData = res.data.data;
+    } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+      employeesData = res.data.fetched;
+    } else if (Array.isArray(res.data)) {
+      employeesData = res.data;
+    } else if (res.data?.employees && Array.isArray(res.data.employees)) {
+      employeesData = res.data.employees;
+    }
+
+    const mappedEmployees = employeesData.map((item) => ({
+      _id: item._id || item.id || "",
+      employee_id: item.employee_id || "",
+      salutation: item.salutation || "",
+      name: item.name || "",
+      email: item.email || "",
+      phone: item.phone || item.mobile || "",
+      mobile: item.mobile || item.phone || "",
+      gender: item.gender || "",
+      date_of_birth: item.date_of_birth || "",
+      profile_picture: item.profile_picture || item.image || "",
+      fullImageUrl: item.fullImageUrl || item.image || "",
+      designation_id: item.designation_id?._id || item.designation_id || "",
+      designation_name: item.designation_id?.designation_name || item.designation_name || "",
+      department_id: item.department_id?._id || item.department_id || "",
+      department_name: item.department_id?.department_name || item.department_name || "",
+      user_role: item.user_role?._id || item.user_role || "",
+      role_name: item.user_role?.role_name || item.role_name || "",
+      reporting_to: item.reporting_to?._id || item.reporting_to || "",
+      reporting_to_name: item.reporting_to?.name || "",
+      joining_date: item.joining_date || "",
+      basic_salary: item.basic_salary || 0,
+      status: item.status === "active",
+      address: item.address || "",
+      city: item.city || "",
+      state: item.state || "",
+      country: item.country || "",
+      about: item.about || "",
+      language: item.language || "English",
+      createdAt: item.createdAt || "",
+      updatedAt: item.updatedAt || "",
+      created_by: item.created_by || null,
+    }));
+
+    setEmployees(mappedEmployees);
+    return mappedEmployees;
+    
+  } catch (err) {
+    console.error("Fetch employees error:", err);
+    
+    if (err.response) {
+      setError(err.response.data?.message || `Error ${err.response.status}: Failed to load employees`);
+    } else if (err.request) {
+      setError("No response from server. Please check your internet connection.");
+    } else {
+      setError("Failed to load employees. Please try again.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Add a new employee
   const addEmployee = async (employeeData) => {
@@ -111,20 +191,21 @@ export default function useEmployees() {
       // Create FormData for file upload
       const formData = new FormData();
 
-      // Append all fields except image
+      // Append all fields
       Object.keys(employeeData).forEach((key) => {
         if (
-          key !== "image" &&
+          key !== "profile_picture" &&
           employeeData[key] !== undefined &&
-          employeeData[key] !== null
+          employeeData[key] !== null &&
+          employeeData[key] !== ""
         ) {
           formData.append(key, employeeData[key]);
         }
       });
 
-      // Append image if exists
-      if (employeeData.image && employeeData.image instanceof File) {
-        formData.append("image", employeeData.image);
+      // Append profile picture if exists
+      if (employeeData.profile_picture && employeeData.profile_picture instanceof File) {
+        formData.append("profile_picture", employeeData.profile_picture);
       }
 
       const res = await axios.post(url, formData, {
@@ -135,51 +216,10 @@ export default function useEmployees() {
 
       console.log("Add employee response:", res.data);
 
-      let newEmployee = {
-        _id: `temp-${Date.now()}`,
-        ...employeeData,
-        status: employeeData.status ? "active" : "inactive",
-      };
-
-      if (res.data?.status === true && res.data.data) {
-        const responseData = res.data.data;
-
-        // Find the role
-        const role = roles.find((r) => r._id === employeeData.role_id);
-
-        newEmployee = {
-          _id: responseData._id,
-          name: responseData.name || employeeData.name,
-          email: responseData.email || employeeData.email,
-          phone: responseData.phone || employeeData.phone,
-          pan_number: responseData.pan_number || employeeData.pan_number,
-          aadhaar_number:
-            responseData.aadhaar_number || employeeData.aadhaar_number,
-          address: responseData.address || employeeData.address,
-          city: responseData.city || employeeData.city,
-          state: responseData.state || employeeData.state,
-          country: responseData.country || employeeData.country,
-          pincode: responseData.pincode || employeeData.pincode,
-          role_id: responseData.role_id || employeeData.role_id,
-          role_name: role?.role_name || employeeData.role_name || "",
-          basic_salary: responseData.basic_salary || employeeData.basic_salary,
-          image: responseData.image || employeeData.image || "",
-          status: responseData.status === "active",
-          createdAt: responseData.createdAt || new Date().toISOString(),
-        };
-      }
-
-      console.log("New employee to add:", newEmployee);
-
-      // Update local state
-      setEmployees((prev) => [...prev, newEmployee]);
-
       // Refetch to ensure consistency
-      setTimeout(() => {
-        fetchEmployees();
-      }, 500);
-
-      return newEmployee;
+      await fetchEmployees();
+      
+      return { success: true, data: res.data };
     } catch (err) {
       console.error("Add employee error:", err);
       setError(err.response?.data?.message || "Failed to add employee");
@@ -201,20 +241,21 @@ export default function useEmployees() {
       // Create FormData for file upload
       const formData = new FormData();
 
-      // Append all fields except image
+      // Append all fields
       Object.keys(employeeData).forEach((key) => {
         if (
-          key !== "image" &&
+          key !== "profile_picture" &&
           employeeData[key] !== undefined &&
-          employeeData[key] !== null
+          employeeData[key] !== null &&
+          employeeData[key] !== ""
         ) {
           formData.append(key, employeeData[key]);
         }
       });
 
-      // Append image if exists and is a File
-      if (employeeData.image && employeeData.image instanceof File) {
-        formData.append("image", employeeData.image);
+      // Append profile picture if exists and is a File
+      if (employeeData.profile_picture && employeeData.profile_picture instanceof File) {
+        formData.append("profile_picture", employeeData.profile_picture);
       }
 
       const res = await axios.put(url, formData, {
@@ -225,44 +266,10 @@ export default function useEmployees() {
 
       console.log("Update employee response:", res.data);
 
-      if (res.data?.success || res.data?.status === true) {
-        const responseData = res.data.data || res.data;
+      // Update local state by refetching
+      await fetchEmployees();
 
-        // Find the role
-        const role = roles.find((r) => r._id === employeeData.role_id);
-
-        const updatedData = {
-          _id: responseData._id || id,
-          name: responseData.name || employeeData.name,
-          email: responseData.email || employeeData.email,
-          phone: responseData.phone || employeeData.phone,
-          address: responseData.address || employeeData.address,
-          city: responseData.city || employeeData.city,
-          state: responseData.state || employeeData.state,
-          country: responseData.country || employeeData.country,
-          pincode: responseData.pincode || employeeData.pincode,
-          role_id: responseData.role_id || employeeData.role_id,
-          role_name: role?.role_name || employeeData.role_name || "",
-          basic_salary: responseData.basic_salary || employeeData.basic_salary,
-          image: responseData.fullImageUrl || employeeData.fullImageUrl || "",
-          status: responseData.status === "active",
-          updatedAt: responseData.updatedAt || new Date().toISOString(),
-        };
-
-        console.log("Updated employee data:", updatedData);
-
-        // Update local state immediately
-        setEmployees((prev) =>
-          prev.map((item) =>
-            item._id === id ? { ...item, ...updatedData } : item
-          )
-        );
-
-        // Return the updated data
-        return updatedData;
-      } else {
-        throw new Error(res.data?.message || "Failed to update employee");
-      }
+      return { success: true, data: res.data };
     } catch (err) {
       console.error("Update employee error:", err);
       setError(err.response?.data?.message || "Failed to update employee");
@@ -273,42 +280,51 @@ export default function useEmployees() {
   };
 
   // Delete an employee
-const deleteEmployee = async (id) => {
-  try {
-    setLoading(true);
-    setError("");
+  const deleteEmployee = async (id) => {
+    try {
+      setLoading(true);
+      setError("");
 
-    const url = API_ENDPOINTS.deleteEmployee(id);
-    console.log("Deleting employee at:", url);
+      const url = API_ENDPOINTS.deleteEmployee(id);
+      console.log("Deleting employee at:", url);
 
-    const res = await axios.delete(url);
-    console.log("Delete response:", res.data);
+      const res = await axios.delete(url);
+      console.log("Delete response:", res.data);
 
-    if (res.data?.success === true || res.data?.status === true) {
-      // Remove from local state immediately
-      setEmployees((prev) => prev.filter((item) => item._id !== id));
+      if (res.data?.success === true || res.data?.status === true) {
+        // Remove from local state immediately
+        setEmployees((prev) => prev.filter((item) => item._id !== id));
+        
+        // Return success indicator
+        return { success: true };
+      } else {
+        throw new Error(res.data?.message || "Failed to delete employee");
+      }
+    } catch (err) {
+      console.error("Delete employee error:", err);
+      setError(err.response?.data?.message || "Failed to delete employee");
       
-      // Return success indicator
-      return { success: true };
-    } else {
-      throw new Error(res.data?.message || "Failed to delete employee");
+      // Return error indicator
+      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Delete employee error:", err);
-    setError(err.response?.data?.message || "Failed to delete employee");
-    
-    // Return error indicator
-    return { success: false, error: err.message };
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  // Get employee by ID
+  const getEmployeeById = (id) => {
+    return employees.find(emp => emp._id === id) || null;
+  };
 
   useEffect(() => {
-    // Fetch roles first, then employees
+    // Fetch all required data
     const fetchData = async () => {
-      await fetchRoles();
-      await fetchEmployees();
+      await Promise.all([
+        fetchRoles(),
+        fetchDesignations(),
+        fetchDepartments(),
+        fetchEmployees()
+      ]);
     };
 
     fetchData();
@@ -317,12 +333,17 @@ const deleteEmployee = async (id) => {
   return {
     employees,
     roles,
+    designations,
+    departments,
     loading,
     error,
     addEmployee,
     updateEmployee,
     deleteEmployee,
+    getEmployeeById,
     fetchEmployees,
     fetchRoles,
+    fetchDesignations,
+    fetchDepartments,
   };
 }

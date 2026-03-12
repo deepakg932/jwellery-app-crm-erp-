@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const AddStoneForm = ({ onClose, onSave, loading = false }) => {
   const [stoneData, setStoneData] = useState({
@@ -15,7 +16,7 @@ const AddStoneForm = ({ onClose, onSave, loading = false }) => {
     e.preventDefault();
     // Validate required fields
     if (!stoneData.stone_type.trim()) {
-      alert("Please enter stone type");
+      toast.error("Please enter stone type");
       return;
     }
 
@@ -40,13 +41,13 @@ const AddStoneForm = ({ onClose, onSave, loading = false }) => {
     if (file) {
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
+        toast.error("File size should be less than 5MB");
         return;
       }
 
       // Validate file type
       if (!file.type.startsWith("image/")) {
-        alert("Please upload an image file");
+        toast.error("Please upload an image file");
         return;
       }
 
@@ -146,7 +147,6 @@ const AddStoneForm = ({ onClose, onSave, loading = false }) => {
                     placeholder="e.g., Blue Sapphire, Diamond, Ruby"
                     value={stoneData.stone_type}
                     onChange={handleInputChange}
-                    required
                     disabled={loading}
                   />
                 </div>
@@ -231,7 +231,7 @@ const AddStoneForm = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!stoneData.stone_type.trim() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>

@@ -1,30 +1,34 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const AddCategoryModal = ({
   onClose,
   onSave,
   loading = false,
-  metalOptions = [], // Array of objects: [{id: "", name: ""}]
+  metalOptions = [],
 }) => {
   const [name, setName] = useState("");
   const [selectedMetal, setSelectedMetal] = useState("");
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim() || !selectedMetal.trim()) {
-      setError("Please fill all required fields");
+    if (!name.trim()) {
+      toast.error("Category name is required");
+      return;
+    }
+    if (!selectedMetal.trim()) {
+      toast.error("Please select a metal type");
       return;
     }
 
     onSave({
       name: name.trim(),
-      metal_type: selectedMetal, // Send metal ID, not name
+      metal_type: selectedMetal,
       imageFile: image,
     });
 
@@ -33,7 +37,6 @@ const AddCategoryModal = ({
     setSelectedMetal("");
     setImage(null);
     setImagePreview(null);
-    setError("");
   };
 
   const handleImageChange = useCallback(
@@ -41,13 +44,13 @@ const AddCategoryModal = ({
       if (file) {
         // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
-          setError("File size should be less than 5MB");
+          toast.error("File size should be less than 5MB");
           return;
         }
 
         // Validate file type
         if (!file.type.startsWith("image/")) {
-          setError("Please upload an image file");
+          toast.error("Please upload an image file");
           return;
         }
 
@@ -59,10 +62,9 @@ const AddCategoryModal = ({
         setImage(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
-        setError("");
       }
     },
-    [image, imagePreview]
+    [image, imagePreview],
   );
 
   const handleFileInput = useCallback(
@@ -72,7 +74,7 @@ const AddCategoryModal = ({
         handleImageChange(file);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const handleDrag = useCallback((e) => {
@@ -96,7 +98,7 @@ const AddCategoryModal = ({
         handleImageChange(files[0]);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const removeImage = useCallback(() => {
@@ -108,7 +110,6 @@ const AddCategoryModal = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    setError("");
   }, [imagePreview]);
 
   const handleClose = useCallback(() => {
@@ -146,13 +147,6 @@ const AddCategoryModal = ({
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -168,9 +162,7 @@ const AddCategoryModal = ({
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -185,9 +177,7 @@ const AddCategoryModal = ({
                   value={selectedMetal}
                   onChange={(e) => {
                     setSelectedMetal(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>
@@ -285,7 +275,7 @@ const AddCategoryModal = ({
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!name.trim() || !selectedMetal.trim() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>

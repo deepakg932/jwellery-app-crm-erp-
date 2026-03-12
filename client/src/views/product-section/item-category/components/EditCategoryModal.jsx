@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FiUpload, FiImage, FiX } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const EditCategoryModal = ({
   show,
@@ -14,7 +15,6 @@ const EditCategoryModal = ({
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [error, setError] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -24,7 +24,6 @@ const EditCategoryModal = ({
       const imageUrl = category.imageUrl || "";
       setImagePreview(imageUrl ? imageUrl : null);
       setImageFile(null);
-      setError("");
     }
   }, [category]);
 
@@ -43,21 +42,14 @@ const EditCategoryModal = ({
       e.preventDefault();
 
       if (!name.trim()) {
-        setError("Please enter a category name");
+        toast.error("Please enter a category name");
         return;
       }
 
       if (!selectedMetal.trim()) {
-        setError("Please select a metal type");
+        toast.error("Please select a metal type");
         return;
       }
-
-      console.log("Submitting category update:", {
-        name: name,
-        metal_type: selectedMetal,
-        hasImageFile: !!imageFile,
-        categoryId: category?._id,
-      });
 
       try {
         await onSubmit({
@@ -67,10 +59,9 @@ const EditCategoryModal = ({
         });
       } catch (err) {
         console.error("Form submission error:", err);
-        setError("Failed to update. Please try again.");
       }
     },
-    [name, selectedMetal, imageFile, category, onSubmit]
+    [name, selectedMetal, imageFile, category, onSubmit],
   );
 
   const handleImageChange = useCallback(
@@ -78,13 +69,13 @@ const EditCategoryModal = ({
       if (file) {
         // Validate file size (5MB max)
         if (file.size > 5 * 1024 * 1024) {
-          setError("File size should be less than 5MB");
+          toast.error("File size should be less than 5MB");
           return;
         }
 
         // Validate file type
         if (!file.type.startsWith("image/")) {
-          setError("Please upload an image file");
+          toast.error("Please upload an image file");
           return;
         }
 
@@ -96,10 +87,9 @@ const EditCategoryModal = ({
         setImageFile(file);
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
-        setError("");
       }
     },
-    [imageFile, imagePreview]
+    [imageFile, imagePreview],
   );
 
   const handleFileInput = useCallback(
@@ -109,7 +99,7 @@ const EditCategoryModal = ({
         handleImageChange(file);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const handleDrag = useCallback((e) => {
@@ -133,7 +123,7 @@ const EditCategoryModal = ({
         handleImageChange(files[0]);
       }
     },
-    [handleImageChange]
+    [handleImageChange],
   );
 
   const removeImage = useCallback(() => {
@@ -154,7 +144,6 @@ const EditCategoryModal = ({
       URL.revokeObjectURL(imagePreview);
     }
     setImageFile(null);
-    setError("");
     onHide();
   }, [imageFile, imagePreview, onHide]);
 
@@ -181,13 +170,6 @@ const EditCategoryModal = ({
             />
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -202,9 +184,7 @@ const EditCategoryModal = ({
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -219,9 +199,7 @@ const EditCategoryModal = ({
                   value={selectedMetal}
                   onChange={(e) => {
                     setSelectedMetal(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 >
                   <option value="">Select metal type</option>

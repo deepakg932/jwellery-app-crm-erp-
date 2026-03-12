@@ -18,14 +18,14 @@ const Dashboard = lazy(() => import("@/views/dashboards/dashboard2"));
 const Landing = lazy(() => import("@/views/landing"));
 
 // Product Master
-const MetalTypeSection = lazy(() =>
-  import("@/views/product-section/metal-type")
+const MetalTypeSection = lazy(
+  () => import("@/views/product-section/metal-type"),
 );
-const ItemCategory = lazy(() =>
-  import("@/views/product-section/item-category")
+const ItemCategory = lazy(
+  () => import("@/views/product-section/item-category"),
 );
-const SubCategory = lazy(() =>
-  import("@/views/product-section/item-sub-category")
+const SubCategory = lazy(
+  () => import("@/views/product-section/item-sub-category"),
 );
 const Purity = lazy(() => import("@/views/product-section/purity"));
 const HallmarkPage = lazy(() => import("@/views/product-section/hall-mark"));
@@ -34,71 +34,71 @@ const StoneType = lazy(() => import("@/views/product-section/stone"));
 const StonePurity = lazy(() => import("@/views/product-section/stone purity"));
 const Stone = lazy(() => import("@/views/product-section/stones"));
 const Unit = lazy(() => import("@/views/product-section/unit"));
-const MakingStagePage = lazy(() =>
-  import("@/views/product-section/price/making_stage")
+const MakingStagePage = lazy(
+  () => import("@/views/product-section/price/making_stage"),
 );
-const MakingSubStagePage = lazy(() =>
-  import("@/views/product-section/price/making_sub_stage")
+const MakingSubStagePage = lazy(
+  () => import("@/views/product-section/price/making_sub_stage"),
 );
-const CostMaster = lazy(() =>
-  import("@/views/product-section/price/cost_master")
+const CostMaster = lazy(
+  () => import("@/views/product-section/price/cost_master"),
 );
 const CostType = lazy(() => import("@/views/product-section/price/cost_type"));
-const PriceMaking = lazy(() =>
-  import("@/views/product-section/price/price_making")
+const PriceMaking = lazy(
+  () => import("@/views/product-section/price/price_making"),
 );
-const GSTMaster = lazy(() =>
-  import("@/views/product-section/price/gst_master")
+const GSTMaster = lazy(
+  () => import("@/views/product-section/price/gst_master"),
 );
 const WastagePage = lazy(() => import("@/views/product-section/wastage"));
-const MaterialTypePage = lazy(() =>
-  import("@/views/product-section/materialType")
+const MaterialTypePage = lazy(
+  () => import("@/views/product-section/materialType"),
 );
 
 // Items Master
 const ItemsPage = lazy(() => import("@/views/item-master"));
 
 // inventory master
-const InvetoryCategoryPage = lazy(() =>
-  import("@/views/inventory-master/inventory-items-category")
+const InvetoryCategoryPage = lazy(
+  () => import("@/views/inventory-master/inventory-items-category"),
 );
-const InvetorySubCategoryPage = lazy(() =>
-  import("@/views/inventory-master/inventory-items-sub-category")
+const InvetorySubCategoryPage = lazy(
+  () => import("@/views/inventory-master/inventory-items-sub-category"),
 );
-const InventoryItemsPage = lazy(() =>
-  import("@/views/inventory-master/inventory-items")
+const InventoryItemsPage = lazy(
+  () => import("@/views/inventory-master/inventory-items"),
 );
-const BranchTypePage = lazy(() =>
-  import("@/views/inventory-master/branch-master/branch-type")
+const BranchTypePage = lazy(
+  () => import("@/views/inventory-master/branch-master/branch-type"),
 );
-const BranchPage = lazy(() =>
-  import("@/views/inventory-master/branch-master/branch")
+const BranchPage = lazy(
+  () => import("@/views/inventory-master/branch-master/branch"),
 );
 const SuppliersPage = lazy(() => import("@/views/inventory-master/suppliers"));
-const PurchaseOrdersPage = lazy(() =>
-  import("@/views/inventory-master/purchase-order")
+const PurchaseOrdersPage = lazy(
+  () => import("@/views/inventory-master/purchase-order"),
 );
-const InventoryMovementsPage = lazy(() =>
-  import("@/views/inventory-master/inventory-movements")
+const InventoryMovementsPage = lazy(
+  () => import("@/views/inventory-master/inventory-movements"),
 );
-const PurchaseReturnPage = lazy(() =>
-  import("@/views/inventory-master/purchase-order/purchase-return")
+const PurchaseReturnPage = lazy(
+  () => import("@/views/inventory-master/purchase-order/purchase-return"),
 );
 
 const InvoiceList = lazy(() => import("@/views/apps/invoice/invoices"));
-const InvoiceDetails = lazy(() =>
-  import("@/views/apps/invoice/invoices/[invoiceId]")
+const InvoiceDetails = lazy(
+  () => import("@/views/apps/invoice/invoices/[invoiceId]"),
 );
 const AddInvoice = lazy(() => import("@/views/apps/invoice/add-invoice"));
 const ApiKeys = lazy(() => import("@/views/apps/api-key"));
-const TicketList = lazy(() =>
-  import("@/views/apps/support-center/tickets-list")
+const TicketList = lazy(
+  () => import("@/views/apps/support-center/tickets-list"),
 );
-const TicketDetails = lazy(() =>
-  import("@/views/apps/support-center/ticket-details")
+const TicketDetails = lazy(
+  () => import("@/views/apps/support-center/ticket-details"),
 );
-const TicketCreate = lazy(() =>
-  import("@/views/apps/support-center/ticket-create")
+const TicketCreate = lazy(
+  () => import("@/views/apps/support-center/ticket-create"),
 );
 
 // CRM
@@ -117,9 +117,9 @@ const Proposals = lazy(() => import("@/views/apps/crm/proposals"));
 const Profile = lazy(() => import("@/views/apps/users/profile"));
 const CustomerGroupPage = lazy(() => import("@/views/user/customer-group"));
 const Customer = lazy(() => import("@/views/user/customer"));
-const LoyaltyPointPaymentHistory = lazy(() => import("@/views/user/customer/components/LoyaltyPointPaymentHistory"));
-const RolePage = lazy(() => import("@/views/user/role"));
-const EmployeesPage = lazy(() => import("@/views/user/employee"));
+const LoyaltyPointPaymentHistory = lazy(
+  () => import("@/views/user/customer/components/LoyaltyPointPaymentHistory"),
+);
 
 const UserContacts = lazy(() => import("@/views/apps/users/contacts"));
 const Permissions = lazy(() => import("@/views/apps/users/permissions"));
@@ -132,11 +132,13 @@ const ComingSoon = lazy(() => import("@/views/other-pages/coming-soon"));
 
 // manufacturing
 
-const CustomOrderPage = lazy(() =>
-  import("@/views/manufacturing/custom-order")
+const CustomOrderPage = lazy(
+  () => import("@/views/manufacturing/custom-order"),
 );
 const QuotationsPage = lazy(() => import("@/views/manufacturing/quotations"));
-const QuotationsHistoryPage = lazy(() => import("@/views/manufacturing/quotations/components/QuotationsHistory"));
+const QuotationsHistoryPage = lazy(
+  () => import("@/views/manufacturing/quotations/components/QuotationsHistory"),
+);
 const RepairPage = lazy(() => import("@/views/manufacturing/repair"));
 
 // manufacturing
@@ -144,44 +146,52 @@ const JobCardPage = lazy(() => import("@/views/manufacturing-master/job-card"));
 
 //stages
 
-const DesignStagePage = lazy(() =>
-  import("@/views/manufacturing-master/design-stage")
+const DesignStagePage = lazy(
+  () => import("@/views/manufacturing-master/design-stage"),
 );
 
-const CadCreationStagePage = lazy(() =>
-  import("@/views/manufacturing-master/cad-creation")
+const CadCreationStagePage = lazy(
+  () => import("@/views/manufacturing-master/cad-creation"),
 );
 
-const CastingStagePage = lazy(() =>
-  import("@/views/manufacturing-master/casting-stage")
+const CastingStagePage = lazy(
+  () => import("@/views/manufacturing-master/casting-stage"),
 );
 
-const SettingStagePage = lazy(() =>
-  import("@/views/manufacturing-master/setting-stage")
+const SettingStagePage = lazy(
+  () => import("@/views/manufacturing-master/setting-stage"),
 );
 
-const FilingStagePage = lazy(() =>
-  import("@/views/manufacturing-master/filing-stages")
+const FilingStagePage = lazy(
+  () => import("@/views/manufacturing-master/filing-stages"),
 );
 
-const PolishingStagePage = lazy(() =>
-  import("@/views/manufacturing-master/polishing-stage")
+const PolishingStagePage = lazy(
+  () => import("@/views/manufacturing-master/polishing-stage"),
 );
 
-const PlatingStagePage = lazy(() =>
-  import("@/views/manufacturing-master/plating-stage")
+const PlatingStagePage = lazy(
+  () => import("@/views/manufacturing-master/plating-stage"),
 );
 
-const QualityStagePage = lazy(() =>
-  import("@/views/manufacturing-master/quality-stage")
+const QualityStagePage = lazy(
+  () => import("@/views/manufacturing-master/quality-stage"),
 );
 
-const PackagingStagePage = lazy(() =>
-  import("@/views/manufacturing-master/packaging-stage")
+const PackagingStagePage = lazy(
+  () => import("@/views/manufacturing-master/packaging-stage"),
 );
 
+// HR Payroll
 
-
+const DepartmentPage = lazy(() => import("@/views/hr-payroll/department"));
+const RolePage = lazy(() => import("@/views/hr-payroll/role"));
+const EmployeesPage = lazy(() => import("@/views/hr-payroll/employee"));
+const DesignationPage = lazy(() => import("@/views/hr-payroll/designation"));
+const LeaveTypePage = lazy(() => import("@/views/hr-payroll/leave-type"));
+const LeavesPage = lazy(() => import("@/views/hr-payroll/leaves"));
+const HolidayCalenderPage = lazy(() => import("@/views/hr-payroll/holiday"));
+const HolidaysTablePage = lazy(() => import("@/views/hr-payroll/holiday/components/HolidayTable"));
 
 const TreeView = lazy(() => import("@/views/miscellaneous/tree-view"));
 const Tour = lazy(() => import("@/views/miscellaneous/tour"));
@@ -189,29 +199,29 @@ const Tour = lazy(() => import("@/views/miscellaneous/tour"));
 // Auth
 const Auth1SignIn = lazy(() => import("@/views/auth/auth-1/sign-in"));
 const Auth1SignUp = lazy(() => import("@/views/auth/auth-1/sign-up"));
-const Auth1ResetPassword = lazy(() =>
-  import("@/views/auth/auth-1/reset-password")
+const Auth1ResetPassword = lazy(
+  () => import("@/views/auth/auth-1/reset-password"),
 );
 const Auth1NewPassword = lazy(() => import("@/views/auth/auth-1/new-password"));
 const Auth1TwoFactor = lazy(() => import("@/views/auth/auth-1/two-factor"));
 const Auth1LockScreen = lazy(() => import("@/views/auth/auth-1/lock-screen"));
 const Auth1SuccessMail = lazy(() => import("@/views/auth/auth-1/success-mail"));
 const Auth1LoginPin = lazy(() => import("@/views/auth/auth-1/login-pin"));
-const Auth1DeleteAccount = lazy(() =>
-  import("@/views/auth/auth-1/delete-account")
+const Auth1DeleteAccount = lazy(
+  () => import("@/views/auth/auth-1/delete-account"),
 );
 const Auth2SignIn = lazy(() => import("@/views/auth/auth-2/sign-in"));
 const Auth2SignUp = lazy(() => import("@/views/auth/auth-2/sign-up"));
-const Auth2ResetPassword = lazy(() =>
-  import("@/views/auth/auth-2/reset-password")
+const Auth2ResetPassword = lazy(
+  () => import("@/views/auth/auth-2/reset-password"),
 );
 const Auth2NewPassword = lazy(() => import("@/views/auth/auth-2/new-password"));
 const Auth2TwoFactor = lazy(() => import("@/views/auth/auth-2/two-factor"));
 const Auth2LockScreen = lazy(() => import("@/views/auth/auth-2/lock-screen"));
 const Auth2SuccessMail = lazy(() => import("@/views/auth/auth-2/success-mail"));
 const Auth2LoginPin = lazy(() => import("@/views/auth/auth-2/login-pin"));
-const Auth2DeleteAccount = lazy(() =>
-  import("@/views/auth/auth-2/delete-account")
+const Auth2DeleteAccount = lazy(
+  () => import("@/views/auth/auth-2/delete-account"),
 );
 
 // Error
@@ -268,34 +278,34 @@ const OtherPlugins = lazy(() => import("@/views/forms/other-plugins"));
 // Tables
 const TanstackTables = lazy(() => import("@/views/tables/tanstack"));
 const StaticTables = lazy(() => import("@/views/tables/static"));
-const AddRowsDataTable = lazy(() =>
-  import("@/views/tables/data-tables/add-rows")
+const AddRowsDataTable = lazy(
+  () => import("@/views/tables/data-tables/add-rows"),
 );
 const AjaxDataTable = lazy(() => import("@/views/tables/data-tables/ajax"));
 const BasicDataTable = lazy(() => import("@/views/tables/data-tables/basic"));
-const CheckboxSelectDataTable = lazy(() =>
-  import("@/views/tables/data-tables/checkbox-select")
+const CheckboxSelectDataTable = lazy(
+  () => import("@/views/tables/data-tables/checkbox-select"),
 );
-const ChildRowsDataTable = lazy(() =>
-  import("@/views/tables/data-tables/child-rows")
+const ChildRowsDataTable = lazy(
+  () => import("@/views/tables/data-tables/child-rows"),
 );
-const ColumnSearchDataTable = lazy(() =>
-  import("@/views/tables/data-tables/column-searching")
+const ColumnSearchDataTable = lazy(
+  () => import("@/views/tables/data-tables/column-searching"),
 );
-const ColumnsDataTable = lazy(() =>
-  import("@/views/tables/data-tables/columns")
+const ColumnsDataTable = lazy(
+  () => import("@/views/tables/data-tables/columns"),
 );
-const DataRenderingDataTable = lazy(() =>
-  import("@/views/tables/data-tables/data-rendering")
+const DataRenderingDataTable = lazy(
+  () => import("@/views/tables/data-tables/data-rendering"),
 );
-const ExportDataTable = lazy(() =>
-  import("@/views/tables/data-tables/export-data")
+const ExportDataTable = lazy(
+  () => import("@/views/tables/data-tables/export-data"),
 );
-const FixedHeaderDataTable = lazy(() =>
-  import("@/views/tables/data-tables/fixed-header")
+const FixedHeaderDataTable = lazy(
+  () => import("@/views/tables/data-tables/fixed-header"),
 );
-const JavaScriptSourceDataTable = lazy(() =>
-  import("@/views/tables/data-tables/javascript-source")
+const JavaScriptSourceDataTable = lazy(
+  () => import("@/views/tables/data-tables/javascript-source"),
 );
 const ScrollDataTable = lazy(() => import("@/views/tables/data-tables/scroll"));
 const SelectDataTable = lazy(() => import("@/views/tables/data-tables/select"));
@@ -655,14 +665,7 @@ const userRoutes = [
     path: "/users/customer",
     element: <Customer />,
   },
-  {
-    path: "/users/roles",
-    element: <RolePage />,
-  },
-  {
-    path: "/users/employee",
-    element: <EmployeesPage />,
-  },
+
   {
     path: "/miscellaneous/clipboard",
     element: <Clipboard />,
@@ -685,11 +688,10 @@ const saleRoutes = [
     path: "/sale-return",
     element: <SaleReturnPage />,
   },
-{
-  path:"/customer/:customerId",
-  element: <LoyaltyPointPaymentHistory />,
-}
-
+  {
+    path: "/customer/:customerId",
+    element: <LoyaltyPointPaymentHistory />,
+  },
 ];
 const customRepairRoutes = [
   {
@@ -700,7 +702,7 @@ const customRepairRoutes = [
     path: "/quotations",
     element: <QuotationsPage />,
   },
-   {
+  {
     path: "/quotations-history",
     element: <QuotationsHistoryPage />,
   },
@@ -708,7 +710,6 @@ const customRepairRoutes = [
     path: "/repair",
     element: <RepairPage />,
   },
-
 ];
 const manufacturingRoutes = [
   {
@@ -723,33 +724,33 @@ const manufacturingRoutes = [
     path: "cad-creation-stage",
     element: <CadCreationStagePage />,
   },
-    {
+  {
     path: "/casting-stage",
     element: <CastingStagePage />,
   },
-   {
+  {
     path: "/setting-stage",
     element: <SettingStagePage />,
   },
-   {
+  {
     path: "/filing-stage",
     element: <FilingStagePage />,
   },
 
-   {
+  {
     path: "/polishing-stage",
     element: <PolishingStagePage />,
   },
-    {
+  {
     path: "/plating-stage",
     element: <PlatingStagePage />,
   },
 
-     {
+  {
     path: "/quality-stage",
     element: <QualityStagePage />,
   },
-     {
+  {
     path: "/packages-stage",
     element: <PackagingStagePage />,
   },
@@ -843,48 +844,43 @@ const manufacturingRoutes = [
     element: <ApexTree />,
   },
 ];
-const formRoutes = [
+const hrPayrollRoutes = [
   {
-    path: "/forms/basic",
-    element: <BasicElements />,
+    path: "/hr/department",
+    element: <DepartmentPage />,
   },
   {
-    path: "/forms/pickers",
-    element: <Pickers />,
+    path: "/hr/roles",
+    element: <RolePage />,
   },
   {
-    path: "/forms/select",
-    element: <Select />,
+    path: "/hr/employee",
+    element: <EmployeesPage />,
   },
   {
-    path: "/forms/validation",
-    element: <Validation />,
+    path: "/hr/designation",
+    element: <DesignationPage />,
   },
   {
-    path: "/forms/wizard",
-    element: <Wizard />,
+    path: "/hr/leave-types",
+    element: <LeaveTypePage />,
+  },
+
+  {
+    path: "/hr/leaves",
+    element: <LeavesPage />,
   },
   {
-    path: "/forms/file-uploads",
-    element: <FileUploads />,
+    path: "/holidays/table",
+    element: <HolidaysTablePage />,
   },
   {
-    path: "/forms/editors",
-    element: <TextEditors />,
-  },
-  {
-    path: "/forms/slider",
-    element: <Slider />,
-  },
-  {
-    path: "/forms/layouts",
-    element: <Layouts />,
-  },
-  {
-    path: "/forms/other-plugins",
-    element: <OtherPlugins />,
-  },
+
+    path: "/hr/holidays",
+    element: <HolidayCalenderPage />,
+  }
 ];
+
 const tableRoutes = [
   {
     path: "/tables/tanstack",
@@ -991,7 +987,7 @@ const allRoutes = [
       ...saleRoutes,
       ...manufacturingRoutes,
       ...customRepairRoutes,
-      ...formRoutes,
+      ...hrPayrollRoutes,
       ...tableRoutes,
       ...iconRoutes,
       ...mapRoutes,

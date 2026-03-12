@@ -1,30 +1,26 @@
 import React, { useState, useRef } from "react";
-
+import { toast } from "react-toastify";
 const AddMakingStageForm = ({ onClose, onSave, loading = false }) => {
   const [makingStage, setMakingStage] = useState("");
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!makingStage.trim()) {
-      setError("Please enter a making stage");
+      toast.error("Please enter a making stage");
       return;
     }
 
     try {
       await onSave(makingStage.trim());
       setMakingStage("");
-      setError("");
     } catch (error) {
       console.error("Save failed:", error);
-      setError("Failed to save. Please try again.");
     }
   };
 
   const handleClose = () => {
     setMakingStage("");
-    setError("");
     onClose();
   };
 
@@ -44,13 +40,6 @@ const AddMakingStageForm = ({ onClose, onSave, loading = false }) => {
             ></button>
           </div>
 
-          {/* Error Alert */}
-          {error && (
-            <div className="alert alert-danger m-3 py-2" role="alert">
-              {error}
-            </div>
-          )}
-
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
@@ -66,9 +55,7 @@ const AddMakingStageForm = ({ onClose, onSave, loading = false }) => {
                   value={makingStage}
                   onChange={(e) => {
                     setMakingStage(e.target.value);
-                    setError("");
                   }}
-                  required
                   disabled={loading}
                 />
                 <div className="form-text">
@@ -90,7 +77,7 @@ const AddMakingStageForm = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!makingStage.trim() || loading}
+                disabled={ loading}
               >
                 {loading ? (
                   <>

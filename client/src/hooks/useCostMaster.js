@@ -1,50 +1,58 @@
 // hooks/useCostMaster.js
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_ENDPOINTS } from '@/api/api';
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { API_ENDPOINTS } from "@/api/api";
+import { toast } from "react-toastify";
 
 export const useCostMaster = () => {
   const [costs, setCosts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // Fetch all costs
   const fetchCosts = async () => {
     try {
       setLoading(true);
-      setError('');
-      
+      setError("");
+
       const response = await axios.get(API_ENDPOINTS.getCosts());
-      console.log('Costs API Response:', response.data);
-      
+      console.log("Costs API Response:", response.data);
+
       let costsData = [];
-      
+
       // Handle different API response structures
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      if (
+        response.data &&
+        response.data.success &&
+        Array.isArray(response.data.data)
+      ) {
         costsData = response.data.data;
       } else if (Array.isArray(response.data)) {
         costsData = response.data;
       } else if (response.data && Array.isArray(response.data.costs)) {
         costsData = response.data.costs;
       } else {
-        console.warn('Unexpected costs response structure:', response.data);
+        console.warn("Unexpected costs response structure:", response.data);
       }
-      
+
       // Map to ensure consistent structure
       const mappedCosts = costsData.map((cost) => ({
         _id: cost._id,
-        cost_name: cost.cost_name || cost.name || '',
+        cost_name: cost.cost_name || cost.name || "",
         // Include any other fields that might be present
-        ...cost
+        ...cost,
       }));
-      
-      console.log('Fetched costs:', mappedCosts);
+
+      console.log("Fetched costs:", mappedCosts);
       setCosts(mappedCosts);
-      
     } catch (err) {
-      console.error('Error fetching costs:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to load costs';
+      console.error("Error fetching costs:", err);
+      const errorMsg =
+        err.response?.data?.message || err.message || "Failed to load costs";
       setError(errorMsg);
+      toast.error(errorMsg, {
+        autoClose: 4000,
+      });
     } finally {
       setLoading(false);
     }
@@ -52,20 +60,23 @@ export const useCostMaster = () => {
 
   // Add new cost
   const addCost = async (costData) => {
+    // Show loading toast
+    const toastId = toast.loading("Adding cost...");
+
     const data = {
       cost_name: costData.cost_name,
     };
 
     try {
       setLoading(true);
-      setError('');
-      console.log('Sending add cost request:', data);
-      
+      setError("");
+      console.log("Sending add cost request:", data);
+
       const response = await axios.post(API_ENDPOINTS.createCost(), data);
-      console.log('Add cost response:', response.data);
-      
+      console.log("Add cost response:", response.data);
+
       let newCost = {};
-      
+
       if (response.data && response.data.success && response.data.data) {
         const responseData = response.data.data;
         newCost = {
@@ -73,17 +84,35 @@ export const useCostMaster = () => {
           cost_name: responseData.cost_name || data.cost_name,
         };
       } else {
-        throw new Error(response.data?.message || 'Failed to create cost');
+        throw new Error(response.data?.message || "Failed to create cost");
       }
-      
-      console.log('New cost:', newCost);
-      setCosts(prev => [...prev, newCost]);
+
+      console.log("New cost:", newCost);
+      setCosts((prev) => [...prev, newCost]);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Cost added successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return newCost;
-      
     } catch (err) {
-      console.error('Error adding cost:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to add cost';
+      console.error("Error adding cost:", err);
+      const errorMsg =
+        err.response?.data?.message || err.message || "Failed to add cost";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
@@ -92,20 +121,26 @@ export const useCostMaster = () => {
 
   // Update cost
   const updateCost = async (id, costData) => {
+    // Show loading toast
+    const toastId = toast.loading("Updating cost...");
+
     const requestData = {
       cost_name: costData.cost_name,
     };
 
     try {
       setLoading(true);
-      setError('');
-      console.log('Updating cost:', id, 'Data:', requestData);
-      
-      const response = await axios.put(API_ENDPOINTS.updateCost(id), requestData);
-      console.log('Update cost response:', response.data);
-      
+      setError("");
+      console.log("Updating cost:", id, "Data:", requestData);
+
+      const response = await axios.put(
+        API_ENDPOINTS.updateCost(id),
+        requestData,
+      );
+      console.log("Update cost response:", response.data);
+
       let updatedData = {};
-      
+
       if (response.data && response.data.success && response.data.data) {
         const responseData = response.data.data;
         updatedData = {
@@ -113,20 +148,38 @@ export const useCostMaster = () => {
           cost_name: responseData.cost_name || requestData.cost_name,
         };
       } else {
-        throw new Error(response.data?.message || 'Failed to update cost');
+        throw new Error(response.data?.message || "Failed to update cost");
       }
-      
-      setCosts(prev => 
-        prev.map((cost) => (cost._id === id ? updatedData : cost))
+
+      setCosts((prev) =>
+        prev.map((cost) => (cost._id === id ? updatedData : cost)),
       );
-      
-      console.log('Updated cost:', updatedData);
+
+      console.log("Updated cost:", updatedData);
+
+      // Update toast to success
+      toast.update(toastId, {
+        render: "Cost updated successfully!",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
+
       return updatedData;
-      
     } catch (err) {
-      console.error('Error updating cost:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to update cost';
+      console.error("Error updating cost:", err);
+      const errorMsg =
+        err.response?.data?.message || err.message || "Failed to update cost";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
@@ -135,38 +188,48 @@ export const useCostMaster = () => {
 
   // Delete cost
   const deleteCost = async (id) => {
+    // Show loading toast
+    const toastId = toast.loading("Deleting cost...");
+
     try {
       setLoading(true);
-      setError('');
-      console.log('Deleting cost:', id);
-      
+      setError("");
+      console.log("Deleting cost:", id);
+
       const response = await axios.delete(API_ENDPOINTS.deleteCost(id));
-      console.log('Delete cost response:', response.data);
-      
+      console.log("Delete cost response:", response.data);
+
       if (response.data && response.data.success) {
-        setCosts(prev => prev.filter((cost) => cost._id !== id));
+        setCosts((prev) => prev.filter((cost) => cost._id !== id));
+
+        // Update toast to success
+        toast.update(toastId, {
+          render: "Cost deleted successfully!",
+          type: "success",
+          isLoading: false,
+          autoClose: 3000,
+        });
       } else {
-        throw new Error(response.data?.message || 'Failed to delete cost');
+        throw new Error(response.data?.message || "Failed to delete cost");
       }
-      
     } catch (err) {
-      console.error('Error deleting cost:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Failed to delete cost';
+      console.error("Error deleting cost:", err);
+      const errorMsg =
+        err.response?.data?.message || err.message || "Failed to delete cost";
       setError(errorMsg);
+
+      // Update toast to error
+      toast.update(toastId, {
+        render: errorMsg,
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
+
       throw new Error(errorMsg);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Refresh costs data
-  const refreshCosts = async () => {
-    await fetchCosts();
-  };
-
-  // Clear error
-  const clearError = () => {
-    setError('');
   };
 
   // Fetch costs on component mount
@@ -181,8 +244,6 @@ export const useCostMaster = () => {
     addCost,
     updateCost,
     deleteCost,
-    refreshCosts,
-    clearError,
   };
 };
 

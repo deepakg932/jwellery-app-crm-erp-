@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FiUpload, FiX, FiImage, FiPlus, FiTrash2 } from "react-icons/fi";
 import Select from "react-select";
+import { toast } from "react-toastify";
 
 const EditItemModal = ({
   show,
@@ -251,15 +252,15 @@ const EditItemModal = ({
     const formattedMaterials = (item.materials || []).map(
       (material, index) => ({
         id: material.material_id?._id || `material-${Date.now()}-${index}`,
-        wastage_type: material.wastage_id?.wastage_type || material.wastage_type || "", // Store the ID
+        wastage_type:
+          material.wastage_id?.wastage_type || material.wastage_type || "", // Store the ID
         material_type:
           material.material_id?._id || material.material_type || "", // Store the ID
         weight: material.weight || 0,
         unit: material.unit || "", // This might be ID or name
         rate_per_unit: material.rate_per_unit || 0,
         // Store display names for reference
-        wastage_type_id:
-          material.wastage_id?._id || material.wastage_type,
+        wastage_type_id: material.wastage_id?._id || material.wastage_type,
         material_type_name:
           material.material_id?.material_type || material.material_type,
       }),
@@ -570,11 +571,12 @@ const EditItemModal = ({
 
     newFiles.forEach((file) => {
       if (!file.type.startsWith("image/")) {
+        toast.error("Only image files are allowed");
         return;
       }
 
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
+        toast.error("File size should be less than 5MB");
         return;
       }
 
@@ -722,23 +724,20 @@ const EditItemModal = ({
       newErrors.product_category = "Category is required";
     if (!formState.gst_rate) newErrors.gst_rate = "GST rate is required";
 
-    return newErrors;
+    if (Object.keys(newErrors).length > 0) {
+      Object.values(newErrors).forEach((error) => {
+        toast.error(error);
+      });
+    }
+
+    return Object.keys(newErrors).length === 0;
   };
 
   // ==================== FORM SUBMISSION ====================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const formErrors = validateForm();
-
-    if (formState.selected_price_makings.length === 0) {
-      formErrors.making_charge = "At least one making charge type is required";
-    }
-
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
-      return;
-    }
+    if (!validateForm()) return;
 
     const selectedGST = getSelectedGSTObject();
 
@@ -1053,8 +1052,6 @@ const EditItemModal = ({
                       </div>
                     )}
                   </div>
-
-
                 </div>
 
                 <div className="col-md-6">

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { FiUpload, FiX, FiImage } from "react-icons/fi";
+import { toast } from "react-toastify";
 
 const AddBrandModal = ({ onClose, onSave, loading = false }) => {
   const [brandName, setBrandName] = useState("");
@@ -10,11 +11,14 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!brandName.trim()) return;
+    if (!brandName.trim()) {
+      toast.error("Please enter a brand name");
+      return;
+    }
 
     try {
       await onSave(brandName, logo);
-      
+
       // Reset form after successful save
       setBrandName("");
       setLogo(null);
@@ -22,7 +26,6 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
-      
     } catch (error) {
       console.error("Save failed:", error);
     }
@@ -32,16 +35,16 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
     if (file) {
       // Validate file size (5MB max)
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size should be less than 5MB");
+        toast.error("File size should be less than 5MB");
         return;
       }
-      
+
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert("Please upload an image file");
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please upload an image file");
         return;
       }
-      
+
       setLogo(file);
       const previewUrl = URL.createObjectURL(file);
       setLogoPreview(previewUrl);
@@ -69,7 +72,7 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       handleImageChange(files[0]);
@@ -95,10 +98,13 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
   };
 
   return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+    <div
+      className="modal fade show d-block"
+      style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+      tabIndex="-1"
+    >
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content rounded-3">
-          
           {/* Header */}
           <div className="modal-header border-bottom pb-3">
             <h5 className="modal-title fw-bold fs-5">Add Brand</h5>
@@ -113,7 +119,6 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
           {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              
               {/* Brand Name */}
               <div className="mb-2">
                 <label className="form-label fw-medium">
@@ -125,7 +130,6 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                   placeholder="e.g., Tiffany & Co., Cartier"
                   value={brandName}
                   onChange={(e) => setBrandName(e.target.value)}
-                  required
                   disabled={loading}
                 />
               </div>
@@ -133,11 +137,13 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
               {/* Logo Upload */}
               <div className="mb-2">
                 <label className="form-label fw-medium">Logo</label>
-                
+
                 {/* Drag & Drop Area */}
                 <div
                   className={`border-2 border-dashed rounded-3 p-4 text-center cursor-pointer ${
-                    dragActive ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary-subtle'
+                    dragActive
+                      ? "border-primary bg-primary bg-opacity-10"
+                      : "border-secondary-subtle"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -153,14 +159,18 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                     className="d-none"
                     disabled={loading}
                   />
-                  
+
                   {logoPreview ? (
                     <div className="position-relative d-inline-block">
                       <img
                         src={logoPreview}
                         alt="Preview"
                         className="img-thumbnail rounded"
-                        style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        style={{
+                          width: "120px",
+                          height: "120px",
+                          objectFit: "cover",
+                        }}
                       />
                       <button
                         type="button"
@@ -169,7 +179,7 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
                           removeImage();
                         }}
                         className="btn btn-danger btn-sm position-absolute top-0 start-100 translate-middle rounded-circle p-1"
-                        style={{ transform: 'translate(-50%, -50%)' }}
+                        style={{ transform: "translate(-50%, -50%)" }}
                         disabled={loading}
                       >
                         <FiX size={12} />
@@ -204,11 +214,15 @@ const AddBrandModal = ({ onClose, onSave, loading = false }) => {
               <button
                 type="submit"
                 className="btn btn-primary d-flex align-items-center gap-2"
-                disabled={!brandName.trim() || loading}
+                disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Saving...
                   </>
                 ) : (
