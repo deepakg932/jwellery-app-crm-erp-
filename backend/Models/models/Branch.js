@@ -14,7 +14,7 @@ const BranchSchema = new mongoose.Schema({
   is_warehouse: { type: Boolean, default: false },
 
   address: String,
-  phone: String,
+  phone: { type: String, unique: true },
   status: { type: Boolean, default: true },
   gstno: String
 }, { timestamps: true });

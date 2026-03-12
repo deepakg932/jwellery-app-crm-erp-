@@ -1,4 +1,4 @@
-// src/models/Account.js
+
 import mongoose from 'mongoose';
 import { AccountType } from './_shared.js';
 const AccountSchema = new mongoose.Schema(

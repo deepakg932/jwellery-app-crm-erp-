@@ -13,15 +13,15 @@ const InventoryItemSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ✅ ADD THIS
+  
     barcode: {
-      type: String, // image URL
+      type: String,
     },
 
     branch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
-      // required: true
+   
     },
 
     category: {

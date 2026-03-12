@@ -1,4 +1,4 @@
-// helper/generateArticleNo.js
+
 import Counter from "../Models/models/Counter.js";
 
 export const generateArticleNo = async () => {

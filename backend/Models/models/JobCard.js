@@ -81,14 +81,14 @@ const JobCardSchema = new mongoose.Schema(
 
 status: {
   type: String,
-  enum: [
-    "pending",
-    "approved",      
-    "in_progress",
-    "completed",
-    "delivered",
-    "cancelled"
-  ],
+  // enum: [
+  //   "pending",
+  //   "approved",      
+  //   "in_progress",
+  //   "completed",
+  //   "delivered",
+  //   "cancelled"
+  // ],
   default: "pending",
 },
 current_department: {

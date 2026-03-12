@@ -1,4 +1,4 @@
-// src/models/PurchaseOrderItem.js
+
 import mongoose from 'mongoose';
 const PurchaseOrderItemSchema = new mongoose.Schema(
   {

@@ -107,8 +107,8 @@ const ProductSchema = new mongoose.Schema(
     total_stones_cost: { type: Number, default: 0 },
     total_materials_cost: { type: Number, default: 0 },
     total_price_making_costs: { type: Number, default: 0 },
-    base_total: { type: Number, default: 0 }, // metals + stones + materials
-    grand_total: { type: Number, default: 0 }, // base_total + price_making_costs
+    base_total: { type: Number, default: 0 }, 
+    grand_total: { type: Number, default: 0 }, 
 
     gst_amount: { type: Number, default: 0 },
     cgst_amount: { type: Number, default: 0 },
@@ -120,27 +120,25 @@ const ProductSchema = new mongoose.Schema(
     selling_price_with_gst: { type: Number, default: 0 },
 
     image: [String],
-//  unit_price: { type: Number, default: 0 },
-    // stock_quantity: { type: Number, default: 0 },
 
 
 
 
-    // selling_price: { type: Number, default: 0 },
+
     status: {
       type: String,
       enum: ["draft", "active", "inactive", "out_of_stock", "discontinued"],
       default: "draft",
     },
 
-    //  is_custom: { type: Boolean, default: false },
+
 
      
   },
   { timestamps: true }
 );
 
-ProductSchema.index({ product_code: 1 });
+ProductSchema.index({ article_no: 1 });
 ProductSchema.index({ product_name: 1 });
 ProductSchema.index({ product_category: 1 });
 ProductSchema.index({ status: 1 });

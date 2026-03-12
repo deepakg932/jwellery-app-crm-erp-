@@ -1,4 +1,4 @@
-// src/models/BranchType.js
+
 import mongoose from "mongoose";
 
 const BranchTypeSchema = new mongoose.Schema({

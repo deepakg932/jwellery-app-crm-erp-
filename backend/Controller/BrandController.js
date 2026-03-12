@@ -31,30 +31,6 @@ export const createBrand = async (req, res) => {
 
 
 
-// export const updateBrand = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     console.log(id,"idd")
-//     const updateData = { ...req.body };
-
-//     if (req.file) {
-//       updateData.logo = "/uploads/brands/" + req.file.filename;
-//     }
-
-//     const brand = await Brand.findByIdAndUpdate(id, updateData, { new: true });
-//     console.log(brand,"brand for update")
-
-//     if (!brand) {
-//       return res.status(404).json({ status: false, message: "Brand not found" });
-//     }
-
-//     return res.status(200).json({ status: true, message: "Brand updated", brand });
-
-//   } catch (err) {
-//     res.status(500).json({ status: false, message: "Server error", error: err.message });
-//   }
-// };
-
 export const getBrands = async (req, res) => {
   try {
     const brands = await Brand.find().sort({ createdAt: -1 });
@@ -62,7 +38,7 @@ export const getBrands = async (req, res) => {
 
  
     // const baseUrl = `${req.protocol}://${req.headers.host}`;
-        const baseUrl = process.env.APP_URL; // ✅ ENV URL
+        const baseUrl = process.env.APP_URL;
     console.log(baseUrl,"baseurl")
 
     const brandsWithFullUrl = brands.map(brand => ({

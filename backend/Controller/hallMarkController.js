@@ -25,20 +25,20 @@ export const getPurityPercentages = async (req, res) => {
 
 export const getHallmarkDashboardStats = async (req, res) => {
   try {
-    // Total hallmarks
+   
     const totalHallmarks = await Hallmark.countDocuments();
 
-    // Active hallmarks (if status exists)
-    let activeHallmarks = totalHallmarks; // default
+   
+    let activeHallmarks = totalHallmarks;
     if ("status" in Hallmark.schema.paths) {
       activeHallmarks = await Hallmark.countDocuments({ status: true });
     }
 
-    // Unique metals
+  
     const uniqueMetalsArr = await Hallmark.distinct("metal_type");
     const uniqueMetals = uniqueMetalsArr.length;
 
-    // Average purity
+ 
     const hallmarks = await Hallmark.find().select("percentage");
     const totalPercentage = hallmarks.reduce((acc, h) => acc + h.percentage, 0);
     const avgPurity =
@@ -89,7 +89,7 @@ export const getAllHallmarks = async (req, res) => {
     const data = await Hallmark.find()
       .populate("purity_id");
 
-    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+    const baseUrl = process.env.APP_URL; 
 
     const hallmarksWithImage = data.map((h) => ({
       ...h._doc,
@@ -124,7 +124,7 @@ export const createHallmark = async (req, res) => {
     }
 
     // const baseUrl = `${req.protocol}://${req.headers.host}`;
-        const baseUrl = process.env.APP_URL; // ✅ ENV URL
+        const baseUrl = process.env.APP_URL; 
 
     const hallmark = new Hallmark({
       name,
@@ -162,73 +162,6 @@ export const createHallmark = async (req, res) => {
 
 
 
-
-// export const updateHallmark = async (req, res) => {
-//   try {
-//     const { name, purity_id, metal_type, description } = req.body;
-
-//     let hallmark = await Hallmark.findById(req.params.id);
-//     if (!hallmark) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Hallmark not found"
-//       });
-//     }
-
-//     const baseUrl = `${req.protocol}://${req.headers.host}`;
-
-  
-//     if (!name || !metal_type) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "name, purity_id & metal_type are required"
-//       });
-//     }
-
-//     // const purityData = await Purity.findById(purity_id);
-//     // if (!purityData) {
-//     //   return res.status(404).json({
-//     //     success: false,
-//     //     message: "Purity not found"
-//     //   });
-//     // }
-
-//     // // Auto-calculated percentage
-//     // const percentage = purityData.percentage;
-
-//     // Update TEXT fields
-//     hallmark.name = name;
-//     // hallmark.purity_id = purity_id;
-//     // hallmark.percentage = percentage;   // Auto-filled ✔
-//     hallmark.metal_type = metal_type;
-//     hallmark.description = description || "";
-
-//     // Update image if new file uploaded
-//     if (req.file) {
-//       hallmark.image = `/uploads/hallmark/${req.file.filename}`;
-//     }
-
-//     const updated = await hallmark.save();
-
-//     // Build full image URL
-//     const fullImageUrl = updated.image ? `${baseUrl}${updated.image}` : null;
-
-//     return res.json({
-//       success: true,
-//       message: "Hallmark updated successfully",
-//       hallmark: {
-//         ...updated._doc,
-//         fullImageUrl
-//       }
-//     });
-
-//   } catch (err) {
-//     return res.status(500).json({
-//       success: false,
-//       error: err.message
-//     });
-//   }
-// };
 
 
 
@@ -356,7 +289,7 @@ export const getMetalsWithHallmarks = async (req, res) => {
 };
 
 
-// Get complete metal details with purities, hallmarks, rates, etc.
+
 export const getMetalDetails = async (req, res) => {
   try {
     const { metalId } = req.params;
@@ -368,7 +301,7 @@ export const getMetalDetails = async (req, res) => {
       });
     }
 
-    // Fetch metal details
+   
     const metal = await Metal.findById(metalId);
     
     if (!metal) {
@@ -378,15 +311,15 @@ export const getMetalDetails = async (req, res) => {
       });
     }
 
-    // Fetch all related data in parallel
+    
     const [purities, hallmarks, units, currentRate] = await Promise.all([
-      // Get purities for this metal
+ 
       Purity.find({ 
-        metal_id: metalId, // Assuming your Purity model has metal_id field
+        metal_id: metalId, 
         status: true 
       }).sort({ purity_name: 1 }),
       
-      // Get hallmarks for this metal
+     
       Hallmark.find({ 
         metal_type_id: metalId,
         status: true 
@@ -394,15 +327,11 @@ export const getMetalDetails = async (req, res) => {
         .populate('purity_id', 'purity_name')
         .sort({ name: 1 }),
       
-      // Get available units (you might have a Unit model)
+     
       Unit.find({ status: true }).sort({ unit_name: 1 }),
-      
-      // Get current rate for this metal (from your rates table if exists)
-      // MetalRate.findOne({ metal_id: metalId }).sort({ createdAt: -1 })
-      Promise.resolve(null) // Placeholder for rate
+     
+      Promise.resolve(null)
     ]);
-
-    // Get making charge types (if you have a separate model)
     const makingCharges = await CostName.find({ status: true }).sort({ cost_type: 1 });
 
     return res.status(200).json({
@@ -414,7 +343,7 @@ export const getMetalDetails = async (req, res) => {
         description: metal.description || "",
         current_rate: currentRate?.rate || metal.base_rate || 0,
         rate_unit: currentRate?.unit || "per gram",
-        // Add other metal properties you have
+    
       },
       purities: purities.map(p => ({
         _id: p._id,
@@ -439,7 +368,7 @@ export const getMetalDetails = async (req, res) => {
       making_charges: makingCharges.map(mc => ({
         _id: mc._id,
         name: mc.cost_type || mc.name,
-        type: mc.charge_type || "percentage", // percentage, fixed, per_gram
+        type: mc.charge_type || "percentage", 
         default_value: mc.default_value || 0
       })),
       summary: {
@@ -472,7 +401,7 @@ export const updateHallmark = async (req, res) => {
       });
     }
 
-    const baseUrl = process.env.APP_URL; // ✅ ENV URL
+    const baseUrl = process.env.APP_URL; 
 
     if (!name || !metal_type) {
       return res.status(400).json({

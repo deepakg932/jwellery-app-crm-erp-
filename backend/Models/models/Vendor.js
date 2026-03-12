@@ -1,4 +1,4 @@
-// src/models/Vendor.js
+
 import mongoose from 'mongoose';
 const VendorSchema = new mongoose.Schema(
   {

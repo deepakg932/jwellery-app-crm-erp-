@@ -178,7 +178,7 @@ export const createCustomOrder = async (req, res) => {
     const populatedOrder = await CustomOrder.findById(order._id)
       .populate("customer_id", "name mobile")
       .populate("unit_id", "name")
-      .populate("purity_id", "purity_name") // 👈 adjust fields as per schema
+      .populate("purity_id", "purity_name") 
       .populate("metal_type_id", "name");
     return res.status(201).json({
       success: true,

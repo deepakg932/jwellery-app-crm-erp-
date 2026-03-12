@@ -1,30 +1,131 @@
 import Branch from '../Models/models/Branch.js';
 import BranchType from '../Models/models/BranchType.js';
 
+// export const createBranch = async (req, res) => {
+//   try {
+//     const { branch_name,branch_code, address, status, branch_type ,contact_person,is_warehouse,phone} = req.body;
+//     console.log(req.body,"req.body")
+//     const a = await Branch.findOne({branch_name:branch_name})
+//     console.log(a,"duplicate")
+//     if(a){
+//       return res.status(400).json({status:false,message:"Branch already exit"})
+//     }
+
+//     const branch = await Branch.create({branch_name,branch_code,branch_type ,contact_person,address,is_warehouse,status,phone});
+//     console.log(branch,"branch")
+
+//     const populatedBranch = await Branch.findById(branch._id)
+//       .populate("branch_type", "_id branch_type")
+
+//       console.log(populatedBranch,"populatedBranch")
+
+//     return res.status(201).json({success: true,data: populatedBranch});
+
+//   } catch (err) {
+//     return res.status(500).json({ success: false, message: err.message });
+//   }
+// };
+
 export const createBranch = async (req, res) => {
   try {
-    const { branch_name,branch_code, address, status, branch_type ,contact_person,is_warehouse,phone} = req.body;
-    console.log(req.body,"req.body")
-    const a = await Branch.findOne({branch_name:branch_name})
-    console.log(a,"duplicate")
-    if(a){
-      return res.status(400).json({status:false,message:"Branch already exit"})
+    const {
+      branch_name,
+      branch_code,
+      address,
+      status,
+      branch_type,
+      contact_person,
+      is_warehouse,
+      phone, // branch phone
+    
+    } = req.body;
+
+    console.log(req.body, "req.body");
+
+    /* ================= BASIC VALIDATION ================= */
+
+    // if (!phone || !contact_person_phone) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Branch phone and contact person phone are required",
+    //   });
+    // }
+
+    // ❌ same number not allowed
+    if (phone ==contact_person) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch phone and contact person phone must be different",
+      });
     }
 
-    const branch = await Branch.create({branch_name,branch_code,branch_type ,contact_person,address,is_warehouse,status,phone});
-    console.log(branch,"branch")
+    /* ================= DUPLICATE CHECK ================= */
+
+    // branch name duplicate
+    const nameExists = await Branch.findOne({ branch_name });
+    if (nameExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch name already exists",
+      });
+    }
+
+    // branch phone duplicate
+    const phoneExists = await Branch.findOne({ phone });
+    if (phoneExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Branch phone number already exists",
+      });
+    }
+
+    // contact person phone duplicate
+    const contactPhoneExists = await Branch.findOne({
+      contact_person,
+    });
+    // if (contactPhoneExists) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Contact person phone already exists",
+    //   });
+    // }
+
+    /* ================= CREATE ================= */
+
+    const branch = await Branch.create({
+      branch_name,
+      branch_code,
+      branch_type,
+      contact_person,
+     
+      address,
+      is_warehouse,
+      status,
+      phone,
+    });
+
+    /* ================= POPULATE ================= */
 
     const populatedBranch = await Branch.findById(branch._id)
-      .populate("branch_type", "_id branch_type")
+      .populate("branch_type", "_id branch_type");
 
-      console.log(populatedBranch,"populatedBranch")
-
-    return res.status(201).json({success: true,data: populatedBranch});
+    return res.status(201).json({
+      success: true,
+      data: populatedBranch,
+    });
 
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    console.error("createBranch error:", err);
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
+
+
+
 
 export const branchTypes =async (req,res)=>{
   try{
@@ -163,35 +264,6 @@ export const getAllBranchTypes = async (req, res) => {
   }
 };
 
-// export const getBranches = async (req, res) => {
-//   try {
-//     const branches = await Branch.find({})
-//       .select("_id branch_name branch_type address phone status")
-//       .populate({
-//         path: "branch_type",
-//         select: "_id branch_type"
-//       })
-//       .sort({ branch_name: 1 });
-
-//     console.log(branches, "all branches");
-
-//     return res.status(200).json({success: true,message: "Branches fetched successfully",data: branches.map(branch => ({
-//         id: branch._id,
-//         name: branch.branch_name,
-//         address: branch.address,
-//         phone: branch.phone,
-//         status: branch.status,
-//         branch_type: {
-//           id: branch.branch_type?._id,
-//           name: branch.branch_type?.branch_type
-//         }
-//       }))
-//     });
-
-//   } catch (err) {
-//     return res.status(500).json({success: false,message: "Server error",error: err.message});
-//   }
-// };
 
 
 export const getBranchById = async (req, res) => {

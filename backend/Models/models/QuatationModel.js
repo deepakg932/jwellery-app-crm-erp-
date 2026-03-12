@@ -76,10 +76,10 @@ const QuotationSchema = new mongoose.Schema(
     },
 
     customer_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Customer",
-      required: true,
-    },
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Customer",   // 👈 ye exact model name hona chahiye
+}
+,
 
     quotation_date: {
       type: Date,
@@ -129,12 +129,12 @@ const QuotationSchema = new mongoose.Schema(
     branch_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
-      required: true,
+    
     },
 
     status: {
       type: String,
-      enum: ["draft", "sent", "approved", "rejected", "converted"],
+      // enum: ["draft", "sent", "approved", "rejected", "converted"],
       default: "draft",
     },
 

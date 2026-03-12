@@ -1,4 +1,3 @@
-// Models/models/Customer.js
 import mongoose from "mongoose";
 
 const customerSchema = new mongoose.Schema(
@@ -6,7 +5,6 @@ const customerSchema = new mongoose.Schema(
     customer_group_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CustomerGroup",
-      // required: true,
     },
 
     // customer_type: {
@@ -17,13 +15,13 @@ const customerSchema = new mongoose.Schema(
 
     name: {
       type: String,
-      // required: true,
+
       trim: true,
     },
-
+    image: String,
     mobile: {
       type: String,
-      // required: true,
+
       unique: true,
     },
 
@@ -39,6 +37,8 @@ const customerSchema = new mongoose.Schema(
     aadhar_number: {
       type: Number,
     },
+    profile_image: String,
+
     status: {
       type: String,
       enum: ["active", "inactive"],

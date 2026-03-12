@@ -14,7 +14,7 @@ const PuritySchema = new mongoose.Schema(
     },
 
     purity_name: { type: String, trim: true, ref: "Purity" },
-    karat: { type: Number, min: 0, max: 24 }, // Added karat field for metals
+    karat: { type: Number, min: 0, max: 24 },
     percentage: {
       type: Number,
       required: true,

@@ -16,9 +16,9 @@ import uploadEmployeeImage from "../middleware/employeeUpload.js"
 //   createEmployee
 // );
 
-router.post('/create-employee', uploadEmployeeImage.single('image'), createEmployee);
+router.post('/create-employee', uploadEmployeeImage.single('profile_picture'), createEmployee);
 router.get('/get-employees', getEmployees);
-router.put('/update-employee/:id', uploadEmployeeImage.single('image'), updateEmployee);
+router.put('/update-employee/:id', uploadEmployeeImage.single('profile_picture'), updateEmployee);
 router.delete('/delete-employee/:id', deleteEmployee);
 
 

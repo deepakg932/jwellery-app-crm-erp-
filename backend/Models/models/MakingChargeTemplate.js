@@ -1,4 +1,4 @@
-// src/models/MakingChargeTemplate.js
+
 import mongoose from 'mongoose';
 import { ChargeType } from './_shared.js';
 const MakingChargeTemplateSchema = new mongoose.Schema(

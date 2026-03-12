@@ -4,7 +4,7 @@ import {  createPurchaseOrder ,getAllPurchaseOrders,
   getPurchaseOrderById,updatePOItemStatus,updatePOStatus,getPOHistory,generatePOPDF,searchInventoryItems,
   getPurchaseOrdersPaginated,updatePurchaseOrder,deletePurchaseOrder,exportPurchaseOrders,getPOReceivedStatus} from "../Controller/purchaseController.js";
 // import { protect } from '../middleware/authMiddleware.js';
-// import { authMiddleware } from "../middleware/auth.js"
+// import { authMiddleware } from "../middleware/auth.js";
 const router = express.Router();
 router.post('/create-purchase-order',createPurchaseOrder);
 // router.post('/create-purchase-order',authMiddleware, createPurchaseOrder);

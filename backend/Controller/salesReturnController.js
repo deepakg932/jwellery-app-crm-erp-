@@ -1,6 +1,6 @@
-import Sale from "../Models/models/SalesOrder.js"
-import SaleReturn from "../Models/models/SalesReturn.js"
-import Invoice from "../Models/models/Invoice.js"
+import Sale from "../Models/models/SalesOrder.js";
+import SaleReturn from "../Models/models/SalesReturn.js";
+import Invoice from "../Models/models/Invoice.js";
 import { generateReturnNumber } from "../helper/generateReturnNumber.js";
 import { generateSaleReturnReference } from "../helper/generateSaleReturnReference.js";
 
@@ -33,7 +33,6 @@ export const createSaleReturn = async (req, res) => {
       });
     }
 
-  
     if (sale.sale_status !== "completed") {
       return res.status(400).json({
         success: false,
@@ -41,10 +40,9 @@ export const createSaleReturn = async (req, res) => {
       });
     }
 
-    
     for (const item of items) {
       const saleItem = sale.items.find(
-        (i) => i.product_id.toString() === item.product_id
+        (i) => i.product_id.toString() === item.product_id,
       );
 
       if (!saleItem) {
@@ -62,20 +60,16 @@ export const createSaleReturn = async (req, res) => {
       }
     }
 
-    const saleReturnStatus =
-  return_type === "full" ? "returned" : "partial";
+    const saleReturnStatus = return_type === "full" ? "returned" : "partial";
 
-const saleStatus =
-  return_type === "full" ? "returned" : "partial";
+    const saleStatus = return_type === "full" ? "returned" : "partial";
 
-
-   
     const saleReturn = await SaleReturn.create({
       return_number: await generateReturnNumber(),
       reference_no: await generateSaleReturnReference(),
 
       sale_id: sale._id,
-      sale_number: sale.reference_no, 
+      sale_number: sale.reference_no,
 
       customer_id: sale.customer_id,
       customer_name: sale.customer_name,
@@ -88,31 +82,28 @@ const saleStatus =
       total_amount,
       notes,
       created_by: req.user?._id,
-    // status: return_type === "full" ? "returned" : "partial",
+      // status: return_type === "full" ? "returned" : "partial",
 
-status: saleReturnStatus,
+      status: saleReturnStatus,
       // status: "returned", // 🔥 YAHI FIX HAI
 
-    // status: return_type === "full" ? "completed" : "pending",
-
+      // status: return_type === "full" ? "completed" : "pending",
     });
 
- // 🔥 SALE STATUS IMMEDIATELY MARK AS RETURNED
-await Sale.findByIdAndUpdate(
-  sale._id,
-  {
-    sale_status: "returned",
-  },
-  { new: true }
-);
-
+    // 🔥 SALE STATUS IMMEDIATELY MARK AS RETURNED
+    await Sale.findByIdAndUpdate(
+      sale._id,
+      {
+        sale_status: "returned",
+      },
+      { new: true },
+    );
 
     return res.status(201).json({
       success: true,
       message: "Sale return created & sale marked as returned",
       data: saleReturn,
     });
-
   } catch (error) {
     console.error("Sale Return Error:", error);
     return res.status(500).json({
@@ -121,9 +112,6 @@ await Sale.findByIdAndUpdate(
     });
   }
 };
-
-
-
 
 export const approveSaleReturn = async (req, res) => {
   try {
@@ -152,14 +140,13 @@ export const approveSaleReturn = async (req, res) => {
     await Sale.findByIdAndUpdate(
       saleReturn.sale_id,
       { sale_status: "returned" },
-      { new: true }
+      { new: true },
     );
 
     return res.status(200).json({
       success: true,
       message: "Sale return approved & sale marked as returned",
     });
-
   } catch (error) {
     console.error("Approve Return Error:", error);
     return res.status(500).json({
@@ -169,7 +156,41 @@ export const approveSaleReturn = async (req, res) => {
   }
 };
 
+// export const getSaleReturns = async (req, res) => {
+//   try {
+//     const { status, sale_id, customer_id, from, to } = req.query;
 
+//     const filter = {};
+
+//     if (status) filter.status = status;
+//     if (sale_id) filter.sale_id = sale_id;
+//     if (customer_id) filter.customer_id = customer_id;
+
+//     if (from && to) {
+//       filter.return_date = {
+//         $gte: new Date(from),
+//         $lte: new Date(to),
+//       };
+//     }
+
+//     const saleReturns = await SaleReturn.find(filter)
+//       .populate("customer_id", "name mobile")
+//       .populate("created_by", "name")
+//       .sort({ createdAt: -1 });
+
+//     return res.status(200).json({
+//       success: true,
+//       data: saleReturns,
+//     });
+
+//   } catch (error) {
+//     console.error("Get Sale Returns Error:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
 
 export const getSaleReturns = async (req, res) => {
   try {
@@ -191,13 +212,30 @@ export const getSaleReturns = async (req, res) => {
     const saleReturns = await SaleReturn.find(filter)
       .populate("customer_id", "name mobile")
       .populate("created_by", "name")
+
+      // 🔥 product name (return item)
+      .populate({
+        path: "items.product_id",
+        model: "Product",
+        select: "name product_code article_no",
+      })
+
+      // 🔥 original qty (from sale)
+      .populate({
+        path: "sale_id",
+        populate: {
+          path: "items.product_id",
+          model: "Product",
+          select: "name product_code article_no",
+        },
+      })
+
       .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
       data: saleReturns,
     });
-
   } catch (error) {
     console.error("Get Sale Returns Error:", error);
     return res.status(500).json({
@@ -206,10 +244,6 @@ export const getSaleReturns = async (req, res) => {
     });
   }
 };
-
-
-
-
 
 export const updateSaleReturn = async (req, res) => {
   try {
@@ -247,7 +281,7 @@ export const updateSaleReturn = async (req, res) => {
 
       for (const item of items) {
         const saleItem = sale.items.find(
-          (i) => i.product_id.toString() === item.product_id
+          (i) => i.product_id.toString() === item.product_id,
         );
 
         if (!saleItem) {
@@ -283,7 +317,6 @@ export const updateSaleReturn = async (req, res) => {
       message: "Sale return updated successfully",
       data: saleReturn,
     });
-
   } catch (error) {
     console.error("Update Sale Return Error:", error);
     return res.status(500).json({
@@ -293,8 +326,6 @@ export const updateSaleReturn = async (req, res) => {
   }
 };
 
-
-
 export const deleteSaleReturn = async (req, res) => {
   try {
     const { id } = req.params;
@@ -302,16 +333,25 @@ export const deleteSaleReturn = async (req, res) => {
     const saleReturn = await SaleReturn.findById(id);
     console.log("Found Sale Return:", saleReturn);
     if (!saleReturn) {
-      return res.status(404).json({success: false,message: "Sale return not found"});
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale return not found" });
     }
     if (saleReturn.status === "completed") {
-      return res.status(400).json({success: false,message: "Completed return cannot be deleted"});
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Completed return cannot be deleted",
+        });
     }
     let a = await SaleReturn.findByIdAndDelete(id);
-    console.log("Deleted Sale Return:", a)
-    return res.status(200).json({success: true,message: "Sale return deleted successfully"});
+    console.log("Deleted Sale Return:", a);
+    return res
+      .status(200)
+      .json({ success: true, message: "Sale return deleted successfully" });
   } catch (error) {
     console.error("Delete Sale Return Error:", error);
-    return res.status(500).json({success: false,message: error.message});
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

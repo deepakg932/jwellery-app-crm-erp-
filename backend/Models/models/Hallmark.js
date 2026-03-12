@@ -3,7 +3,7 @@ import { MetalType } from "./shared.js";
 
 const HallmarkSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },   // Hallmark Name/Code
+    name: { type: String, required: true, trim: true },  
 
       metal_type: { 
       type: mongoose.Schema.Types.ObjectId, 

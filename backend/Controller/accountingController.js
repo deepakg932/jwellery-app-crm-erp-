@@ -1,4 +1,4 @@
-// controllers/accountingController.js
+
 import Ledger from '../models/Ledger.js';
 import LedgerEntry from '../models/LedgerEntry.js';
 

@@ -1,4 +1,4 @@
-// src/models/JobMaterialReturn.js
+
 import mongoose from 'mongoose';
 const JobMaterialReturnSchema = new mongoose.Schema(
   {

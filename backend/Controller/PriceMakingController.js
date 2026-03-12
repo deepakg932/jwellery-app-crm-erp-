@@ -164,12 +164,12 @@ export const createPriceMaking = async (req, res) => {
 
 export const updatePriceMaking = async (req, res) => {
   try {
-    const { making_stage_id, making_sub_stage_id, cost_type_id, cost_amount, name } =
+    const { making_stage_id, making_sub_stage_id, cost_type_id, unit_id, cost_amount, name } =
       req.body;
     console.log(req.body, "req.body");
     const updated = await Pricemaking.findByIdAndUpdate(
       req.params.id,
-      { making_stage_id, making_sub_stage_id, cost_type_id, cost_amount, name },
+      { making_stage_id, making_sub_stage_id, cost_type_id, unit_id, cost_amount, name },
       { new: true }
     );
     console.log("Updated Price Making:", updated);

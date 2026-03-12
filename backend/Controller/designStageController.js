@@ -60,10 +60,7 @@ export const getDesignStages = async (req, res) => {
   }
 };
 
-/* =========================
-   UPDATE DESIGN STAGE
-   PUT /design-stages/:id
-========================= */
+
 export const updateDesignStage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -102,10 +99,7 @@ export const updateDesignStage = async (req, res) => {
   }
 };
 
-/* =========================
-   DELETE DESIGN STAGE
-   DELETE /design-stages/:id
-========================= */
+
 export const deleteDesignStage = async (req, res) => {
   try {
     const { id } = req.params;

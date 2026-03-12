@@ -61,12 +61,7 @@ export const createCostType = async (req, res) => {
       cost_name_id,
       sub_stage_id,
     });
-    // if (exists) {
-    //   return res.json({
-    //     success: false,
-    //     message: "Cost Type already exists",
-    //   });
-    // }
+    
 
     const newType = await costmaster.create({
       cost_type,
@@ -74,19 +69,7 @@ export const createCostType = async (req, res) => {
       sub_stage_id,
     });
 
-    // // Fetch all sub_stages with stage info
-    // const subStages = await costmaster
-    //   .model("MakingSubStage")
-    //   .find()
-    //   .populate({
-    //     path: "stage_id",
-    //     select: "stage_name _id"
-    //   });
-
-    // // Fetch all cost names
-    // const costNames = await CostName
-    //   .find()
-    //   .select("cost_name _id");
+  
 
     const populated = await costmaster
       .findById(newType._id)
@@ -97,8 +80,7 @@ export const createCostType = async (req, res) => {
       success: true,
       message: "Cost Type created",
       data: populated,
-      //   sub_stages: subStages,  // all sub stages
-      //   cost_names: costNames   // all costnames
+      
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -109,17 +91,9 @@ export const getCostTypes = async (req, res) => {
   try {
     const list = await costmaster
       .find()
-      //   .populate({
-      //     path: "sub_stage_id",
-      //     select: "sub_stage_name stage_id"   // Sub stage ka naam + stage_id
-      //   })
-      //   .populate({
-      //     path: "sub_stage_id.stage_id",
-      //     select: "stage_name"                // Stage ka naam
-      //   })
-      //   .sort({ createdAt: -1 });
-      .populate("cost_name_id", "cost_name") // 🔥 cost name ka naam
-      // .populate("sub_stage_id", "sub_stage_name") // 🔥 sub stage ka naam
+     
+      .populate("cost_name_id", "cost_name")
+ 
       .sort({ createdAt: -1 });
     console.log(list, "list");
     return res.json({ success: true, data: list });

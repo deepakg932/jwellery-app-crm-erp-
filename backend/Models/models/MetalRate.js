@@ -1,4 +1,4 @@
-// src/models/MetalRate.js
+
 import mongoose from 'mongoose';
 import { MetalType } from './_shared.js';
 

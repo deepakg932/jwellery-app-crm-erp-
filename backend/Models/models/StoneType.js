@@ -6,10 +6,10 @@ const StoneTypeSchema = new mongoose.Schema(
   {
     stone_type: {
       type: String,
-      required: true  // Added required
+      required: true  
     },
     
-    stone_image: {          // ✅ ADD THIS
+    stone_image: {      
       type: String,
       default: null
     },
@@ -30,5 +30,5 @@ const StoneTypeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Fixed: Changed export name from stonePurityModel to StoneType
+
 export default mongoose.model("StoneType", StoneTypeSchema);

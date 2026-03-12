@@ -1,4 +1,4 @@
-// src/models/LedgerEntry.js
+
 import mongoose from 'mongoose';
 const LedgerEntrySchema = new mongoose.Schema(
   {

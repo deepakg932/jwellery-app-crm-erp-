@@ -1,4 +1,4 @@
-// src/models/InvoiceItem.js
+
 import mongoose from 'mongoose';
 const InvoiceItemSchema = new mongoose.Schema(
   {

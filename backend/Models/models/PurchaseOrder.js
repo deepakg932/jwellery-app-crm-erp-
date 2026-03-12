@@ -11,13 +11,13 @@ const PurchaseOrderSchema = new mongoose.Schema(
     branch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
-      required: true,
+
     },
 
     supplier_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Suppliers",
-      required: true,
+  
     },
 
     reference_no: String,

@@ -93,7 +93,7 @@ const RepairSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["pending", "in_progress", "ready", "delivered", "cancelled"],
+      // enum: ["pending", "in_progress", "ready", "delivered", "cancelled"],
       default: "pending",
     },
 

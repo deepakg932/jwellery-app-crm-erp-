@@ -6,7 +6,7 @@ const MakingSubStageSchema = new mongoose.Schema(
     stage_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "MakingStage",
-      // required: true
+    
     },
 
     sub_stage_name: { 
@@ -17,12 +17,12 @@ const MakingSubStageSchema = new mongoose.Schema(
      cost_type: {
       type: String,
     enum: CostType,
-    // required: true
+
   },
 
   cost_amount: {
     type: Number,
-    // required: true
+ 
   },
   
 

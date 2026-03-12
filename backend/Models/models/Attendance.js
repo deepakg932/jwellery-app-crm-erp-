@@ -1,4 +1,4 @@
-// src/models/Attendance.js
+
 import mongoose from 'mongoose';
 const AttendanceSchema = new mongoose.Schema(
   {

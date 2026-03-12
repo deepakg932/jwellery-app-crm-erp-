@@ -1,4 +1,4 @@
-// src/models/ProductImage.js
+
 import mongoose from 'mongoose';
 const ProductImageSchema = new mongoose.Schema(
   {

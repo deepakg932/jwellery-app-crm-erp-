@@ -8,11 +8,7 @@ export const createCustomerGroup = async (req, res) => {
     }
     const customerGroup = await CustomerGroup.create({
       customer_group: data.customer_group,
-      // percentage: data.percentage,
-      // description: data.description || "",
-      //   default_discount: data.default_discount || 0,
-      //   credit_limit: data.credit_limit || 0,
-      //   payment_terms_days: data.payment_terms_days || 0,
+   
         status: data.status || "active",
     });
     return res.status(201).json({ success: true, message: "Customer Group created", data: customerGroup });

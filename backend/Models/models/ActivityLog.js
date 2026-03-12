@@ -1,4 +1,4 @@
-// src/models/ActivityLog.js
+
 import mongoose from 'mongoose';
 const ActivityLogSchema = new mongoose.Schema(
   {

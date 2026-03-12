@@ -1,4 +1,4 @@
-// src/models/CustomerFollowup.js
+
 import mongoose from 'mongoose';
 const CustomerFollowupSchema = new mongoose.Schema(
   {

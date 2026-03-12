@@ -21,25 +21,25 @@ const JobCardStageSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: [
-        "draft",
-        "pending",
-        "in_progress",
-        "material_preparation",
-        "mold_making",
-        "burnout",
-        "casting",
-        "cooling",
-        "devesting",
-        "quality_check",
-        "finalized",
-        "approved",
-        "completed",
-        "hold",
-        "cancelled",
-        "rework",
-      ],
-      default: "draft",
+      // enum: [
+      //   "draft",
+      //   "pending",
+      //   "in_progress",
+      //   "material_preparation",
+      //   "mold_making",
+      //   "burnout",
+      //   "casting",
+      //   "cooling",
+      //   "devesting",
+      //   "quality_check",
+      //   "finalized",
+      //   "approved",
+      //   "completed",
+      //   "hold",
+      //   "cancelled",
+      //   "rework",
+      // ],
+      // default: "draft",
     },
 
     start_date: Date,
@@ -55,6 +55,10 @@ const JobCardStageSchema = new mongoose.Schema(
       design_notes: String,
       design_specifications: String,
       stage: String,
+      labor_cost:{
+        type: Number,
+        default: 0,
+      },
 
       // labor_cost: Number, // US
       selected_labor_costs: [
@@ -510,14 +514,14 @@ const JobCardStageSchema = new mongoose.Schema(
       file_revisions: { type: Number, default: 0 },
       file_status: {
         type: String,
-        enum: [
-          "draft",
-          "work_in_progress",
-          "under_review",
-          "revised",
-          "final",
-          "archived",
-        ],
+        // enum: [
+        //   "draft",
+        //   "work_in_progress",
+        //   "under_review",
+        //   "revised",
+        //   "final",
+        //   "archived",
+        // ],
         default: "draft",
       },
       backup_location: String,

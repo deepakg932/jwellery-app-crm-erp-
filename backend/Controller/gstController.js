@@ -4,20 +4,14 @@ import GstRate from "../Models/models/GstRate.js";
 export const createGstRate = async (req, res) => {
   try {
     const {
-    //   gst_total,
+   
       cgst_percentage,
       sgst_percentage,
       igst_percentage,
       utgst_percentage
     } = req.body;
 
-    // // 🛑 Validation
-    // if (!gst_total) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "GST Total is required"
-    //   });
-    // }
+    
 
     let gst_total = 0;
 
@@ -125,7 +119,6 @@ export const updateGstRate = async (req, res) => {
 
 
 
-// DELETE GST RATE (Hard Delete)
 export const deleteGstRate = async (req, res) => {
   try {
     const { id } = req.params;

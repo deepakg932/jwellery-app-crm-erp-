@@ -1,4 +1,4 @@
-// src/models/OldGoldExchange.js
+
 import mongoose from 'mongoose';
 const OldGoldExchangeSchema = new mongoose.Schema(
   {

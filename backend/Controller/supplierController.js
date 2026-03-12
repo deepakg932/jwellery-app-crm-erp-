@@ -110,10 +110,6 @@ export const updateSupplier = async (req, res) => {
 
     console.log(req.body);
 
-    
-    if (!supplier_name || !supplier_code || !email || !phone || !address) {
-      return res.status(400).json({ status: false, message: "Required fields are missing" });
-    }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -127,13 +123,13 @@ export const updateSupplier = async (req, res) => {
     }
 
    
-    const nameExists = await Suppliers.findOne({
-      supplier_name: supplier_name,
-      _id: { $ne: id },
-    });
-    if (nameExists) {
-      return res.status(400).json({ status: false, message: "Supplier name already in use. Please try another name",});
-    }
+    // const nameExists = await Suppliers.findOne({
+    //   supplier_name: supplier_name,
+    //   _id: { $ne: id },
+    // });
+    // if (nameExists) {
+    //   return res.status(400).json({ status: false, message: "Supplier name already in use. Please try another name",});
+    // }
 
 
     const codeExists = await Suppliers.findOne({

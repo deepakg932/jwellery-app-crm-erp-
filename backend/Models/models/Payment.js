@@ -1,4 +1,4 @@
-// src/models/Payment.js
+
 import mongoose from 'mongoose';
 import { PaymentMode } from './_shared.js';
 const paymentSchema = new mongoose.Schema({

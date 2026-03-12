@@ -52,6 +52,11 @@ import repairRoutes from "./routes/repairRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import jobCardStageRoutes from "./routes/jobCardStageRoutes.js"
 import { fetchLiveGoldRate } from "./services/goldRateService.js"
+import departmentRoutes from "./routes/deparmentRoute.js";
+import designationRoutes from "./routes/designationRoutes.js";
+import leaveRoutes from "./routes/leaveRoutes.js";
+import leaveTypeRoutes from "./routes/leaveTypeRoutes.js";
+import holidayRoute from "./routes/holidayRoute.js"
 
 import cron from "node-cron";
 dotenv.config(); 
@@ -120,8 +125,7 @@ app.use("/api/customers-group",customerGroupRoutes)
 app.use("/api/employees",employeeRoutes)
 app.use("/api/sale-items",salesRoute)
 app.use("/api/sales-invoice",invoiceRoutes)
-// app.use("/api/stock-grn",grn)
-// app.use("/api/stock-ledger",StockLedgerRoute)
+
 app.use("/api/customers",customerRoutes)
 app.use("/api/custom-orders",CustomRoutes)
 app.use("/api/Inventory-stock",InventoryStockRoutes)
@@ -129,18 +133,19 @@ app.use("/api/quotation",quotationRoutes)
 app.use("/api/repairs",repairRoutes)
 
 
+app.use("/api/hr/leaves", leaveRoutes);
 app.use("/api/job-card",jobRoutes)
 
 
-// app.use("/api/design-stage",designStageRoutes)
 
 app.use("/api/design-stage",jobCardStageRoutes)
-// app.use("/api/stock-transfer",stockTransferRoute)
-// app.use("/api/stock-adjustment",stockAdjustmentRoutes)
+
+app.use("/api/department",departmentRoutes)
 
 
-
-
+app.use("/api/designation",designationRoutes)
+app.use("/api/hr/leave-type", leaveTypeRoutes);
+app.use("/api/hr/holiday",holidayRoute)
 
 
 
@@ -179,10 +184,14 @@ app.use((req, res, next) => {
 // })();
 
 
-cron.schedule("*/1 * * * *", async () => {
-  console.log("Fetching gold rate every minute...");
-  await fetchLiveGoldRate();
-});
+
+
+
+//2nd CRON TEST Use running
+// cron.schedule("*/1 * * * *", async () => {
+
+//   await fetchLiveGoldRate();
+// });
 
 
 

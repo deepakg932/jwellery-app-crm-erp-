@@ -10,13 +10,13 @@ const BrandSchema = new mongoose.Schema(
     },
 
     logo: {
-      type: String, // Upload path — example: /uploads/brands/abc.png
+      type: String, 
       default: null,
     },
 
     status: {
       type: Boolean,
-      default: true, // Active / Inactive brand
+      default: true, 
     },
   },
   {

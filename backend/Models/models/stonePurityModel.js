@@ -8,13 +8,13 @@ const StoneTypeSchema = new mongoose.Schema(
     stone_type: {
       type: String,
 
-      // required: true
+     
     },
 
    
     percentage: {
       type: Number,
-      // required: true,
+  
       min: 0,
       max: 100,
     },

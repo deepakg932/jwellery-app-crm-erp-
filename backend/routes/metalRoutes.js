@@ -1,11 +1,12 @@
 import express from "express";
 import { getMetalTypes ,createMetal,getMetalsWithPagination,updateMetal,deleteMetal,getMetals} from "../Controller/metalController.js"
 import metalUpload from "../middleware/metalUpload.js"
-import authMiddleware from "../middleware/auth.js";
+// import authMiddleware from "../middleware/auth.js";
 const router = express.Router();
 
 router.get("/metal-types", getMetalTypes);
-router.post("/metal", metalUpload.single("image"), authMiddleware,createMetal);
+// router.post("/metal", metalUpload.single("image"), authMiddleware,createMetal);
+router.post("/metal", metalUpload.single("image"),createMetal);
 // router.get("/metals", getMetals);
 router.put("/metal/:id", metalUpload.single("image"), updateMetal);
 router.get("/metals", getMetalsWithPagination);

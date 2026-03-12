@@ -1,4 +1,4 @@
-// src/models/Ledger.js
+
 import mongoose from 'mongoose';
 const ledgerSchema = new mongoose.Schema({
   partyType: {

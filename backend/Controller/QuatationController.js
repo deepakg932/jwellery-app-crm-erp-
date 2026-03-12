@@ -122,8 +122,16 @@ export const listQuotations = async (req, res) => {
     }
 
     const quotations = await Quotation.find(filter)
-      .populate("customer_id", "name mobile")
-   .populate("branch_id", "branch_name branch_code")
+       .populate({
+        path: "customer_id",
+        select: "name mobile",
+        model: "Customer",   // 👈 IMPORTANT
+      })
+  .populate({
+        path: "branch_id",
+        select: "branch_name branch_code",
+        model: "Branch",
+      })
       .sort({ createdAt: -1 })
       .skip(Number(skip))
       .limit(Number(limit));
@@ -145,6 +153,9 @@ export const listQuotations = async (req, res) => {
     return res.status(500).json({success: false,message: error.message});
   }
 };
+
+
+import mongoose from "mongoose";
 
 
 export const updateQuotation = async (req, res) => {
@@ -239,15 +250,28 @@ export const updateQuotation = async (req, res) => {
     quotation.subtotal = subtotal;
     quotation.total_amount = grandTotal;
     quotation.grand_total = grandTotal;
-    quotation.branch_id = branch_id ?? quotation.branch_id;
+    if (branch_id) {
+  if (mongoose.Types.ObjectId.isValid(branch_id)) {
+    quotation.branch_id = branch_id;
+  } else {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid branch_id, must be ObjectId",
+    });
+  }
+}
+
     quotation.status = status ?? quotation.status;
+
+
     quotation.valid_days = valid_days;
 
     await quotation.save();
 
     const populatedQuotation = await Quotation.findById(quotation._id)
       .populate("customer_id", "name mobile")
-      .populate("branch_id", "name code");
+    .populate("branch_id", "branch_name branch_code")
+
 
     return res.status(200).json({success: true,message: "Quotation updated successfully",data: populatedQuotation,});
   } catch (error) {

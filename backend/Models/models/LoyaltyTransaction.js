@@ -1,4 +1,4 @@
-// src/models/LoyaltyTransaction.js
+
 import mongoose from 'mongoose';
 import { LoyaltyType } from './_shared.js';
 const LoyaltyTransactionSchema = new mongoose.Schema(

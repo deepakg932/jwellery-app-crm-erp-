@@ -5,7 +5,6 @@ const InvoiceSchema = new mongoose.Schema(
     invoice_number: {
       type: String,
       unique: true,
-      // required: true,
     },
 
     sale_id: {
@@ -39,7 +38,7 @@ const InvoiceSchema = new mongoose.Schema(
     },
 
     
-    items: Array, // copy from sale (snapshot)
+    items: Array,
 
     subtotal: Number,
     total_tax: Number,
@@ -53,7 +52,7 @@ const InvoiceSchema = new mongoose.Schema(
       default: "pending",
     },
 
-    pdf_url: String, // stored PDF path
+    pdf_url: String, 
 
     created_by: {
       type: mongoose.Schema.Types.ObjectId,

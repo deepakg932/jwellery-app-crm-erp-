@@ -38,7 +38,7 @@ const stockInSchema = new mongoose.Schema(
         ordered_quantity: { type: Number, default: 0 },
         ordered_weight: { type: Number, default: 0 },
 
-        // ✅ ONLY THESE TWO
+
         received_quantity: { type: Number, default: 0 },
         received_weight: { type: Number, default: 0 },
 
