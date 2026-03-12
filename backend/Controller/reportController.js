@@ -1,5 +1,5 @@
 // controllers/reportController.js
-import StockLedger from "../Models/models/StockLedger.js";
+import StockLedger from "../models/StockLedger.js";
 export const getStockReport = async (req, res) => {
   try {
     const { branch_id, item_id, category_id } = req.query;

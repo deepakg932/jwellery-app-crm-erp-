@@ -1,4 +1,4 @@
-import Wastage from "../Models/models/wastageModel.js";
+import Wastage from "../models/wastageModel.js";
 
 export const createWastage = async (req, res) => {
   try {

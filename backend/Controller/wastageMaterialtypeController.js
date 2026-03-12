@@ -1,4 +1,4 @@
-import MaterialTypes from "../Models/models/MaterialTypes.js";
+import MaterialTypes from "../models/MaterialTypes.js";
 
 export const createWastageMaterialType = async (req, res) => {
   try {

@@ -1,12 +1,12 @@
 
-import Repair from "../Models/models/Repair.js";
-import Customer from "../Models/models/Customer.js";
+import Repair from "../models/Repair.js";
+import Customer from "../models/Customer.js";
 import Sale from "../Models/models/SalesOrder.js";
 import Employee from "../Models/models/EmployeeModel.js";
-import Product from "../Models/models/ProductModel.js"
+import Product from "../models/ProductModel.js"
 import { generateRepairNumber } from "../helper/generateRepairNumber.js";
 import { generateInvoiceNumber } from "../helper/generateInvoiceNumber.js";
-import Invoice from "../Models/models/Invoice.js";
+import Invoice from "../models/Invoice.js";
 import path from "path";
 import fs from 'fs'
 

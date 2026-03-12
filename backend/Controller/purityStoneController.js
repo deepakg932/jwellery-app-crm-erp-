@@ -1,4 +1,4 @@
-import stonePurityModel from "../Models/models/stonePurityModel.js";
+import stonePurityModel from "../models/stonePurityModel.js";
 
 
 import mongoose from "mongoose";

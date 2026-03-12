@@ -1,4 +1,4 @@
-import Designation from "../Models/models/designation.js";
+import Designation from "../models/designation.js";
 
 export const createDesignation = async (req, res) => {
     try {

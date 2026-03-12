@@ -1,12 +1,12 @@
-import Sale from "../Models/models/SalesOrder.js";
-import Product from "../Models/models/ProductModel.js";
+import Sale from "../models/SalesOrder.js";
+import Product from "../models/ProductModel.js";
 import { generateSaleReference } from "../helper/generateSaleReference.js";
-import Invoice from "../Models/models/Invoice.js";
+import Invoice from "../models/Invoice.js";
 import { generateInvoiceNumber } from "../helper/generateInvoiceNumber.js";
 import fs from "fs";
 import path from "path";
 
-import Unit from "../Models/models/unitModel.js";
+import Unit from "../models/unitModel.js";
 
 
 

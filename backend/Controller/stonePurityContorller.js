@@ -1,4 +1,4 @@
-import Purity from "../Models/models/Purity.js"
+import Purity from "../models/Purity.js"
 
 
 

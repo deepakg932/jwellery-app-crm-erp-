@@ -1,5 +1,5 @@
 
-import Subcategory from '../Models/models/Subcategory.js';
+import Subcategory from '../models/Subcategory.js';
 
 export const getSubcategoriesByCategory = async (req, res) => {
   try {

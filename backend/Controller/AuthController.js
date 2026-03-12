@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 import Tenant from "../Models/models/TenantModel.js";
-import User from "../Models/models/UserModel.js";
+import User from "../models/UserModel.js";
 
 import dotenv from "dotenv";
 

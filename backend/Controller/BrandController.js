@@ -1,4 +1,4 @@
-import Brand from "../Models/models/brandModel.js"
+import Brand from "../models/brandModel.js"
 
 
 export const createBrand = async (req, res) => {

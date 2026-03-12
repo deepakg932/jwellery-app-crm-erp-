@@ -1,4 +1,4 @@
-import Stone from "../Models/models/Stone.js";
+import Stone from "../models/Stone.js";
 
 
 export const createStone = async (req, res) => {

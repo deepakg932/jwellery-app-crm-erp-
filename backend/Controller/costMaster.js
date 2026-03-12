@@ -1,5 +1,5 @@
-import costmaster from "../Models/models/costmasterModel.js";
-import CostName from "../Models/models/CostName.js";
+import costmaster from "../models/costmasterModel.js";
+import CostName from "../models/CostName.js";
 
 export const createCostMaster = async (req, res) => {
   try {

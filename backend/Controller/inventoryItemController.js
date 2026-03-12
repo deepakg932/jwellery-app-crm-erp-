@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
-import InventoryItem from "../Models/models/InventoryModel.js";
-import InventoryCategory from "../Models/models/InventoryCategory.js";
+import InventoryItem from "../models/InventoryModel.js";
+import InventoryCategory from "../models/InventoryCategory.js";
 import InventorySubCategory from "../Models/models/inventorySubCategory.js";
-import Supplier from "../Models/models/SuppliersModel.js";
+import Supplier from "../models/SuppliersModel.js";
 import Branch from "../Models/models/Branch.js";
 import { generateBarcodeBuffer } from "../utils/barcode.js";
 import fs from "fs";

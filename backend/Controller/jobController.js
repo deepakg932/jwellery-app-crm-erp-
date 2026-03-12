@@ -1,9 +1,9 @@
-import JobCard from "../Models/models/JobCard.js";
-import Employee from "../Models/models/EmployeeModel.js";
-import Quotation from "../Models/models/QuatationModel.js";
+import JobCard from "../models/JobCard.js";
+import Employee from "../models/EmployeeModel.js";
+import Quotation from "../models/QuatationModel.js";
 // import StageMaster from "../Models/models/StageMaster.js"
-import JobCardStage from "../Models/models/JobCardStage.js";
-import Product from "../Models/models/ProductModel.js";
+import JobCardStage from "../models/JobCardStage.js";
+import Product from "../models/ProductModel.js";
 import { generateProductCode } from "../helper/generateProductCode.js";
 import { round2 } from "../helper/round2.js";
 

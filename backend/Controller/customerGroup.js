@@ -1,4 +1,4 @@
-import CustomerGroup from "../Models/models/CustomerGroup.js";
+import CustomerGroup from "../models/CustomerGroup.js";
 export const createCustomerGroup = async (req, res) => {
   try {
     const data = req.body;

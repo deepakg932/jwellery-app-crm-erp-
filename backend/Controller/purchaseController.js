@@ -1,9 +1,9 @@
-import PurchaseOrder from "../Models/models/PurchaseOrder.js";
-import InventoryItem from "../Models/models/InventoryModel.js";
-import Suppliers from "../Models/models/SuppliersModel.js";
+import PurchaseOrder from "../models/PurchaseOrder.js";
+import InventoryItem from "../models/InventoryModel.js";
+import Suppliers from "../models/SuppliersModel.js";
 import mongoose from "mongoose";
-import Branch from "../Models/models/Branch.js";
-import Unit from "../Models/models/unitModel.js";
+import Branch from "../models/Branch.js";
+import Unit from "../models/unitModel.js";
 
 export const getPurchaseOrderById = async (req, res) => {
   try {

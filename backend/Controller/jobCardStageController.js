@@ -1,6 +1,6 @@
-import JobCardStage from "../Models/models/JobCardStage.js";
+import JobCardStage from "../models/JobCardStage.js";
 import DesignStage from "../Models/models/DesignStage.js";
-import JobCard from "../Models/models/JobCard.js";
+import JobCard from "../models/JobCard.js";
 
 import { generateInvoiceNumber } from "../helper/generateInvoiceNumber.js";
 import deductFromStockIn from "../helper/deductFromPurchaseOrder.js";

@@ -1,4 +1,4 @@
-import LeaveType from "../Models/models/leaveType.js";
+import LeaveType from "../models/leaveType.js";
 
 
 

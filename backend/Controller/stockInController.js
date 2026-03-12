@@ -1,6 +1,6 @@
-import StockIn from "../Models/models/stockInModel.js";
-import InventoryItem from "../Models/models/InventoryModel.js";
-import PurchaseOrder from "../Models/models/PurchaseOrder.js";
+import StockIn from "../models/stockInModel.js";
+import InventoryItem from "../models/InventoryModel.js";
+import PurchaseOrder from "../models/PurchaseOrder.js";
 
 
 const updateInventoryStock = async (items) => {

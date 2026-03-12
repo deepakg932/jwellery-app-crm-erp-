@@ -1,4 +1,4 @@
-import Pricemaking from "../Models/models/PricemakingModel.js";
+import Pricemaking from "../models/PricemakingModel.js";
 
 export const createPriceMaking = async (req, res) => {
   try {

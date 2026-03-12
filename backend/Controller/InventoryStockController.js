@@ -1,4 +1,4 @@
-import InventoryStock from "../Models/models/InventoryStockModel.js"
+import InventoryStock from "../models/InventoryStockModel.js"
 
 export const getCurrentStock = async (req, res) => {
   const stock = await InventoryStock.find()

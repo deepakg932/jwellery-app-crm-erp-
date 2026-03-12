@@ -1,4 +1,4 @@
-import DesignStage from "../Models/models/DesignStage.js";
+import DesignStage from "../models/DesignStage.js";
 
 
 export const createDesignStage = async (req, res) => {

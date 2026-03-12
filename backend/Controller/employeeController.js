@@ -1,5 +1,5 @@
-import Employee from "../Models/models/EmployeeModel.js";
-import Role from "../Models/models/Role.js";
+import Employee from "../models/EmployeeModel.js";
+import Role from "../models/Role.js";
 import fs from "fs";
 import path from "path";
 

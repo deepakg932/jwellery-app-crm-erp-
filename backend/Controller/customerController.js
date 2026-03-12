@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import Customer from "../Models/models/Customer.js";
-import CustomerGroup from "../Models/models/CustomerGroup.js";
-import SalesOrder from "../Models/models/SalesOrder.js";
+import Customer from "../models/Customer.js";
+import CustomerGroup from "..models/CustomerGroup.js";
+import SalesOrder from "../models/SalesOrder.js";
 
 export const createCustomer = async (req, res) => {
   try {

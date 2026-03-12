@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import InventorySubCategory from "../Models/models/inventorySubCategory.js"
-import InventoryCategory from "../Models/models/InventoryCategory.js";
+import InventorySubCategory from "../models/inventorySubCategory.js"
+import InventoryCategory from "../models/InventoryCategory.js";
 
 
 

@@ -1,8 +1,8 @@
 
 
-import Quotation from "../Models/models/QuatationModel.js"
-import Customer from "../Models/models/Customer.js";
-import Product from "../Models/models/ProductModel.js";
+import Quotation from "../models/QuatationModel.js"
+import Customer from "../models/Customer.js";
+import Product from "../models/ProductModel.js";
 import { generateQuotationNumber } from "../middleware/generateQuotationNumber.js";
 
 export const createQuotation = async (req, res) => {

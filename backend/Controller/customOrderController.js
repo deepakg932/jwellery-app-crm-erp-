@@ -1,11 +1,11 @@
-import CustomOrder from "../Models/models/CustomOrder.js";
-import Customer from "../Models/models/Customer.js";
+import CustomOrder from "../models/CustomOrder.js";
+import Customer from "../models/Customer.js";
 import { generateCustomOrderNumber } from "../helper/generateCustomOrderNumber.js";
 
 import fs from "fs";
 import path from "path";
-import Metal from "../Models/models/MetalTypeModel.js";
-import Purity from "../Models/models/Purity.js";
+import Metal from "../models/MetalTypeModel.js";
+import Purity from "../models/Purity.js";
 
 export const getCustomOrders = async (req, res) => {
   try {

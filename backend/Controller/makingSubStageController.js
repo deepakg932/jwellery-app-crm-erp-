@@ -1,4 +1,4 @@
-import MakingSubStage from "../Models/models/submakingstages.js";
+import MakingSubStage from "../models/submakingstages.js";
 
 
 export const createSubStage = async (req, res) => {

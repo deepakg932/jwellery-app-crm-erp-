@@ -1,6 +1,6 @@
 // controllers/invoiceController.js
-import Invoice from "../Models/models/Invoice.js"
-import Sale from  "../Models/models/SalesOrder.js"
+import Invoice from "../models/Invoice.js"
+import Sale from  "../models/SalesOrder.js"
 // import { generateInvoiceNumber } from "../helper/generateInvoiceNumber.js";
 
 export const generateInvoiceFromSale = async (req, res) => {

@@ -1,4 +1,4 @@
-import GstRate from "../Models/models/GstRate.js";
+import GstRate from "../models/GstRate.js";
 
 
 export const createGstRate = async (req, res) => {

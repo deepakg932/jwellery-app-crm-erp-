@@ -1,4 +1,4 @@
-import StockMovement from "../Models/models/StockMovementModel.js"
+import StockMovement from "../models/StockMovementModel.js"
 
 export const getStockMovement = async (req, res) => {
   const { inventory_item_id, branch } = req.query;

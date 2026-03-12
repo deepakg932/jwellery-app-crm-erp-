@@ -1,4 +1,4 @@
-import Karigar from "../Models/models/Karigar";
+import Karigar from "../models/Karigar";
 import Employee from "../Models/models/Employee.js";
 
 export const createKarigar = async (req, res) => {

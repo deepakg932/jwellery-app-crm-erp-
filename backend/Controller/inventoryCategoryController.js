@@ -1,4 +1,4 @@
-import InventoryCategory from "../Models/models/InventoryCategory.js";
+import InventoryCategory from "../models/InventoryCategory.js";
 
 import mongoose from "mongoose";
 

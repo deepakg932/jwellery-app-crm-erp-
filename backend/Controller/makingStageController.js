@@ -1,5 +1,4 @@
-import MakingStage from "../Models/models/MakingStage.js"
-
+import MakingStage from "../models/MakingStage.js"
 export const createStage = async (req, res) => {
   console.log("jjjj")
   try {

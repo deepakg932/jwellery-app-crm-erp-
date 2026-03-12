@@ -1,5 +1,5 @@
 
-import Metal from "../Models/models/MetalTypeModel.js"
+import Metal from "../models/MetalTypeModel.js"
 
 // export const createMetal = async (req, res) => {
 //   try {

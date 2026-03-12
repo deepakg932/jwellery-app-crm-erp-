@@ -1,6 +1,6 @@
-import InventoryItem from "../Models/models/InventoryModel.js";
-import StockIn from "../Models/models/stockInModel.js";
-import PurchaseReturn from "../Models/models/purchaseReturnModel.js";
+import InventoryItem from "../models/InventoryModel.js";
+import StockIn from "../models/stockInModel.js";
+import PurchaseReturn from "../models/purchaseReturnModel.js";
 import updateStockInStatusAfterReturn from "../helper/updateStockInStatusAfterReturn.js";
 
 import updatePOReceivedAfterReturn from "../helper/updatePOReceivedAfterReturn.js";

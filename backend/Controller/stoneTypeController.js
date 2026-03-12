@@ -1,4 +1,4 @@
-import StoneType from "../Models/models/StoneType.js"
+import StoneType from "../models/StoneType.js"
 
 // export const createStoneType = async (req, res) => {
 //   try {
