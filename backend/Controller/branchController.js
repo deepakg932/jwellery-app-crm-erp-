@@ -1,5 +1,5 @@
 import Branch from '../models/Branch.js';
-import BranchType from '..models/BranchType.js';
+import BranchType from '../models/BranchType.js';
 
 // export const createBranch = async (req, res) => {
 //   try {

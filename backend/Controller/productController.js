@@ -3,7 +3,7 @@ import ProductImage from "../models/ProductImage.js";
 import Unit from "../models/unitModel.js";
 import GstRate from "../models/GstRate.js";
 import MaterialTypes from "../models/MaterialTypes.js";
-import stonePurityModel from "..models/stonePurityModel.js";
+import stonePurityModel from "../models/stonePurityModel.js";
 import PriceMaking from "../models/PricemakingModel.js";
 // import Metal from "../Models/models/MetalTypeModel.js"
 
