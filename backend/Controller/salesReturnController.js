@@ -1,6 +1,6 @@
 import Sale from "../models/SalesOrder.js";
 import SaleReturn from "../models/SalesReturn.js";
-import Invoice from "../Models/models/Invoice.js";
+// import Invoice from "../Models/models/Invoice.js";
 import { generateReturnNumber } from "../helper/generateReturnNumber.js";
 import { generateSaleReturnReference } from "../helper/generateSaleReturnReference.js";
 

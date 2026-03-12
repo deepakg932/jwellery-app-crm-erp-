@@ -1,5 +1,5 @@
 // helper/generateCustomOrderNumber.js
-import CustomOrder from "../Models/models/CustomOrder.js";
+import CustomOrder from "../models/CustomOrder.js";
 
 export const generateCustomOrderNumber = async () => {
   const count = await CustomOrder.countDocuments();

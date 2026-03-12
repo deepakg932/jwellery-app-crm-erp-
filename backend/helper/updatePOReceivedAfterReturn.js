@@ -28,7 +28,7 @@
 // export default updatePOReceivedAfterReturn;
 
 
-import PurchaseOrder from "../Models/models/PurchaseOrder.js";
+import PurchaseOrder from "../models/PurchaseOrder.js";
 
 const updatePOReceivedAfterReturn = async (poId, returnItems) => {
   const po = await PurchaseOrder.findById(poId);

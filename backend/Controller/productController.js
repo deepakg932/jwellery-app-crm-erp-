@@ -7,7 +7,7 @@ import stonePurityModel from "..models/stonePurityModel.js";
 import PriceMaking from "../models/PricemakingModel.js";
 // import Metal from "../Models/models/MetalTypeModel.js"
 
-import Stone from "../Models/models/Stone.js";
+// import Stone from "../Models/models/Stone.js";
 import { MetalType } from "./purityController.js";
 import Purity from "../models/Purity.js";
 import StoneType from "../models/StoneType.js";

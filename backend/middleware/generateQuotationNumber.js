@@ -1,5 +1,5 @@
 // helper/generateQuotationNumber.js
-import Quotation from "../Models/models/QuatationModel.js";
+import Quotation from "../models/QuatationModel.js";
 
 export const generateQuotationNumber = async () => {
   const year = new Date().getFullYear();

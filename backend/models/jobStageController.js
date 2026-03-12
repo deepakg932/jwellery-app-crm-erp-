@@ -1,6 +1,6 @@
 
-import JobCardStage from "../Models/models/JobCardStage.js";
-import StageMaster from "../Models/models/StageMaster.js";
+import JobCardStage from "../models/JobCardStage.js";
+import StageMaster from "../models/StageMaster.js";
 
 export const submitStage = async (req, res) => {
   try {

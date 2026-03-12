@@ -1,4 +1,4 @@
-import StockIn from "../Models/models/stockInModel.js";
+import StockIn from "../models/stockInModel.js";
 
 
 const updateStockInOnReturn = async (stockInId, items) => {

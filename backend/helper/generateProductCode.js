@@ -1,12 +1,12 @@
-import Product from "../Models/models/ProductModel.js"
-import Metal from "../Models/models/MetalTypeModel.js"
-import Purity from "../Models/models/Purity.js"
-import StoneType from "../Models/models/StoneType.js"
-import Wastage from "../Models/models/wastageModel.js"
-import GstRate from "../Models/models/GstRate.js"
-import Brand from "../Models/models/brandModel.js"
-import Category from '../Models/models/Category.js'
-import Subcategory from "../Models/models/Subcategory.js"
+import Product from "../models/ProductModel.js"
+import Metal from "../models/MetalTypeModel.js"
+import Purity from "../models/Purity.js"
+import StoneType from "../models/StoneType.js"
+import Wastage from "../models/wastageModel.js"
+// import GstRate from "../Models/models/GstRate.js"
+import Brand from "../models/brandModel.js"
+import Category from '../models/Category.js'
+import Subcategory from "../models/Subcategory.js"
 import mongoose from "mongoose";
 
 // Generate unique product code

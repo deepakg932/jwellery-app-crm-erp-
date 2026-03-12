@@ -46,7 +46,7 @@
 // export default markStockInIfFullyReturned;
 
 
-import StockIn from "../Models/models/stockInModel.js";
+import StockIn from "../models/stockInModel.js";
 
 const markStockInIfFullyReturned = async (stockInId) => {
   const stockIn = await StockIn.findById(stockInId);

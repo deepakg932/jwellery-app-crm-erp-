@@ -1,4 +1,4 @@
-import Invoice from "../Models/models/Invoice.js";
+import Invoice from "../models/Invoice.js";
 
 export const generateInvoiceNumber = async () => {
   const year = new Date().getFullYear();

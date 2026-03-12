@@ -1,7 +1,7 @@
 // 
 
 import axios from "axios";
-import GoldRate from "../Models/models/GoldRate.js";
+import GoldRate from "../models/GoldRate.js";
 
 const KARAT_MULTIPLIER = {
   "24K": 1,

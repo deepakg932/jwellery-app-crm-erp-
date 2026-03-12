@@ -1,7 +1,7 @@
 import Hallmark from "../models/Hallmark.js"
 import Purity from "../models/Purity.js";
 import Metal from "../models/MetalTypeModel.js"
-import { MetalType } from  "../Models/models/shared.js"
+// import { MetalType } from  "../Models/models/shared.js"
 
 
 export const getPurityPercentages = async (req, res) => {

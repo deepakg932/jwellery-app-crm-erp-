@@ -1,4 +1,4 @@
-import PurchaseOrder from "../Models/models/PurchaseOrder.js";
+import PurchaseOrder from "../models/PurchaseOrder.js";
 
 const recalculatePOStatus = async (poId) => {
   const po = await PurchaseOrder.findById(poId);

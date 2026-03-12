@@ -1,4 +1,4 @@
-import Role from "../Models/models/Role.js";
+import Role from "../models/Role.js";
 
 /**
  * requireRole: allow when user's role is in allowedRoles

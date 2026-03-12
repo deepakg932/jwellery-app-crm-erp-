@@ -1,8 +1,8 @@
 
 import Repair from "../models/Repair.js";
 import Customer from "../models/Customer.js";
-import Sale from "../Models/models/SalesOrder.js";
-import Employee from "../Models/models/EmployeeModel.js";
+// import Sale from "../Models/models/SalesOrder.js";
+// import Employee from "../Models/models/EmployeeModel.js";
 import Product from "../models/ProductModel.js"
 import { generateRepairNumber } from "../helper/generateRepairNumber.js";
 import { generateInvoiceNumber } from "../helper/generateInvoiceNumber.js";

@@ -1,5 +1,5 @@
 // helper/generateRepairNumber.js
-import Repair from "../Models/models/Repair.js";
+import Repair from "../models/Repair.js";
 
 export const generateRepairNumber = async () => {
   const year = new Date().getFullYear();

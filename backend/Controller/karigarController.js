@@ -1,5 +1,5 @@
 import Karigar from "../models/Karigar";
-import Employee from "../Models/models/Employee.js";
+// import Employee from "../Models/models/Employee.js";
 
 export const createKarigar = async (req, res) => {
   try {

@@ -1,4 +1,4 @@
-import Counter from "../Models/models/Counter.js";
+import Counter from "../models/Counter.js";
 
 export const generateSaleReturnReference = async () => {
   const year = new Date().getFullYear();
