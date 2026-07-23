@@ -1,0 +1,548 @@
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { API_ENDPOINTS } from "@/api/api";
+
+export default function usePurchaseOrders() {
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [suppliers, setSuppliers] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [loadingInventoryItems, setLoadingInventoryItems] = useState(false);
+  const [loadingUnits, setLoadingUnits] = useState(false);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+
+  console.log(purchaseOrders);
+
+  // Add fetchBranches function
+  const fetchBranches = async () => {
+    try {
+      setLoadingBranches(true);
+      const res = await axios.get(API_ENDPOINTS.getBranches());
+      let branchesData = [];
+
+      console.log("Branches API Response:", res.data);
+
+      // Handle branch response structure
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        branchesData = res.data.data;
+      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        branchesData = res.data.fetched;
+      } else if (Array.isArray(res.data)) {
+        branchesData = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        branchesData = res.data.data;
+      }
+
+      console.log("Processed branches:", branchesData);
+      setBranches(branchesData);
+      return branchesData;
+    } catch (err) {
+      console.error("Error fetching branches:", err);
+      setError("Failed to load branches");
+      return [];
+    } finally {
+      setLoadingBranches(false);
+    }
+  };
+
+  // Fetch suppliers (for dropdown)
+  const fetchSuppliers = async () => {
+    try {
+      setLoadingSuppliers(true);
+      const res = await axios.get(API_ENDPOINTS.getSuppliers());
+      let suppliersData = [];
+
+      console.log("Suppliers API Response:", res.data);
+
+      // Handle supplier response structure
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        suppliersData = res.data.data;
+      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        suppliersData = res.data.fetched;
+      } else if (Array.isArray(res.data)) {
+        suppliersData = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        suppliersData = res.data.data;
+      }
+
+      console.log("Processed suppliers:", suppliersData);
+      setSuppliers(suppliersData);
+      return suppliersData;
+    } catch (err) {
+      console.error("Error fetching suppliers:", err);
+      setError("Failed to load suppliers");
+      return [];
+    } finally {
+      setLoadingSuppliers(false);
+    }
+  };
+
+  // Fetch inventory items (for dropdown)
+  const fetchInventoryItems = async () => {
+    try {
+      setLoadingInventoryItems(true);
+      const res = await axios.get(API_ENDPOINTS.getInventoryItems());
+
+      console.log("Inventory Items API Response:", res.data);
+
+      let itemsData = [];
+
+      // Handle the nested structure: res.data.data.data
+      if (
+        res.data?.success &&
+        res.data.data &&
+        res.data.data.data &&
+        Array.isArray(res.data.data.data)
+      ) {
+        itemsData = res.data.data.data;
+        console.log("Found items in res.data.data.data:", itemsData);
+      }
+      // Also check for other possible structures
+      else if (res.data?.success && Array.isArray(res.data.data)) {
+        itemsData = res.data.data;
+        console.log("Found items in res.data.data:", itemsData);
+      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        itemsData = res.data.fetched;
+        console.log("Found items in res.data.fetched:", itemsData);
+      } else if (Array.isArray(res.data)) {
+        itemsData = res.data;
+        console.log("Found items in res.data:", itemsData);
+      }
+
+      console.log("Processed inventory items:", itemsData);
+      setInventoryItems(itemsData);
+      return itemsData;
+    } catch (err) {
+      console.error("Error fetching inventory items:", err);
+      setError("Failed to load inventory items");
+      return [];
+    } finally {
+      setLoadingInventoryItems(false);
+    }
+  };
+
+  // Fetch units (for dropdown)
+  const fetchUnits = async () => {
+    try {
+      setLoadingUnits(true);
+      const res = await axios.get(API_ENDPOINTS.getUnits());
+
+      console.log("Units API Response:", res.data);
+
+      let unitsData = [];
+
+      // Handle units response structure based on your example
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        unitsData = res.data.data;
+      } else if (res.data?.fetched && Array.isArray(res.data.fetched)) {
+        unitsData = res.data.fetched;
+      } else if (Array.isArray(res.data)) {
+        unitsData = res.data;
+      } else if (res.data?.data && Array.isArray(res.data.data)) {
+        unitsData = res.data.data;
+      }
+
+      console.log("Processed units:", unitsData);
+      setUnits(unitsData);
+      return unitsData;
+    } catch (err) {
+      console.error("Error fetching units:", err);
+      setError("Failed to load units");
+      return [];
+    } finally {
+      setLoadingUnits(false);
+    }
+  };
+
+  // Fetch all purchase orders
+ const fetchPurchaseOrders = async () => {
+  try {
+    setLoading(true);
+    setError("");
+
+    const url = API_ENDPOINTS.getPurchaseOrders();
+    console.log("Fetching purchase orders from:", url);
+
+    const res = await axios.get(url);
+    console.log("Purchase Orders API Response:", res.data);
+
+    let purchaseOrdersData = [];
+
+    // Handle response structure based on your actual API response
+    if (res.data?.success && Array.isArray(res.data.data)) {
+      purchaseOrdersData = res.data.data;
+    } else if (Array.isArray(res.data)) {
+      purchaseOrdersData = res.data;
+    } else {
+      console.warn("Unexpected API response structure:", res.data);
+      throw new Error("Invalid response format from server");
+    }
+
+    // Map the data according to your API response structure
+    const mappedPurchaseOrders = purchaseOrdersData.map((item) => ({
+      _id: item._id,
+      order_number: item.po_number || `PO-${Date.now()}`,
+      supplier_id: item.supplier_id || {},
+      supplier: item.supplier_id || {}, // Keep both for compatibility
+      branch: item.branch || {},
+      order_date: item.order_date || new Date().toISOString().split("T")[0],
+      items: item.items?.map((orderItem) => ({
+        inventory_item_id: orderItem.inventory_item_id || {},
+        item_code: orderItem.inventory_item_id?.item_code || "",
+        name: orderItem.inventory_item_id?.name || "",
+        purity: orderItem.inventory_item_id?.purity || "",
+        quantity: orderItem.quantity || 0,
+        weight: orderItem.weight || 0,
+        received_quantity: orderItem.received_quantity || 0,
+        received_weight: orderItem.received_weight || 0,
+        unit_id: orderItem.unit_id || {},
+        rate: orderItem.rate || 0,
+        discount: orderItem.discount || 0,
+        tax: orderItem.tax || 0,
+        total: orderItem.total || 0,
+        _id: orderItem._id
+      })) || [],
+      status: item.status || "draft",
+      payment_status: item.payment_status || "pending",
+      total_amount: item.total_amount || 0,
+      grand_total: item.grand_total || item.total_amount || 0,
+      subtotal: item.subtotal || 0,
+      vat: item.vat || 0,
+      discount: item.discount || 0,
+      shipping_cost: item.shipping_cost || 0,
+      currency: item.currency || "INR",
+      exchange_rate: item.exchange_rate || 1,
+      reference_no: item.reference_no || "",
+      notes: item.notes || "",
+      paid_amount: item.paid_amount || 0,
+      balance_amount: item.balance_amount || 0,
+      additional_payment: item.additional_payment || 0,
+      payment_method: item.payment_method || "",
+      payment_date: item.payment_date || "",
+      payment_notes: item.payment_notes || "",
+      created_by: item.created_by || null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    }));
+
+    console.log("Mapped purchase orders count:", mappedPurchaseOrders.length);
+    console.log("Sample mapped order:", mappedPurchaseOrders);
+    setPurchaseOrders(mappedPurchaseOrders);
+    
+    // Optional: Return the data if needed elsewhere
+    return mappedPurchaseOrders;
+    
+  } catch (err) {
+    console.error("Fetch purchase orders error:", err);
+    
+    // More specific error messages
+    if (err.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error("Server responded with error:", err.response.status);
+      setError(`Failed to load purchase orders: ${err.response.status} - ${err.response.data?.message || 'Server error'}`);
+    } else if (err.request) {
+      // The request was made but no response was received
+      console.error("No response received:", err.request);
+      setError("Network error - Please check your connection");
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      setError(err.message || "Failed to load purchase orders");
+    }
+    
+    // Optional: Clear data on error
+    setPurchaseOrders([]);
+    throw err; // Re-throw if you want calling code to handle it
+  } finally {
+    setLoading(false);
+  }
+};
+  // Add a new purchase order
+  const addPurchaseOrder = async (purchaseOrderData) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const url = API_ENDPOINTS.createPurchaseOrder();
+      console.log("Adding purchase order at:", url, "Data:", purchaseOrderData);
+
+      const res = await axios.post(url, purchaseOrderData);
+      console.log("Add purchase order response:", res.data);
+
+      let newPurchaseOrder = {
+        _id: `temp-${Date.now()}`,
+        ...purchaseOrderData,
+        status: purchaseOrderData.status || "draft",
+      };
+
+      if (res.data?.success) {
+        const responseData = res.data.data || res.data;
+        newPurchaseOrder = {
+          _id: responseData._id || responseData.id,
+          order_number: responseData.po_number || `PO-${Date.now()}`,
+          supplier:
+            responseData.supplier_id ||
+            responseData.supplier ||
+            purchaseOrderData.supplier,
+          order_date: responseData.order_date || purchaseOrderData.order_date,
+          items: responseData.items || purchaseOrderData.items,
+          status: responseData.status || purchaseOrderData.status || "draft",
+          total_amount:
+            responseData.total_amount || purchaseOrderData.total_amount,
+          notes: responseData.notes || purchaseOrderData.notes,
+        };
+      }
+
+      console.log("New purchase order to add:", newPurchaseOrder);
+      setPurchaseOrders((prev) => [...prev, newPurchaseOrder]);
+
+      // Refetch to ensure consistency
+      setTimeout(() => {
+        fetchPurchaseOrders();
+      }, 500);
+
+      return newPurchaseOrder;
+    } catch (err) {
+      console.error("Add purchase order error:", err);
+      setError("Failed to add purchase order");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update a purchase order
+  const updatePurchaseOrder = async (id, purchaseOrderData) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const url = API_ENDPOINTS.updatePurchaseOrder(id);
+      console.log(
+        "Updating purchase order at:",
+        url,
+        "Data:",
+        purchaseOrderData,
+      );
+
+      const res = await axios.put(url, purchaseOrderData);
+      console.log("Update purchase order response:", res.data);
+
+      if (res.data?.success) {
+        const responseData = res.data.data || res.data;
+        const updatedData = {
+          _id: responseData._id || responseData.id || id,
+          order_number: responseData.po_number || responseData.order_number,
+          supplier:
+            responseData.supplier_id ||
+            responseData.supplier ||
+            purchaseOrderData.supplier,
+          order_date: responseData.order_date || purchaseOrderData.order_date,
+          items: responseData.items || purchaseOrderData.items,
+          status: responseData.status || purchaseOrderData.status || "draft",
+          total_amount:
+            responseData.total_amount || purchaseOrderData.total_amount,
+          notes: responseData.notes || purchaseOrderData.notes,
+        };
+
+        console.log("Updated purchase order data:", updatedData);
+        setPurchaseOrders((prev) =>
+          prev.map((item) => (item._id === id ? updatedData : item)),
+        );
+
+        // Refetch to ensure consistency
+        setTimeout(() => {
+          fetchPurchaseOrders();
+        }, 500);
+
+        return updatedData;
+      } else {
+        throw new Error(res.data?.message || "Failed to update purchase order");
+      }
+    } catch (err) {
+      console.error("Update purchase order error:", err);
+      setError("Failed to update purchase order");
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update payment status of a purchase order
+ const updatePurchaseOrderPayment = async (id, paymentData) => {
+  try {
+    setLoading(true);
+    setError("");
+
+    console.log(
+      "Updating payment for purchase order ID:",
+      id,
+      "Payment Data:",
+      paymentData,
+    );
+
+    // Use the updatePurchaseOrder endpoint
+    const url = API_ENDPOINTS.updatePurchaseOrder(id);
+
+    // Find the purchase order and get its grand_total instead of total_amount
+    const purchaseOrder = purchaseOrders.find((po) => po._id === id);
+    const grandTotal = purchaseOrder?.grand_total || 0; // Changed from total_amount to grand_total
+    const paidAmount = parseFloat(paymentData.paid_amount) || 0;
+    const balanceAmount = grandTotal - paidAmount; // Changed from totalAmount to grandTotal
+
+    const updatePayload = {
+      ...paymentData,
+      payment_status: paymentData.payment_status,
+      paid_amount: paidAmount,
+      balance_amount: balanceAmount,
+      payment_date:
+        paymentData.payment_date || new Date().toISOString().split("T")[0],
+      grand_total: grandTotal, // Changed from total_amount to grand_total
+    };
+
+    console.log("Sending payment update to:", url, "Payload:", updatePayload);
+
+    const res = await axios.put(url, updatePayload);
+    console.log("Update payment response:", res.data);
+
+    if (res.data?.success || res.data?.status === "success") {
+      const responseData = res.data.data || res.data;
+
+      // Update the purchase order in local state immediately for better UX
+      setPurchaseOrders((prev) =>
+        prev.map((po) => {
+          if (po._id === id) {
+            const updatedPO = {
+              ...po,
+              payment_status: paymentData.payment_status,
+              paid_amount: paidAmount,
+              balance_amount: balanceAmount,
+              payment_date: paymentData.payment_date,
+              payment_method: paymentData.payment_method,
+              payment_notes: paymentData.payment_notes,
+              updated_at: new Date().toISOString(),
+            };
+
+            return updatedPO;
+          }
+          return po;
+        }),
+      );
+
+      // Refresh data to ensure consistency with backend
+      setTimeout(() => {
+        fetchPurchaseOrders();
+      }, 500);
+
+      return responseData;
+    } else {
+      throw new Error(res.data?.message || "Failed to update payment status");
+    }
+  } catch (err) {
+    console.error("Update payment error:", err);
+
+    let errorMessage = "Failed to update payment status";
+
+    if (err.response) {
+      errorMessage =
+        err.response.data?.message ||
+        err.response.data?.error ||
+        `Server error: ${err.response.status}`;
+
+      // Log detailed error for debugging
+      console.error("Error details:", err.response.data);
+    } else if (err.request) {
+      errorMessage = "Network error. Please check your connection.";
+    }
+
+    setError(errorMessage);
+    throw new Error(errorMessage);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // In usePurchaseOrders hook - update deletePurchaseOrder function:
+  const deletePurchaseOrder = async (id) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const url = API_ENDPOINTS.deletePurchaseOrder(id);
+      console.log("Deleting purchase order at:", url);
+
+      const res = await axios.delete(url);
+      console.log("Delete response:", res.data);
+
+      if (res.data?.success || res.data?.status === true) {
+        // Remove the item from state immediately
+        setPurchaseOrders((prev) => prev.filter((item) => item._id !== id));
+        return res.data;
+      } else {
+        throw new Error(res.data?.message || "Failed to delete purchase order");
+      }
+    } catch (err) {
+      console.error("Delete purchase order error:", err);
+      setError(
+        "Failed to delete purchase order: " +
+          (err.response?.data?.message || err.message),
+      );
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initialize data on mount
+  useEffect(() => {
+    const initializeData = async () => {
+      await Promise.all([
+        fetchSuppliers(),
+        fetchInventoryItems(),
+        fetchUnits(),
+        fetchBranches(), // Add branches fetch
+      ]);
+    };
+
+    initializeData();
+  }, []);
+
+  // Fetch purchase orders on mount
+  useEffect(() => {
+    fetchPurchaseOrders();
+  }, []);
+
+  return {
+    // Data
+    purchaseOrders,
+    suppliers,
+    inventoryItems,
+    units,
+    branches,
+
+    // Loading states
+    loading,
+    loadingSuppliers,
+    loadingInventoryItems,
+    loadingUnits,
+    loadingBranches,
+
+    // Error
+    error,
+
+    // Functions
+    fetchPurchaseOrders,
+    fetchSuppliers,
+    fetchInventoryItems,
+    fetchUnits,
+    fetchBranches,
+    addPurchaseOrder,
+    updatePurchaseOrder,
+    updatePurchaseOrderPayment,
+    deletePurchaseOrder,
+  };
+}
