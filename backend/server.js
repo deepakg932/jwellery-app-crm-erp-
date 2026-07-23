@@ -3,6 +3,7 @@ import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./db/DbConnect.js";
 import AuthRoutes from "./routes/AuthRoutes.js";
+import jwt from "jsonwebtoken";
 
 // import protectedRoutes from "./routes/protectedExample.js";
 import cors from "cors"
@@ -196,6 +197,14 @@ app.use((req, res, next) => {
 
 
 const PORT = process.env.PORT || 5000;
+
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Jewellery CRM ERP API is running 🚀",
+    version: "1.0.0",
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
