@@ -1,6 +1,6 @@
 import leave from "../models/leave.js";
 
-import LeaveType from "../models/leaveType.js";
+import LeaveType from "../models/LeaveType.js";
 import mongoose from "mongoose";
 import { calculateLeaveDays } from "../helper/calculateLeaveDays.js";
 

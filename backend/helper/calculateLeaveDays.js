@@ -1,4 +1,4 @@
-import LeaveType from "../Modelsf/models/leaveType.js";
+import LeaveType from "../models/LeaveType.js";
 import mongoose from "mongoose";
 
 
