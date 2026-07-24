@@ -16,7 +16,7 @@ import { RiDeleteBin6Line } from "react-icons/ri";
 import CustomOrderForm from "./AddCustomOrder";
 import useCustomOrders from "@/hooks/useCustomOrders";
 import useQuotations from "@/hooks/useQuotations";
-import AddQuotationForm from "@/views/manufacturing/quotations/components/AddQuotationForm";
+import AddQuotationForm from "@/views/manufacturing/Quotations/components/AddQuotationForm";
 import ViewCustomOrderModal from "./ViewCustomOrderModal";
 
 const CustomOrderTable = () => {
