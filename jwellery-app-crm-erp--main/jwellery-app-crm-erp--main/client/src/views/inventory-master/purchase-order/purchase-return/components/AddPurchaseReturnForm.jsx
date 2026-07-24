@@ -102,8 +102,13 @@ const AddPurchaseReturnForm = ({ onClose, onSave, loading = false }) => {
       purchaseReceived.supplier_name ||
       "";
     const branchId =
-      purchaseReceived.branch_id?._id || purchaseReceived.branch_id || "";
+      purchaseReceived.branch?._id ||
+      purchaseReceived.branch_id?._id ||
+      purchaseReceived.branch_id || 
+      "";
     const branchName =
+      purchaseReceived.branch?.branch_name ||
+      purchaseReceived.branch?.name ||
       purchaseReceived.branch_id?.branch_name ||
       purchaseReceived.branch_name ||
       "";

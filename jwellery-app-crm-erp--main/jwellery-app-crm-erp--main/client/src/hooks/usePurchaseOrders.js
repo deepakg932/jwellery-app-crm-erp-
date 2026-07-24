@@ -186,9 +186,10 @@ export default function usePurchaseOrders() {
     const mappedPurchaseOrders = purchaseOrdersData.map((item) => ({
       _id: item._id,
       order_number: item.po_number || `PO-${Date.now()}`,
-      supplier_id: item.supplier_id || {},
-      supplier: item.supplier_id || {}, // Keep both for compatibility
+      supplier_id: item.vendor_id || item.supplier_id || {},
+      supplier: item.vendor_id || item.supplier_id || {}, // vendor_id is the supplier, mapped to supplier for compatibility
       branch: item.branch || {},
+      branch_id: item.branch || {},
       order_date: item.order_date || new Date().toISOString().split("T")[0],
       items: item.items?.map((orderItem) => ({
         inventory_item_id: orderItem.inventory_item_id || {},

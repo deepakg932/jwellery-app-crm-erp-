@@ -5,6 +5,7 @@ import {createInventoryItem,getInventoryItems,updateInventoryItem,deleteinventor
 const  router = express.Router()
 
 router.post("/create-inventory-item",createInventoryItem)
+router.get("/get-pagination-inventory-items",getInventoryItems)
 router.get("/get-inventory-items",getInventoryItems)
 router.put("/update-inventory-item/:id",updateInventoryItem)
 router.delete("/delete-inventory-item/:id",deleteinventoryitem)

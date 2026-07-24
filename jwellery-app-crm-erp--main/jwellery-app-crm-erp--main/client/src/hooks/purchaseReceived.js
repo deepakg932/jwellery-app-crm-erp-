@@ -33,9 +33,17 @@ export default function purchaseReceived() {
         purchaseOrdersData = res.data;
       }
 
-      console.log("Fetched purchase orders:", purchaseOrdersData);
-      setPurchaseOrders(purchaseOrdersData);
-      return purchaseOrdersData;
+      // Map the data to ensure vendor_id is mapped to supplier_id for frontend compatibility
+      const mappedPOs = purchaseOrdersData.map((item) => ({
+        ...item,
+        supplier_id: item.vendor_id || item.supplier_id || {},
+        supplier: item.vendor_id || item.supplier_id || {}, // Keep both for compatibility
+        branch: item.branch || {},
+      }));
+
+      console.log("Fetched purchase orders:", mappedPOs);
+      setPurchaseOrders(mappedPOs);
+      return mappedPOs;
     } catch (err) {
       console.error("Fetch purchase orders error:", err);
       setError("Failed to load purchase orders");

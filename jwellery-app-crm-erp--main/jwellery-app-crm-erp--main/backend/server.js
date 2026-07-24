@@ -30,7 +30,17 @@ import wastageRoutes from "./routes/wastageRoutes.js";
 import wastageMaterialtypeRoutes from "./routes/wastageMaterialtypeRoutes.js";
 import inventoryItemRoute from "./routes/inventoryItemRoute.js"
 import supplierRoute from "./routes/supplierRoutes.js"
-
+import jobRoutes from "./routes/jobRoutes.js"
+import stageRoutes from "./routes/stageRoutes.js"
+import purchaseRoutes from "./routes/purchaseRoutes.js"
+import customerRoutes from "./routes/customerRoutes.js"
+import saleItemRoutes from "./routes/saleItemRoutes.js"
+import customOrderRoutes from "./routes/customOrderRoutes.js"
+import quotationRoutes from "./routes/quotationRoutes.js"
+import repairRoutes from "./routes/repairRoutes.js"
+import deptDesigRoutes from "./routes/departmentDesignationRoutes.js"
+import hrRoutes from "./routes/hrRoutes.js"
+import employeeRoutes from "./routes/employeeRoutes.js"
 
 
 dotenv.config(); 
@@ -79,6 +89,19 @@ app.use("/api/material-types",wastageMaterialtypeRoutes)
 app.use("/api/inventory-categories", inventorycategoryRoute);
 app.use("/api/inventory-item",inventoryItemRoute)
 app.use('/api/supplier',supplierRoute)
+app.use("/api/job-card", jobRoutes)
+app.use("/api/design-stage", stageRoutes)
+app.use("/api/purchase-orders", purchaseRoutes)
+app.use("/api/customers", customerRoutes)
+app.use("/api/customers-group", customerRoutes)
+app.use("/api/sale-items", saleItemRoutes)
+app.use("/api/custom-orders", customOrderRoutes)
+app.use("/api/quotation", quotationRoutes)
+app.use("/api/repairs", repairRoutes)
+app.use("/api/department", deptDesigRoutes)
+app.use("/api/designation", deptDesigRoutes)
+app.use("/api/hr", hrRoutes)
+app.use("/api/employees", employeeRoutes)
 
 
 

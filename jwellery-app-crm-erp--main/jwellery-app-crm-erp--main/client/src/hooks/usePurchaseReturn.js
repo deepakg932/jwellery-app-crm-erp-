@@ -32,8 +32,17 @@ export default function usePurchaseReturn() {
         stockInsData = res.data;
       }
 
+      // Map the data to ensure proper field mappings
+      const mappedStockIns = stockInsData.map((item) => ({
+        ...item,
+        supplier_id: item.supplier_id || item.vendor_id || {},
+        supplier: item.supplier_id || item.vendor_id || {},
+        branch: item.branch_id || item.branch || {}, // Map branch_id to branch for compatibility
+        branch_id: item.branch_id || item.branch || {},
+      }));
+
       // Filter only received purchase entries
-      const receivedPurchase = stockInsData.filter(
+      const receivedPurchase = mappedStockIns.filter(
         (pr) => pr.status === "received" || pr.status === "partially_received"
       );
 

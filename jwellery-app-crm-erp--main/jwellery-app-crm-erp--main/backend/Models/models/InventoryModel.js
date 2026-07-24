@@ -6,6 +6,8 @@ const InventoryItemSchema = new mongoose.Schema(
 
     sku_code: { type: String, unique: true }, // optional auto-generate
 
+    barcode: { type: String, unique: true, sparse: true }, // Add barcode field
+
     inventory_category_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "InventoryCategory",
@@ -15,6 +17,12 @@ const InventoryItemSchema = new mongoose.Schema(
     product_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
+      default: null
+    },
+
+    branch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
       default: null
     },
 

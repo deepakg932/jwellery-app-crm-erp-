@@ -1,4 +1,29 @@
 import Pricemaking from "../Models/models/PricemakingModel.js";
+import costmaster from "../Models/models/costmasterModel.js";
+import MakingStage from "../Models/models/MakingStage.js";
+import MakingSubStage from "../Models/models/submakingstages.js";
+import Unit from "../Models/models/unitModel.js";
+
+export const getPriceMakingDropdowns = async (req, res) => {
+  try {
+    const costTypes = await costmaster.find();
+    const makingStages = await MakingStage.find();
+    const makingSubStages = await MakingSubStage.find();
+    const units = await Unit.find();
+
+    return res.json({
+      success: true,
+      data: {
+        costTypes,
+        makingStages,
+        makingSubStages,
+        units,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
 
 export const createPriceMaking = async (req, res) => {
   try {

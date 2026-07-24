@@ -48,6 +48,7 @@ const PurchaseOrderTable = () => {
   const filteredPurchaseOrders = purchaseOrders.filter(
     (po) =>
       po.order_number?.toLowerCase().includes(search.toLowerCase()) ||
+      po.supplier?.supplier_name?.toLowerCase().includes(search.toLowerCase()) ||
       po.supplier?.name?.toLowerCase().includes(search.toLowerCase()) ||
       po.status?.toLowerCase().includes(search.toLowerCase()) ||
       po.items?.some(

@@ -6,6 +6,10 @@ const PurchaseOrderSchema = new mongoose.Schema(
     orderdate: { type: Date, default: Date.now },
     status: { type: String, enum: ['draft', 'approved', 'received', 'cancelled'], default: 'draft', index: true },
     totalitems: { type: Number, default: 0 },
+    vat: { type: Number, default: 0 },
+    tax: { type: Number, default: 0 },
+    subtotal: { type: Number, default: 0 },
+    total: { type: Number, default: 0 },
     createdby: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
