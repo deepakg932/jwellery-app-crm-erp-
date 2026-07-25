@@ -9,6 +9,7 @@ export const createCustomer = async (req, res) => {
       aadhar_number, tax_number, address, country, country_code,
       state, state_code, city, pincode, status,
     } = req.body;
+    console.log(req.body,"okoik")
 
     if (!name) {
       return res.status(400).json({ success: false, message: "Customer name is required" });
