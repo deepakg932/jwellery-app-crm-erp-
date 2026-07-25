@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FiUpload, FiCalendar, FiSearch, FiX, FiTrash2 } from "react-icons/fi";
 import useStockIn from "@/hooks/useStockIn";
+import { API_ENDPOINTS } from "@/api/api";
+import axios from "axios";
 
 const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => {
   const { purchaseOrders, loadingPurchaseOrders } = useStockIn();
@@ -158,49 +160,31 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
   };
 
   // Handle purchase order selection
-  const handlePOSelect = (po) => {
-    console.log("=== EDIT: PO Selected ===", po);
-    console.log("Raw supplier_id:", po.supplier_id);
-    console.log("Raw branch:", po.branch);
-    
+  const handlePOSelect = async (po) => {
+    console.log("=== EDIT: PO Selected ===", po._id);
     setSelectedPO(po);
 
-    // Extract supplier and branch - handle ALL possible data structures
-    const supplierId = 
-      (typeof po.supplier_id === 'object' && po.supplier_id?._id) ||
-      (typeof po.supplier_id === 'object' && po.supplier_id?.id) ||
-      po.supplier?._id ||
-      po.vendor_id?._id ||
-      (typeof po.supplier_id === 'string' && po.supplier_id) ||
-      (typeof po.vendor_id === 'string' && po.vendor_id) ||
-      "";
-    const supplierName =
-      (typeof po.supplier_id === 'object' && po.supplier_id?.supplier_name) ||
-      (typeof po.supplier_id === 'object' && po.supplier_id?.name) ||
-      po.supplier?.supplier_name ||
-      po.supplier?.name ||
-      po.vendor_id?.supplier_name ||
-      po.vendor_id?.name ||
-      po.supplier_name ||
-      "";
-    
-    // Handle branch - object or string
-    const branchId = 
-      po.branch?._id ||
-      po.branch_id?._id ||
-      (typeof po.branch_id === 'string' && po.branch_id) ||
-      (typeof po.branch === 'string' && po.branch) ||
-      "";
-    const branchName =
-      po.branch?.branch_name ||
-      po.branch?.name ||
-      po.branch_id?.branch_name ||
-      po.branch_id?.name ||
-      po.branch_name ||
-      "";
+    // Fetch full PO details by ID to get properly populated supplier/branch
+    let fullPO = po;
+    try {
+      const url = API_ENDPOINTS.getPurchaseOrderById(po._id);
+      const res = await axios.get(url);
+      if (res.data?.success && res.data?.data) {
+        fullPO = res.data.data;
+      }
+    } catch (err) {
+      console.error("Failed to fetch full PO:", err);
+    }
 
-    console.log("✓ Extracted supplierId:", supplierId, "supplierName:", supplierName);
-    console.log("✓ Extracted branchId:", branchId, "branchName:", branchName);
+    const supplierObj = fullPO.supplier_id || fullPO.vendor_id || {};
+    const branchObj = fullPO.branch_id || fullPO.branch || {};
+
+    const supplierId = supplierObj?._id || (typeof supplierObj === 'string' ? supplierObj : "");
+    const supplierName = supplierObj?.supplier_name || supplierObj?.name || supplierObj?.company_name || "";
+    const branchId = branchObj?._id || (typeof branchObj === 'string' ? branchObj : "");
+    const branchName = branchObj?.branch_name || branchObj?.name || "";
+
+    console.log("✓ Extracted:", { supplierId, supplierName, branchId, branchName });
 
     setFormData((prev) => ({
       ...prev,

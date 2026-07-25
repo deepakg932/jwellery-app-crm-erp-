@@ -33,13 +33,31 @@ export default function purchaseReceived() {
         purchaseOrdersData = res.data;
       }
 
-      // Map the data to ensure vendor_id is mapped to supplier_id for frontend compatibility
-      const mappedPOs = purchaseOrdersData.map((item) => ({
-        ...item,
-        supplier_id: item.vendor_id?._id || item.supplier_id?._id || item.vendor_id || item.supplier_id || "",
-        supplier: item.vendor_id || item.supplier_id || {}, // Keep both for compatibility
-        branch: item.branch || {},
-      }));
+      console.log("Raw PO data[0] vendor_id:", purchaseOrdersData[0]?.vendor_id, "supplier_id:", purchaseOrdersData[0]?.supplier_id, "branch:", purchaseOrdersData[0]?.branch, "branch_id:", purchaseOrdersData[0]?.branch_id);
+
+      // Map the data - keep raw API fields intact, add convenience fields
+      const mappedPOs = purchaseOrdersData.map((item) => {
+        // Extract from ANY possible structure
+        const sObj = item.vendor_id || item.supplier_id || {};
+        const bObj = item.branch || item.branch_id || {};
+        const isSupplierObj = sObj && typeof sObj === 'object' && sObj._id;
+        const isBranchObj = bObj && typeof bObj === 'object' && bObj._id;
+        return {
+          ...item,
+          // Keep vendor_id and supplier_id raw from API (object or null or string)
+          _supplier_id_raw: item.supplier_id,
+          _vendor_id_raw: item.vendor_id,
+          // Also store extracted string IDs
+          supplier_id: isSupplierObj ? sObj._id : (typeof sObj === 'string' ? sObj : ""),
+          supplier_name: isSupplierObj ? (sObj.supplier_name || sObj.name || sObj.company_name || "") : "",
+          branch_id: isBranchObj ? bObj._id : (typeof bObj === 'string' ? bObj : ""),
+          branch_name: isBranchObj ? (bObj.branch_name || bObj.name || "") : "",
+        };
+      });
+
+      if (mappedPOs.length > 0) {
+        console.log("First mapped PO:", JSON.parse(JSON.stringify(mappedPOs[0])));
+      }
 
       console.log("Fetched purchase orders:", mappedPOs);
       setPurchaseOrders(mappedPOs);

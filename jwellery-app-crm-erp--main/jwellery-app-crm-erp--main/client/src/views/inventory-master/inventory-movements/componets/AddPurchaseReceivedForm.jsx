@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FiUpload, FiCalendar, FiSearch, FiX, FiTrash2 } from "react-icons/fi";
 import purchaseReceived from "@/hooks/purchaseReceived";
+import { API_ENDPOINTS } from "@/api/api";
+import axios from "axios";
 
 const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
   const { purchaseOrders, loadingPurchaseOrders } = purchaseReceived();
@@ -90,51 +92,34 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
     setShowPoSearchResults(true);
   };
 
-  const handlePOSelect = (po) => {
-    console.log("=== PO Selected ===", po);
-    console.log("Raw supplier_id:", po.supplier_id);
-    console.log("Raw branch:", po.branch);
-    console.log("Raw branch_id:", po.branch_id);
-
+  const handlePOSelect = async (po) => {
+    console.log("=== PO Selected ===", po._id);
     setSelectedPO(po);
 
-    // Extract supplier and branch - handle ALL possible data structures
-    // After hook mapping, supplier_id might be a string ID or a populated object
-    const supplierId = 
-      (typeof po.supplier_id === 'object' && po.supplier_id?._id) ||
-      (typeof po.supplier_id === 'object' && po.supplier_id?.id) ||
-      po.supplier?._id ||
-      po.vendor_id?._id ||
-      (typeof po.supplier_id === 'string' && po.supplier_id) ||
-      (typeof po.vendor_id === 'string' && po.vendor_id) ||
-      "";
-    const supplierName =
-      (typeof po.supplier_id === 'object' && po.supplier_id?.supplier_name) ||
-      (typeof po.supplier_id === 'object' && po.supplier_id?.name) ||
-      po.supplier?.supplier_name ||
-      po.supplier?.name ||
-      po.vendor_id?.supplier_name ||
-      po.vendor_id?.name ||
-      po.supplier_name ||
-      "";
-    
-    // Handle branch - object or string
-    const branchId = 
-      po.branch?._id ||
-      po.branch_id?._id ||
-      (typeof po.branch_id === 'string' && po.branch_id) ||
-      (typeof po.branch === 'string' && po.branch) ||
-      "";
-    const branchName =
-      po.branch?.branch_name ||
-      po.branch?.name ||
-      po.branch_id?.branch_name ||
-      po.branch_id?.name ||
-      po.branch_name ||
-      "";
-    
-    console.log("✓ Extracted supplierId:", supplierId, "supplierName:", supplierName);
-    console.log("✓ Extracted branchId:", branchId, "branchName:", branchName);
+    // Fetch full PO details by ID to get properly populated supplier/branch
+    let fullPO = po;
+    try {
+      const url = API_ENDPOINTS.getPurchaseOrderById(po._id);
+      console.log("Fetching full PO from:", url);
+      const res = await axios.get(url);
+      if (res.data?.success && res.data?.data) {
+        fullPO = res.data.data;
+        console.log("Full PO data:", JSON.parse(JSON.stringify(fullPO)));
+      }
+    } catch (err) {
+      console.error("Failed to fetch full PO, using list data:", err);
+    }
+
+    // Extract supplier from the fully populated PO
+    const supplierObj = fullPO.supplier_id || fullPO.vendor_id || {};
+    const branchObj = fullPO.branch_id || fullPO.branch || {};
+
+    const supplierId = supplierObj?._id || (typeof supplierObj === 'string' ? supplierObj : "");
+    const supplierName = supplierObj?.supplier_name || supplierObj?.name || supplierObj?.company_name || "";
+    const branchId = branchObj?._id || (typeof branchObj === 'string' ? branchObj : "");
+    const branchName = branchObj?.branch_name || branchObj?.name || "";
+
+    console.log("✓ Extracted:", { supplierId, supplierName, branchId, branchName });
 
     console.log("Extracted Supplier:", { supplierId, supplierName });
     console.log("Extracted Branch:", { branchId, branchName });
@@ -142,8 +127,9 @@ const AddPurchaseReceived = ({ onClose, onSave, loading = false }) => {
     // Auto-populate items from PO
     let poItems = [];
 
-    if (po.items && po.items.length > 0) {
-      poItems = po.items.map((item) => {
+    const poItemsList = fullPO.items || po.items || [];
+    if (poItemsList.length > 0) {
+      poItems = poItemsList.map((item) => {
         console.log("Processing item:", item);
 
         // Check different possible structures for inventory_item
