@@ -97,7 +97,7 @@ export default function purchaseReceived() {
           supplier_id: supplier, // Keep the full object for display
           supplier_name: supplierName,
           branch_id: branch, // Keep the full object for display
-          branch_name: branch.name || "",
+          branch_name: branch.name || branch.branch_name || "",
           received_date: stockIn.received_date || stockIn.createdAt,
           items: stockIn.items || [],
           remarks: stockIn.remarks || "",

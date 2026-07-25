@@ -124,29 +124,33 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
       return;
     }
 
-    // Filter purchase orders by PO number, reference number, or supplier name
     const results = purchaseOrders.filter(
       (po) =>
-        // Match by PO number (priority)
         (po.po_number &&
           po.po_number.toLowerCase().includes(query.toLowerCase())) ||
-        // Match by reference number
         (po.reference_no &&
           po.reference_no.toLowerCase().includes(query.toLowerCase())) ||
-        // Match by supplier name (from supplier_id object)
-        (po.supplier_id?.supplier_name &&
+        ((typeof po.supplier_id === 'object') && po.supplier_id?.supplier_name &&
           po.supplier_id.supplier_name
             .toLowerCase()
             .includes(query.toLowerCase())) ||
-        (po.supplier_id?.name &&
+        ((typeof po.supplier_id === 'object') && po.supplier_id?.name &&
           po.supplier_id.name.toLowerCase().includes(query.toLowerCase())) ||
-        // Also check if supplier is a direct object (backward compatibility)
-        (po.supplier?.name &&
-          po.supplier.name.toLowerCase().includes(query.toLowerCase())) ||
         (po.supplier?.supplier_name &&
           po.supplier.supplier_name
             .toLowerCase()
-            .includes(query.toLowerCase())),
+            .includes(query.toLowerCase())) ||
+        (po.supplier?.name &&
+          po.supplier.name.toLowerCase().includes(query.toLowerCase())) ||
+        (po.vendor_id?.supplier_name &&
+          po.vendor_id.supplier_name
+            .toLowerCase()
+            .includes(query.toLowerCase())) ||
+        (typeof po.supplier_id === 'string' && po.supplier_id
+            .toLowerCase()
+            .includes(query.toLowerCase())) ||
+        (po.supplier_name &&
+          po.supplier_name.toLowerCase().includes(query.toLowerCase())),
     );
 
     setPoSearchResults(results);
@@ -161,32 +165,38 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
     
     setSelectedPO(po);
 
-    // Extract supplier and branch from PO response - handle both possible data structures
-    // Handle supplier_id object (from API)
+    // Extract supplier and branch - handle ALL possible data structures
     const supplierId = 
-      po.supplier_id?._id ||     // API: supplier_id._id
-      po.supplier_id?.id ||      // Alternative with id
-      po.supplier?._id ||         // Alternative: supplier._id
-      po.supplier_id ||
+      (typeof po.supplier_id === 'object' && po.supplier_id?._id) ||
+      (typeof po.supplier_id === 'object' && po.supplier_id?.id) ||
+      po.supplier?._id ||
+      po.vendor_id?._id ||
+      (typeof po.supplier_id === 'string' && po.supplier_id) ||
+      (typeof po.vendor_id === 'string' && po.vendor_id) ||
       "";
     const supplierName =
-      po.supplier_id?.supplier_name ||  // API: supplier_id.supplier_name
-      po.supplier_id?.name ||           // API: supplier_id.name
-      po.supplier?.name ||              // Alternative: supplier.name
-      po.supplier?.supplier_name ||     // Alternative: supplier.supplier_name
+      (typeof po.supplier_id === 'object' && po.supplier_id?.supplier_name) ||
+      (typeof po.supplier_id === 'object' && po.supplier_id?.name) ||
+      po.supplier?.supplier_name ||
+      po.supplier?.name ||
+      po.vendor_id?.supplier_name ||
+      po.vendor_id?.name ||
+      po.supplier_name ||
       "";
     
-    // Handle branch object (from API)
+    // Handle branch - object or string
     const branchId = 
-      po.branch?._id ||           // API: branch._id
-      po.branch_id?._id ||        // Alternative: branch_id._id
-      po.branch_id ||
+      po.branch?._id ||
+      po.branch_id?._id ||
+      (typeof po.branch_id === 'string' && po.branch_id) ||
+      (typeof po.branch === 'string' && po.branch) ||
       "";
     const branchName =
-      po.branch?.branch_name ||     // API: branch.branch_name
-      po.branch?.name ||            // API: branch.name
-      po.branch_id?.branch_name ||  // Alternative: branch_id.branch_name
-      po.branch_id?.name ||         // Alternative: branch_id.name
+      po.branch?.branch_name ||
+      po.branch?.name ||
+      po.branch_id?.branch_name ||
+      po.branch_id?.name ||
+      po.branch_name ||
       "";
 
     console.log("✓ Extracted supplierId:", supplierId, "supplierName:", supplierName);
@@ -681,10 +691,12 @@ const EditPurchaseReceived = ({ onClose, onSave, stockIn, loading = false }) => 
                             </div>
                             <div className="small text-muted">
                               Supplier:{" "}
-                              {po.supplier_id?.supplier_name ||
-                                po.supplier_id?.name ||
-                                po.supplier?.name ||
+                              {(typeof po.supplier_id === 'object' && po.supplier_id?.supplier_name) ||
+                                (typeof po.supplier_id === 'object' && po.supplier_id?.name) ||
                                 po.supplier?.supplier_name ||
+                                po.supplier?.name ||
+                                po.vendor_id?.supplier_name ||
+                                po.supplier_name ||
                                 "N/A"}{" "}
                               | Reference: {po.reference_no || "N/A"} | Items:{" "}
                               {po.items?.length || 0} | Total: ₹
