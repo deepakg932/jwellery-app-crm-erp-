@@ -53,10 +53,14 @@ export const createCustomer = async (req, res) => {
 
     return res.status(201).json({ success: true, message: "Customer created successfully", data: populated });
   } catch (err) {
-    console.error("Create customer error:", err);
-    return res.status(500).json({ success: false, message: "Server error", error: err.message });
-  }
-};
+    console.error(err);
+
+    return res.status(500).json({
+        success:false,
+        message:err.message,
+        stack:err.stack
+    });
+}
 
 export const getCustomers = async (req, res) => {
   try {
