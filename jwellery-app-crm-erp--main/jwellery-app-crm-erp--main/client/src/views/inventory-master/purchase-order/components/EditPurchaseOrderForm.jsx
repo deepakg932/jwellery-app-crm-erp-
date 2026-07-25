@@ -26,7 +26,7 @@ const EditPurchaseOrderForm = ({
     items: [],
     notes: "",
     total_amount: 0,
-    vat: "0", // Initialize as number without % for calculation
+    vat: 0, // VAT removed
     discount: 0,
     shipping_cost: 0,
     subtotal: 0,
@@ -274,13 +274,10 @@ const EditPurchaseOrderForm = ({
     const discountAmount = parseFloat(formData.discount) || 0;
     const shippingCost = parseFloat(formData.shipping_cost) || 0;
 
-    // Calculate VAT based on item total
     const vatAmount = (itemTotal * vatPercent) / 100;
 
-    // Set subtotal as item total (before VAT, discount, shipping)
     const subtotal = itemTotal;
 
-    // Calculate grand total: itemTotal + VAT - Discount + Shipping
     const grandTotal = itemTotal + vatAmount - discountAmount + shippingCost;
 
     // Ensure grandTotal is not negative
@@ -742,12 +739,6 @@ const EditPurchaseOrderForm = ({
     // Filter out empty items
     const validItems = formData.items.filter((item) => item.inventory_item_id);
 
-    // Ensure VAT has % sign for submission
-    const vatValue = formData.vat;
-    const vatWithPercentage = vatValue.includes("%")
-      ? vatValue
-      : `${vatValue}%`;
-
     const payload = {
       id: purchaseOrder?._id || purchaseOrder?.id,
       supplier_id: formData.supplier_id,
@@ -766,9 +757,9 @@ const EditPurchaseOrderForm = ({
         tax: parseFloat(item.tax_amount) || 0,
         total: parseFloat(item.total) || 0,
       })),
-      vat: vatWithPercentage, // Send as "10%" format
       discount: parseFloat(formData.discount) || 0,
       shipping_cost: parseFloat(formData.shipping_cost) || 0,
+      vat: parseFloat(formData.vat) || 0,
       subtotal: parseFloat(formData.subtotal) || 0,
       total_amount: parseFloat(formData.total_amount) || 0,
       grand_total: parseFloat(formData.grand_total) || 0,
@@ -1034,23 +1025,24 @@ const EditPurchaseOrderForm = ({
                   )}
                 </div>
 
+                {/* GST Field */}
                 <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">GST (%)</label>
                   <div className="input-group">
                     <input
-                      type="text"
+                      type="number"
                       className="form-control"
                       name="vat"
                       value={formData.vat}
                       onChange={handleChange}
                       disabled={isDisabled}
-                      placeholder="10"
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      step="0.01"
                     />
                     <span className="input-group-text">%</span>
                   </div>
-                  <small className="text-muted">
-                    Value Added Tax percentage
-                  </small>
                 </div>
               </div>
 

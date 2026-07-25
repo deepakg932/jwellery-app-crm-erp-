@@ -246,7 +246,7 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
       align: "right",
     });
 
-    doc.text(`VAT (${purchaseOrder.vat || 0}%):`, 130, finalY + 22);
+    doc.text(`GST (${purchaseOrder.vat || 0}%):`, 130, finalY + 22);
     doc.text(formatCurrency(totals.vat), 180, finalY + 22, { align: "right" });
 
     doc.text("Discount:", 130, finalY + 29);
@@ -355,7 +355,7 @@ const ViewPurchaseOrderModal = ({ purchaseOrder, onClose }) => {
       [],
       ["INVOICE SUMMARY"],
       ["Subtotal:", totals.subtotal],
-      [`VAT (${purchaseOrder.vat || 0}%):`, totals.vat],
+      [`GST (${purchaseOrder.vat || 0}%):`, totals.vat],
       ["Discount:", -totals.discount],
       ["Shipping Cost:", totals.shipping],
       ["Grand Total:", totals.grandTotal],
@@ -887,7 +887,7 @@ const printInvoice = () => {
                   <span>${formatCurrency(totals.subtotal)}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
-                  <span>VAT (${purchaseOrder.vat || 0}%):</span>
+                  <span>GST (${purchaseOrder.vat || 0}%):</span>
                   <span>${formatCurrency(totals.vat)}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
@@ -1329,7 +1329,7 @@ const printInvoice = () => {
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <span>
                         <FiPercent size={12} className="me-1" />
-                        VAT ({purchaseOrder.vat || 0}%):
+                        GST ({purchaseOrder.vat || 0}%):
                       </span>
                       <span>{formatCurrency(totals.vat)}</span>
                     </div>

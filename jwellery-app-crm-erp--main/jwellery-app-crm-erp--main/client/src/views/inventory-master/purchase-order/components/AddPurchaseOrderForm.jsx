@@ -33,7 +33,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     ],
     notes: "",
     total_amount: 0,
-    vat: "0", // Initialize with percentage format
+    vat: 0,
     discount: 0,
     shipping_cost: 0,
     subtotal: 0,
@@ -911,12 +911,6 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    // Parse VAT value (ensure it has % sign)
-    const vatValue = formData.vat;
-    const vatWithPercentage = vatValue.includes("%")
-      ? vatValue
-      : `${vatValue}%`;
-
     const payload = {
       supplier_id: formData.supplier_id,
       order_date: formData.order_date,
@@ -936,11 +930,11 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
         })),
       notes: formData.notes,
       total_amount: parseFloat(formData.total_amount) || 0,
-      vat: vatWithPercentage, // Send as "10%" format
       discount: parseFloat(formData.discount) || 0,
       shipping_cost: parseFloat(formData.shipping_cost) || 0,
       subtotal: parseFloat(formData.subtotal) || 0,
       grand_total: parseFloat(formData.grand_total) || 0,
+      vat: parseFloat(formData.vat) || 0,
       payment_status: formData.payment_status,
       exchange_rate: parseFloat(formData.exchange_rate) || 1,
       currency: formData.currency,
@@ -1276,47 +1270,28 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                     </div>
                   )}
                 </div>
-
-                <div className="col-md-4 mb-3">
-                  <label className="form-label fw-medium">VAT (%)</label>
-                  <div className="input-group">
-                    <input
-                      type="text" // Change from number to text
-                      className="form-control"
-                      name="vat"
-                      value={formData.vat}
-                      onChange={handleChange}
-                      disabled={isDisabled}
-                      placeholder="0%"
-                    />
-                    <span className="input-group-text">%</span>
-                  </div>
-                  <small className="text-muted">
-                    Value Added Tax percentage (e.g., "10%")
-                  </small>
-                </div>
               </div>
 
               {/* Third Row - Totals and Reference */}
               {/* <div className="row mb-4"> */}
-              {/* <div className="col-md-4 mb-3">
-                  <label className="form-label fw-medium">VAT (%)</label>
+              <div className="col-md-4 mb-3">
+                  <label className="form-label fw-medium">GST (%)</label>
                   <div className="input-group">
                     <input
-                      type="text" // Change from number to text
+                      type="number"
                       className="form-control"
                       name="vat"
                       value={formData.vat}
                       onChange={handleChange}
                       disabled={isDisabled}
-                      placeholder="0%"
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      step="0.01"
                     />
                     <span className="input-group-text">%</span>
                   </div>
-                  <small className="text-muted">
-                    Value Added Tax percentage (e.g., "10%")
-                  </small>
-                </div> */}
+                </div>
 
               {/* <div className="col-md-4 mb-3">
                   <label className="form-label fw-medium">Grand Total</label>
@@ -1890,8 +1865,8 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                             <span className="float-end fw-medium">
                               {getCurrencySymbol()}
                               {(
-                                (formData.subtotal *
-                                  (parseFloat(formData.vat) || 0)) /
+                                (parseFloat(formData.subtotal) || 0) *
+                                (parseFloat(formData.vat) || 0) /
                                 100
                               ).toFixed(2)}
                             </span>
