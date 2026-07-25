@@ -41,6 +41,7 @@ import repairRoutes from "./routes/repairRoutes.js"
 import deptDesigRoutes from "./routes/departmentDesignationRoutes.js"
 import hrRoutes from "./routes/hrRoutes.js"
 import employeeRoutes from "./routes/employeeRoutes.js"
+import stockMovementRoutes from "./routes/stockMovementRoutes.js"
 
 
 dotenv.config(); 
@@ -102,6 +103,7 @@ app.use("/api/department", deptDesigRoutes)
 app.use("/api/designation", deptDesigRoutes)
 app.use("/api/hr", hrRoutes)
 app.use("/api/employees", employeeRoutes)
+app.use("/api/stock-movement", stockMovementRoutes)
 
 
 

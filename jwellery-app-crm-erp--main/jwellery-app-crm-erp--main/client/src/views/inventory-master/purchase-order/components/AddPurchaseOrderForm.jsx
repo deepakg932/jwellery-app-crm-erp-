@@ -1157,8 +1157,7 @@ const AddPurchaseOrderForm = ({ onClose, onSave, loading = false }) => {
                     ) : (
                       branches?.map((branch) => (
                         <option key={branch.id} value={branch.id}>
-                          {branch.branch_name} ({branch.branch_code})
-                          {branch.is_warehouse && " - Warehouse"}
+                          {branch.name || branch.branch_name}
                         </option>
                       ))
                     )}

@@ -36,7 +36,7 @@ export default function purchaseReceived() {
       // Map the data to ensure vendor_id is mapped to supplier_id for frontend compatibility
       const mappedPOs = purchaseOrdersData.map((item) => ({
         ...item,
-        supplier_id: item.vendor_id || item.supplier_id || {},
+        supplier_id: item.vendor_id?._id || item.supplier_id?._id || item.vendor_id || item.supplier_id || "",
         supplier: item.vendor_id || item.supplier_id || {}, // Keep both for compatibility
         branch: item.branch || {},
       }));

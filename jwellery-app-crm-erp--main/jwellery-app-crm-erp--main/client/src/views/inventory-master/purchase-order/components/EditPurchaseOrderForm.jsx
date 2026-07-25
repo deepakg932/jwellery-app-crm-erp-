@@ -934,7 +934,7 @@ const EditPurchaseOrderForm = ({
                     ) : (
                       branches?.map((branch) => (
                         <option key={branch.id} value={branch?.id}>
-                          {branch.branch_name} ({branch.branch_code})
+                          {branch.name || branch.branch_name}
                         </option>
                       ))
                     )}
